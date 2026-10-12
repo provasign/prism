@@ -1,0 +1,2041 @@
+shale_version: "0"
+id: b078ae73-7c6b-4498-a9f7-eeada0292d5a
+created_at: 2026-10-12T03:49:26.951552Z
+finalized_at: 2026-10-12T12:02:04.437667Z
+agent:
+    tool: claude-code
+    model: claude-opus-5-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: deps/grove-compiler-declared-go-ts
+privacy: redacted
+commands:
+    - cmd: gh pr view 1 -R provasign/research --json state,mergeable,statusCheckRollup --jq '{state,mergeable,checks:[.statusCheckRollup[]|{name,conclusion}]}' 2>&1 | head -30; gh pr list -R provasign/grove --state open --json number,title,isDraft; gh pr list -R provasign/prism --state open --json number,title,isDraft
+      at: 2026-10-12T03:49:41.955785Z
+      classified: other
+    - cmd: git branch -vv && echo ---GROVE && git -C ../grove branch -vv && git -C ../grove stash list | head
+      at: 2026-10-12T03:51:25.90447Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign && for r in prism grove; do echo "=== $r"; git -C $r fetch --prune -q origin; git -C $r worktree list; for b in $(git -C $r for-each-ref --format='%(refname:short)' refs/heads); do
+         if git -C $r merge-base --is-ancestor $b origin/main 2>/dev/null; then s=merged; elif [ -n "$(git -C $r branch -r --contains $b 2>/dev/null)" ]; then s=on-remote; else s=LOCAL-ONLY; fi; echo "$s $b"; done | sort; done
+      at: 2026-10-12T03:51:37.978048Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && git -C prism branch | wc -l; git -C grove branch | wc -l; git -C prism tag -l 'archive/*'; git -C grove tag -l 'archive/*'
+      at: 2026-10-12T03:52:08.776832Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && for r in prism grove; do echo "== $r"; git -C $r branch; git -C $r tag -l 'archive/*'; done
+      at: 2026-10-12T03:53:04.780821Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && keep=" main exp/task-sentence feat/compiler-provisional feat/deferred-native investigate/windows-crash fix/regex-recovery-comments "; for r in prism grove; do for b in $(git -C $r for-each-ref --format='%(refname:short)' refs/heads); do case "$keep" in *" $b "*) continue;; esac; if git -C $r merge-base --is-ancestor $b origin/main || [ -n "$(git -C $r branch -r --contains $b)" ]; then git -C $r branch -D -q $b; else git -C $r tag archive/$b $b && git -C $r branch -D -q $b && echo "archived $r $b"; fi; done; done; for r in prism grove; do echo "== $r"; git -C $r branch; done; git -C grove stash list | wc -l
+      at: 2026-10-12T03:53:22.184985Z
+      classified: other
+    - cmd: cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat project_issue5_run_2026_10_11.md project_issue42_run_2026_10_11.md project_issue_bed_pairs_2026_10_11.md | head -150
+      at: 2026-10-12T03:58:56.186447Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls; ls results | grep -i manifest; ls results | grep bench-v087 ; git -C .. log --oneline -5; git -C .. status --short | head
+      at: 2026-10-12T03:59:00.87694Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 -c "
+        import json
+        for f in ['compiled8-manifest.json','issue5-manifest.json']:
+          m=json.load(open(f)); print(f, type(m).__name__, json.dumps(m)[:600])
+        "; ls bench-v0877-compiled8-2026-10-11 | head; cat bench-v0877-compiled8-2026-10-11/*.md 2>/dev/null | head -40; grep -l compiled8 ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/*.md
+      at: 2026-10-12T03:59:05.64208Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob,os
+        for f in ['deephard-manifest.json','deephard12-task-manifest.json','deephard-rerun3-manifest.json']:
+            m=json.load(open(f)); print(f, [t for t in m if any(k in t for k in ('gson','jackson','dubbo','java','spring','guava','commons'))])
+        for p in sorted(glob.glob('bench-v0877-compiled8-2026-10-11/*.json')):
+            d=json.load(open(p))
+            keys=[k for k in d if k in('resolved','passed','score','cost_usd','total_cost_usd','num_turns','status')]
+            print(os.path.basename(p), {k:d[k] for k in keys})
+        EOF
+      at: 2026-10-12T03:59:11.997202Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls bench-v0877-compiled8-2026-10-11 2>/dev/null; ls results/bench-v0877-compiled8-2026-10-11 | grep jackson; ls tasks | head; ls tasks | wc -l
+      at: 2026-10-12T03:59:17.930574Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls tasks/e2e | head -5; ls tasks/e2e | wc -l; f=$(ls tasks/e2e/*.json 2>/dev/null | head -1); [ -n "$f" ] && python3 -c "import json,sys;d=json.load(open('$f'));print(list(d.keys()) if isinstance(d,dict) else type(d))"
+      at: 2026-10-12T03:59:21.745598Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;d=json.load(open('tasks/e2e/apache__commons-collections__pr700.json'));print(type(d), (d[:3] if isinstance(d,list) else ''))"; ls tasks/e2e | grep -v json | head
+      at: 2026-10-12T03:59:35.8427Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,re,os
+        res={}
+        for p in glob.glob('results/bench-v0877-*/*.json'):
+            b=os.path.basename(p)
+            try: d=json.load(open(p))
+            except: continue
+            if not isinstance(d,dict) or 'resolved' not in d: continue
+            res.setdefault(b.split('.claude')[0],{})[b.split('.')[-2]]=d['resolved']
+        post=set(json.load(open('results/issue-post-cutoff-manifest.json')))
+        rows=[]
+        for f in glob.glob('tasks/e2e/*.json'):
+            d=json.load(open(f))
+            if not isinstance(d,dict) or d.get('lang')!='java' or not d.get('valid',True) or 'patch' not in d: continue
+            p=d['patch']
+            files=[x for x in re.findall(r'^\+\+\+ b/(\S+)',p,re.M) if not re.search(r'[Tt]est',x)]
+            hunks=len(re.findall(r'^@@',p,re.M))
+            ov=len(re.findall(r'^[+-].*@Override',p,re.M))
+            anon=len(re.findall(r'^[+-].*new \w+(<[^>]*>)?\([^)]*\)\s*\{',p,re.M))
+            rows.append((len(files),hunks,ov,anon,d['instance_id'],d.get('prompt_source'),d['instance_id'] in post,res.get(d['instance_id'])))
+        rows.sort(reverse=True)
+        for r in rows[:30]: print(r)
+        print(len(rows))
+        EOF
+      at: 2026-10-12T03:59:46.276797Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob,os
+        ids=['deephard__jackson-databind__withType_typeser_first','deep__jackson-databind__acceptJsonFormatVisitor_add_provider','wide__jackson-databind__JsonSerializer_isEmpty','deephard__jackson-databind__report_overloads_JavaType','deephard__gson__TypeAdapter_writeValue_swap','wide__jackson-databind__ContextualSerializer_createContextual','deep__gson__TypeAdapterFactory_create_Optional','deep__jackson-databind__supportsUpdate_OptBoolean']
+        for i in ids:
+            print('##',i)
+            rows=[]
+            for p in glob.glob(f'*/{i}.*.json')+glob.glob(f'*/*/{i}.*.json'):
+                if 'archive' in p: continue
+                try: d=json.load(open(p))
+                except: continue
+                if not isinstance(d,dict): continue
+                rows.append((os.path.getmtime(p),p.split('/')[0],p.split('.')[-2],d.get('resolved'),round(d.get('cost_usd') or 0,2),d.get('num_turns')))
+            for r in sorted(rows)[-6:]: print('  ',r[1],r[2],r[3],'$',r[4],'turns',r[5])
+        EOF
+      at: 2026-10-12T03:59:55.813105Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,re,os
+        res={}
+        for p in glob.glob('results/bench-v0877-issue*/*.json'):
+            b=os.path.basename(p)
+            try: d=json.load(open(p))
+            except: continue
+            if not isinstance(d,dict) or 'resolved' not in d: continue
+            res.setdefault(b.split('.claude')[0],{})[b.split('.')[-2][:5]]=(d['resolved'],round(d.get('cost_usd') or 0,2))
+        post=set(json.load(open('results/issue-post-cutoff-manifest.json')))
+        bad={'FasterXML__jackson-databind__pr6030','FasterXML__jackson-databind__pr6044','FasterXML__jackson-databind__pr6215','FasterXML__jackson-dataformat-xml__pr885','apache__dubbo__pr16325','google__gson__pr3116','google__gson__pr3057','FasterXML__jackson-databind__pr6052'}
+        for f in sorted(glob.glob('tasks/e2e/*.json')):
+            d=json.load(open(f))
+            if not isinstance(d,dict) or d.get('lang')!='java' or d.get('prompt_source')!='issue' or 'patch' not in d: continue
+            i=d['instance_id']
+            p=d['patch']
+            files=[x for x in re.findall(r'^\+\+\+ b/(\S+)',p,re.M) if not re.search(r'[Tt]est',x)]
+            ov=len(re.findall(r'^[+-].*@Override',p,re.M))
+            print(f"{i:45} post={i in post!s:5} files={len(files)} hunks={len(re.findall(r'^@@',p,re.M)):2} ov={ov} bad={i in bad!s:5} {res.get(i)}")
+        EOF
+      at: 2026-10-12T04:00:58.297776Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 bench.py --help 2>&1 | head -60; which prism; prism --version; ls results/bench-v0877-issue5-2026-10-11 | grep -v -e diff -e '\.json$'
+      at: 2026-10-12T04:01:05.97166Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && head -20 results/bench-v0877-issue5-2026-10-11/driver.log; python3 bench.py run --help 2>&1 | sed -n 1,80p
+      at: 2026-10-12T04:01:08.078468Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 bench.py list-suites; grep -n -i -B2 -A6 'issue' docs/BENCH.md | head -40
+      at: 2026-10-12T04:01:11.60753Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -rn "issue5-manifest\|bench-v0877-issue" --include=*.py --include=*.sh --include=*.md . 2>/dev/null | grep -v results/ | head; ls runners tools | head -40
+      at: 2026-10-12T04:01:14.093713Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -rln "issue5-manifest\|# .* tasks x " runners tools lib 2>/dev/null | head; git -C .. show --stat 63a5198f | head -20
+      at: 2026-10-12T04:01:16.926529Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 1,60p runners/run_e2e.py | grep -v '^$'; grep -n "add_argument" runners/run_e2e.py | head -40
+      at: 2026-10-12T04:01:19.158947Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 1060,1140p runners/run_e2e.py
+      at: 2026-10-12T04:01:22.605717Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && cat runners/bench_matrix.py | sed -n 1,40p; grep -n "add_argument\|E2E_OUT\|results/" runners/bench_matrix.py | head -30
+      at: 2026-10-12T04:01:22.610998Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "^OUT\|E2E_OUT\|OUT =" runners/run_e2e.py | head; grep -n "sonnet" runners/run_e2e.py | head -8; grep -n "PRISM_BIN_FOR_ARM\s*=" -A8 runners/ab_endtoend_arms.py
+      at: 2026-10-12T04:01:25.908252Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && echo '["google__gson__pr3098"]' > results/java5-probe-manifest.json && echo '["FasterXML__jackson-databind__pr6076","FasterXML__jackson-databind__pr6061","google__gson__pr3098","google__gson__pr3059","google__gson__pr3112"]' > results/java5-issue-manifest.json && docker info >/dev/null 2>&1 && echo docker-ok; mkdir -p results/bench-v0879-java5-2026-10-12
+      at: 2026-10-12T04:01:32.79588Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && E2E_OUT=results/bench-v0879-java5-2026-10-12 PRISM_INIT_BIN=/opt/homebrew/bin/prism python3 runners/run_e2e.py results/java5-probe-manifest.json --models claude-sonnet-5-5 --arms native,prism_init > results/bench-v0879-java5-2026-10-12/driver.log 2>&1
+      at: 2026-10-12T04:01:32.832048Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java5-2026-10-12 && cat driver.log; ls; python3 - <<'EOF'
+        import json,glob
+        for p in sorted(glob.glob('*.json')):
+            d=json.load(open(p))
+            print(p, d.get('resolved'), d.get('cost_usd'), d.get('num_turns'), {k:d[k] for k in d if 'prism' in k.lower() or 'version' in k.lower() or 'tool' in k.lower()} )
+            print('  score:', json.dumps(d.get('score'))[:400])
+        EOF
+      at: 2026-10-12T04:04:28.836427Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java5-2026-10-12 && ls transcripts; grep -o 'v0\.87\.[0-9]*' -r transcripts | sort | uniq -c | head; grep -o 'opt/homebrew/bin/prism\|prism-ab-bins[^"]*' -r transcripts | sort | uniq -c | head
+      at: 2026-10-12T04:04:32.677798Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "def _prism_bin" -A12 runners/run_e2e.py | head -20; grep -n "prism_version\|--version" runners/run_e2e.py | head
+      at: 2026-10-12T04:04:34.83947Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && E2E_OUT=results/bench-v0879-java5-2026-10-12 PRISM_INIT_BIN=/opt/homebrew/bin/prism python3 runners/run_e2e.py results/java5-issue-manifest.json --models claude-sonnet-5-5 --arms native,prism_init >> results/bench-v0879-java5-2026-10-12/driver.log 2>&1
+      at: 2026-10-12T04:04:39.243321Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;d=json.load(open('tasks/e2e/google__gson__pr3098.json'));print(d['problem_statement'][:1500]);print('----GOLD');print(d['patch'][:3500]);print('F2P',d['fail_to_pass'])"; echo ----PRISM; cat results/bench-v0879-java5-2026-10-12/google__gson__pr3098.claude-sonnet-5-5.prism_init.diff | head -80
+      at: 2026-10-12T04:04:42.530578Z
+      classified: other
+    - cmd: tail -20 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bx703ar2x.output; gh pr view 1 -R provasign/research --json state,statusCheckRollup --jq '{state,c:[.statusCheckRollup[]|{name,conclusion}]}'
+      at: 2026-10-12T04:10:34.959941Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git fetch -q origin; git show origin/ci/family-size-invariant:.github/workflows/engine-invariants.yml | grep -n -i -B2 -A8 'prism' | head -60
+      at: 2026-10-12T04:10:38.783723Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java5-2026-10-12 && tail -14 driver.log; python3 - <<'EOF'
+        import json,glob,collections
+        old={}
+        for p in glob.glob('../bench-v0877-issue*/*.json'):
+            try:d=json.load(open(p))
+            except:continue
+            if isinstance(d,dict) and 'resolved' in d: old[(d['task'],d['arm'])]=(d['resolved'],d.get('cost_usd'))
+        tot=collections.Counter()
+        for p in sorted(glob.glob('*.claude-*.json')):
+            d=json.load(open(p)); t=d['task']; a=d['arm']; tu=d.get('tool_usage',{})
+            s=d['score']
+            tot[a+'_cost']+=d['cost_usd']; tot[a+'_calls']+=tu.get('tool_calls',0); tot[a+'_res']+=bool(d['resolved'])
+            print(f"{t:40} {a:10} res={d['resolved']!s:5} f2p={s.get('f2p_ok')} p2p={s.get('p2p_ok')} ${d['cost_usd']:.2f} calls={tu.get('tool_calls')} prism={tu.get('prism_ops')} | v0877 {old.get((t,a))}")
+        print(dict(tot))
+        EOF
+      at: 2026-10-12T04:10:50.686834Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;d=json.load(open('tasks/e2e/FasterXML__jackson-databind__pr6076.json'));print(d['problem_statement'][:1200]);print('----GOLD');print(d['patch'][:3000])"; for a in native prism_init; do echo "----$a"; grep '^[-+@]' results/bench-v0879-java5-2026-10-12/FasterXML__jackson-databind__pr6076.claude-sonnet-5-5.$a.diff | head -40; done
+      at: 2026-10-12T04:10:55.600779Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md';s=open(p).read()
+        line='- [Java5 issue run 2026-10-12](project_java5_issue_run_2026_10_12.md) — v0.87.9 vs native on 5 both-fail Java issue tasks: 0/5 both, cost 0.97x, 0 change_impact; issue bed cannot show Java index fixes\n'
+        i=s.index('- [Release v0.87.9')
+        open(p,'w').write(s[:i]+line+s[i:])
+        EOF
+      at: 2026-10-12T04:11:09.510827Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git status --short | grep -v '^??' | head; git branch --show-current; git worktree list | head -3
+      at: 2026-10-12T04:13:18.539448Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git status -sb | head -1 && sed -i '' 's/PRISM_VERSION: "v0.87.0"/PRISM_VERSION: "v0.87.9"/' .github/workflows/engine-invariants.yml && git diff --stat && git add .github/workflows/engine-invariants.yml && git commit -q -m "ci: pin prism v0.87.9 for the invariant suite (family-size invariant needs it)
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git push -q origin ci/family-size-invariant && git log --oneline -1
+      at: 2026-10-12T04:13:24.043402Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sleep 20; for i in $(seq 1 40); do c=$(gh pr view 1 --json statusCheckRollup --jq '[.statusCheckRollup[]|.conclusion]|join(",")'); [ -n "$c" ] && [ "$c" != "," ] && { echo "$c"; break; }; sleep 30; done; gh run list --branch ci/family-size-invariant -L 1 --json databaseId,conclusion,headSha --jq '.[0]'
+      at: 2026-10-12T04:13:27.330662Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && echo '["FasterXML__jackson-databind__pr6039","FasterXML__jackson-databind__pr6042","FasterXML__jackson-databind__pr6047","FasterXML__jackson-databind__pr6056","FasterXML__jackson-databind__pr6102","FasterXML__jackson-databind__pr6138","FasterXML__jackson-databind__pr6155","FasterXML__jackson-databind__pr6186","apache__dubbo__pr16348","apache__dubbo__pr16350","apache__dubbo__pr16391","apache__dubbo__pr16395","google__gson__pr3067"]' > results/java13-resolved-manifest.json && mkdir -p results/bench-v0879-java13-2026-10-12 && E2E_OUT=results/bench-v0879-java13-2026-10-12 PRISM_INIT_BIN=/opt/homebrew/bin/prism python3 runners/run_e2e.py results/java13-resolved-manifest.json --models claude-sonnet-5-5 --arms native,prism_init > results/bench-v0879-java13-2026-10-12/driver.log 2>&1
+      at: 2026-10-12T04:19:10.913229Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12 && cat driver.log; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/be8uu29jx.output 2>/dev/null; gh pr view 1 -R provasign/research --json statusCheckRollup --jq '[.statusCheckRollup[]|.status+"/"+.conclusion]'
+      at: 2026-10-12T04:23:11.484319Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open('results/bench-v0879-java13-2026-10-12/FasterXML__jackson-databind__pr6042.claude-sonnet-5-5.prism_init.json'))
+        print(json.dumps(d['score'])[:600]); print(d.get('tool_usage'))
+        t=json.load(open('tasks/e2e/FasterXML__jackson-databind__pr6042.json')); print('GOLD\n',t['patch'][:1500])
+        EOF
+        echo ---DIFF; cat results/bench-v0879-java13-2026-10-12/FasterXML__jackson-databind__pr6042.claude-sonnet-5-5.prism_init.diff | head -60; echo ---OLD; cat results/bench-v0877-issue42-2026-10-11/FasterXML__jackson-databind__pr6042.claude-sonnet-5-5.prism_init.diff 2>/dev/null | head -30
+      at: 2026-10-12T04:23:16.865266Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob,os
+        old={}
+        for p in glob.glob('bench-v0877-issue*/*.json'):
+            try:d=json.load(open(p))
+            except:continue
+            if isinstance(d,dict) and 'resolved' in d: old[(d['task'],d['arm'])]=(d['resolved'],d.get('cost_usd') or 0)
+        new={}
+        for p in glob.glob('bench-v0879-java13-2026-10-12/*.claude-*.json'):
+            d=json.load(open(p)); new[(d['task'],d['arm'])]=(d['resolved'],d['cost_usd'],d.get('tool_usage',{}).get('tool_calls'))
+        ids=json.load(open('java13-resolved-manifest.json'))
+        f=lambda r: '—' if r is None else ('PASS' if r[0] else 'FAIL')
+        for i in ids:
+            n,p=new.get((i,'native')),new.get((i,'prism_init'))
+            on,op=old.get((i,'native')),old.get((i,'prism_init'))
+            c=f" ${n[1]:.2f}/{p[1]:.2f} ({p[1]/n[1]:.2f}x) calls {n[2]}/{p[2]}" if n and p else ''
+            print(f"{i.split('__')[-2]+' '+i.split('__')[-1]:28} now N={f(n):4} P={f(p):4}{c} | v0877 N={f(on)} P={f(op)}")
+        EOF
+        tail -3 bench-v0879-java13-2026-10-12/driver.log
+      at: 2026-10-12T04:24:24.275035Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git log --oneline -12 && ls && ls native 2>/dev/null | head -40
+      at: 2026-10-12T04:26:29.152579Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git show --stat 4d41fcd0 | head -40; git show --stat fa9d162e | head -20; ls internal; ls internal/native 2>/dev/null
+      at: 2026-10-12T04:26:31.663683Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && wc -l *.go | sort -n | tail -20; for f in go.go js_ts.go csharp.go cfamily.go rust.go php.go python.go; do echo "=== $f"; sed -n 1,30p $f | grep -v '^import\|^$\|^\t"' | head -18; done
+      at: 2026-10-12T04:26:35.516041Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -n 'exec.Command\|commandExists(\|go/types\|types.Config\|packages.Load\|"clang\|rust-analyzer\|roslyn\|dotnet\|"node"' *.go | grep -v _test | head -40
+      at: 2026-10-12T04:26:39.538398Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git show 4d41fcd0 -- internal/index/indexer.go internal/native/native.go internal/native/java.go | head -150
+      at: 2026-10-12T04:26:45.822894Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -n "compilerDeclared\|func javacDecl\|type javacDecl" internal/native/*.go | head; n=$(grep -n "^func compilerDeclaredSymbols" internal/native/javac.go | cut -d: -f1); sed -n "$((n-30)),$((n+120))p" internal/native/javac.go'
+      at: 2026-10-12T04:26:51.298259Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12 && grep -c resolved= driver.log; tail -4 driver.log; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/be8uu29jx.output
+      at: 2026-10-12T04:26:59.162149Z
+      classified: other
+    - cmd: ls ~/ci-corpus/ 2>/dev/null; ls /tmp/ci-corpus 2>/dev/null | head; ls ~/ci-corpus/*/.grove 2>/dev/null | head -5
+      at: 2026-10-12T04:27:04.361859Z
+      classified: other
+    - cmd: 'cd ~/ci-corpus && for d in gin typeorm grafana-120119 django; do echo "$d: $(ls $d/.grove 2>/dev/null | tr ''\n'' '' '') $(find $d -name ''*.go'' -not -path ''*/vendor/*'' 2>/dev/null | wc -l) go, $(find $d -name ''*.ts'' -not -path ''*/node_modules/*'' 2>/dev/null | wc -l) ts"; done; sqlite3 commons-collections/.grove/grove.db ''.tables''; sqlite3 commons-collections/.grove/grove.db ''.schema symbols'' | head -30'
+      at: 2026-10-12T04:27:07.707399Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/gocensus && cd ~/ci-corpus/gin && sqlite3 .grove/grove.db "select value from meta" | head; sqlite3 .grove/grove.db "select key,value from meta" 2>/dev/null | head; sqlite3 .grove/grove.db "select kind,count(*) from symbols where language='go' group by kind"
+      at: 2026-10-12T04:27:15.388372Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/gocensus && (test -f go.mod || go mod init gocensus >/dev/null 2>&1) && go build -o gocensus . && ./gocensus ~/ci-corpus/gin
+      at: 2026-10-12T04:27:35.533935Z
+      classified: build
+    - cmd: cd ~/ci-corpus/grafana-120119 && sqlite3 .grove/grove.db "select value from meta where key='extractor-version'"; /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/gocensus/gocensus . 2>&1 | grep -v '^      ' ; /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/gocensus/gocensus . 2>&1 | grep -A4 '^embedded\|^localtype' | grep -v _test | head
+      at: 2026-10-12T04:27:44.465169Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -n "^func \|types.Info{\|Defs\b\|Defs:\|Result{" go.go | head -60
+      at: 2026-10-12T04:27:54.324108Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 92,212p go.go; sed -n 389,590p go.go
+      at: 2026-10-12T04:27:56.784577Z
+      classified: other
+    - cmd: cd ~/ci-corpus/gin && sqlite3 -header .grove/grove.db "select id,kind,name,qualified_name,parent_symbol,signature,span_start,span_end,modifiers,exports from symbols where file_path='context.go' and (kind in ('struct','field','interface','type') ) limit 8"; sqlite3 .grove/grove.db "select id,kind,name,qualified_name,parent_symbol,signature from symbols where kind='method' and parent_symbol is not null and file_path like '%render.go' limit 3"; grep -n "embedded\|Embedded" /Users/tapabratapal/Projects/provasign/astkit/*/go*.go 2>/dev/null | head
+      at: 2026-10-12T04:28:04.527965Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rn -i "embed" --include=*.go . | grep -i "go\b\|golang\|field_declaration\|struct" | grep -v _test | head -20; grep -rln "field_declaration" --include=*.go . | head
+      at: 2026-10-12T04:28:08.365353Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rn -i "embed" --include='*.go' . | grep -v '_test.go' | head -20
+      at: 2026-10-12T04:28:10.425482Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && sed -n 175,240p strategies/extractors.go
+      at: 2026-10-12T04:28:12.593742Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rn -i "local type\|function-local\|inside a function\|func body\|function body" --include='*.go' strategies lang* 2>/dev/null | grep -v _test | head; ls
+      at: 2026-10-12T04:28:23.351083Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && sed -n 2495,2540p strategies/extractors.go
+      at: 2026-10-12T04:28:26.228325Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 340,390p go.go; sed -n 618,715p go.go
+      at: 2026-10-12T04:28:36.515689Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "compiler-declared" --include='*.go' internal pkg | grep -v _test | head -20
+      at: 2026-10-12T04:28:49.931525Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 345,400p internal/store/store.go; grep -n "nativeResult\|AnalyzeChangedFiles\|unchanged.*symbols\|LoadSymbols\|AllSymbols" internal/index/indexer.go | head -30
+      at: 2026-10-12T04:28:52.616739Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal && grep -rn 'hasModifier\|HasModifier\|"enum-variant"\|"declaration"\|"anonymous"' --include='*.go' graph core native index | grep -v _test | head -30
+      at: 2026-10-12T04:29:03.18491Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 715,770p go.go; sed -n 906,975p go.go; sed -n 775,800p javac.go
+      at: 2026-10-12T04:29:23.988779Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && git status --short | head && git fetch -q origin && git checkout -q -b feat/go-compiler-declared origin/main && git log --oneline -1 && grep -n "javacDecl" -r internal | grep -v "^internal/native/javac.go" '
+      at: 2026-10-12T04:29:50.148461Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism change-impact compilerDeclaredSymbols 2>&1 | head -30; prism change-impact goResolveType 2>&1 | head -20; prism change-impact newGoSymbolIndex 2>&1 | head -20; prism change-impact newGoNativeIndex 2>&1 | head -20
+      at: 2026-10-12T04:29:57.634133Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism change-impact goSemanticPackageEdges goSemanticEdges 2>&1 | grep -E '"(filePath|name|line)"' | paste - - - | sort -u | head -20
+      at: 2026-10-12T04:30:00.911697Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && for s in goSemanticPackageEdges goSemanticEdges; do prism change-impact $s 2>&1 | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin); print('$s', d.get('completeness'), [(c['filePath'],c['name'],c.get('evidence',[{}])[0].get('line')) for c in d.get('callers',[])])"; done
+      at: 2026-10-12T04:30:03.790103Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -i '' 's/\bjavacDecl\b/compilerDecl/g' javac.go javacdecls_test.go && grep -n "compilerDecl\b" javac.go javacdecls_test.go | head
+      at: 2026-10-12T04:30:07.777672Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && perl -pi -e 's/\bjavacDecl\b/compilerDecl/g' javac.go javacdecls_test.go && grep -n "compilerDecl\b\|javacDecl" javac.go javacdecls_test.go | head
+      at: 2026-10-12T04:30:10.309138Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='javac.go'; s=open(p).read()
+        old_head='''// type) so every downstream pass treats them as ordinary symbols.
+        func compilerDeclaredSymbols(req Request, decls []compilerDecl) []core.SymbolRecord {
+        	if len(decls) == 0 {
+        		return nil
+        	}
+        	byFile := map[string][]core.SymbolRecord{}
+        	for _, s := range req.Symbols {
+        		if s.Language == "java" {'''
+        new_head='''// type) so every downstream pass treats them as ordinary symbols.
+        func compilerDeclaredSymbols(req Request, decls []compilerDecl) []core.SymbolRecord {
+        	return compilerDeclaredSymbolsFor(req, "java", decls)
+        }
+
+        // compilerDeclaredSymbolsFor is compilerDeclaredSymbols for any language whose
+        // analyzer reports compilerDecls (Java's javac, Go's go/types).
+        func compilerDeclaredSymbolsFor(req Request, language string, decls []compilerDecl) []core.SymbolRecord {
+        	if len(decls) == 0 {
+        		return nil
+        	}
+        	byFile := map[string][]core.SymbolRecord{}
+        	for _, s := range req.Symbols {
+        		if s.Language == language {'''
+        assert s.count(old_head)==1; s=s.replace(old_head,new_head)
+        old_kind='''		case "class":
+        			kind = core.KindClass'''
+        new_kind='''		case "class":
+        			kind = core.KindClass
+        		case "struct":
+        			kind = core.KindStruct
+        		case "type":
+        			kind = core.KindType'''
+        assert s.count(old_kind)==1; s=s.replace(old_kind,new_kind)
+        old_sig='''		signature := strings.TrimSpace(src[d.Start-1])
+        		modifiers := []string{"compiler-declared"}'''
+        new_sig='''		signature := strings.TrimSpace(src[d.Start-1])
+        		if d.Signature != "" {
+        			signature = d.Signature
+        		}
+        		modifiers := append([]string{"compiler-declared"}, d.Modifiers...)'''
+        assert s.count(old_sig)==1; s=s.replace(old_sig,new_sig)
+        old_rec='''			ID: id, FilePath: d.File, BlobSHA: parsed[0].BlobSHA, Language: "java",
+        			Kind: kind, Name: d.Name, QualifiedName: d.Qualified, Signature: signature,
+        			Span: core.LineRange{Start: d.Start, End: d.End}, RawText: raw,
+        			ParentSymbol: parent, Modifiers: modifiers,'''
+        new_rec='''			ID: id, FilePath: d.File, BlobSHA: parsed[0].BlobSHA, Language: language,
+        			Kind: kind, Name: d.Name, QualifiedName: d.Qualified, Signature: signature,
+        			Span: core.LineRange{Start: d.Start, End: d.End}, RawText: raw,
+        			ParentSymbol: parent, Modifiers: modifiers, Annotations: d.Annotations,'''
+        assert s.count(old_rec)==1; s=s.replace(old_rec,new_rec)
+        open(p,'w').write(s)
+        EOF
+        gofmt -l . ; go build ./... && echo ok
+      at: 2026-10-12T04:30:25.448572Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && gofmt -d javac.go | head -30
+      at: 2026-10-12T04:30:27.523137Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && gofmt -w javac.go && python3 - <<'EOF'
+        p='go.go'; s=open(p).read()
+
+        # 1. goSemanticPackageEdges returns local declarations too
+        old='''func goSemanticPackageEdges(root, pkgPath, dir string, files []string, symbolIdx goSymbolIndex, pkgDirsByImport map[string][]string, projectImporter types.Importer) ([]core.Edge, error) {'''
+        new='''func goSemanticPackageEdges(root, pkgPath, dir string, files []string, symbolIdx goSymbolIndex, pkgDirsByImport map[string][]string, projectImporter types.Importer) ([]core.Edge, []compilerDecl, error) {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''				err = fmt.Errorf("%s: no syntax tree", file)
+        			}
+        			return nil, err'''
+        new='''				err = fmt.Errorf("%s: no syntax tree", file)
+        			}
+        			return nil, nil, err'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	pkg, _ := conf.Check(pkgPath, fset, parsed, info)
+        	dispatch := newGoInterfaceDispatch(pkg, root, dir, fset, symbolIdx, pkgDirsByImport)
+        '''
+        new='''	pkg, _ := conf.Check(pkgPath, fset, parsed, info)
+        	dispatch := newGoInterfaceDispatch(pkg, root, dir, fset, symbolIdx, pkgDirsByImport)
+        	decls, localTypes := goLocalDecls(fset, files, parsed, info)
+        '''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''				case *ast.Ident:
+        					if typ, ok := goResolveType(dir, n, info, symbolIdx, pkgDirsByImport, pkg); ok && typ.ID != caller.ID {'''
+        new='''				case *ast.Ident:
+        					if qualified, ok := localTypes[info.Uses[n]]; ok {
+        						// A function-local type is declared in this function's
+        						// own file: its compiler-declared record shares the
+        						// caller's file and blob.
+        						add(core.Edge{
+        							From:       caller.ID,
+        							To:         caller.FilePath + "::" + qualified + "@" + caller.BlobSHA,
+        							Type:       core.EdgeUsesType,
+        							Confidence: 0.97,
+        							Source:     core.EvidenceSourceNative,
+        						})
+        						return true
+        					}
+        					if typ, ok := goResolveType(dir, n, info, symbolIdx, pkgDirsByImport, pkg); ok && typ.ID != caller.ID {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        # final return of goSemanticPackageEdges
+        i=s.index('func goSemanticPackageEdges(')
+        j=s.index('\n}\n',i)
+        body=s[i:j]
+        assert body.rstrip().endswith('return edges, nil'), body[-80:]
+        body=body.rstrip()[:-len('return edges, nil')]+'return edges, decls, nil'
+        s=s[:i]+body+s[j:]
+
+        # 2. goSemanticEdges collects them
+        old='''func goSemanticEdges(ctx context.Context, root string, files []string, symbols []core.SymbolRecord, pkgs []goListPackage, exports map[string]string) ([]core.Edge, []string) {'''
+        new='''func goSemanticEdges(ctx context.Context, root string, files []string, symbols []core.SymbolRecord, pkgs []goListPackage, exports map[string]string) ([]core.Edge, []compilerDecl, []string) {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	type dirOutcome struct {
+        		edges []core.Edge
+        		err   error
+        	}'''
+        new='''	type dirOutcome struct {
+        		edges []core.Edge
+        		decls []compilerDecl
+        		err   error
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''				e, err := goSemanticPackageEdges(root, pkgPath, dirs[di], filesByDir[dirs[di]], symbolIdx, pkgDirsByImport, projectImporter)
+        				outcomes[di] = dirOutcome{edges: e, err: err}'''
+        new='''				e, d, err := goSemanticPackageEdges(root, pkgPath, dirs[di], filesByDir[dirs[di]], symbolIdx, pkgDirsByImport, projectImporter)
+        				outcomes[di] = dirOutcome{edges: e, decls: d, err: err}'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''		edges = append(edges, o.edges...)
+        	}
+        	diagnostics = append(diagnostics, "resolved "+itoa(countEdgesOfType(edges, core.EdgeCalls))+" native call edge(s)")
+        	diagnostics = append(diagnostics, "resolved "+itoa(countEdgesOfType(edges, core.EdgeUsesType))+" native type-use edge(s)")
+        	return edges, diagnostics'''
+        new='''		edges = append(edges, o.edges...)
+        		decls = append(decls, o.decls...)
+        	}
+        	diagnostics = append(diagnostics, "resolved "+itoa(countEdgesOfType(edges, core.EdgeCalls))+" native call edge(s)")
+        	diagnostics = append(diagnostics, "resolved "+itoa(countEdgesOfType(edges, core.EdgeUsesType))+" native type-use edge(s)")
+        	return edges, decls, diagnostics'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	var edges []core.Edge
+        	var diagnostics []string
+        	dirs := make([]string, 0, len(filesByDir))'''
+        new='''	var edges []core.Edge
+        	var decls []compilerDecl
+        	var diagnostics []string
+        	dirs := make([]string, 0, len(filesByDir))'''
+        assert s.count(old)==1; s=s.replace(old,new)
+
+        # 3. Analyze turns them into symbols
+        old='''	semanticEdges, semanticDiagnostics := goSemanticEdges(ctx, req.Root, semFiles, req.Symbols, pkgs, exports)'''
+        new='''	semanticEdges, decls, semanticDiagnostics := goSemanticEdges(ctx, req.Root, semFiles, req.Symbols, pkgs, exports)
+        	// go/types attributed every declaration in the checked packages; the ones
+        	// the parser does not index (types declared inside function bodies and
+        	// their members) become compiler-declared symbols, as javac's do.
+        	declared := compilerDeclaredSymbolsFor(req, "go", decls)
+        	if len(declared) > 0 {
+        		files := map[string]bool{}
+        		for _, d := range declared {
+        			files[d.FilePath] = true
+        		}
+        		semanticDiagnostics = append(semanticDiagnostics, "go/types declared "+itoa(len(declared))+" symbol(s) in "+itoa(len(files))+" file(s) the parser did not index; added as compiler-declared symbols")
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	return Result{
+        		Edges:       edges,
+        		Partial:     partial,
+        		Diagnostics: append(head, semanticDiagnostics...),
+        	}'''
+        new='''	return Result{
+        		Edges:       edges,
+        		Partial:     partial,
+        		Diagnostics: append(head, semanticDiagnostics...),
+        		Symbols:     declared,
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new)
+
+        # 4. local symbols never join the name-keyed indexes
+        old='''	for _, symbol := range symbols {
+        		if symbol.Language != "go" {
+        			continue
+        		}
+        		dir := packageDir(symbol.FilePath)
+        		switch symbol.Kind {'''
+        new='''	for _, symbol := range symbols {
+        		if symbol.Language != "go" || goLocalSymbol(symbol) {
+        			continue
+        		}
+        		dir := packageDir(symbol.FilePath)
+        		switch symbol.Kind {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	seenFile := map[string]bool{}
+        	for _, symbol := range symbols {
+        		if symbol.Language != "go" {
+        			continue
+        		}
+        		if symbol.Kind == core.KindFunction {'''
+        new='''	seenFile := map[string]bool{}
+        	for _, symbol := range symbols {
+        		if symbol.Language != "go" || goLocalSymbol(symbol) {
+        			continue
+        		}
+        		if symbol.Kind == core.KindFunction {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+
+        # 5. goResolveType: a local type never resolves by package + name
+        old='''	obj, ok := info.Uses[ident].(*types.TypeName)
+        	if !ok {
+        		return core.SymbolRecord{}, false
+        	}
+        	dirs := goObjectDirs('''
+        new='''	obj, ok := info.Uses[ident].(*types.TypeName)
+        	if !ok || goLocalObject(obj) {
+        		// A function-local type is not the package-level type of the same
+        		// name; goSemanticPackageEdges links it to its own declaration.
+        		return core.SymbolRecord{}, false
+        	}
+        	dirs := goObjectDirs('''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        echo done
+      at: 2026-10-12T04:30:51.887029Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && head -3 go.mod && sed -n 1170,1180p internal/native/native_test.go && go build ./... 2>&1 | head
+      at: 2026-10-12T04:31:11.867004Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && perl -pi -e 's/edges, diagnostics := goSemanticEdges\(/edges, _, diagnostics := goSemanticEdges(/' internal/native/native_test.go && go vet ./internal/native/ && go test ./internal/native/ 2>&1 | tail -5
+      at: 2026-10-12T04:31:20.764881Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 1140,1170p internal/native/native_test.go; sed -n 1,40p internal/native/javacdecls_test.go | head -30; sed -n 105,128p internal/native/javacdecls_test.go
+      at: 2026-10-12T04:31:25.067174Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./internal/native/ -run 'TestGoLocal|TestGoSemantic|TestCompilerDeclared' -v 2>&1 | tail -20
+      at: 2026-10-12T04:31:44.055447Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && perl -pi -e 's/idx\.byType\["\\x00opts"\]\.ID/idx.byType[packageDir("main.go")+"\\x00opts"].ID/' internal/native/go_localdecls_test.go && grep -n 'byType\[' internal/native/go_localdecls_test.go && go test ./internal/native/ 2>&1 | tail -3
+      at: 2026-10-12T04:31:51.672759Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 25,45p internal/parser/languages.go
+      at: 2026-10-12T04:31:57.15105Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "ExtractorVersion\s*=" -r internal --include='*.go' | head; grep -n "2026-10-12.1" -r internal --include='*.go'
+      at: 2026-10-12T04:31:57.172954Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/parser/languages.go'; s=open(p).read()
+        old='''// astkit's Java field-initializer / initializer-block declarations.
+        const ExtractorVersion = "2026-10-12.1"'''
+        new='''// astkit's Java field-initializer / initializer-block declarations.
+        // 2026-10-13.1: go/types compiler-declared symbols (function-local types and
+        // their fields and interface methods).
+        const ExtractorVersion = "2026-10-13.1"'''
+        assert s.count(old)==1; open(p,'w').write(s.replace(old,new))
+        EOF
+        go build ./... && echo ok
+      at: 2026-10-12T04:32:02.299743Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && perl -pi -e 's/2026-10-13\.1/2026-10-12.2/g' internal/parser/languages.go && grep -n "2026-10-12.2" internal/parser/languages.go; cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12 && grep -c resolved= driver.log
+      at: 2026-10-12T04:32:05.508441Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; mkdir -p $S/ws $S/bin && cd $S/ws && cat > go.work <<EOF
+        go 1.26
+
+        use (
+        	/Users/tapabratapal/Projects/provasign/prism
+        	/Users/tapabratapal/Projects/provasign/grove
+        	/Users/tapabratapal/Projects/provasign/astkit
+        )
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/prism && grep -n "grove\|astkit" go.mod; git -C ../astkit log --oneline -1; git -C ../astkit status --short | head -3; GOWORK=$S/ws/go.work go build -o $S/bin/prism-godecl ./cmd/prism && $S/bin/prism-godecl --version
+      at: 2026-10-12T04:32:14.309038Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sqlite3 $S/cmp/gin-new/.grove/grove.db ".schema edges" | head -12
+      at: 2026-10-12T04:32:25.822711Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cat > $S/cmp/edgediff.sh <<'EOF'
+        #!/bin/sh
+        # edgediff.sh BASE_DB NEW_DB : symbol counts, edge counts by type, edges only in one side
+        B=$1; N=$2
+        for d in $B $N; do echo "== $d"; sqlite3 $d "select 'symbols',count(*) from symbols; select 'compiler-declared',count(*) from symbols where modifiers like '%compiler-declared%'; select edge_type||'/'||source, count(*) from edges group by 1 order by 1"; done
+        sqlite3 $N "attach '$B' as b;
+        select 'only-new', edge_type, count(*) from edges where id not in (select id from b.edges) group by edge_type;
+        select 'only-base', edge_type, count(*) from b.edges where id not in (select id from main.edges) group by edge_type;
+        select 'only-new touching local', count(*) from edges e where id not in (select id from b.edges) and (from_node in (select id from symbols where modifiers like '%\"local\"%') or to_node in (select id from symbols where modifiers like '%\"local\"%'));"
+        EOF
+        chmod +x $S/cmp/edgediff.sh; $S/cmp/edgediff.sh $S/cmp/gin-base/.grove/grove.db $S/cmp/gin-new/.grove/grove.db
+      at: 2026-10-12T04:32:32.6902Z
+      classified: other
+    - cmd: du -sh --exclude=.grove ~/ci-corpus/grafana-120119 2>/dev/null || du -sh ~/ci-corpus/grafana-120119; df -h /private/tmp | tail -1
+      at: 2026-10-12T04:32:38.543341Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; for v in base new; do rsync -a --exclude .grove ~/ci-corpus/grafana-120119/ $S/cmp/graf-$v/; done; cd $S/cmp/graf-base && /usr/bin/time -p prism index . > $S/cmp/graf-base.log 2>&1; cd $S/cmp/graf-new && /usr/bin/time -p $S/bin/prism-godecl index . > $S/cmp/graf-new.log 2>&1; grep real $S/cmp/graf-*.log; $S/cmp/edgediff.sh $S/cmp/graf-base/.grove/grove.db $S/cmp/graf-new/.grove/grove.db | grep -v '^calls\|^imports\|^extends\|^implements'
+      at: 2026-10-12T04:32:42.823143Z
+      classified: other
+    - cmd: cd /tmp && node -v && node -e "console.log(require.resolve('typescript'), require('typescript').version)"; cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -n "tsScript\s*=\|const tsScript" *.go | head -3
+      at: 2026-10-12T04:32:49.460999Z
+      classified: other
+    - cmd: sqlite3 ~/ci-corpus/typeorm/.grove/grove.db "select key, substr(value,1,300) from meta where key in ('native-complete','index-native','extractor-version')"; npm root -g; ls $(npm root -g) | head; sed -n 85,130p /Users/tapabratapal/Projects/provasign/grove/internal/native/js_ts.go
+      at: 2026-10-12T04:32:53.302868Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; mkdir -p $S/tscensus && cd $S/tscensus && npm init -y >/dev/null && npm install --silent typescript@5 2>&1 | tail -2; node -e "console.log(require('typescript').version)"
+      at: 2026-10-12T04:33:00.913823Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/tscensus && node census.js ~/ci-corpus/typeorm 2>&1 | head -80
+      at: 2026-10-12T04:33:19.821817Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/tscensus && perl -pi -e 's/^const total = \{\}, missing = \{\};/const total = Object.create(null), missing = Object.create(null);/' census.js && node census.js ~/ci-corpus/typeorm 2>&1 | head -90
+      at: 2026-10-12T04:33:25.803094Z
+      classified: build
+    - cmd: cd ~/ci-corpus/typeorm && sqlite3 .grove/grove.db "select kind,name,qualified_name,span_start,span_end from symbols where file_path='src/driver/mongodb/bson.typings.ts' and span_start<60 order by span_start" | head -20; sed -n 1,12p src/driver/mongodb/bson.typings.ts; sed -n 38,50p src/container.ts; sqlite3 .grove/grove.db "select kind,name,qualified_name,span_start,span_end from symbols where file_path='src/container.ts'"
+      at: 2026-10-12T04:33:33.09867Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/tscensus && cat > why.js <<'EOF'
+        const ts=require('typescript'),fs=require('fs'),path=require('path'),{execFileSync}=require('child_process');
+        const root=process.argv[2];
+        const rows=execFileSync('sqlite3',['-separator','\t',path.join(root,'.grove/grove.db'),"select file_path,name,span_start,span_end from symbols where language in ('typescript','javascript','tsx','jsx')"],{maxBuffer:1<<30}).toString().split('\n');
+        const syms=new Map();for(const r of rows){const f=r.split('\t');if(f.length<4)continue;if(!syms.has(f[0]))syms.set(f[0],[]);syms.get(f[0]).push({name:f[1],s:+f[2],e:+f[3]});}
+        const why=Object.create(null);const ex=Object.create(null);
+        for(const [rel] of syms){ if(!/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(rel))continue; let text;try{text=fs.readFileSync(path.join(root,rel),'utf8')}catch{continue}
+         const sf=ts.createSourceFile(rel,text,ts.ScriptTarget.Latest,true);const line=p=>sf.getLineAndCharacterOfPosition(p).line+1;
+         (function v(n){
+          const k=n.kind;
+          const member=[ts.SyntaxKind.MethodDeclaration,ts.SyntaxKind.GetAccessor,ts.SyntaxKind.SetAccessor,ts.SyntaxKind.Constructor,ts.SyntaxKind.PropertyDeclaration,ts.SyntaxKind.FunctionDeclaration].includes(k);
+          if(member && !(k===ts.SyntaxKind.MethodDeclaration&&ts.isObjectLiteralExpression(n.parent))){
+           const name=k===ts.SyntaxKind.Constructor?'constructor':(n.name&&n.name.text)||'';
+           if(name){const s=line(n.getStart(sf)),e=line(n.end);
+            const ok=(syms.get(rel)||[]).some(x=>x.name===name&&!(x.s>e||(x.e||x.s)<s));
+            if(!ok){
+             let r;const cls=n.parent;
+             const ambient=(cls&&cls.modifiers&&cls.modifiers.some(m=>m.kind===ts.SyntaxKind.DeclareKeyword))||rel.endsWith('.d.ts')||/typings/.test(rel);
+             if(!n.body&&k!==ts.SyntaxKind.PropertyDeclaration){
+               const sib=(cls.members||cls.statements||[]).some(m=>m!==n&&m.body&&((m.name&&m.name.text)===name||(k===ts.SyntaxKind.Constructor&&m.kind===k)));
+               r=sib?'overload-signature':(ambient?'ambient-bodyless':'bodyless');
+             } else if(cls&&ts.isClassExpression(cls)) r='class-expression-member';
+             else if(k===ts.SyntaxKind.Constructor) r='constructor-with-body';
+             else if(k===ts.SyntaxKind.GetAccessor||k===ts.SyntaxKind.SetAccessor) r='accessor-with-body';
+             else r='other-'+ts.SyntaxKind[k];
+             why[r]=(why[r]||0)+1;(ex[r]=ex[r]||[]).push(rel+':'+s+' '+name);
+           }}
+          }
+          ts.forEachChild(n,v);})(sf);
+        }
+        for(const r of Object.keys(why).sort()){console.log(r.padEnd(26),why[r]);for(const x of ex[r].slice(0,3))console.log('     ',x)}
+        EOF
+        node why.js ~/ci-corpus/typeorm
+      at: 2026-10-12T04:33:50.11505Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/beq0eznrk.output 2>/dev/null | tail -40
+      at: 2026-10-12T04:34:02.878662Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 130,365p js_ts.go | grep -n "" | sed -n 1,400p | grep -v '^\s*[0-9]*:\s*//' | head -150
+      at: 2026-10-12T04:34:06.518712Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/be8uu29jx.output; cd /Users/tapabratapal/Projects/provasign/research && gh pr view 1 --json statusCheckRollup,mergeable,headRefOid --jq '{m:.mergeable,h:.headRefOid,c:[.statusCheckRollup[]|.conclusion]}'
+      at: 2026-10-12T04:34:21.496062Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && until c=$(gh run view 38202909690 --json status,conclusion --jq '.status+" "+.conclusion' 2>/dev/null) && [ "${c%% *}" = completed ]; do sleep 30; done; echo "$c"; gh run view 38202909690 --log 2>/dev/null | grep -E "Family-size|TypeAdapter.write|REGRESSION|FAIL|passed|failed" | head -20
+      at: 2026-10-12T04:34:30.659409Z
+      classified: other
+    - cmd: until grep -q "only-new touching local" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/beq0eznrk.output 2>/dev/null || ! pgrep -f "prism.* index ." >/dev/null; do sleep 5; done; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/beq0eznrk.output
+      at: 2026-10-12T04:34:30.731838Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -20; echo EXIT ${PIPESTATUS[0]}
+      at: 2026-10-12T04:35:00.781731Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./... > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/grove-test.log 2>&1; echo exit=$?; grep -c "^ok" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/grove-test.log; grep -E "^(FAIL|---)" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/grove-test.log | head
+      at: 2026-10-12T04:35:05.157913Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12 && grep -c resolved= driver.log; tail -2 driver.log
+      at: 2026-10-12T04:35:07.892315Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && awk 'NR>=368' js_ts.go | grep -n "function \|const .* = (\|out\.\|payload\|calls.push\|JSON.stringify" | head -60
+      at: 2026-10-12T04:35:11.45068Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/beq0eznrk.output; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; grep -h "go/types declared\|took" $S/cmp/graf-new.log | head -5; sqlite3 $S/cmp/graf-new/.grove/grove.db "select value from meta where key='index-native'" | tr ',' '\n' | grep -i "go\b\|go:" | head
+      at: 2026-10-12T04:35:15.879792Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sqlite3 $S/cmp/graf-new/.grove/grove.db "attach '$S/cmp/graf-base/.grove/grove.db' as b;
+        create temp table ne as select * from edges where id not in (select id from b.edges);
+        select 'contains to-local', count(*) from ne where edge_type='contains' and to_node in (select id from symbols where modifiers like '%compiler-declared%');
+        select 'contains from-local', count(*) from ne where edge_type='contains' and from_node in (select id from symbols where modifiers like '%compiler-declared%');
+        select 'contains neither', count(*) from ne where edge_type='contains' and from_node not in (select id from symbols where modifiers like '%compiler-declared%') and to_node not in (select id from symbols where modifiers like '%compiler-declared%');
+        select from_node, count(*) c from ne where edge_type='contains' group by from_node order by c desc limit 8;"
+      at: 2026-10-12T04:35:25.576562Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search ParentSymbol EdgeContains --scope text --format text 2>/dev/null | grep -n "graph/" | head -30
+      at: 2026-10-12T04:35:35.200845Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n "EdgeContains" *.go | grep -v _test | head -20
+      at: 2026-10-12T04:35:37.28776Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 1580,1665p edges.go
+      at: 2026-10-12T04:35:39.127748Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n "^func namedSymbols" -A25 *.go
+      at: 2026-10-12T04:35:46.395729Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && grep -n '^	"slices"' internal/graph/edges.go; python3 - <<'EOF'
+        p='internal/graph/edges.go'; s=open(p).read()
+        old='''				// Go receiver methods attach to their type across files:
+        				// `func (s *T) M()` may live in any file of T's package.
+        				// Same directory ≈ same package (Go enforces one package
+        				// per directory).
+        				sameGoPackage := symbol.Language == "go" && parent.Language == "go" &&
+        					path.Dir(parent.FilePath) == path.Dir(symbol.FilePath)'''
+        new='''				// Go receiver methods attach to their type across files:
+        				// `func (s *T) M()` may live in any file of T's package.
+        				// Same directory ≈ same package (Go enforces one package
+        				// per directory). Only receiver methods: a field or an
+        				// interface method ("declaration") sits inside its type, and
+        				// function-local types reuse names across a package (grafana
+        				// pkg/api: one local testCase per test, each collecting every
+        				// other one's fields, 2026-10-12).
+        				sameGoPackage := symbol.Language == "go" && parent.Language == "go" &&
+        					symbol.Kind == core.KindMethod && !slices.Contains(symbol.Annotations, "declaration") &&
+        					path.Dir(parent.FilePath) == path.Dir(symbol.FilePath)'''
+        assert s.count(old)==1; open(p,'w').write(s.replace(old,new))
+        EOF
+        go build ./... && go test ./internal/graph/ 2>&1 | tail -3
+      at: 2026-10-12T04:36:10.887786Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sqlite3 $S/cmp/graf-base/.grove/grove.db "attach '$S/cmp/graf-new/.grove/grove.db' as n; select from_node, to_node, source, reason from edges where edge_type='calls' and id not in (select id from n.edges);"
+      at: 2026-10-12T04:36:15.285984Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-godecl ./cmd/prism && rm -rf $S/cmp/graf-new/.grove && cd $S/cmp/graf-new && /usr/bin/time -p $S/bin/prism-godecl index . > $S/cmp/graf-new.log 2>&1; grep real $S/cmp/graf-new.log; $S/cmp/edgediff.sh $S/cmp/graf-base/.grove/grove.db $S/cmp/graf-new/.grove/grove.db | grep "only-\|compiler"
+      at: 2026-10-12T04:36:25.607277Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/byw54ve0t.output; grep -c resolved= /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12/driver.log
+      at: 2026-10-12T04:36:29.621284Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && awk 'NR>=368' js_ts.go | sed -n 267,360p
+      at: 2026-10-12T04:36:32.76485Z
+      classified: other
+    - cmd: cd ~/ci-corpus/typeorm && sqlite3 .grove/grove.db "select kind,name,qualified_name,parent_symbol,signature,modifiers,annotations from symbols where file_path='src/data-source/DataSource.ts' and (name in ('constructor','driver','isInitialized','manager') or kind='constructor') limit 8"; sqlite3 .grove/grove.db "select kind, count(*) from symbols where language='typescript' group by kind"
+      at: 2026-10-12T04:36:43.465361Z
+      classified: other
+    - cmd: until grep -q "only-new\|only-base\|Error\|error" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/byij10kwt.output 2>/dev/null && ! pgrep -f "prism-godecl index" >/dev/null; do sleep 5; done; sleep 2; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/byij10kwt.output
+      at: 2026-10-12T04:37:26.912611Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sqlite3 $S/cmp/graf-base/.grove/grove.db "attach '$S/cmp/graf-new/.grove/grove.db' as n; select e.from_node, e.to_node, s.kind, s.annotations from edges e join symbols s on s.id=e.to_node where e.edge_type='contains' and e.id not in (select id from n.edges);" | head -20
+      at: 2026-10-12T04:37:33.055129Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sqlite3 $S/cmp/graf-new/.grove/grove.db "attach '$S/cmp/graf-base/.grove/grove.db' as b; select edge_type, source, from_node, to_node from edges where edge_type in ('extends','implements','overrides') and id not in (select id from b.edges) order by edge_type limit 14;"
+      at: 2026-10-12T04:37:38.647612Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --help 2>&1 | head -30
+      at: 2026-10-12T04:37:49.411217Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/astkit && go build -o $S/bin/decoy ./cmd/decoy && cd /Users/tapabratapal/Projects/provasign/research && git checkout -q ci/family-size-invariant 2>/dev/null; git branch --show-current; python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism $S/bin/prism-godecl --decoy-injector $S/bin/decoy > $S/gate-godecl.log 2>&1; echo exit=$?; tail -40 $S/gate-godecl.log
+      at: 2026-10-12T04:37:53.767991Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n "func Test.*Contain\|buildContains(" *_test.go | head
+      at: 2026-10-12T04:37:57.68083Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 160,215p changeimpact_boundary_test.go
+      at: 2026-10-12T04:37:59.826387Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='changeimpact_boundary_test.go'; s=open(p).read()
+        anchor='''// TS class-body fields (astkit emits no KindField for TS) must be scanned from'''
+        new='''// Only receiver methods attach across files. Fields sit inside their own
+        // struct: build-tag variants (syslog.go / syslog_windows.go) and
+        // function-local types reuse a name across a package, and each copy took the
+        // other's fields (grafana, 2026-10-12).
+        func TestGoFieldsContainOnlyInTheirOwnFile(t *testing.T) {
+        	g := New()
+        	g.Replace([]core.SymbolRecord{
+        		{ID: "log/syslog.go::Handler@a", FilePath: "log/syslog.go", Language: "go", Kind: core.KindStruct,
+        			Name: "Handler", QualifiedName: "Handler", Span: core.LineRange{Start: 1, End: 3}},
+        		{ID: "log/syslog.go::Handler.Tag@a", FilePath: "log/syslog.go", Language: "go", Kind: core.KindField,
+        			Name: "Tag", QualifiedName: "Handler.Tag", ParentSymbol: "Handler", Span: core.LineRange{Start: 2, End: 2}},
+        		{ID: "log/syslog_windows.go::Handler@b", FilePath: "log/syslog_windows.go", Language: "go", Kind: core.KindStruct,
+        			Name: "Handler", QualifiedName: "Handler", Span: core.LineRange{Start: 1, End: 3}},
+        		{ID: "log/syslog_windows.go::Handler.logger@b", FilePath: "log/syslog_windows.go", Language: "go", Kind: core.KindField,
+        			Name: "logger", QualifiedName: "Handler.logger", ParentSymbol: "Handler", Span: core.LineRange{Start: 2, End: 2}},
+        		{ID: "log/handler.go::Handler.Close@c", FilePath: "log/handler.go", Language: "go", Kind: core.KindMethod,
+        			Name: "Close", QualifiedName: "Handler.Close", ParentSymbol: "Handler", Span: core.LineRange{Start: 1, End: 1}},
+        	}, 3)
+        	if !hasEdge(g, core.EdgeContains, "log/syslog.go::Handler@a", "log/syslog.go::Handler.Tag@a") ||
+        		!hasEdge(g, core.EdgeContains, "log/syslog_windows.go::Handler@b", "log/syslog_windows.go::Handler.logger@b") {
+        		t.Fatal("each Handler must contain its own field")
+        	}
+        	if hasEdge(g, core.EdgeContains, "log/syslog_windows.go::Handler@b", "log/syslog.go::Handler.Tag@a") ||
+        		hasEdge(g, core.EdgeContains, "log/syslog.go::Handler@a", "log/syslog_windows.go::Handler.logger@b") {
+        		t.Fatal("a field attached to the other file's same-named type")
+        	}
+        	if !hasEdge(g, core.EdgeContains, "log/syslog.go::Handler@a", "log/handler.go::Handler.Close@c") {
+        		t.Fatal("a receiver method must still attach across files")
+        	}
+        }
+
+        '''
+        assert s.count(anchor)==1; open(p,'w').write(s.replace(anchor,new+anchor))
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/grove && go test ./internal/graph/ -run 'TestGoFieldsContain|TestGoCrossFile' -v 2>&1 | tail -6; git stash -q && go test ./internal/graph/ -run TestGoFieldsContain 2>&1 | tail -3; git stash pop -q && git status --short
+      at: 2026-10-12T04:38:13.957304Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && cp internal/graph/edges.go /tmp/edges.go.keep && git show HEAD:internal/graph/edges.go > internal/graph/edges.go && go test ./internal/graph/ -run TestGoFieldsContain 2>&1 | tail -3; cp /tmp/edges.go.keep internal/graph/edges.go && go test ./internal/graph/ -run TestGoFieldsContain 2>&1 | tail -1; rm /tmp/edges.go.keep
+      at: 2026-10-12T04:38:19.909333Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal && git add internal/graph/changeimpact_boundary_test.go internal/graph/edges.go internal/native/go.go internal/native/javac.go internal/native/javacdecls_test.go internal/native/native_test.go internal/parser/languages.go internal/native/go_localdecls.go internal/native/go_localdecls_test.go && git commit -q -F - <<'EOF'
+        go: go/types declarations the parser misses are compiler-declared symbols
+
+        Same as javac (4d41fcd0): the compiler's declarations are the universe.
+        go/types attributes every type declared inside a function body, with its
+        fields and interface methods; the parser indexes none of them (grafana: 499
+        local types, 1642 fields; gin: 31 types, 33 fields).
+
+        - goLocalDecls collects them from info.Defs in the per-package type check,
+          named after their function the way astkit names items in a Rust function
+          body (Repo.Clone.opts, parent Clone; Repo.Clone.opts.depth, parent opts).
+          Embedded fields stay out, as for parsed structs.
+        - compilerDeclaredSymbols is now compilerDeclaredSymbolsFor(language), shared
+          with Java; the decl type is compilerDecl.
+        - Records carry modifiers compiler-declared + local; the name-keyed Go indexes
+          skip them, so a stored local `config` never shadows the package's `config`
+          on an incremental run, and goResolveType no longer credits a local type's
+          uses to a same-named package-level type. Uses inside the function land on
+          the local declaration.
+        - graph: Go children attach across files only when they are receiver methods.
+          A field or interface method sits inside its own type; with the cross-file
+          rule, grafana pkg/api's one-local-testCase-per-test collected every other
+          testCase's fields (10173 contains edges for 2073 symbols), and build-tag
+          variants (syslog.go / syslog_windows.go) took each other's fields (17 wrong
+          edges, now gone).
+        - ExtractorVersion 2026-10-12.2.
+
+        grafana full index: +2073 symbols, +2073 contains, +596 uses-type, +129
+        heuristic extends/implements/overrides on the local types, -17 wrong
+        contains, -8 name-guessed TS calls (more same-named candidates in the shared
+        lowercase name index pushed them over the ambiguity cap; all 8 were wrong,
+        e.g. Array.filter -> ScopedEventBus.filter). gin: +64 symbols, only additions.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX
+        EOF
+        git log --oneline -1
+      at: 2026-10-12T04:38:30.397053Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && awk 'NR>=368' js_ts.go | sed -n 118,134p; echo ...; awk 'NR>=368' js_ts.go | sed -n 483,610p
+      at: 2026-10-12T04:38:54.291622Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='javac.go'; s=open(p).read()
+        old='''	// Set by in-process analyzers only (Go): the parser-convention signature
+        	// when the declaration's first source line is not one, and modifiers and
+        	// annotations beyond "compiler-declared".
+        	Signature   string   `json:"-"`
+        	Modifiers   []string `json:"-"`
+        	Annotations []string `json:"-"`'''
+        new='''	// Optional (Go, TypeScript): the parser-convention signature when the
+        	// declaration's first source line is not one, and modifiers and
+        	// annotations beyond "compiler-declared".
+        	Signature   string   `json:"sig,omitempty"`
+        	Modifiers   []string `json:"mods,omitempty"`
+        	Annotations []string `json:"ann,omitempty"`'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''		case "class":
+        			kind = core.KindClass
+        		case "struct":'''
+        new='''		case "class":
+        			kind = core.KindClass
+        		case "function":
+        			kind = core.KindFunction
+        		case "struct":'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''		if strings.HasPrefix(d.Name, "<anonymous@") {
+        			signature = "class " + d.Name'''
+        new='''		if strings.HasPrefix(d.Name, "<anonymous@") && d.Signature == "" {
+        			signature = "class " + d.Name'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n 'anonymous@") && d.Signature' -A8 javac.go
+      at: 2026-10-12T04:39:23.059834Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='javac.go'; s=open(p).read()
+        old='''		if strings.HasPrefix(d.Name, "<anonymous@") && d.Signature == "" {
+        			signature = "class " + d.Name
+        			if d.Base != "" {
+        				signature += " extends " + d.Base
+        			}
+        			modifiers = append(modifiers, "anonymous")
+        		}'''
+        new='''		if strings.HasPrefix(d.Name, "<anonymous@") {
+        			if d.Signature == "" {
+        				signature = "class " + d.Name
+        				if d.Base != "" {
+        					signature += " extends " + d.Base
+        				}
+        			}
+        			if !slices.Contains(modifiers, "anonymous") {
+        				modifiers = append(modifiers, "anonymous")
+        			}
+        		}'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n '^	"slices"' javac.go || sed -i '' 's/^import (/import (\n\t"slices"/' javac.go; gofmt -w javac.go && go build ./ && echo ok
+      at: 2026-10-12T04:39:28.816455Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+
+        # 1. decls array in analyze()
+        old='''const members = [];
+        const memberKeys = new Set();'''
+        new='''const members = [];
+        const decls = [];
+        const memberKeys = new Set();'''
+        assert s.count(old)==1; s=s.replace(old,new)
+
+        # 2. collector function, placed before visit()
+        anchor='''function visit(checker, options, host, sf, node, stack) {'''
+        collector=r'''// collectDecls reports the declarations of a file the compiler parsed, in
+        // Grove's naming, for compiler-declared symbols (the Go side drops every one
+        // the parser already indexed): class expressions and their members (an
+        // unnamed one is <anonymous@line:col>, as javac's), declarations nested in
+        // function bodies, and the bodyless members of an ambient `declare class`.
+        // typeorm (2026-10-12): `new (class implements ContainerInterface { get() })()`
+        // left ContainerInterface.get's one implementation out of every index.
+        // Overload signatures and object-literal methods are skipped, as the parser
+        // skips them.
+        function collectDecls(sf) {
+          const file = rel(sf.fileName);
+          const pos = p => sf.getLineAndCharacterOfPosition(p);
+          const line = p => pos(p).line + 1;
+          const ident = n => n && (ts.isIdentifier(n) || ts.isPrivateIdentifier(n)) ? n.text : '';
+          const overload = (n, siblings) => !n.body && (siblings || []).some(m => m !== n && m.kind === n.kind && m.body &&
+            (ts.isConstructorDeclaration(n) || ident(m.name) === ident(n.name)));
+          const join = (scope, name) => scope ? scope + '.' + name : name;
+          function emit(n, kind, name, scope, parent, local, extra) {
+            const d = {f: file, k: kind, n: name, q: join(scope, name), p: parent, s: line(n.getStart(sf)), e: line(n.end)};
+            if (local) d.mods = ['local'];
+            decls.push(Object.assign(d, extra || {}));
+          }
+          function heritage(n) {
+            return (n.heritageClauses || []).map(h => (h.token === ts.SyntaxKind.ExtendsKeyword ? 'extends ' : 'implements ') +
+              h.types.map(t => t.expression.getText(sf)).join(', ')).join(' ');
+          }
+          function classLike(n, scope, parent, local) {
+            let name = ident(n.name), extra;
+            if (!name) {
+              const at = pos(n.getStart(sf));
+              name = '<anonymous@' + (at.line + 1) + ':' + (at.character + 1) + '>';
+              extra = {mods: local ? ['local', 'anonymous'] : ['anonymous']};
+            }
+            const h = heritage(n);
+            extra = Object.assign(extra || {}, {sig: 'class ' + name + (h ? ' ' + h : '')});
+            emit(n, 'class', name, scope, parent, local, extra);
+            if (extra.mods && !local) delete extra.mods;
+            const q = join(scope, name);
+            for (const m of n.members) {
+              if ((ts.isMethodDeclaration(m) || ts.isConstructorDeclaration(m)) && overload(m, n.members)) continue;
+              let mname = '', kind = 'method';
+              if (ts.isConstructorDeclaration(m)) { mname = 'constructor'; kind = 'constructor'; }
+              else if (ts.isMethodDeclaration(m) || ts.isGetAccessor(m) || ts.isSetAccessor(m)) mname = ident(m.name);
+              else if (ts.isPropertyDeclaration(m)) { mname = ident(m.name); kind = 'field'; }
+              if (!mname) { walk(m, q, name, local); continue; }
+              emit(m, kind, mname, q, name, local);
+              walk(m, join(q, mname), mname, local || !!m.body);
+            }
+          }
+          function walk(n, scope, parent, local) {
+            ts.forEachChild(n, c => {
+              if (ts.isClassDeclaration(c) || ts.isClassExpression(c)) return classLike(c, scope, parent, local);
+              if (ts.isInterfaceDeclaration(c)) {
+                emit(c, 'interface', c.name.text, scope, parent, local);
+                const q = join(scope, c.name.text);
+                for (const m of c.members) {
+                  const mname = ident(m.name);
+                  if (!mname) continue;
+                  if (ts.isMethodSignature(m)) emit(m, 'method', mname, q, c.name.text, local, {ann: ['declaration']});
+                  else if (ts.isPropertySignature(m)) emit(m, 'field', mname, q, c.name.text, local);
+                }
+                return;
+              }
+              if (ts.isEnumDeclaration(c)) return emit(c, 'enum', c.name.text, scope, parent, local);
+              if (ts.isTypeAliasDeclaration(c)) return emit(c, 'type', c.name.text, scope, parent, local);
+              if (ts.isFunctionDeclaration(c) && c.name) {
+                if (overload(c, c.parent.statements)) return;
+                emit(c, 'function', c.name.text, scope, parent, local);
+                return walk(c, join(scope, c.name.text), c.name.text, local || !!c.body);
+              }
+              if (ts.isModuleDeclaration(c) && ts.isIdentifier(c.name)) return walk(c, join(scope, c.name.text), c.name.text, local);
+              if (ts.isVariableDeclaration(c) && ts.isIdentifier(c.name) && c.initializer &&
+                  (ts.isArrowFunction(c.initializer) || ts.isFunctionExpression(c.initializer))) {
+                return walk(c, join(scope, c.name.text), c.name.text, true);
+              }
+              if (ts.isFunctionLike(c) && c.body) return walk(c, scope, parent, true);
+              walk(c, scope, parent, local);
+            });
+          }
+          walk(sf, '', '', false);
+        }
+        '''
+        assert s.count(anchor)==1; s=s.replace(anchor, collector+anchor)
+
+        # 3. call it next to visit() in both loops
+        old='''    loadedFiles.add(path.resolve(sf.fileName));
+            visit(checker, parsed.options, host, sf, sf, []);'''
+        new='''    loadedFiles.add(path.resolve(sf.fileName));
+            visit(checker, parsed.options, host, sf, sf, []);
+            collectDecls(sf);'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''      inferredFiles++;
+              visit(checker, options, host, sf, sf, []);'''
+        new='''      inferredFiles++;
+              visit(checker, options, host, sf, sf, []);
+              collectDecls(sf);'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''  configErrors, edges, calls, types, members};
+        }'''
+        new='''  configErrors, edges, calls, types, members, decls};
+        }'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -c "collectDecls" js_ts.go; grep -n '`' js_ts.go | sed -n 1,5p | cut -c1-80
+      at: 2026-10-12T04:39:48.44319Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+        i=s.index('// collectDecls reports'); j=s.index('function collectDecls(sf)')
+        block=s[i:j]
+        new=block.replace('`','\'')
+        s=s[:i]+new+s[j:]
+        open(p,'w').write(s)
+        EOF
+        go build ./ && go vet ./ && echo ok
+      at: 2026-10-12T04:39:53.733541Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+        old="""    emit(n, 'class', name, scope, parent, local, extra);
+            if (extra.mods && !local) delete extra.mods;
+        """
+        new="""    emit(n, 'class', name, scope, parent, local, extra);
+        """
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''			Write    bool   `json:"write"`
+        		} `json:"members"`
+        	}'''
+        new='''			Write    bool   `json:"write"`
+        		} `json:"members"`
+        		Decls []compilerDecl `json:"decls"`
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	fileScope := fileSet(req.Files)
+        	symbols := newSymbolLocator(req.Symbols, map[string]bool{"javascript": true, "typescript": true, "tsx": true})'''
+        new='''	fileScope := fileSet(req.Files)
+        	// The compiler's declarations the parser lacks become compiler-declared
+        	// symbols (as javac's and go/types'), and calls the checker resolved to
+        	// them land on them.
+        	declared := tsCompilerDeclaredSymbols(req, payload.Decls)
+        	located := req.Symbols
+        	if len(declared) > 0 {
+        		located = append(append(make([]core.SymbolRecord, 0, len(req.Symbols)+len(declared)), req.Symbols...), declared...)
+        	}
+        	symbols := newSymbolLocator(located, map[string]bool{"javascript": true, "typescript": true, "tsx": true})'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n "return Result{" js_ts.go | head; grep -n "^func (jsTSAnalyzer) Analyze" js_ts.go
+      at: 2026-10-12T04:40:02.591262Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && awk 'NR>=295 && NR<=370' js_ts.go
+      at: 2026-10-12T04:40:04.699483Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+        old='''	if workerNote != "" {
+        		res.Diagnostics = append(res.Diagnostics, workerNote)
+        	} else if req.Resident'''
+        new='''	if len(declared) > 0 {
+        		res.Symbols = declared
+        		files := map[string]bool{}
+        		for _, d := range declared {
+        			files[d.FilePath] = true
+        		}
+        		res.Diagnostics = append(res.Diagnostics, "typescript declared "+itoa(len(declared))+" symbol(s) in "+itoa(len(files))+" file(s) the parser did not index; added as compiler-declared symbols")
+        	}
+        	if workerNote != "" {
+        		res.Diagnostics = append(res.Diagnostics, workerNote)
+        	} else if req.Resident'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''// tsChangedFiles returns the changed JS/TS files of an incremental run, or nil'''
+        new='''// tsCompilerDeclaredSymbols turns the resolver's decls into compiler-declared
+        // symbols, each in the language the parser gave its file (a .js file's
+        // symbols are javascript, a .tsx file's tsx).
+        func tsCompilerDeclaredSymbols(req Request, decls []compilerDecl) []core.SymbolRecord {
+        	if len(decls) == 0 {
+        		return nil
+        	}
+        	langOf := map[string]string{}
+        	for _, s := range req.Symbols {
+        		switch s.Language {
+        		case "javascript", "typescript", "tsx":
+        			if _, ok := langOf[s.FilePath]; !ok {
+        				langOf[s.FilePath] = s.Language
+        			}
+        		}
+        	}
+        	byLang := map[string][]compilerDecl{}
+        	for _, d := range decls {
+        		if lang := langOf[d.File]; lang != "" {
+        			byLang[lang] = append(byLang[lang], d)
+        		}
+        	}
+        	var out []core.SymbolRecord
+        	for _, lang := range []string{"javascript", "tsx", "typescript"} {
+        		out = append(out, compilerDeclaredSymbolsFor(req, lang, byLang[lang])...)
+        	}
+        	sort.Slice(out, func(i, j int) bool {
+        		if out[i].FilePath != out[j].FilePath {
+        			return out[i].FilePath < out[j].FilePath
+        		}
+        		if out[i].Span.Start != out[j].Span.Start {
+        			return out[i].Span.Start < out[j].Span.Start
+        		}
+        		return out[i].QualifiedName < out[j].QualifiedName
+        	})
+        	return out
+        }
+
+        // tsChangedFiles returns the changed JS/TS files of an incremental run, or nil'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n '^	"sort"' js_ts.go || echo NEED_SORT; go build ./ 2>&1 | head
+      at: 2026-10-12T04:40:13.637229Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/byw54ve0t.output
+      at: 2026-10-12T04:40:16.907376Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go build ./... && go vet ./internal/native/ && echo ok
+      at: 2026-10-12T04:40:57.538576Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./internal/native/ 2>&1 | tail -3
+      at: 2026-10-12T04:41:19.364411Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-decl ./cmd/prism && for v in base new; do rsync -a --exclude .grove --exclude node_modules ~/ci-corpus/typeorm/ $S/cmp/torm-$v/ && mkdir -p $S/cmp/torm-$v/node_modules && ln -sfn $S/tscensus/node_modules/typescript $S/cmp/torm-$v/node_modules/typescript; done; ls -la $S/cmp/torm-new/node_modules/
+      at: 2026-10-12T04:41:29.998907Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/cmp/torm-base && /usr/bin/time -p prism index . > $S/cmp/torm-base.log 2>&1; cd $S/cmp/torm-new && /usr/bin/time -p $S/bin/prism-decl index . > $S/cmp/torm-new.log 2>&1; grep real $S/cmp/torm-*.log; for v in base new; do sqlite3 $S/cmp/torm-$v/.grove/grove.db "select value from meta where key='index-native'" | tr ',' '\n' | grep -i "typescript\|js-ts" | head -4; done; $S/cmp/edgediff.sh $S/cmp/torm-base/.grove/grove.db $S/cmp/torm-new/.grove/grove.db | grep "only-\|compiler"
+      at: 2026-10-12T04:41:57.243143Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sqlite3 $S/cmp/torm-new/.grove/grove.db "attach '$S/cmp/torm-base/.grove/grove.db' as b;
+        create temp table ne as select * from edges where id not in (select id from b.edges);
+        create temp table lost as select * from b.edges where id not in (select id from main.edges);
+        create temp table cd as select id from symbols where modifiers like '%compiler-declared%';
+        select 'new calls to-declared', count(*) from ne where edge_type='calls' and to_node in (select id from cd);
+        select 'new calls from-declared', count(*) from ne where edge_type='calls' and from_node in (select id from cd);
+        select 'new calls neither', count(*) from ne where edge_type='calls' and to_node not in (select id from cd) and from_node not in (select id from cd);
+        select 'lost calls from top-level', count(*) from lost where edge_type='calls' and from_node like '%<top-level>%';
+        select 'lost calls other', count(*) from lost where edge_type='calls' and from_node not like '%<top-level>%';
+        select '  ', from_node, to_node, source from lost where edge_type='calls' and from_node not like '%<top-level>%' limit 6;
+        select 'new calls neither sample', from_node, to_node, source from ne where edge_type='calls' and to_node not in (select id from cd) and from_node not in (select id from cd) limit 6;"
+      at: 2026-10-12T04:42:09.308129Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sqlite3 $S/cmp/torm-new/.grove/grove.db "attach '$S/cmp/torm-base/.grove/grove.db' as b; select to_node, source from edges where edge_type='calls' and from_node like '%MongoQueryRunner.getCollection@%' and id not in (select id from b.edges); select to_node, source from edges where edge_type='calls' and from_node like '%MongoDriver.disconnect@%';"; grep -n "disconnect()" -A8 $S/cmp/torm-new/src/driver/mongodb/MongoDriver.ts | head -12
+      at: 2026-10-12T04:42:16.589979Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; for i in 1 2; do for v in base new; do b=prism; [ $v = new ] && b=$S/bin/prism-decl; rm -rf $S/cmp/torm-$v/.grove; cd $S/cmp/torm-$v && /usr/bin/time -p $b index . 2>&1 >/dev/null | grep real | sed "s/^/$v /"; done; done
+      at: 2026-10-12T04:43:07.032073Z
+      classified: other
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/cmp/torm-new && q="select name, span_start, modifiers from symbols where file_path=''src/container.ts'' and modifiers like ''%compiler%'' order by span_start"; sqlite3 .grove/grove.db "$q"; printf ''// shifted\n\n'' | cat - src/container.ts > /tmp/c.ts && mv /tmp/c.ts src/container.ts && $S/bin/prism-decl index . >/dev/null 2>&1; echo after; sqlite3 .grove/grove.db "$q"; sqlite3 .grove/grove.db "select count(*) from edges where to_node like ''src/container.ts::%get@%'' and edge_type=''calls''; select value from meta where key=''index-native''" | tr '','' ''\n'' | grep -i "declared\|scoped" '
+      at: 2026-10-12T04:43:19.107351Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/cmp/torm-new && sqlite3 .grove/grove.db "select edge_type, source, from_node, to_node from edges where (from_node like 'src/container.ts::%anonymous%' or to_node like 'src/container.ts::%anonymous%' or to_node like 'src/container.ts::ContainerInterface%' or from_node like 'src/container.ts::%.get@%') and edge_type not in ('defines')"; echo ---; $S/bin/prism-decl change-impact ContainerInterface.get 2>&1 | python3 -c "
+        import json,sys;d=json.load(sys.stdin);print(d.get('completeness'), d.get('familyClosed') or d.get('closed'));print([ (x.get('filePath'),x.get('qualifiedName')) for x in d.get('overrides',[])+d.get('implementations',[])]); print(sorted(d.keys()))"
+      at: 2026-10-12T04:43:26.864958Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/cmp/torm-new && $S/bin/prism-decl change-impact ContainerInterface.get 2>&1 | python3 -c "
+        import json,sys;d=json.load(sys.stdin);print('family',json.dumps(d.get('family'))[:600]);print('famcomp',d.get('familyCompleteness'),'safe',d.get('safeToClaimComplete'))"; for v in base new; do echo "== $v"; sqlite3 $S/cmp/torm-$v/.grove/grove.db "select to_node, source from edges where edge_type='calls' and (from_node like 'src/globals.ts::getConnection@%' or from_node like '%RawSqlResultsToEntityTransformer.group@%') and to_node like '%get@%'"; done; grep -n "get(" $S/cmp/torm-new/src/globals.ts | head -3
+      at: 2026-10-12T04:43:36.415425Z
+      classified: other
+    - cmd: tail -45 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bef2slo87.output 2>/dev/null; tail -5 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/gate-godecl.log
+      at: 2026-10-12T04:43:44.919551Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; grep -E "exit=|\[(OK|FAIL|REGRESSION|WARN)|passed|failed|Summary|SUMMARY" $S/gate-godecl.log | sort | uniq -c | sort -rn | head; grep -E "FAIL|REGRESSION|Traceback|Error" $S/gate-godecl.log | head; tail -8 $S/gate-godecl.log
+      at: 2026-10-12T04:43:51.380651Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./internal/native/ -run 'TestJsTSCompilerDeclared|TestJsTSResidentWorker' -v 2>&1 | tail -15
+      at: 2026-10-12T04:44:13.217158Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove && GROVE_TEST_TYPESCRIPT_ROOT=$S/tscensus go test ./internal/native/ -run 'TestJsTSCompilerDeclared|TestJsTSResidentWorker' -v 2>&1 | tail -15
+      at: 2026-10-12T04:44:16.751189Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -rn "func linkTypeScriptForTest" -A25 *_test.go | head -32
+      at: 2026-10-12T04:44:18.735699Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; GROVE_TEST_TYPESCRIPT_ROOT=$S/tscensus node -e "console.log(require.resolve('typescript',{paths:[process.env.GROVE_TEST_TYPESCRIPT_ROOT]}))"; echo rc=$?
+      at: 2026-10-12T04:44:24.220704Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove && env | grep -i "GROVE_TEST\|NODE" ; env GROVE_TEST_TYPESCRIPT_ROOT=$S/tscensus go test -count=1 ./internal/native/ -run 'TestJsTSCompilerDeclared' -v 2>&1 | tail -15
+      at: 2026-10-12T04:44:31.214539Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove && perl -pi -e 's/  return xs\.sort\(less\)/  return xs.sort((a, b) => less(a, b))/' internal/native/js_ts_decls_test.go && env GROVE_TEST_TYPESCRIPT_ROOT=$S/tscensus go test -count=1 ./internal/native/ 2>&1 | tail -8
+      at: 2026-10-12T04:44:42.676551Z
+      classified: test
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove && perl -0pi -e ''s|// 2026-10-12.2: go/types compiler-declared symbols \(function-local types and\n// their fields and interface methods\).|// 2026-10-12.2: go/types compiler-declared symbols (function-local types and\n// their fields and interface methods) and TypeScript ones (class-expression\n// members, functions nested in function bodies, ambient class members).|'' internal/parser/languages.go && sed -n 33,40p internal/parser/languages.go && env GROVE_TEST_TYPESCRIPT_ROOT=$S/tscensus go test -count=1 ./... > $S/grove-test2.log 2>&1; echo exit=$?; grep -v "^ok\|no test files" $S/grove-test2.log | tail'
+      at: 2026-10-12T04:45:13.164928Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=off go build ./... 2>&1 | tail -5; echo build=$?; GOWORK=off go vet ./... 2>&1 | tail -3
+      at: 2026-10-12T04:45:21.239338Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal/native internal/parser; git add internal/native/js_ts.go internal/native/javac.go internal/native/js_ts_decls_test.go internal/parser/languages.go && git commit -q -F - <<'EOF'
+        typescript: compiler-parsed declarations the parser misses are compiler-declared symbols
+
+        The TypeScript resolver now reports the declarations of every file it
+        visits (collectDecls), in Grove's naming, and the shared coverage check keeps
+        the ones the parser did not index:
+
+        - class expressions and their members; an unnamed one is
+          <anonymous@line:col> like javac's, its signature carries its heritage
+          ("class <anonymous@4:42> implements Container"). typeorm
+          src/container.ts: ContainerInterface.get's only implementation lives in
+          `new (class implements ContainerInterface { get() {} })()`; change_impact
+          now lists it (family closed, safe to claim complete) where it had none.
+        - functions, classes, interfaces, enums and type aliases declared inside
+          function bodies (modifier "local"), named after their scope (sort.less).
+        - the bodyless members of an ambient `declare class` (typeorm's vendored
+          mongodb typings: 585 methods/constructors/accessors).
+        - overload signatures and object-literal methods stay out, as the parser
+          leaves them out.
+
+        The declared symbols join the call/type/member locator, so the checker's
+        resolved references land on them: typeorm MongoQueryRunner.getCollection now
+        calls MongoClient.db and Db.collection (before: ChangeStreamNameSpace.db, the
+        nearest same-named symbol), MongoDriver.disconnect calls MongoClient.close
+        (before: DataSource.close), and calls inside nested functions are theirs, not
+        the file's <top-level>.
+
+        typeorm full index with typescript resolvable: +614 symbols, +1744 calls
+        (1705 to declared symbols, 39 from nested functions), -61 calls (35 moved off
+        <top-level>, 26 retargeted from wrong same-named symbols); cold index time
+        within run-to-run noise (10.1-11.3s both builds). Incremental edit of
+        container.ts re-declares the three symbols at their new lines, no stale rows.
+
+        compilerDecl's signature, modifiers and annotations are now JSON fields
+        (sig/mods/ann) so a resolver script can supply them; "function" maps to
+        KindFunction; an anonymous class keeps a supplied signature.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX
+        EOF
+        git log --oneline -3
+      at: 2026-10-12T04:45:32.333265Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gofmt -w internal/native/js_ts_decls_test.go && git add internal/native/js_ts_decls_test.go && git commit -q --amend --no-edit && gofmt -l internal/native; git status --short
+      at: 2026-10-12T04:45:36.129446Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; mkdir -p $S/pycensus && cat > $S/pycensus/census.py <<'EOF'
+        import ast, sqlite3, sys, os, collections
+        root = sys.argv[1]
+        db = sqlite3.connect(os.path.join(root, '.grove/grove.db'))
+        syms = collections.defaultdict(list)
+        for f, n, s, e in db.execute("select file_path,name,span_start,span_end from symbols where language='python'"):
+            syms[f].append((n, s, e or s))
+        total, missing, ex = collections.Counter(), collections.Counter(), collections.defaultdict(list)
+        for rel in list(syms):
+            try:
+                tree = ast.parse(open(os.path.join(root, rel), encoding='utf-8', errors='replace').read())
+            except Exception:
+                continue
+            def visit(node, ctx):
+                for ch in ast.iter_child_nodes(node):
+                    cat = None
+                    if isinstance(ch, ast.ClassDef): cat = 'class'
+                    elif isinstance(ch, (ast.FunctionDef, ast.AsyncFunctionDef)): cat = 'method' if ctx == 'class' else ('nestedfunc' if ctx == 'func' else 'func')
+                    elif isinstance(ch, (ast.Assign, ast.AnnAssign)) and ctx in ('class', 'module'):
+                        targets = ch.targets if isinstance(ch, ast.Assign) else [ch.target]
+                        for t in targets:
+                            if isinstance(t, ast.Name):
+                                c = ctx + 'attr'; total[c] += 1
+                                if not any(n == t.id and not (s > ch.end_lineno or e < ch.lineno) for n, s, e in syms[rel]):
+                                    missing[c] += 1; ex[c].append(f'{rel}:{ch.lineno} {t.id}')
+                    if cat:
+                        c = ('local' if ctx == 'func' and cat == 'class' else '') + cat
+                        total[c] += 1
+                        if not any(n == ch.name and not (s > ch.end_lineno or e < ch.lineno) for n, s, e in syms[rel]):
+                            missing[c] += 1; ex[c].append(f'{rel}:{ch.lineno} {ch.name}')
+                        visit(ch, 'class' if cat in ('class',) else 'func')
+                    else:
+                        visit(ch, ctx if not isinstance(ch, (ast.Lambda,)) else 'func')
+            visit(tree, 'module')
+        for c in sorted(total):
+            print(f'{c:14} total={total[c]:7} missing={missing[c]:6}')
+            for x in ex[c][:3]: print('     ', x)
+        EOF
+        python3 $S/pycensus/census.py ~/ci-corpus/django
+      at: 2026-10-12T04:45:50.656619Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-decl ./cmd/prism && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism $S/bin/prism-decl --decoy-injector $S/bin/decoy > $S/gate-decl.log 2>&1; echo exit=$?; grep -E "FAIL|REGRESSION|Traceback" $S/gate-decl.log | head; tail -3 $S/gate-decl.log
+      at: 2026-10-12T04:46:05.900072Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && tail -3 bench-v0879-java13-2026-10-12/driver.log; python3 - <<'EOF'
+        import json,glob
+        old={}
+        for p in glob.glob('bench-v0877-issue*/*.json'):
+            try:d=json.load(open(p))
+            except:continue
+            if isinstance(d,dict) and 'resolved' in d: old[(d['task'],d['arm'])]=(d['resolved'],d.get('cost_usd') or 0)
+        new={}
+        for p in glob.glob('bench-v0879-java13-2026-10-12/*.claude-*.json'):
+            d=json.load(open(p)); tu=d.get('tool_usage',{})
+            new[(d['task'],d['arm'])]=(d['resolved'],d['cost_usd'],tu.get('tool_calls'),tu.get('prism_ops'),d['score'].get('f2p_ok'),d['score'].get('p2p_ok'))
+        ids=json.load(open('java13-resolved-manifest.json'))
+        f=lambda r: '—' if r is None else ('PASS' if r[0] else 'FAIL')
+        tn=tp=cn=cp=0
+        for i in ids:
+            n,p=new.get((i,'native')),new.get((i,'prism_init'))
+            on,op=old.get((i,'native')),old.get((i,'prism_init'))
+            c=''
+            if n and p:
+                c=f"${n[1]:.2f}/{p[1]:.2f} ({p[1]/n[1]:.2f}x) calls {n[2]}/{p[2]} prism={p[3]}"; tn+=n[0];tp+=p[0];cn+=n[1];cp+=p[1]
+            print(f"{i.split('__')[-2]+' '+i.split('__')[-1]:26} N={f(n):4} P={f(p):4} {c} | v0877 N={f(on)} P={f(op)}")
+        print('totals', tn, tp, round(cn,2), round(cp,2), round(cp/cn,2) if cn else None)
+        EOF
+      at: 2026-10-12T04:46:12.444037Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && git push -q -u origin feat/go-compiler-declared 2>&1 | tail -2; gh pr create --draft --base main --head feat/go-compiler-declared --title \"Go and TypeScript: compiler declarations the parser misses become compiler-declared symbols\" --body \"$(cat <<'EOF'\nFollows #20 (javac compiler-declared symbols) for the two other analyzers that run a real compiler front end.\n\n## Go (go/types)\n- Types declared inside function bodies, with their named fields and interface methods, were in no index. go/types attributed every one (grafana: 499 local types, 1642 fields; gin: 31 types, 33 fields).\n- They become compiler-declared symbols, named after their function the way astkit names items in a Rust function body: `Repo.Clone.opts`, with parent `Clone`. Embedded fields stay out, as they do for parsed structs.\n- Local symbols carry the `local` modifier. The name-keyed Go indexes skip them, so a stored local `config` never shadows the package's `config` on an incremental run.\n- `goResolveType` no longer credits a local type's uses to a package-level type with the same name.\n- graph `buildContains`: a Go child attaches across files only when it is a receiver method. Two kinds of wrong contains edges came from the old rule:\n  - grafana `pkg/api` has one local `testCase` per test, and each collected every other one's fields.\n  - Build-tag variants (`syslog.go` / `syslog_windows.go`) took each other's fields. These 17 edges existed before this PR and are now gone.\n\n## TypeScript (tsc)\nThe resolver script reports each visited file's declarations (`collectDecls`). The shared coverage check keeps the ones the parser lacks:\n- Class expressions and their members. An unnamed one is `<anonymous@line:col>`, as javac's, and its signature carries its heritage. In typeorm, `ContainerInterface.get`'s only implementation lives in `new (class implements ContainerInterface {...})()`. `change_impact` now lists it (family closed); before, it had no implementation.\n- Functions, classes, interfaces, enums and type aliases nested in function bodies.\n- Bodyless members of an ambient `declare class` (typeorm's vendored mongodb typings: 585).\n- Overload signatures and object-literal methods stay out.\n\nThe declared symbols join the call/type/member locator, so references the checker resolved now land on the right target:\n- `MongoQueryRunner.getCollection` now calls `MongoClient.db` / `Db.collection`. Before, it hit `ChangeStreamNameSpace.db`.\n- `MongoDriver.disconnect` now calls `MongoClient.close`. Before, it hit `DataSource.close`.\n- Calls inside nested functions are attributed to those functions instead of `<top-level>`.\n\n## Measured (full cold index, v0.87.9 vs this branch)\n| corpus | symbols | edges added | edges removed | index time |\n|---|---|---|---|---|\n| gin | +64 | 159, all touching the new symbols | 0 | 1.0s both |\n| grafana | +2073 | contains 2073, uses-type 596, extends/implements/overrides 129 | 17 wrong contains; 8 name-guessed TS calls (all wrong, e.g. `Array.filter` -> `ScopedEventBus.filter`) | noise |\n| typeorm (typescript resolvable) | +614 | calls 1744 | calls 61 (35 off `<top-level>`, 26 retargeted from wrong same-named symbols) | 10.1-11.3s both |\n\n## Checks\n- `go test ./...` is green, including with typescript available (`GROVE_TEST_TYPESCRIPT_ROOT`); `eval/` builds.\n- The research engine gate passed on the Go build (\"All invariants held\"). The gate on the combined build is running.\n- An incremental edit re-declares the symbols at their new lines and leaves no stale rows.\n- ExtractorVersion is `2026-10-12.2`, so existing indexes re-extract once.\n\nPython was checked and needs nothing. CPython's parser and tree-sitter agree except for 104 module-level assignments inside try/if blocks, out of ~60k declarations in django.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\n)\" 2>&1 | tail -2"
+      at: 2026-10-12T04:46:31.707791Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sleep 30; until s=$(gh pr checks 23 --json name,bucket 2>/dev/null) && [ -n "$s" ] && echo "$s" | python3 -c "import json,sys;d=json.load(sys.stdin);sys.exit(0 if d and all(c['bucket']!='pending' for c in d) else 1)"; do sleep 60; done; echo "$s" | python3 -c "import json,sys;[print(c['bucket'],c['name']) for c in json.load(sys.stdin)]"
+      at: 2026-10-12T04:46:46.792559Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md';s=open(p).read()
+        line='- [Go+TS compiler-declared 2026-10-12](project_go_ts_compiler_declared_2026_10_12.md) — grove draft PR #23: go/types local types + tsc class-expr/nested/ambient decls; Python needs nothing; gate green on Go build\n'
+        i=s.index('- [Java5 issue run')
+        open(p,'w').write(s[:i]+line+s[i:])
+        EOF
+        grep -n "Go+TS\|Java5" MEMORY.md | head
+      at: 2026-10-12T04:46:50.230594Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/cmp/torm-new && $S/bin/prism-decl lookup ContainerInterface.get 2>&1 | head -30
+      at: 2026-10-12T04:46:57.547389Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/cmp/torm-new && $S/bin/prism-decl change-impact ContainerInterface.get --format text 2>&1 | head -30; cd $S/cmp/torm-base && echo "=== base"; prism change-impact ContainerInterface.get --format text 2>&1 | head -12
+      at: 2026-10-12T04:47:02.363458Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n "type edgeIndex struct" -A40 edges.go | head -60; grep -n "func newEdgeIndex\|func buildEdgeIndex" edges.go
+      at: 2026-10-12T04:47:21.855144Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 120,175p edges.go; grep -n "idx.byName\[" edges.go localtypes.go *.go 2>/dev/null | grep -v _test | awk -F: ''{print $1}'' | sort | uniq -c'
+      at: 2026-10-12T04:47:24.371645Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n "func buildEdges\|buildEdges(\|func (g \*Graph) Replace\|func CurrentNativeEdges\|func mergeNative\|nativeEdges" graph.go edges.go | head -20
+      at: 2026-10-12T04:47:33.5958Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -rn "^func (g \*Graph) Replace\|^func CurrentNativeEdges\|^func BuildEdges\|^func buildEdges\|^func buildAllEdges" --include='*.go' . | grep -v _test
+      at: 2026-10-12T04:47:35.969013Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 340,420p graph.go
+      at: 2026-10-12T04:47:37.931517Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n "buildCalls\|buildUsesType\|BuildEdgesWithProgress\|buildDecoratorEdges\|buildImplicitSuperCalls\|buildFrameworkEdges" incremental.go | head -20
+      at: 2026-10-12T04:47:42.17489Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && awk 'NR>=75 && NR<=330' incremental.go | grep -n "return\|^func\|edges = append\|out = append" | head -40
+      at: 2026-10-12T04:47:49.287173Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && awk 'NR>=270 && NR<=286' incremental.go; grep -n '^\t\"slices\"' graph.go incremental.go"
+      at: 2026-10-12T04:47:58.405139Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bzdk171qj.output | tail -5
+      at: 2026-10-12T04:48:01.535957Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='graph.go'; s=open(p).read()
+        old='''	decoEdges := buildDecoratorEdges(idx, symbols, callEdges)
+        	edges = append(edges, decoEdges...)
+        	tick("decorators")
+        	return edges
+        }'''
+        new='''	decoEdges := buildDecoratorEdges(idx, symbols, callEdges)
+        	edges = append(edges, decoEdges...)
+        	tick("decorators")
+        	return dropGuessesIntoCompilerDeclared(symbols, edges)
+        }
+
+        // dropGuessesIntoCompilerDeclared removes name-guessed reference edges
+        // (calls, uses-type, reads, writes) into compiler-declared symbols. Such a
+        // symbol exists because a compiler declared it, and the same compiler resolved
+        // the references to it; a guess by name only adds the unrelated callers of
+        // every same-named method (typeorm: nine getConnectionManager().get(...)
+        // callers and a Map.get became callers of the container's anonymous get,
+        // 2026-10-12). Structural edges (contains, extends, implements, overrides)
+        // come from the symbol's own declaration and stay.
+        func dropGuessesIntoCompilerDeclared(symbols []core.SymbolRecord, edges []core.Edge) []core.Edge {
+        	declared := map[string]bool{}
+        	for i := range symbols {
+        		if slices.Contains(symbols[i].Modifiers, "compiler-declared") {
+        			declared[symbols[i].ID] = true
+        		}
+        	}
+        	if len(declared) == 0 {
+        		return edges
+        	}
+        	out := edges[:0]
+        	for _, e := range edges {
+        		if declared[e.To] && e.Source != core.EvidenceSourceNative {
+        			switch e.Type {
+        			case core.EdgeCalls, core.EdgeUsesType, core.EdgeReads, core.EdgeWrites:
+        				continue
+        			}
+        		}
+        		out = append(out, e)
+        	}
+        	return out
+        }'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        p='incremental.go'; s=open(p).read()
+        old='''	return edges, buildDeltaMeta(symbols, metaOwners, changedFiles, nativeAnalyzedDirs)
+        }'''
+        new='''	return dropGuessesIntoCompilerDeclared(symbols, edges), buildDeltaMeta(symbols, metaOwners, changedFiles, nativeAnalyzedDirs)
+        }'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n '^	"slices"' graph.go || python3 - <<'EOF'
+        p='/Users/tapabratapal/Projects/provasign/grove/internal/graph/graph.go'; s=open(p).read()
+        s=s.replace('import (\n','import (\n\t"slices"\n',1); open(p,'w').write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/grove && gofmt -w internal/graph/graph.go && go build ./... && go test ./internal/graph/ 2>&1 | tail -3
+      at: 2026-10-12T04:48:16.144005Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-decl ./cmd/prism && cd $S/cmp/torm-new && rm -rf .grove && $S/bin/prism-decl index . >/dev/null 2>&1 && $S/bin/prism-decl change-impact ContainerInterface.get --format text 2>&1 | sed -n 1,22p; $S/cmp/edgediff.sh $S/cmp/torm-base/.grove/grove.db $S/cmp/torm-new/.grove/grove.db | grep "only-"
+      at: 2026-10-12T04:48:36.781772Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove && env GROVE_TEST_TYPESCRIPT_ROOT=$S/tscensus go test -count=1 ./... > $S/grove-test3.log 2>&1; echo tests=$?; grep -v "^ok\|no test files" $S/grove-test3.log | tail -5; cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism $S/bin/prism-decl --decoy-injector $S/bin/decoy > $S/gate-decl2.log 2>&1; echo gate=$?; grep -E "FAIL|REGRESSION|Traceback" $S/gate-decl2.log | head; tail -2 $S/gate-decl2.log
+      at: 2026-10-12T04:48:47.511893Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && cat > compilerdeclared_test.go <<'EOF'
+        package graph
+
+        import (
+        	"testing"
+
+        	"github.com/provasign/grove/internal/core"
+        )
+
+        // A compiler-declared symbol takes references only from the compiler that
+        // declared it: name guesses into it are dropped, structural edges and native
+        // references stay (typeorm, 2026-10-12: getConnectionManager().get(...) and
+        // Map.get callers guessed onto the container's anonymous get).
+        func TestDropGuessesIntoCompilerDeclared(t *testing.T) {
+        	symbols := []core.SymbolRecord{
+        		{ID: "anon.get", Modifiers: []string{"compiler-declared", "anonymous"}},
+        		{ID: "Reader.get"},
+        	}
+        	edges := []core.Edge{
+        		{From: "caller", To: "anon.get", Type: core.EdgeCalls, Source: core.EvidenceSourceASTKit},
+        		{From: "caller", To: "anon.get", Type: core.EdgeUsesType, Source: core.EvidenceSourceHeuristic},
+        		{From: "caller", To: "anon.get", Type: core.EdgeCalls, Source: core.EvidenceSourceNative},
+        		{From: "anon", To: "anon.get", Type: core.EdgeContains, Source: core.EvidenceSourceASTKit},
+        		{From: "anon.get", To: "Iface.get", Type: core.EdgeOverrides, Source: core.EvidenceSourceHeuristic},
+        		{From: "caller", To: "Reader.get", Type: core.EdgeCalls, Source: core.EvidenceSourceASTKit},
+        	}
+        	got := dropGuessesIntoCompilerDeclared(symbols, edges)
+        	want := []string{"caller>anon.get:calls:native", "anon>anon.get:contains:astkit", "anon.get>Iface.get:overrides:heuristic", "caller>Reader.get:calls:astkit"}
+        	if len(got) != len(want) {
+        		t.Fatalf("got %d edges, want %d: %+v", len(got), len(want), got)
+        	}
+        	for i, e := range got {
+        		if s := e.From + ">" + e.To + ":" + string(e.Type) + ":" + string(e.Source); s != want[i] {
+        			t.Errorf("edge %d = %s, want %s", i, s, want[i])
+        		}
+        	}
+        }
+        EOF
+        grep -n "EvidenceSourceHeuristic\|EvidenceSourceASTKit\|EvidenceSourceNative" ../core/*.go | head -4; cd .. && cd .. && go test ./internal/graph/ -run TestDropGuesses -v 2>&1 | tail -4
+      at: 2026-10-12T04:48:58.597099Z
+      classified: test
+    - cmd: tail -4 /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12/driver.log; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/biuoga4dn.output 2>/dev/null
+      at: 2026-10-12T04:49:03.048073Z
+      classified: other
+    - cmd: ps aux | grep -E "run_e2e|claude -p|docker run|mvn" | grep -v grep | awk '{print $2, $10, substr($0, index($0,$11), 120)}' | head -8; ls -t /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12/ | head -3
+      at: 2026-10-12T04:49:06.995886Z
+      classified: other
+    - cmd: until grep -q "^gate=" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bjpbp004x.output 2>/dev/null; do sleep 15; done; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bjpbp004x.output
+      at: 2026-10-12T04:49:12.008391Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/biuoga4dn.output
+      at: 2026-10-12T04:50:23.467486Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && id=$(gh run list --branch feat/go-compiler-declared -L 5 --json databaseId,name,conclusion --jq '.[]|select(.conclusion=="failure")|.databaseId' | head -1); echo run=$id; gh run view $id --log-failed 2>/dev/null | grep -E "FAIL|panic|fatal|invalid g|unsafe|--- FAIL|Error" | head -20
+      at: 2026-10-12T04:50:29.178186Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gh run view 38205158746 --log-failed 2>/dev/null | grep -A6 "TestJsTSAnalyzeCommonJSAndDynamicImports" | cut -c1-400 | head -20
+      at: 2026-10-12T04:50:32.896679Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && cat > /tmp/tslen_test.go <<'EOF'
+        EOF
+        rm /tmp/tslen_test.go; cat > tslen_probe_test.go <<'EOF'
+        package native
+
+        import "testing"
+
+        func TestTSScriptLenProbe(t *testing.T) { t.Logf("tsScript=%d", len(tsScript)) }
+        EOF
+        go test -run TestTSScriptLenProbe -v . 2>&1 | grep tsScript=; rm tslen_probe_test.go; git stash -q; cat > tslen_probe_test.go <<'EOF'
+        package native
+
+        import "testing"
+
+        func TestTSScriptLenProbe(t *testing.T) { t.Logf("tsScript=%d", len(tsScript)) }
+        EOF
+        go test -run TestTSScriptLenProbe -v . 2>&1 | grep tsScript=; rm tslen_probe_test.go; git stash pop -q; git -C .. status --short | head
+      at: 2026-10-12T04:50:43.362412Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 65,100p tsworker.go; grep -n '"node", "-e", tsScript' *.go
+      at: 2026-10-12T04:51:02.917727Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bjpbp004x.output
+      at: 2026-10-12T04:51:06.068251Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+        old='''		cmd := exec.CommandContext(ctx, "node", "-e", tsScript)
+        		cmd.Dir = dir
+        		env := []string{"GROVE_FILES=" + string(filesJSON), "GROVE_ROOT=" + req.Root}'''
+        new='''		scriptEnv, err := tsScriptEnv()
+        		if err != nil {
+        			return Result{Diagnostics: []string{"typescript resolver script: " + err.Error()}}
+        		}
+        		cmd := exec.CommandContext(ctx, "node", "-e", tsScriptLoader)
+        		cmd.Dir = dir
+        		env := []string{scriptEnv, "GROVE_FILES=" + string(filesJSON), "GROVE_ROOT=" + req.Root}'''
+        assert s.count(old)==1, s.count(old); s=s.replace(old,new)
+        open(p,'w').write(s)
+        p='tsworker.go'; s=open(p).read()
+        old='''		cmd := exec.Command("node", "-e", tsScript)
+        		cmd.Dir = dir
+        		cmd.Env = appendEnv("GROVE_TS_WORKER=1")
+        		return cmd'''
+        new='''		scriptEnv, err := tsScriptEnv()
+        		if err != nil {
+        			scriptEnv = "GROVE_TS_SCRIPT=" // the loader fails and the caller runs one-shot
+        		}
+        		cmd := exec.Command("node", "-e", tsScriptLoader)
+        		cmd.Dir = dir
+        		cmd.Env = appendEnv(scriptEnv, "GROVE_TS_WORKER=1")
+        		return cmd'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        cat > tsscript_file.go <<'EOF'
+        package native
+
+        import (
+        	"os"
+        	"sync"
+        )
+
+        // tsScriptLoader is what node runs with -e: it evaluates the resolver script
+        // from the file tsScriptEnv names. The script itself no longer fits on a
+        // Windows command line (32767 characters; it reached 34k with the
+        // compiler-declared pass, 2026-10-12: "The filename or extension is too
+        // long"). A direct eval runs in the -e module's scope, so require() still
+        // resolves typescript from node's working directory, exactly as when the
+        // script was the -e argument (the repo root, or the neutral directory in
+        // untrusted mode).
+        const tsScriptLoader = `eval(require('fs').readFileSync(process.env.GROVE_TS_SCRIPT, 'utf8'))`
+
+        var tsScriptFile struct {
+        	once sync.Once
+        	path string
+        	err  error
+        }
+
+        // tsScriptEnv writes the resolver script to a private temporary file once per
+        // process (a random name with owner-only permissions, never a predictable
+        // shared path another user could plant) and returns the GROVE_TS_SCRIPT
+        // variable that names it.
+        func tsScriptEnv() (string, error) {
+        	tsScriptFile.once.Do(func() {
+        		f, err := os.CreateTemp("", "grove-ts-*.js")
+        		if err != nil {
+        			tsScriptFile.err = err
+        			return
+        		}
+        		if _, err := f.WriteString(tsScript); err != nil {
+        			f.Close()
+        			os.Remove(f.Name())
+        			tsScriptFile.err = err
+        			return
+        		}
+        		if err := f.Close(); err != nil {
+        			os.Remove(f.Name())
+        			tsScriptFile.err = err
+        			return
+        		}
+        		tsScriptFile.path = f.Name()
+        	})
+        	if tsScriptFile.err != nil {
+        		return "", tsScriptFile.err
+        	}
+        	return "GROVE_TS_SCRIPT=" + tsScriptFile.path, nil
+        }
+        EOF
+        cd ../.. && go build ./... && go vet ./internal/native/ && echo ok
+      at: 2026-10-12T04:51:20.419527Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -n "require.main\|__filename\|__dirname\|process.argv" js_ts.go | head; cat > tsscript_file.go <<'EOF'
+        package native
+
+        import (
+        	"os"
+        	"sync"
+        )
+
+        // tsScriptLoader is what node runs with -e: it evaluates the resolver script
+        // from the file tsScriptEnv names. The script itself no longer fits on a
+        // Windows command line (32767 characters; it reached 34k with the
+        // compiler-declared pass, 2026-10-12: "The filename or extension is too
+        // long"). A direct eval runs in the -e module's scope, so require() still
+        // resolves typescript from node's working directory, exactly as when the
+        // script was the -e argument (the repo root, or the neutral directory in
+        // untrusted mode).
+        const tsScriptLoader = `eval(require('fs').readFileSync(process.env.GROVE_TS_SCRIPT, 'utf8'))`
+
+        var tsScriptFile struct {
+        	sync.Mutex
+        	path string
+        }
+
+        // tsScriptEnv returns the GROVE_TS_SCRIPT variable naming a private temporary
+        // copy of the resolver script: a random name with owner-only permissions,
+        // never a predictable shared path another user could plant. It is written once
+        // per process and again if a temp cleaner removed it under a long-lived engine.
+        func tsScriptEnv() (string, error) {
+        	tsScriptFile.Lock()
+        	defer tsScriptFile.Unlock()
+        	if tsScriptFile.path != "" {
+        		if _, err := os.Stat(tsScriptFile.path); err == nil {
+        			return "GROVE_TS_SCRIPT=" + tsScriptFile.path, nil
+        		}
+        	}
+        	f, err := os.CreateTemp("", "grove-ts-*.js")
+        	if err != nil {
+        		return "", err
+        	}
+        	if _, err := f.WriteString(tsScript); err != nil {
+        		f.Close()
+        		os.Remove(f.Name())
+        		return "", err
+        	}
+        	if err := f.Close(); err != nil {
+        		os.Remove(f.Name())
+        		return "", err
+        	}
+        	tsScriptFile.path = f.Name()
+        	return "GROVE_TS_SCRIPT=" + tsScriptFile.path, nil
+        }
+        EOF
+        cd ../.. && go build ./... && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad && env GROVE_TEST_TYPESCRIPT_ROOT=$S/tscensus go test -count=1 ./internal/native/ ./internal/index/ 2>&1 | tail -4
+      at: 2026-10-12T04:51:44.097546Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && cat > tsscript_file_test.go <<'EOF'
+        package native
+
+        import (
+        	"os"
+        	"strings"
+        	"testing"
+        )
+
+        // The resolver script reaches node through a file, not argv: Windows caps a
+        // command line at 32767 characters and the script outgrew it (2026-10-12).
+        // The file is rewritten if a temp cleaner removed it.
+        func TestTSScriptLoadedFromPrivateFile(t *testing.T) {
+        	if len(tsScriptLoader) > 200 {
+        		t.Fatalf("the -e loader must stay tiny, got %d characters", len(tsScriptLoader))
+        	}
+        	env, err := tsScriptEnv()
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	path := strings.TrimPrefix(env, "GROVE_TS_SCRIPT=")
+        	data, err := os.ReadFile(path)
+        	if err != nil || string(data) != tsScript {
+        		t.Fatalf("script file %s does not hold the resolver script (err %v)", path, err)
+        	}
+        	if info, err := os.Stat(path); err == nil && info.Mode().Perm()&0o077 != 0 && os.PathSeparator == '/' {
+        		t.Errorf("script file is readable by others: %v", info.Mode())
+        	}
+        	os.Remove(path)
+        	env2, err := tsScriptEnv()
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	if data, err := os.ReadFile(strings.TrimPrefix(env2, "GROVE_TS_SCRIPT=")); err != nil || string(data) != tsScript {
+        		t.Fatalf("removed script file was not rewritten: %v", err)
+        	}
+        }
+        EOF
+        cd ../.. && go test -count=1 -run TestTSScriptLoadedFromPrivateFile ./internal/native/ 2>&1 | tail -2
+      at: 2026-10-12T04:51:52.952365Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-decl ./cmd/prism && cd $S/cmp/torm-new && rm -rf .grove && $S/bin/prism-decl index . >/dev/null 2>&1; sqlite3 .grove/grove.db "select value from meta where key='index-native'" | tr ',' '\n' | grep -i "js-ts" | head -3; sqlite3 .grove/grove.db "select count(*) from symbols where modifiers like '%compiler-declared%'"
+      at: 2026-10-12T04:52:11.021109Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal/graph internal/native | grep -v changeimpact_signatures_test; git add internal/graph/graph.go internal/graph/incremental.go internal/graph/compilerdeclared_test.go && git commit -q -F - <<'EOF'
+        graph: name guesses never target a compiler-declared symbol
+
+        A compiler-declared symbol exists because a compiler declared it, and the
+        same compiler resolved the references to it. The name-guessing builders
+        treated it as one more candidate for every same-named call: typeorm's
+        change_impact ContainerInterface.get went from 2 sites (implementation
+        missing) to 12 (implementation found, plus nine getConnectionManager().get()
+        callers and a Map.get guessed onto the anonymous get). Name-guessed calls,
+        uses-type, reads and writes into compiler-declared symbols are dropped in
+        both the full and the incremental edge build; structural edges (contains,
+        extends, implements, overrides) and native references stay. Now 3 sites:
+        the declaration, the anonymous implementation, the one real caller.
+
+        typeorm with typescript resolvable: +152 native calls into the new symbols
+        instead of +1744 mostly guessed ones. Research engine gate: all invariants
+        held (Java anonymous classes are compiler-declared too; their javac edges
+        carry the families).
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX
+        EOF
+        git add internal/native/js_ts.go internal/native/tsworker.go internal/native/tsscript_file.go internal/native/tsscript_file_test.go && git commit -q -F - <<'EOF'
+        typescript: node loads the resolver script from a private file, not argv
+
+        Windows caps a command line at 32767 characters. The resolver script was
+        30k on main and 34k with the compiler-declared pass, and every TypeScript
+        test failed on windows-latest with "fork/exec node.exe: The filename or
+        extension is too long". node now runs a one-line -e loader that evals the
+        script from a temporary file (random name, owner-only, rewritten if a temp
+        cleaner removed it). A direct eval runs in the -e module's scope, so
+        require('typescript') resolves from node's working directory exactly as
+        before (the repo root, or the neutral directory in untrusted mode).
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX
+        EOF
+        git log --oneline -4 && git push -q origin feat/go-compiler-declared 2>&1 | tail -1
+      at: 2026-10-12T04:52:22.779194Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sleep 45; until s=$(gh pr checks 23 --json name,bucket 2>/dev/null) && [ -n "$s" ] && echo "$s" | python3 -c "import json,sys;d=json.load(sys.stdin);sys.exit(0 if d and all(c['bucket']!='pending' for c in d) else 1)"; do sleep 60; done; echo "$s" | python3 -c "import json,sys;[print(c['bucket'],c['name']) for c in json.load(sys.stdin)]"
+      at: 2026-10-12T04:52:25.83201Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; rm -rf $S/cmp/graf-new/.grove && cd $S/cmp/graf-new && /usr/bin/time -p $S/bin/prism-decl index . > $S/cmp/graf-new3.log 2>&1; grep real $S/cmp/graf-new3.log; $S/cmp/edgediff.sh $S/cmp/graf-base/.grove/grove.db $S/cmp/graf-new/.grove/grove.db | grep "only-\|compiler"; tail -3 /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12/driver.log
+      at: 2026-10-12T04:53:24.160816Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && gh pr view 23 --json body --jq .body > /tmp/pr23.md && python3 - <<'EOF'
+        p='/tmp/pr23.md'; s=open(p).read()
+        i=s.index('## Measured'); j=s.index('## Checks')
+        new='''## Name guesses never target a compiler-declared symbol (graph)
+        A compiler-declared symbol exists because a compiler declared it, and that compiler also resolved the references to it. Before this rule, grove's name-guessing pass treated each new symbol as one more candidate for every same-named call. With the rule, typeorm `change_impact ContainerInterface.get` returns 3 sites: the declaration, the anonymous implementation, and its one real caller. Main returns 2 sites, with no implementation. Without the rule it returned 12: the same 3 plus nine `getConnectionManager().get()` callers and a `Map.get`.
+
+        Name-guessed calls, uses-type, reads and writes into compiler-declared symbols are dropped in both the full and the incremental build. Structural edges and native references stay.
+
+        ## Windows: the resolver script is loaded from a file
+        The TS script was 30k characters on main and 34k with this change. That is over Windows' 32767-character command-line limit, so every TS test failed on windows-latest. node now runs a one-line `-e` loader that evals the script from a private temp file (random name, owner-only, rewritten if a temp cleaner removed it). `require('typescript')` still resolves from node's working directory, as before.
+
+        ## Measured (full cold index, v0.87.9 vs this branch)
+        | corpus | symbols | edges added | edges removed | index time |
+        |---|---|---|---|---|
+        | gin | +64 | 159, all touching the new symbols | 0 | 1.0s both |
+        | grafana | +2073 | contains 2073, uses-type 503, extends/implements/overrides 129 | 17 wrong contains (build-tag variants); 8 name-guessed TS calls (all wrong, e.g. `Array.filter` -> `ScopedEventBus.filter`) | 49-64s, noise |
+        | typeorm (typescript resolvable) | +614 | ~150 native calls into the new symbols; calls inside nested functions moved off `<top-level>` | calls retargeted from wrong same-named symbols | 10.1-11.3s both |
+
+        '''
+        s=s[:i]+new+s[j:]
+        s=s.replace('- The research engine gate passed on the Go build ("All invariants held"). The gate on the combined build is running.','- The research engine gate passed on the Go build, on the combined build, and again after the name-guess rule ("All invariants held"). Note that the gate never runs the TypeScript compiler, because no gate corpus has typescript installed.')
+        open(p,'w').write(s)
+        EOF
+        gh pr edit 23 --body-file /tmp/pr23.md >/dev/null && echo updated; rm /tmp/pr23.md
+      at: 2026-10-12T04:53:36.701028Z
+      classified: build
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='project_go_ts_compiler_declared_2026_10_12.md'; s=open(p).read()
+        old='''grove PR #23 (draft): commits 63ca4b51 (Go) + c7afc3c9 (TS).'''
+        new='''grove PR #23 (draft): commits 63ca4b51 (Go), c9113dd0 (TS), 3cf99ca9 (graph: name-guessed calls/uses-type/reads/writes never target a
+        compiler-declared symbol - without it typeorm ContainerInterface.get went 2 -> 12 sites with 9 false getConnectionManager().get callers; with it 3),
+        b890e993 (Windows: tsScript 34k > 32767 cmdline cap -> node -e loader evals a private temp file; direct eval keeps cwd require resolution).'''
+        assert s.count(old)==1; open(p,'w').write(s.replace(old,new))
+        EOF
+        echo ok
+      at: 2026-10-12T04:53:42.079257Z
+      classified: other
+    - cmd: until grep -q "# done" <(tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12/driver.log) || ! pgrep -f "run_e2e.py results/java13" >/dev/null; do sleep 20; done; tail -5 /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0879-java13-2026-10-12/driver.log
+      at: 2026-10-12T04:53:45.569661Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b0fzsqg1s.output
+      at: 2026-10-12T04:55:16.77647Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob
+        old={}
+        for p in glob.glob('bench-v0877-issue*/*.json'):
+            try:d=json.load(open(p))
+            except:continue
+            if isinstance(d,dict) and 'resolved' in d: old[(d['task'],d['arm'])]=(d['resolved'],d.get('cost_usd') or 0)
+        new={}
+        for p in glob.glob('bench-v0879-java13-2026-10-12/*.claude-*.json'):
+            d=json.load(open(p)); tu=d.get('tool_usage',{})
+            new[(d['task'],d['arm'])]=(d['resolved'],d['cost_usd'],tu.get('tool_calls'),tu.get('prism_ops'),d['score'].get('f2p_ok'),d['score'].get('p2p_ok'))
+        ids=json.load(open('java13-resolved-manifest.json'))
+        f=lambda r: '—' if r is None else ('PASS' if r[0] else 'FAIL')
+        tn=tp=cn=cp=kn=kp=0
+        for i in ids:
+            n,p=new.get((i,'native')),new.get((i,'prism_init'))
+            on,op=old.get((i,'native')),old.get((i,'prism_init'))
+            tn+=n[0];tp+=p[0];cn+=n[1];cp+=p[1];kn+=n[2];kp+=p[2]
+            print(f"| {i.split('__')[-2].replace('-databind','')} {i.split('__')[-1]} | {f(n)} | {f(p)} | ${n[1]:.2f} / ${p[1]:.2f} ({p[1]/n[1]:.2f}x) | {n[2]} / {p[2]} | {f(on)} / {f(op)} | {p[3]}")
+        print(tn,tp,round(cn,2),round(cp,2),round(cp/cn,2),kn,kp)
+        EOF
+      at: 2026-10-12T04:57:35.577215Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        for a in ['native','prism_init']:
+          d=json.load(open(f'results/bench-v0879-java13-2026-10-12/apache__dubbo__pr16395.claude-sonnet-5-5.{a}.json'));print(a,d['score'])
+        t=json.load(open('tasks/e2e/apache__dubbo__pr16395.json'));print(t['patch'][:900])"; echo ---P; grep '^[-+]' results/bench-v0879-java13-2026-10-12/apache__dubbo__pr16395.claude-sonnet-5-5.prism_init.diff | head -20; echo ---OLDP; grep '^[-+]' results/bench-v0877-issue42-2026-10-11/apache__dubbo__pr16395.claude-sonnet-5-5.prism_init.diff | head -12
+      at: 2026-10-12T04:57:40.908816Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat > project_java13_resolved_run_2026_10_12.md <<'EOF'
+        ---
+        name: project-java13-resolved-run-2026-10-12
+        description: "2026-10-12: 13 Java issue pairs that resolved on v0.87.7, rerun on v0.87.9: native 11/13, prism 11/13, prism cost 1.10x, calls 74 vs 74, 0 change_impact; both losses model variance (right lines, narrower fix)"
+        metadata:
+          type: project
+        ---
+
+        Topo asked for "Java with issue text that resolved". Run: research/harness/results/bench-v0879-java13-2026-10-12 (manifest
+        results/java13-resolved-manifest.json), Sonnet 5.5, 1 trial, v0.87.9 (PRISM_INIT_BIN=/opt/homebrew/bin/prism).
+
+        native 11/13, prism 11/13 (v0.87.7: native 12/13, prism 13/13). Cost $1.22 vs $1.34 (1.10x), calls 74 vs 74. Prism ops: search/read/lookup only,
+        change_impact 0. Small tasks (2-13 calls) where per-cell fixed overhead dominates (dubbo pr16348 1.73x on $0.07).
+        - jackson pr6042: both FAIL this run (both PASS on v0.87.7): right line in StringCollectionDeserializer, both wrapped _parseString and reset the
+          exception token instead of handleUnexpectedToken(START_ARRAY) -> message unchanged.
+        - dubbo pr16395: both FAIL (v0.87.7 native FAIL, prism PASS): prism deleted the tail merge in BitList.and instead of intersecting tails.
+
+        **Why:** with [[project-java5-issue-run-2026-10-12]]: the issue bed's Java tasks are 1-2 file fixes; v0.87.9's Java index changes cannot move them.
+        Outcome differences are fix-design variance with the same context on screen.
+        **How to apply:** don't read the v0.87.7 -> v0.87.9 flips as a regression; n=1 per cell. A Java graph effect needs override-family tasks.
+        EOF
+        python3 - <<'EOF'
+        p='MEMORY.md';s=open(p).read()
+        line='- [Java13 resolved run 2026-10-12](project_java13_resolved_run_2026_10_12.md) — 13 previously-resolved Java issue pairs on v0.87.9: 11/13 both arms, cost 1.10x, 0 change_impact; both losses = fix-design variance\n'
+        i=s.index('- [Java5 issue run')
+        open(p,'w').write(s[:i]+line+s[i:])
+        EOF
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_handoff_2026_10_12.md'; s=open(p).read()
+        old='## Open items (in priority order)\n'
+        new='''## Update 2026-10-12 night (Topo asleep, said keep going)
+        - research PR #1: CI pinned prism v0.87.0 -> bumped to v0.87.9 (afacdaea), CI GREEN (55/55). Merge was blocked by auto mode -> Topo merges.
+        - Benchmarks on v0.87.9 (Java issue bed): [[project-java5-issue-run-2026-10-12]] 0/5 both; [[project-java13-resolved-run-2026-10-12]] 11/13 both.
+        - Compiler-first for other languages: grove draft PR #23, all CI green incl. Windows -> [[project-go-ts-compiler-declared-2026-10-12]].
+        - Branch cleanup done (archive/<name> tags for local-only branches).
+
+        ## Open items (in priority order)
+        '''
+        assert s.count(old)==1; open(p,'w').write(s.replace(old,new))
+        EOF
+        echo ok
+      at: 2026-10-12T04:57:56.284122Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && gh pr view 1 --json state,mergeable,mergeStateStatus,statusCheckRollup --jq '{state,mergeable,mergeStateStatus,checks:[.statusCheckRollup[]|{name,conclusion}]}'
+      at: 2026-10-12T11:27:43.074444Z
+      classified: other
+    - cmd: gh -R provasign/research pr merge 1 --merge && gh -R provasign/research pr view 1 --json state --jq .state
+      at: 2026-10-12T11:28:53.93545Z
+      classified: other
+    - cmd: gh -R provasign/grove pr view 23 --json state,isDraft,mergeStateStatus,mergeable,headRefOid --jq '{state,isDraft,mergeStateStatus,mergeable,headRefOid}'; git -C /Users/tapabratapal/Projects/provasign/grove log --oneline -1 feat/go-compiler-declared
+      at: 2026-10-12T11:29:20.466553Z
+      classified: other
+    - cmd: gh -R provasign/grove pr ready 23 && gh -R provasign/grove pr merge 23 --merge && gh -R provasign/grove pr view 23 --json state,mergeCommit --jq '{state,c:.mergeCommit.oid}'
+      at: 2026-10-12T11:31:30.711996Z
+      classified: other
+    - cmd: 'gh -R provasign/grove pr close 22 --comment "Closing unmerged: the background compiler pass measured slower (edge construction + store write run twice). Branch kept." && gh -R provasign/prism pr close 49 --comment "Closing unmerged with grove #22: background compiler pass measured not worth it. Branch kept."'
+      at: 2026-10-12T11:32:09.011677Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git fetch -q origin && git tag --sort=-v:refname | head -3 && gh run list -b main -L 5 --json name,status,conclusion,headSha --jq '.[]|"\(.headSha[0:8]) \(.name) \(.status) \(.conclusion)"'
+      at: 2026-10-12T11:32:19.82592Z
+      classified: other
+    - cmd: git status --short && git checkout -q -b deps/grove-compiler-declared-go-ts origin/main 2>&1; git fetch -q origin && git log --oneline -1 origin/main && GOWORK=off GOFLAGS=-mod=mod GOPROXY=direct go get github.com/provasign/grove@5db74c2807364aa80129d0258617d57774d7d32d 2>&1 | tail -3 && grep provasign/grove go.mod
+      at: 2026-10-12T11:32:30.450283Z
+      classified: other
+    - cmd: GOWORK=off GOPROXY=direct go get github.com/provasign/grove@5db74c2807364aa80129d0258617d57774d7d32d 2>&1 | tail -3 && grep provasign/ go.mod && GOWORK=off go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/bin/prism-rc ./cmd/prism && echo built
+      at: 2026-10-12T11:33:11.86396Z
+      classified: build
+    - cmd: GOWORK=off go test ./... 2>&1 | grep -v '^ok' | tail -20; echo "tests=${pipestatus[1]}"
+      at: 2026-10-12T11:33:16.056172Z
+      classified: test
+    - cmd: ls -d ~/ci-corpus 2>/dev/null && ls ~/ci-corpus | head -30
+      at: 2026-10-12T11:33:16.113895Z
+      classified: other
+    - cmd: rm -rf ~/ci-corpus/*/.grove && cd /Users/tapabratapal/Projects/provasign/research && git pull -q --ff-only origin main 2>&1 | tail -2; git log --oneline -1; python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/bin/prism-rc 2>&1 | tail -40
+      at: 2026-10-12T11:33:28.631185Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && for id in $(gh run list -b main -L 4 --json databaseId,headSha --jq '.[]|select(.headSha|startswith("5db74c28"))|.databaseId'); do gh run watch $id --exit-status >/dev/null 2>&1; echo "$id $?"; done; gh run list -b main -L 2 --json name,conclusion --jq '.[]|"\(.name) \(.conclusion)"'
+      at: 2026-10-12T11:33:39.721274Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bv0i71fjx.output
+      at: 2026-10-12T11:33:55.378817Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bsofdavay.output
+      at: 2026-10-12T11:34:27.25827Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b8efo19pd.output
+      at: 2026-10-12T11:36:33.203971Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/bin && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism $S/prism-rc --decoy-injector $S/decoy 2>&1 | sed -n '/Decoy/,$p'
+      at: 2026-10-12T11:38:07.596403Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git ls-remote --tags origin v0.63.6; git tag -l v0.63.6
+      at: 2026-10-12T12:00:28.444212Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && git tag -a v0.63.6 5db74c28 -m "v0.63.6: Go + TypeScript compiler-declared symbols" && git push origin v0.63.6'
+      at: 2026-10-12T12:00:38.826426Z
+      classified: other
+    - cmd: git branch --show-current && GOWORK=off GOPROXY=direct go get github.com/provasign/grove@v0.63.6 2>&1 | tail -2 && grep provasign/grove go.mod && GOWORK=off go build ./... && GOWORK=off go test ./... 2>&1 | grep -v '^ok' | grep -v 'no test files'; echo "tests=$?"; git diff --stat
+      at: 2026-10-12T12:01:45.671746Z
+      classified: test
+notes: []
+redactions: 0

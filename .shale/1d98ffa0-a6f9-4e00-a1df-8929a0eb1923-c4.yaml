@@ -1,0 +1,76 @@
+shale_version: "0"
+id: 1d98ffa0-a6f9-4e00-a1df-8929a0eb1923-c4
+created_at: 2026-10-12T03:38:05.291672Z
+finalized_at: 2026-10-12T12:02:04.437667Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: deps/grove-compiler-declared-go-ts
+privacy: redacted
+commands:
+    - cmd: 'git diff --stat 49f8f450 HEAD -- . '':(exclude).shale'' | tail -1; echo "(only .shale differs from the gated candidate if empty)"; git tag -a v0.87.9 -m "v0.87.9: change_impact is compiler-backed for Java declarations the parser missed (grove v0.63.5: javac declarations; gson TypeAdapter.write family 6->31 overrides in TypeAdapters.java, ''closed'' now true); bare names never resolve silently (chi URLParam retry loop, hono request, jackson serializeWithType families); one-time re-index after upgrade (extractor version bump)" 2fdb1e1d && git push -q origin v0.87.9 2>&1 | tail -1; git ls-remote --tags origin v0.87.9'
+      at: 2026-10-12T03:38:05.291672Z
+      classified: other
+    - cmd: 'until [ "$(gh run list --branch v0.87.9 --limit 3 --json status -q ''length'')" -gt 0 ] && [ "$(gh run list --branch v0.87.9 --limit 3 --json status -q ''[.[]|select(.status!="completed")]|length'')" = "0" ]; do sleep 20; done; gh run list --branch v0.87.9 --limit 3 --json name,conclusion -q ''.[]|.name+": "+.conclusion''; gh release view v0.87.9 --json assets -q ''[.assets[].name]|join(" ")''; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; cd $S && gh release download v0.87.9 -R provasign/prism -p ''prism-v0.87.9-darwin-arm64'' -p checksums.txt --clobber && grep darwin-arm64 checksums.txt | shasum -a 256 -c - && chmod +x prism-v0.87.9-darwin-arm64 && ./prism-v0.87.9-darwin-arm64 --version && gh workflow run "Refresh formulae" -R provasign/homebrew-shale && echo tap-dispatched'
+      at: 2026-10-12T03:38:20.159332Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bdjja98b1.output
+      at: 2026-10-12T03:40:35.462214Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run view 38200683107 -R provasign/homebrew-shale --json status -q .status)" = completed ]; do sleep 15; done; gh run view 38200683107 -R provasign/homebrew-shale --json conclusion -q '"tap: "+.conclusion'; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version; until [ "$(gh run list --branch main --limit 5 --json headSha,status -q '[.[]|select(.headSha|startswith("2fdb1e1d"))|select(.status!="completed")]|length')" = "0" ] && [ "$(gh run list --branch main --limit 5 --json headSha -q '[.[]|select(.headSha|startswith("2fdb1e1d"))]|length')" -gt 0 ]; do sleep 20; done; gh run list --branch main --limit 5 --json headSha,name,conclusion -q '.[]|select(.headSha|startswith("2fdb1e1d"))|"main "+.name+": "+.conclusion'; brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -1; prism --version; wt=~/prism-ab-bins/nbreplay/wt/deephard__gson__TypeAdapter_writeValue_swap; cd $wt && rm -rf .grove && prism change-impact TypeAdapter.write --format json . 2>/dev/null | python3 -c "
+        import json,sys; d=json.load(sys.stdin); f=d['family']
+        print('smoke: family',len(f),'| TypeAdapters.java overrides',sum(x['filePath'].endswith('bind/TypeAdapters.java') for x in f),'|',d['completeness'],'safe',d['safeToClaimComplete'])"
+      at: 2026-10-12T03:40:44.1536Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git status --short | head -10; git branch --show-current
+      at: 2026-10-12T03:40:47.214202Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research && git checkout -q -b ci/family-size-invariant && git add harness/scoring/ci_invariants.py harness/tasks/gson-typeadapter-write.json && git commit -q -F - <<'EOF'\nci_invariants: family-size invariant (gson TypeAdapter.write == Spoon oracle 55)\n\nThe ceiling tasks score change-impact sites at file:name granularity, so 25\noverrides collapsing into one file cannot move them. gson's TypeAdapters.java\ndeclares 25 TypeAdapter.write overrides as anonymous classes in static field\ninitializers; prism <= v0.87.8 indexed 6 of 31 and still reported the family\nclosed. New check: declarations + family under gson/src/main must equal the\nSpoon oracle's count (55). v0.87.8 on a fresh index: 29 (fails); v0.87.9\n(grove v0.63.5, astkit v0.16.1): 55. Adds the gson corpus (pin dae37cf0).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\ngit push -q -u origin ci/family-size-invariant 2>&1 | grep -v \"^remote:\\|^$\" | tail -1; gh pr create --base main --head ci/family-size-invariant --title \"ci_invariants: family-size invariant (gson TypeAdapter.write == Spoon oracle 55)\" --body \"The ceiling tasks score change-impact sites at file:name granularity, so 25 overrides collapsing into one file can't move them. This adds a count check: gson \\`TypeAdapter.write\\` declarations plus family under \\`gson/src/main\\` must equal the Spoon oracle's 55. On a fresh index, prism v0.87.8 gives 29 and fails. v0.87.9 gives 55. Adds the gson corpus, pinned at dae37cf0.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\""
+      at: 2026-10-12T03:41:02.698315Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && until [ "$(gh pr checks 1 --json bucket 2>/dev/null | jq 'length' 2>/dev/null || echo 0)" != "" ]; do sleep 10; done; gh pr checks 1 2>&1 | tail -5
+      at: 2026-10-12T03:41:07.796552Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research && until gh pr checks 1 --json bucket 2>/dev/null | jq -e ''length>0 and all(.bucket!="pending")'' >/dev/null; do sleep 30; done; gh pr checks 1 --json name,bucket -q ''.[]|.name+": "+.bucket''; run=$(gh pr checks 1 --json link -q ''.[0].link'' | sed ''s#.*/runs/\([0-9]*\)/.*#\1#''); gh run view $run --log 2>/dev/null | grep -E "prism v|Family-size|gson  |All invariants|REGRESSION" | sed ''s/^.*Z //'' | head -6'
+      at: 2026-10-12T03:41:13.420691Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b14a8az5y.output
+      at: 2026-10-12T03:43:45.299949Z
+      classified: other
+    - cmd: 'cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bx703ar2x.output 2>/dev/null; cd /Users/tapabratapal/Projects/provasign/research && gh pr checks 1 --json name,bucket -q ''.[]|.name+": "+.bucket''; cd ../prism && git branch --show-current; git status --short | grep -v __pycache__ | head -3; ls ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/ | grep -i "handoff"'
+      at: 2026-10-12T03:47:16.591623Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        import re
+        p="MEMORY.md"; s=open(p).read()
+        line="- [START HERE — handoff 2026-10-12](project_handoff_2026_10_12.md) — v0.87.9 RELEASED (grove v0.63.5, astkit v0.16.1); open: research PR #1 merge, Topo decision on #22/#49 (recommend close), Windows runtime crash, sentence->graph router next\n"
+        s=s.replace("# Memory Index\n\n","# Memory Index\n\n"+line,1)
+        s=re.sub(r"^- \[Release prep v0.87.9 2026-10-12\].*$","- [Release v0.87.9 2026-10-12](project_release_prep_0879_2026_10_12.md) — RELEASED: name resolution (grove #21, prism #48) + compiler declarations; background compiler pass built but OFF (grove #22, prism #49 drafts, measured slower)",s,flags=re.M)
+        s=re.sub(r"^- \[Compiler declarations 2026-10-12\].*$","- [Compiler declarations 2026-10-12](project_compiler_declarations_2026_10_12.md) — RELEASED in grove v0.63.5/astkit v0.16.1: javac declarations as Java universe; gson TypeAdapter.write 6->31 overrides; family-size invariant = research PR #1",s,flags=re.M)
+        open(p,"w").write(s)
+        p="project_release_prep_0879_2026_10_12.md"; s=open(p).read()
+        s=s.replace('description: "2026-10-12 Topo: fix the rest then release.','description: "RELEASED 2026-10-12 as prism v0.87.9 / grove v0.63.5 / astkit v0.16.1. Topo: fix the rest then release.')
+        s+="\nRELEASED 2026-10-12: astkit #5 -> v0.16.1; grove #21, #20 (+astkit bump, eval module bump) -> v0.63.5 (12 assets);\nprism #48 (+grove bump) -> v0.87.9; Windows CI crash on #48 was the known runtime family, rerun passed; tap 0.87.9.\n"
+        open(p,"w").write(s)
+        EOF
+        head -3 MEMORY.md | cut -c1-150
+      at: 2026-10-12T03:47:43.382081Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p="project_release_prep_0879_2026_10_12.md"; s=open(p).read()
+        s=s.replace("because it measured slower; all PRs open, nothing merged or released; integration branches local\"","because it measured slower (#22/#49 still open drafts awaiting Topo); integration branches local\"")
+        s=s.replace("Research family-size invariant still uncommitted (commit after release).","Research family-size invariant: research PR #1 (opened after release).")
+        open(p,"w").write(s)
+        EOF
+        grep -c "nothing merged or released" project_release_prep_0879_2026_10_12.md
+      at: 2026-10-12T03:47:48.661683Z
+      classified: other
+notes:
+    - text: continuation of session 1d98ffa0-a6f9-4e00-a1df-8929a0eb1923 — events captured after its evidence was finalized
+      at: 2026-10-12T03:38:05.291672Z
+redactions: 0
