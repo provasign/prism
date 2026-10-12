@@ -1,0 +1,1957 @@
+shale_version: "0"
+id: b078ae73-7c6b-4498-a9f7-eeada0292d5a-c2
+created_at: 2026-10-12T12:13:39.427726Z
+finalized_at: 2026-10-12T14:54:27.857075Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: deps/grove-rust-analyzer
+privacy: redacted
+commands:
+    - cmd: 'git fetch -q origin && for id in $(gh run list -b main -L 6 --json databaseId,headSha --jq ''.[]|select(.headSha|startswith("e03122e6"))|.databaseId''); do gh run watch $id --exit-status >/dev/null || exit 1; done && git tag -a v0.87.10 e03122e6 -m "v0.87.10: grove v0.63.6 (Go + TypeScript compiler-declared symbols)" && git push origin v0.87.10'
+      at: 2026-10-12T12:13:39.427726Z
+      classified: other
+    - cmd: gh run list -L 8 --json name,status,conclusion,headSha,headBranch --jq '.[]|"\(.headSha[0:8]) \(.headBranch) \(.name) \(.status) \(.conclusion)"'
+      at: 2026-10-12T12:13:43.486329Z
+      classified: other
+    - cmd: id=$(gh run list -L 5 --json databaseId,headBranch,name --jq '.[]|select(.headBranch=="v0.87.10" and .name=="Release")|.databaseId' | head -1) && gh run watch $id --exit-status >/dev/null 2>&1; echo "release=$?"; gh release view v0.87.10 --json assets --jq '.assets|length'
+      at: 2026-10-12T12:15:48.965531Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content 2>/dev/null | base64 -d | grep -m1 version; brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -2; prism --version
+      at: 2026-10-12T12:15:55.103415Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/commits --jq '.[0:4][]|"\(.commit.author.date) \(.commit.message|split("\n")[0])"'; gh run list -R provasign/homebrew-shale -L 3 --json name,status,conclusion,createdAt --jq '.[]|"\(.createdAt) \(.name) \(.status) \(.conclusion)"'
+      at: 2026-10-12T12:15:59.602375Z
+      classified: other
+    - cmd: gh workflow run -R provasign/homebrew-shale "Refresh formulae" && sleep 60 && gh run list -R provasign/homebrew-shale -L 1 --json status,conclusion --jq '.[]|"\(.status) \(.conclusion)"'
+      at: 2026-10-12T12:17:27.984352Z
+      classified: other
+    - cmd: brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -1; prism --version
+      at: 2026-10-12T12:17:45.052054Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; ls -d $S/cmp/torm-new/node_modules/typescript 2>/dev/null; cd $S/cmp/torm-new 2>/dev/null && rm -rf .grove && (prism change-impact ContainerInterface.get --format text 2>&1 | head -30)
+      at: 2026-10-12T12:18:00.610882Z
+      classified: other
+    - cmd: 'M=/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory; perl -0pi -e ''s/  mode \(Create Public Surface\) even with Topo.s explicit order -> needs settings allow rule or Topo runs it\./  mode (Create Public Surface); Topo pasted the command as chat text and I ran it -> pushed.\n- RELEASED v0.87.10 (grove v0.63.6, prism #50 e03122e6): main CI green, Release 11 assets, tap refreshed by dispatching\n  homebrew-shale "Refresh formulae" (it does NOT run on tag), local brew 0.87.10, smoke typeorm ContainerInterface.get = 3 sites closed./'' $M/project_handoff_2026_10_12.md && perl -pi -e ''s/^- \[START HERE — handoff 2026-10-12\].*$/- [START HERE — handoff 2026-10-12](project_handoff_2026_10_12.md) — v0.87.10 RELEASED (grove v0.63.6: Go+TS compiler-declared); #22\/#49 closed; open: Windows runtime crash, sentence->graph router next/'' $M/MEMORY.md && perl -pi -e ''s/^(- \[Go\+TS compiler-declared 2026-10-12\]\(project_go_ts_compiler_declared_2026_10_12.md\)) — grove draft PR #23:/$1 — RELEASED grove v0.63.6 \/ prism v0.87.10:/'' $M/MEMORY.md && perl -0pi -e ''s/\*\*How to apply:\*\* next steps are Topo.s: review\/merge #23, then grove tag \+ prism deps bump \+ full gate \+ release \(ASK\)\./**How to apply:** RELEASED 2026-10-12 as grove v0.63.6 \/ prism v0.87.10 (gate green incl. decoy)./'' $M/project_go_ts_compiler_declared_2026_10_12.md && grep -n "0.87.10" $M/MEMORY.md $M/project_handoff_2026_10_12.md $M/project_go_ts_compiler_declared_2026_10_12.md | cut -c1-140'
+      at: 2026-10-12T12:18:16.270474Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && ls internal/native/*.go | grep -v _test | xargs -n1 basename | tr ''\n'' '' ''; echo; grep -o ''Language: *"[a-z+#]*"\|"[a-z]*": *{'' internal/parser/languages.go | head -40 | tr ''\n'' '' '''
+      at: 2026-10-12T12:31:57.43205Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove/internal/native && for f in cfamily csharp php python rust; do echo "== $f: $(grep -oE ''exec\.Command(Context)?\([^,]*, *"[^"]+"'' $f.go | sort -u | tr ''\n'' '' '')"; done; grep -rhoE ''"(kotlin|scala|swift|ruby|lua|dart|c|cpp)"'' ../parser/languages.go | sort -u | tr ''\n'' '' '''
+      at: 2026-10-12T12:32:01.038427Z
+      classified: other
+    - cmd: 'for t in dotnet rust-analyzer cargo rustc clang scip-clang; do printf "%s: " $t; (command -v $t && $t --version 2>&1 | head -1) | tr ''\n'' '' ''; echo; done; ls ~/ci-corpus; ls /Users/tapabratapal/Projects/provasign/grove/eval 2>/dev/null | head'
+      at: 2026-10-12T12:34:09.15115Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n -i -A3 'ripgrep\|rust-analyzer\|scip' .github/workflows/*.yml | head -40; ls ~/Projects 2>/dev/null | head -30
+      at: 2026-10-12T12:34:18.805368Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && ls cmd cmd/*; command -v scip; grep -rln 'scip' --include=*.go . | head; ls testdata | head -20
+      at: 2026-10-12T12:34:23.166762Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && ls eval/testdata/ripgrep@82313cf eval/testdata/newtonsoft@0a2e291 eval/testdata/jansson@684e18c; grep -rl 'scip' --include='*.go' --include='*.py' --include='*.sh' --include='*.md' . 2>/dev/null | grep -v node_modules | head
+      at: 2026-10-12T12:34:28.540125Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && sed -n 1,80p truth_rust.go; grep -n 'truth\|scip' cmd/grove-eval/main.go | head -30
+      at: 2026-10-12T12:34:31.488355Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && sed -n 50,70p cmd/grove-eval/main.go; grep -n 'func Universe' -A40 *.go | head -60
+      at: 2026-10-12T12:34:36.711762Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git checkout -q main && git pull -q --ff-only && git log --oneline -1 && grep -n 'replace\|provasign/grove ' eval/go.mod; grep -n -B2 -A6 'NEWTONSOFT_COMMIT\|JANSSON_COMMIT' .github/workflows/eval.yml | grep -E 'COMMIT:|clone|checkout' | head
+      at: 2026-10-12T12:34:42.693935Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; mkdir -p $S/census && cd $S/census && for p in "ripgrep https://github.com/BurntSushi/ripgrep.git 82313cf" "newtonsoft https://github.com/JamesNK/Newtonsoft.Json.git 0a2e291" "jansson https://github.com/akheron/jansson.git 684e18c"; do set -- $p; [ -d $1 ] || git clone -q $2 $1; git -C $1 checkout -q $3; done; ls; cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=off go build -o $S/bin/grove-eval ./cmd/grove-eval && echo built
+      at: 2026-10-12T12:34:50.190425Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census && git clone -q https://github.com/BurntSushi/ripgrep.git ripgrep && git -C ripgrep checkout -q 82313cf && git clone -q https://github.com/JamesNK/Newtonsoft.Json.git newtonsoft && git -C newtonsoft checkout -q 0a2e291 && git clone -q https://github.com/akheron/jansson.git jansson && git -C jansson checkout -q 684e18c && ls
+      at: 2026-10-12T12:34:56.866361Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; T=/Users/tapabratapal/Projects/provasign/grove/eval/testdata; cd $S/census && for r in ripgrep:ripgrep@82313cf newtonsoft:newtonsoft@0a2e291 jansson:jansson@684e18c; do d=${r%%:*}; echo "===== $d"; $S/bin/grove-eval universe --repo $S/census/$d --truth $T/${r#*:}/calls-truth.jsonl.gz 2>&1 | head -40; done
+      at: 2026-10-12T12:35:10.113275Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census/jansson && ls .grove* 2>/dev/null | head -3; sqlite3 .grove/grove.db "select count(*) from files where path like 'test/bin/%';" 2>&1; sqlite3 .grove/grove.db ".tables" 2>&1 | head; sed -n 1,48p test/bin/json_process.c
+      at: 2026-10-12T12:35:23.760051Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census/jansson && sqlite3 .grove/grove.db "select distinct file_path from symbols where file_path like 'test/%' limit 8;"; grep -n '^bin\|/bin\|bin/' .gitignore
+      at: 2026-10-12T12:35:33.288662Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn '"bin"' --include=*.go . | grep -v _test | head
+      at: 2026-10-12T12:35:37.159604Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn '"bin"' --include='*.go' . | grep -v _test | head
+      at: 2026-10-12T12:35:39.624289Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census/ripgrep && time rust-analyzer scip . --output $S/census/ripgrep.scip 2>&1 | tail -3; ls -la $S/census/ripgrep.scip
+      at: 2026-10-12T12:35:58.040227Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sqlite3 $S/census/jansson/.grove/grove.db ".schema symbols"; grep -E 'scip|protobuf' /Users/tapabratapal/Projects/provasign/grove/eval/go.mod
+      at: 2026-10-12T12:36:04.202996Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; mkdir -p $S/scipdefs && cd $S/scipdefs && cat > main.go <<'EOF'
+        // scipdefs prints every non-local definition in a SCIP index as TSV:
+        // file, 1-based line, name, kind, parent descriptor name.
+        package main
+
+        import (
+        	"fmt"
+        	"os"
+
+        	"github.com/scip-code/scip/bindings/go/scip"
+        	"google.golang.org/protobuf/proto"
+        )
+
+        func main() {
+        	raw, err := os.ReadFile(os.Args[1])
+        	if err != nil {
+        		panic(err)
+        	}
+        	var idx scip.Index
+        	if err := proto.Unmarshal(raw, &idx); err != nil {
+        		panic(err)
+        	}
+        	kinds := map[string]scip.SymbolInformation_Kind{}
+        	for _, d := range idx.Documents {
+        		for _, si := range d.Symbols {
+        			kinds[si.Symbol] = si.Kind
+        		}
+        	}
+        	for _, d := range idx.Documents {
+        		for _, o := range d.Occurrences {
+        			if o.SymbolRoles&int32(scip.SymbolRole_Definition) == 0 || scip.IsLocalSymbol(o.Symbol) {
+        				continue
+        			}
+        			sym, err := scip.ParseSymbol(o.Symbol)
+        			if err != nil || len(sym.Descriptors) == 0 {
+        				continue
+        			}
+        			ds := sym.Descriptors
+        			name := ds[len(ds)-1].Name
+        			parent := ""
+        			if len(ds) > 1 {
+        				parent = ds[len(ds)-2].Name
+        			}
+        			last := ds[len(ds)-1].Suffix
+        			fmt.Printf("%s\t%d\t%s\t%s\t%s\t%s\n", d.RelativePath, o.Range[0]+1, name, kinds[o.Symbol], parent, last)
+        		}
+        	}
+        }
+        EOF
+        cat > go.mod <<'EOF'
+        module scipdefs
+
+        go 1.25
+
+        require (
+        	github.com/scip-code/scip/bindings/go/scip v0.8.1
+        	google.golang.org/protobuf v1.36.11
+        )
+        EOF
+        GOWORK=off GOFLAGS=-mod=mod go mod tidy >/dev/null 2>&1; GOWORK=off go build -o $S/bin/scipdefs . && $S/bin/scipdefs $S/census/ripgrep.scip > $S/census/ripgrep.defs.tsv && wc -l $S/census/ripgrep.defs.tsv && cut -f4,6 $S/census/ripgrep.defs.tsv | sort | uniq -c | sort -rn
+      at: 2026-10-12T12:36:16.551464Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cat > $S/census/cmpdefs.py <<'EOF'
+        """Compare compiler definitions (TSV from scipdefs) with grove.db symbols.
+        A def is covered when grove has a symbol in the same file with the same
+        name whose span contains the definition line."""
+        import collections, sqlite3, sys
+        defs_path, db_path = sys.argv[1], sys.argv[2]
+        db = sqlite3.connect(db_path)
+        by = collections.defaultdict(list)
+        for f, n, s, e, k in db.execute("select file_path,name,span_start,span_end,kind from symbols"):
+            by[(f, n)].append((s, e, k))
+        tot, miss = collections.Counter(), collections.Counter()
+        examples = collections.defaultdict(list)
+        seen = set()
+        for line in open(defs_path):
+            f, ln, name, kind, parent, suffix = line.rstrip("\n").split("\t")
+            key = (f, ln, name, kind)
+            if key in seen:
+                continue
+            seen.add(key)
+            ln = int(ln)
+            tot[kind] += 1
+            if not any(s <= ln <= e for s, e, _ in by.get((f, name), [])):
+                miss[kind] += 1
+                if len(examples[kind]) < 6:
+                    examples[kind].append(f"{f}:{ln} {parent}.{name}")
+        print(f"{'kind':16} {'compiler':>8} {'missing':>8}")
+        for k, n in tot.most_common():
+            print(f"{k:16} {n:8} {miss[k]:8}")
+        print(f"{'TOTAL':16} {sum(tot.values()):8} {sum(miss.values()):8}")
+        for k, ex in examples.items():
+            print(f"\n-- {k}:"); [print("  ", x) for x in ex]
+        EOF
+        python3 $S/census/cmpdefs.py $S/census/ripgrep.defs.tsv $S/census/ripgrep/.grove/grove.db
+      at: 2026-10-12T12:36:26.651496Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census && python3 - <<'EOF'
+        import collections, sqlite3
+        db = sqlite3.connect("ripgrep/.grove/grove.db")
+        by = collections.defaultdict(list)
+        for f, n, s, e in db.execute("select file_path,name,span_start,span_end from symbols"):
+            by[(f, n)].append((s, e))
+        src = {}
+        def text(f, ln):
+            if f not in src: src[f] = open("ripgrep/" + f, errors="replace").read().split("\n")
+            return src[f][ln-1].strip()
+        c = collections.Counter(); ex = collections.defaultdict(list)
+        for line in open("ripgrep.defs.tsv"):
+            f, ln, name, kind, parent, suf = line.rstrip("\n").split("\t"); ln = int(ln)
+            if kind not in ("Function", "Field", "Constant", "Module"): continue
+            if any(s <= ln <= e for s, e in by.get((f, name), [])): continue
+            t = text(f, ln)
+            shape = ("macro-arg" if "!(" in t and not t.startswith("fn ") and "fn " not in t.split("!(")[0]
+                     else "fn-line" if "fn " in t else "mod-file" if ln == 1 and kind == "Module"
+                     else "mod-inline" if t.startswith(("mod ", "pub mod")) else "other")
+            c[(kind, shape)] += 1
+            if len(ex[(kind, shape)]) < 4: ex[(kind, shape)].append(f"{f}:{ln} {name} | {t[:90]}")
+        for k, n in c.most_common(): print(n, k); [print("    ", x) for x in ex[k]]
+        EOF
+      at: 2026-10-12T12:36:37.597478Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && grep -n 'compile_commands\|cmake\|bear\|scip-clang' truth_cfamily.go | head -20
+      at: 2026-10-12T12:36:53.921554Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && sed -n 262,300p truth_cfamily.go; command -v cmake
+      at: 2026-10-12T12:36:58.04978Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census && cp -R jansson jansson-c && cd jansson-c && rm -rf .grove && cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 >/dev/null 2>&1 && scip-clang --compdb-path=build/compile_commands.json --index-output-path=$S/census/jansson.scip 2>&1 | tail -2; $S/bin/scipdefs $S/census/jansson.scip > $S/census/jansson.defs.tsv; wc -l < $S/census/jansson.defs.tsv; cut -f4 $S/census/jansson.defs.tsv | sort | uniq -c | sort -rn; head -3 $S/census/jansson.defs.tsv
+      at: 2026-10-12T12:37:08.275276Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census && $S/bin/grove-eval universe --repo jansson-c --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/jansson@684e18c/calls-truth.jsonl.gz | head -1; awk -F'\t' 'BEGIN{OFS="\t"} $6!="Namespace" && $1 !~ /^build\// {$4=$6; print}' jansson.defs.tsv > jansson.defs2.tsv; python3 cmpdefs.py jansson.defs2.tsv jansson-c/.grove/grove.db
+      at: 2026-10-12T12:37:15.002348Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census && sqlite3 jansson-c/.grove/grove.db "select kind,name,span_start from symbols where file_path='src/dump.c' and span_start<35 order by span_start;"; sed -n 26,30p jansson-c/src/dump.c; sed -n 60,63p jansson-c/src/value.c; sed -n 52,56p jansson-c/src/load.c; sed -n 198,201p jansson-c/src/lookup3.h; awk -F'\t' '$6=="Term"' jansson.defs2.tsv | python3 -c "
+        import sys,sqlite3,collections
+        db=sqlite3.connect('jansson-c/.grove/grove.db');by=collections.defaultdict(list)
+        for f,n,s,e in db.execute('select file_path,name,span_start,span_end from symbols'): by[(f,n)].append((s,e))
+        for l in sys.stdin:
+          f,ln,n,k,p,s=l.rstrip().split('\t');ln=int(ln)
+          if not any(a<=ln<=b for a,b in by.get((f,n),[])) and not f.startswith('test/bin'): print(f,ln,p,n)"
+      at: 2026-10-12T12:37:23.745062Z
+      classified: other
+    - cmd: ls ~/.dotnet 2>&1 | head; ls /usr/local/share/dotnet 2>&1 | head -3; ls /Users/tapabratapal/Projects/provasign/grove/eval/cstruth; grep -n 'install-dotnet\|setup-dotnet\|dotnet-version' -A2 /Users/tapabratapal/Projects/provasign/grove/.github/workflows/eval.yml | head
+      at: 2026-10-12T12:37:37.979665Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval/cstruth && cat CsTruth.csproj; wc -l Program.cs; sed -n 1,80p Program.cs
+      at: 2026-10-12T12:37:42.264683Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; mkdir -p $S/csdecls && cd $S/csdecls && cp /Users/tapabratapal/Projects/provasign/grove/eval/cstruth/CsTruth.csproj csdecls.csproj && sed -i '' 's/cstruth</csdecls</; s/CsTruth</CsDecls</' csdecls.csproj && cat > Program.cs <<'EOF'
+        using Microsoft.CodeAnalysis;
+        using Microsoft.CodeAnalysis.CSharp;
+
+        // Lists every source declaration Roslyn binds, as TSV:
+        // file, 1-based line, name, kind, containing symbol name, "".
+        // Parameters, locals, type parameters and namespaces are left out.
+        string root = Path.GetFullPath(args[0]);
+        string Rel(string p) => Path.GetRelativePath(root, p).Replace('\\', '/');
+        var trees = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+            .Where(p => { var r = Rel(p); return !(r.Contains("/obj/") || r.Contains("/bin/") || r.StartsWith("obj/") || r.StartsWith("bin/")); })
+            .OrderBy(p => p, StringComparer.Ordinal)
+            .Select(p => CSharpSyntaxTree.ParseText(File.ReadAllText(p), new CSharpParseOptions(LanguageVersion.Latest), path: p))
+            .ToList();
+        var refs = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")).Split(Path.PathSeparator)
+            .Where(p => p.EndsWith(".dll")).Select(p => (MetadataReference)MetadataReference.CreateFromFile(p)).ToList();
+        var comp = CSharpCompilation.Create("csdecls", trees, refs, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true));
+        var seen = new HashSet<string>();
+        foreach (var tree in trees)
+        {
+            var model = comp.GetSemanticModel(tree);
+            foreach (var node in tree.GetRoot().DescendantNodes())
+            {
+                ISymbol sym;
+                try { sym = model.GetDeclaredSymbol(node); } catch { continue; }
+                if (sym == null) continue;
+                if (sym is IParameterSymbol || sym is ILocalSymbol || sym is ITypeParameterSymbol || sym is INamespaceSymbol || sym is IRangeVariableSymbol || sym is ILabelSymbol) continue;
+                if (sym is IMethodSymbol m && m.MethodKind == MethodKind.AnonymousFunction) continue;
+                int line = node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                string kind = sym is IMethodSymbol mm ? mm.MethodKind.ToString() : sym is INamedTypeSymbol nt ? nt.TypeKind.ToString() : sym.Kind.ToString();
+                string name = sym.Name;
+                if (sym is IMethodSymbol { MethodKind: MethodKind.Constructor or MethodKind.StaticConstructor }) name = sym.ContainingType.Name;
+                string key = $"{Rel(tree.FilePath)}\t{line}\t{name}\t{kind}";
+                if (!seen.Add(key)) continue;
+                Console.WriteLine($"{key}\t{sym.ContainingSymbol?.Name}\t");
+            }
+        }
+        EOF
+        export DOTNET_ROOT=~/.dotnet PATH=~/.dotnet:$PATH DOTNET_CLI_TELEMETRY_OPTOUT=1; dotnet build -c Release -o out 2>&1 | grep -E 'error|Warn|Elapsed' | head; dotnet out/csdecls.dll $S/census/newtonsoft > $S/census/newtonsoft.defs.tsv; wc -l < $S/census/newtonsoft.defs.tsv; cut -f4 $S/census/newtonsoft.defs.tsv | sort | uniq -c | sort -rn
+      at: 2026-10-12T12:38:01.370222Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census && awk -F'\t' '$4!~/^(PropertyGet|PropertySet|EventAdd|EventRemove|Alias)$/' newtonsoft.defs.tsv > newtonsoft.defs2.tsv && python3 cmpdefs.py newtonsoft.defs2.tsv newtonsoft/.grove/grove.db
+      at: 2026-10-12T12:38:07.341374Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census && python3 - <<'EOF'
+        import collections, sqlite3
+        db = sqlite3.connect("newtonsoft/.grove/grove.db")
+        byfile = collections.defaultdict(list)
+        for f, n, s, e, k in db.execute("select file_path,name,span_start,span_end,kind from symbols"):
+            byfile[f].append((s, e, n, k))
+        res = collections.Counter(); ex = collections.defaultdict(list)
+        by = collections.defaultdict(list)
+        for f, n, s, e, k in db.execute("select file_path,name,span_start,span_end,kind from symbols"): by[(f,n)].append((s,e))
+        for l in open("newtonsoft.defs2.tsv"):
+            f, ln, name, kind, parent, _ = l.rstrip("\n").split("\t"); ln = int(ln)
+            if any(s <= ln <= e for s, e in by.get((f, name), [])): continue
+            starts = [(n, k) for s, e, n, k in byfile[f] if s == ln]
+            anon = parent == "" and kind == "Class" or (kind == "Property" and parent == "")
+            cls = "anonymous-type" if anon else ("same-line:" + kind) if starts else ("MISSING:" + kind)
+            res[cls] += 1
+            if len(ex[cls]) < 3: ex[cls].append(f"{f}:{ln} {parent}.{name} grove={starts[:2]}")
+        for k, n in res.most_common(): print(n, k); [print("    ", x) for x in ex[k]]
+        EOF
+      at: 2026-10-12T12:38:17.873369Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/census/newtonsoft/Src; sed -n 276,284p $S/Newtonsoft.Json.Tests/TestFixtureBase.cs; echo ----; sed -n 60,68p $S/Newtonsoft.Json/JsonTextReader.cs; echo ----; sed -n 44,52p $S/Newtonsoft.Json.Tests/Issues/Issue2638.cs
+      at: 2026-10-12T12:38:23.777425Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/census/ripgrep; sqlite3 $S/.grove/grove.db ".schema edges" | head -12; sqlite3 $S/.grove/grove.db "select kind,name,span_start,span_end from symbols where file_path='tests/regression.rs' order by span_start limit 8; select count(*) from symbols where file_path='tests/regression.rs';"; sed -n 1,16p $S/tests/regression.rs
+      at: 2026-10-12T12:38:35.22874Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/census/ripgrep; sqlite3 $S/.grove/grove.db "select s.id from symbols s where file_path='tests/regression.rs';" ; sqlite3 $S/.grove/grove.db "select e.edge_type, count(*) from edges e join symbols s on s.id=e.from_node where s.file_path='tests/regression.rs' group by 1; select count(*) from symbols where name='assert_err'; select e.edge_type,e.source,count(*) from edges e join symbols s on s.id=e.to_node where s.name='assert_err' group by 1,2;"; sed -n 1,40p $S/tests/macros.rs
+      at: 2026-10-12T12:38:40.137101Z
+      classified: other
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/census/ripgrep && grep -rc ''assert_err()'' tests | awk -F: ''{s+=$2} END{print "assert_err call sites in tests/:", s}''; grep -rlE ''^rgtest!'' tests | wc -l'
+      at: 2026-10-12T12:38:47.018494Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/scipdefs && cat > probe_test.go <<'EOF'
+        package main
+
+        import (
+        	"fmt"
+        	"os"
+        	"testing"
+
+        	"github.com/scip-code/scip/bindings/go/scip"
+        	"google.golang.org/protobuf/proto"
+        )
+
+        func TestProbe(t *testing.T) {
+        	raw, _ := os.ReadFile(os.Getenv("SCIP"))
+        	var idx scip.Index
+        	proto.Unmarshal(raw, &idx)
+        	for _, d := range idx.Documents {
+        		if d.RelativePath != "tests/regression.rs" {
+        			continue
+        		}
+        		for _, o := range d.Occurrences {
+        			if o.Range[0] > 16 {
+        				continue
+        			}
+        			fmt.Println(o.Range, o.SymbolRoles, o.EnclosingRange, o.Symbol)
+        		}
+        	}
+        }
+        EOF
+        SCIP=$S/census/ripgrep.scip GOWORK=off go test -run TestProbe -v . 2>&1 | head -40
+      at: 2026-10-12T12:39:16.949152Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && wc -l rust.go native.go javac.go semantic.go util.go && cat rust.go && sed -n 1,140p native.go
+      at: 2026-10-12T12:39:22.825677Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn 'Partial\b\|SkippedLanguages\|\.Partial\[' --include='*.go' internal | grep -v _test | head -30
+      at: 2026-10-12T12:39:50.870979Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 180,300p internal/native/native.go && sed -n 760,900p internal/index/indexer.go && grep -n 'func carriedPartialEdges' -A60 internal/index/*.go | head -80
+      at: 2026-10-12T12:39:53.846793Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -n 'type compilerDecl struct' -A22 javac.go; grep -n 'func compilerDeclaredSymbolsFor' -A90 javac.go
+      at: 2026-10-12T12:40:49.050239Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 740,798p javac.go; grep -n 'func symbolEdge\|func nativeEdge\|func nativeCallEdge' -A15 *.go | head -50; sqlite3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/census/ripgrep/.grove/grove.db "select kind,name,qualified_name,parent_symbol,id from symbols where file_path='tests/util.rs' and name in ('assert_err','TestCommand') ;"
+      at: 2026-10-12T12:40:54.189094Z
+      classified: other
+    - cmd: cat $(GOWORK=off go env GOMODCACHE)/github.com/scip-code/scip/bindings/go/scip@v0.8.1/go.mod 2>/dev/null | head -40; cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'protobuf\|scip' go.mod
+      at: 2026-10-12T12:41:04.534062Z
+      classified: other
+    - cmd: P=$(GOWORK=off go env GOMODCACHE)/github.com/scip-code/scip/bindings/go/scip@v0.8.1; grep -nE 'protobuf:"(bytes|varint|fixed)' $P/scip.pb.go | grep -E 'Documents|RelativePath|Occurrences|Symbols |Range |Symbol |SymbolRoles|EnclosingRange|Kind |EnclosingSymbol' | head -20; grep -nE 'SymbolInformation_(Function|Method|StaticMethod|TraitMethod|Constructor|Struct|Enum|Trait|TypeAlias|Union|Constant|StaticVariable|Field|EnumMember|Module|Macro|AssociatedType|Variable)\s+SymbolInformation_Kind = ' $P/scip.pb.go
+      at: 2026-10-12T12:41:17.030509Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -ln 'rustAnalyzer\|rustSemanticEdges' *_test.go; grep -n 'func Test.*Rust' *_test.go | head; grep -n 'func commandExists' -A12 *.go; grep -n 'func packageDir' -A8 *.go
+      at: 2026-10-12T12:41:21.917643Z
+      classified: other
+    - cmd: sqlite3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/census/ripgrep/.grove/grove.db "select kind,count(*) from symbols group by 1; select from_node,to_node from edges where edge_type='imports' and source='native' limit 2;"; cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'Kind[A-Z][a-zA-Z]* *SymbolKind = \|Kind[A-Z][a-zA-Z]* *= "' internal/core/*.go | head -30; grep -n 'func callableKind\|func typeKind' -A8 internal/native/*.go
+      at: 2026-10-12T12:42:01.886559Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git status --short | head -5; git checkout -q -b feat/rust-analyzer-declared main && git branch --show-current
+      at: 2026-10-12T12:42:06.207065Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && perl -0pi -e 's/"regexp"\n\t"strings"\n\n\t"github.com\/provasign\/grove\/internal\/core"/"regexp"\n\t"slices"\n\t"strings"\n\n\t"github.com\/provasign\/grove\/internal\/core"/' rust.go && perl -0pi -e 's/(\t\tcase "field":\n\t\t\tkind = core.KindField\n)/$1\t\tcase "trait":\n\t\t\tkind = core.KindTrait\n\t\tcase "const":\n\t\t\tkind = core.KindConst\n\t\tcase "variable":\n\t\t\tkind = core.KindVariable\n/' javac.go && grep -n '"trait"' -A5 javac.go && cd ../.. && GOWORK=off GOFLAGS=-mod=mod go get google.golang.org/protobuf@v1.36.11 2>&1 | tail -1; gofmt -l internal/native; GOWORK=off go build ./... && GOWORK=off go vet ./internal/native/
+      at: 2026-10-12T12:43:36.455231Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && perl -ni -e 'print unless /scipKindAssociatedType/' internal/native/rust_scip.go && gofmt -w internal/native/rust_scip.go && GOWORK=off go build ./... && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad && cd eval && GOWORK=off go build -o $S/bin/grove-eval-rs ./cmd/grove-eval && cd $S/census && rm -rf ripgrep/.grove && time $S/bin/grove-eval-rs universe --repo ripgrep --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/ripgrep@82313cf/calls-truth.jsonl.gz 2>&1 | tail -3; python3 cmpdefs.py ripgrep.defs.tsv ripgrep/.grove/grove.db | head -20
+      at: 2026-10-12T12:43:52.938331Z
+      classified: build
+    - cmd: D=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/census/ripgrep/.grove/grove.db; sqlite3 $D "select e.edge_type,e.source,count(*) from edges e join symbols s on s.id=e.to_node where s.qualified_name='TestCommand.assert_err' group by 1,2; select count(*) from symbols where modifiers like '%compiler-declared%'; select kind,count(*) from symbols where modifiers like '%compiler-declared%' group by 1; select e.edge_type,count(*) from edges e join symbols s on s.id=e.from_node where s.modifiers like '%compiler-declared%' group by 1; select name, span_start, span_end, parent_symbol from symbols where file_path='tests/regression.rs' and name in ('r16','r25');"
+      at: 2026-10-12T12:44:01.385355Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/scipdefs && cat > probe_test.go <<'EOF'
+        package main
+
+        import (
+        	"fmt"
+        	"os"
+        	"strings"
+        	"testing"
+
+        	"github.com/scip-code/scip/bindings/go/scip"
+        	"google.golang.org/protobuf/proto"
+        )
+
+        // Distinct enclosing definitions of every reference to assert_err.
+        func TestProbe(t *testing.T) {
+        	raw, _ := os.ReadFile(os.Getenv("SCIP"))
+        	var idx scip.Index
+        	proto.Unmarshal(raw, &idx)
+        	callers := map[string]bool{}
+        	sites := 0
+        	for _, d := range idx.Documents {
+        		type def struct{ s, e int32; sym string }
+        		var defs []def
+        		for _, o := range d.Occurrences {
+        			if o.SymbolRoles&1 != 0 && len(o.EnclosingRange) > 0 && !strings.HasPrefix(o.Symbol, "local") && strings.HasSuffix(o.Symbol, ").") {
+        				e := o.EnclosingRange[len(o.EnclosingRange)-2]
+        				defs = append(defs, def{o.EnclosingRange[0], e, o.Symbol})
+        			}
+        		}
+        		for _, o := range d.Occurrences {
+        			if o.SymbolRoles&1 == 0 && strings.HasSuffix(o.Symbol, "assert_err().") {
+        				sites++
+        				best := def{-1, 1 << 30, "?"}
+        				for _, df := range defs {
+        					if df.s <= o.Range[0] && o.Range[0] <= df.e && df.e-df.s < best.e-best.s {
+        						best = df
+        					}
+        				}
+        				callers[d.RelativePath+" "+best.sym] = true
+        			}
+        		}
+        	}
+        	fmt.Println("sites", sites, "distinct callers", len(callers))
+        }
+        EOF
+        SCIP=$S/census/ripgrep.scip GOWORK=off go test -run TestProbe -v . 2>&1 | grep sites
+      at: 2026-10-12T12:44:12.447976Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 1,40p native_test.go | head -40; grep -n 'func TestJsTSCompilerDeclaredSymbols' -A30 js_ts_decls_test.go | head -45; grep -rn 'parser.Parse\|ParseRepo\|func parseFixture\|astkit' native_test.go | head -5
+      at: 2026-10-12T12:44:24.797149Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 50,110p js_ts_decls_test.go
+      at: 2026-10-12T12:44:27.352827Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && perl -pi -e ''s/\{rng: \[\]int32\{3, 17, 21\}/{rng: []int32{3, 16, 20}/'' internal/native/rust_scip_test.go && gofmt -w internal/native/rust_scip_test.go && GOWORK=off go test -count=1 -run ''Rust'' ./internal/native/ 2>&1 | tail -20'
+      at: 2026-10-12T12:45:27.425988Z
+      classified: test
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go test -count=1 -v -run ''RustAnalyzerPassEndToEnd|RustScip|RustItemMacro'' ./internal/native/ 2>&1 | grep -E ''^(=== RUN|--- |ok|FAIL)|skip'' '
+      at: 2026-10-12T12:45:32.965997Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'ExtractorVersion' -B6 internal/parser/languages.go | head -20
+      at: 2026-10-12T12:45:37.971873Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && perl -0pi -e ''s|// members, functions nested in function bodies, ambient class members\).\nconst ExtractorVersion = "2026-10-12.2"|// members, functions nested in function bodies, ambient class members).\n// 2026-10-12.3: rust-analyzer compiler-declared symbols (items generated by\n// item-level macro invocations) and the calls made from them.\nconst ExtractorVersion = "2026-10-12.3"|'' internal/parser/languages.go && grep -n ''ExtractorVersion = '' internal/parser/languages.go && GOWORK=off go test -count=1 ./... 2>&1 | grep -v ''^ok'' | tail -20; echo "exit=$?"'
+      at: 2026-10-12T12:46:01.592375Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cat $S/ws/go.work; cd /Users/tapabratapal/Projects/provasign/prism && git checkout -q main && git pull -q --ff-only && GOWORK=$S/ws/go.work go build -o $S/bin/prism-rust ./cmd/prism && echo built; rm -rf $S/census/rg-time && cp -R $S/census/ripgrep $S/census/rg-time && rm -rf $S/census/rg-time/.grove; prism --help 2>&1 | grep -iE '^\s+index' | head -3
+      at: 2026-10-12T12:46:10.585183Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; P=$S/bin/prism-rust; $P help 2>&1 | head -30
+      at: 2026-10-12T12:46:14.704767Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; P=$S/bin/prism-rust; cd $S/census/rg-time; for mode in off on off on; do rm -rf .grove; if [ $mode = off ]; then export GROVE_RUST_ANALYZER=0; else unset GROVE_RUST_ANALYZER; fi; /usr/bin/time -p $P index . > /tmp/claude-501/idx.$mode.log 2>&1; echo "$mode exit=$? $(grep real /tmp/claude-501/idx.$mode.log)"; done; grep -i 'rust' /tmp/claude-501/idx.on.log | head; sqlite3 .grove/grove.db "select count(*) from symbols; select count(*) from edges;"
+      at: 2026-10-12T12:46:34.065368Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census && git clone -q --depth 1 https://github.com/tokio-rs/tokio.git tokio && cd tokio && find . -name '*.rs' | wc -l && find . -name '*.rs' | xargs cat | wc -l
+      at: 2026-10-12T12:46:46.082737Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; P=$S/bin/prism-rust; cd $S/census/tokio; for mode in off on on; do rm -rf .grove; if [ $mode = off ]; then export GROVE_RUST_ANALYZER=0; else unset GROVE_RUST_ANALYZER; fi; /usr/bin/time -l $P index . > $S/census/tokio.$mode.log 2>&1; echo "$mode exit=$? $(grep -E 'real|maximum resident' $S/census/tokio.$mode.log | tr '\n' ' ')"; done; grep -E 'rust-analyzer|full pass' $S/census/tokio.on.log | head
+      at: 2026-10-12T12:47:26.88988Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; D=$S/census/tokio/.grove/grove.db; sqlite3 $D "select kind,count(*) from symbols where modifiers like '%compiler-declared%' group by 1; select count(distinct file_path) from symbols where modifiers like '%compiler-declared%'; select count(distinct file_path) from symbols where language='rust'; select file_path, name, span_start, span_end from symbols where modifiers like '%compiler-declared%' order by random() limit 12;"
+      at: 2026-10-12T12:47:37.485872Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; for repo in tokio ripgrep; do D=$S/census/$repo/.grove/grove.db; [ $repo = ripgrep ] && D=$S/census/rg-time/.grove/grove.db; sqlite3 -separator $'\t' $D "select file_path, name, span_start from symbols where modifiers like '%compiler-declared%'" | python3 -c "
+        import sys,re,collections
+        root='$S/census/$repo/'; c=collections.Counter(); src={}
+        for l in sys.stdin:
+            f,n,s=l.rstrip('\n').split('\t'); s=int(s)
+            if f not in src: src[f]=open(root+f,errors='replace').read().split('\n')
+            t=src[f][s-1]
+            verb=re.search(r'\b(fn|struct|enum|trait|type|const|static|union|mod)\s+'+re.escape(n)+r'\b', t) or re.match(r'\s*(pub(\([^)]*\))?\s+)?'+re.escape(n)+r'\s*:', t)
+            c['verbatim' if verb else 'generated']+=1
+        print('$repo', dict(c))"; done
+      at: 2026-10-12T12:47:54.959252Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; for repo in tokio ripgrep; do D=$S/census/$repo/.grove/grove.db; [ $repo = ripgrep ] && D=$S/census/rg-time/.grove/grove.db; sqlite3 -separator $'\t' $D "select file_path, name, span_start, span_end, kind from symbols where modifiers like '%compiler-declared%'" | python3 -c "
+        import sys,re,collections
+        root='$S/census/$repo/'; c=collections.Counter(); src={}; ex=collections.defaultdict(list)
+        for l in sys.stdin:
+            f,n,s,e,k=l.rstrip('\n').split('\t'); s,e=int(s),int(e)
+            if f not in src: src[f]=open(root+f,errors='replace').read().split('\n')
+            body='\n'.join(src[f][s-1:e])
+            verb=re.search(r'\b(fn|struct|enum|trait|type|const|static|union)\s+(r#)?'+re.escape(n)+r'\b', body) or (k=='field' and re.search(r'(^|[\s(,{])(pub(\([^)]*\))?\s+)?'+re.escape(n)+r'\s*:', body))
+            key='verbatim' if verb else 'generated'; c[key]+=1
+            if len(ex[key])<5: ex[key].append(f'{f}:{s} {k} {n}')
+        print('$repo', dict(c)); [print('  ',k,x) for k in ex for x in ex[k]]"; done
+      at: 2026-10-12T12:48:04.620017Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && git status --short | head -3; git branch --show-current; git log --oneline -1; ls; grep -rln 'macro_invocation' --include='*.go' . | head
+      at: 2026-10-12T12:48:16.889652Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && ls strategies | head -40; grep -n 'macro_invocation' strategies/metadata.go | head; grep -rln '"rust"' strategies/*.go | head
+      at: 2026-10-12T12:48:19.920373Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -n 'rust\|Rust' strategies/extractors.go | head -40; wc -l strategies/extractors.go strategies/registry.go engine.go
+      at: 2026-10-12T12:48:22.849579Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && sed -n 2363,2380p strategies/extractors.go; sed -n 2415,2424p strategies/extractors.go; sed -n 2478,2506p strategies/extractors.go; grep -n 'func rustEnumVariants' -A30 strategies/extractors.go
+      at: 2026-10-12T12:48:26.274506Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -n 'tree-sitter\|sitter' go.mod; ls thirdparty; grep -rn 'func (p \*Parser) SetIncludedRanges\|IncludedRanges' $(GOWORK=off go env GOMODCACHE)/github.com/smacker/go-tree-sitter*/bindings.go thirdparty 2>/dev/null | head -5; grep -n 'func rustStructFields' -A30 strategies/extractors.go | head -40
+      at: 2026-10-12T12:48:43.969404Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rn 'rust"$\|/rust"\|rust.GetLanguage\|NewParser()' --include='*.go' . | grep -v _test | head; sed -n 2619,2660p strategies/extractors.go
+      at: 2026-10-12T12:48:51.702977Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && sed -n 2660,2700p strategies/extractors.go; sed -n 50,75p engine.go
+      at: 2026-10-12T12:49:15.2812Z
+      classified: other
+    - cmd: ls -d ~/.vscode/extensions/rust-lang.rust-analyzer-*/server/rust-analyzer ~/.cursor/extensions/rust-lang.rust-analyzer-*/server/rust-analyzer 2>/dev/null; ls ~/.vscode/extensions 2>/dev/null | grep -i rust
+      at: 2026-10-12T12:49:27.827919Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn 'func fileExists' internal/native/ ; perl -0pi -e 's/"regexp"\n\t"slices"/"regexp"\n\t"runtime"\n\t"slices"/' internal/native/rust_scip.go && gofmt -l internal/native; GOWORK=off go build ./... && GOWORK=off go vet ./internal/native && echo ok
+      at: 2026-10-12T12:49:40.867242Z
+      classified: lint
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/astkit && git checkout -q -b feat/rust-macro-items main && grep -n '^import\\|^\t\"\\|^\tsitter\\|^)' strategies/extractors.go | head -20"
+      at: 2026-10-12T12:49:44.24064Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/extractors.go"
+        s = open(p).read()
+        s = s.replace('''	sitter "github.com/smacker/go-tree-sitter"
+        ''', '''	sitter "github.com/smacker/go-tree-sitter"
+        	"github.com/smacker/go-tree-sitter/rust"
+        ''', 1)
+        old = '''			rustNamedItem(n, astkit.KindEnum, filePath, blobSHA, src, imports, out)
+        			rustEnumVariants(n, src, out)
+        '''
+        new = '''			rustNamedItem(n, astkit.KindEnum, filePath, blobSHA, src, imports, out)
+        			rustEnumVariants(n, src, out)
+        			// Struct-like variants (`Clear { name: String }`) declare fields
+        			// like a struct does; tuple variants' positions are not names.
+        			if body := n.ChildByFieldName("body"); body != nil {
+        				for j := 0; j < int(body.NamedChildCount()); j++ {
+        					if v := body.NamedChild(j); v != nil && v.Type() == "enum_variant" &&
+        						internalast.FindChildByType(v, "field_declaration_list") != nil {
+        						rustStructFields(v, filePath, blobSHA, src, imports, out)
+        					}
+        				}
+        			}
+        		case "macro_invocation":
+        			rustMacroItems(n, filePath, blobSHA, src, imports, implType, implBounds, implTrait, out)
+        '''
+        assert old in s
+        s = s.replace(old, new, 1)
+        anchor = "// rustScopeQualify prefixes a symbol found inside a module or function body"
+        helper = '''// rustMacroItems indexes the items written out inside an item-level macro
+        // invocation: `cfg_rt! { pub fn spawn(...) {...} }`, `pin_project! { pub
+        // struct Framed {...} }`. tree-sitter leaves a macro's body as an unparsed
+        // token tree, so tokio's cfg-gated API had no symbols at all. The body is
+        // re-parsed as Rust over its own byte range (positions stay those of the
+        // file) and visited like any item list; nested wrappers recurse on a
+        // strictly smaller range. Only brace bodies outside function bodies are
+        // read, and not macro_rules templates ($x): a call-like `m!(a, b)` is
+        // arguments, not items, and a name a macro generates (`rgtest!(r16, ..)`
+        // -> fn r16) is the compiler's to report.
+        func rustMacroItems(n *sitter.Node, filePath, blobSHA string, src []byte, imports []string, implType string, implBounds []string, implTrait string, out *[]astkit.Symbol) {
+        	tt := internalast.FindChildByType(n, "token_tree")
+        	if tt == nil || tt.EndByte()-tt.StartByte() < 2 || src[tt.StartByte()] != '{' || src[tt.EndByte()-1] != '}' {
+        		return
+        	}
+        	for p := n.Parent(); p != nil; p = p.Parent() {
+        		switch p.Type() {
+        		case "function_item", "closure_expression", "macro_definition":
+        			return
+        		}
+        	}
+        	inner := src[tt.StartByte()+1 : tt.EndByte()-1]
+        	if strings.IndexByte(string(inner), '$') >= 0 || len(strings.TrimSpace(string(inner))) == 0 {
+        		return
+        	}
+        	start, end := tt.StartPoint(), tt.EndPoint()
+        	start.Column++
+        	end.Column--
+        	p := sitter.NewParser()
+        	defer p.Close()
+        	p.SetLanguage(rust.GetLanguage())
+        	p.SetIncludedRanges([]sitter.Range{{StartPoint: start, EndPoint: end, StartByte: tt.StartByte() + 1, EndByte: tt.EndByte() - 1}})
+        	tree, err := p.ParseCtx(context.Background(), nil, src)
+        	if err != nil || tree == nil {
+        		return
+        	}
+        	defer tree.Close()
+        	rustVisit(tree.RootNode(), filePath, blobSHA, src, imports, implType, implBounds, implTrait, out)
+        }
+
+        '''
+        assert anchor in s
+        s = s.replace(anchor, helper + anchor, 1)
+        open(p, "w").write(s)
+        EOF
+        gofmt -l strategies; GOWORK=off go build ./... && echo built
+      at: 2026-10-12T12:49:58.570802Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && sed -n 1,45p strategies/rust_decl_test.go
+      at: 2026-10-12T12:50:05.3943Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && git log -L '/func TestRustEnumVariantsAreMembers/,+12:strategies/rust_decl_test.go' --format='%h %ad %s' --date=short 2>/dev/null | grep -E '^[0-9a-f]{7} ' | head; git log --format='%h %s%n%b' -S 'variant field indexed' | head -30
+      at: 2026-10-12T12:50:11.039487Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/extractors.go"
+        s = open(p).read()
+        old = '''			// Struct-like variants (`Clear { name: String }`) declare fields
+        			// like a struct does; tuple variants' positions are not names.
+        			if body := n.ChildByFieldName("body"); body != nil {
+        				for j := 0; j < int(body.NamedChildCount()); j++ {
+        					if v := body.NamedChild(j); v != nil && v.Type() == "enum_variant" &&
+        						internalast.FindChildByType(v, "field_declaration_list") != nil {
+        						rustStructFields(v, filePath, blobSHA, src, imports, out)
+        					}
+        				}
+        			}
+        '''
+        assert old in s
+        s = s.replace(old, "", 1)
+        open(p, "w").write(s)
+        EOF
+        git diff --stat
+      at: 2026-10-12T12:50:22.334573Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'inParsedBody := func' -B10 -A8 internal/native/rust_scip.go | head -30; grep -n 'if kind == "" || name == "" || inParsedBody' internal/native/rust_scip.go
+      at: 2026-10-12T12:50:29.149595Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust_scip.go"
+        s = open(p).read()
+        old = '''	bodies := map[string][]core.SymbolRecord{}
+        	for _, s := range req.Symbols {
+        		if s.Language == "rust" && callableKind(s.Kind) && !slices.Contains(s.Modifiers, "compiler-declared") {
+        			bodies[s.FilePath] = append(bodies[s.FilePath], s)
+        		}
+        	}
+        '''
+        new = '''	bodies := map[string][]core.SymbolRecord{}
+        	enums := map[string][]core.SymbolRecord{}
+        	for _, s := range req.Symbols {
+        		if s.Language != "rust" || slices.Contains(s.Modifiers, "compiler-declared") {
+        			continue
+        		}
+        		if callableKind(s.Kind) {
+        			bodies[s.FilePath] = append(bodies[s.FilePath], s)
+        		}
+        		if s.Kind == core.KindEnum {
+        			enums[s.FilePath] = append(enums[s.FilePath], s)
+        		}
+        	}
+        	// The parser indexes enum variants but not a struct-like variant's
+        	// fields (astkit, 2026-09-26); declaring them only when rust-analyzer
+        	// is installed would make the graph depend on the machine.
+        	inParsedEnum := func(file string, line int) bool {
+        		for _, s := range enums[file] {
+        			if s.Span.Start <= line && line <= s.Span.End {
+        				return true
+        			}
+        		}
+        		return false
+        	}
+        '''
+        assert old in s; s = s.replace(old, new, 1)
+        old2 = 'if kind == "" || name == "" || inParsedBody(doc.Path, o.Line+1) {'
+        s = s.replace(old2, 'if kind == "" || name == "" || inParsedBody(doc.Path, o.Line+1) || inParsedEnum(doc.Path, o.Line+1) {', 1)
+        open(p, "w").write(s)
+        EOF
+        gofmt -l internal/native; GOWORK=off go test -count=1 -run Rust ./internal/native/ 2>&1 | tail -3
+      at: 2026-10-12T12:50:39.554937Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && cat >> strategies/rust_decl_test.go <<'EOF'
+
+        func TestRustItemMacroBodiesAreIndexed(t *testing.T) {
+        	src := `cfg_rt! {
+            pub fn spawn(task: Task) -> Handle {
+                start(task)
+            }
+            cfg_net! {
+                pub struct TcpStream { fd: i32 }
+            }
+        }
+        pub struct Runtime;
+        impl Runtime {
+            cfg_rt! {
+                pub fn block_on(&self) {}
+            }
+        }
+        macro_rules! cfg_rt {
+            ($($item:item)*) => { $($item)* };
+        }
+        rgtest!(r16, |dir: Dir| {
+            dir.create("x");
+        });
+        fn body() {
+            helper! { struct Hidden; }
+        }
+        `
+        	syms, _ := extract(t, astkit.LangRust, src)
+        	gprWantDecls(t, syms, map[string]astkit.SymbolKind{
+        		"spawn": astkit.KindFunction, "TcpStream": astkit.KindStruct,
+        		"Runtime.block_on": astkit.KindMethod,
+        	})
+        	for _, s := range syms {
+        		switch s.Name {
+        		case "spawn":
+        			if s.Span.StartLine != 2 || s.Span.EndLine != 4 || len(s.CallSites) == 0 {
+        				t.Errorf("spawn keeps its file position and its calls: %+v", s)
+        			}
+        		case "fd":
+        			if s.ParentName != "TcpStream" || s.Span.StartLine != 6 {
+        				t.Errorf("nested wrapper field: %+v", s)
+        			}
+        		case "r16", "Hidden", "item":
+        			t.Errorf("not an item written in a brace body at item level: %+v", s)
+        		}
+        	}
+        }
+        EOF
+        GOWORK=off go test -count=1 -run 'TestRust' ./strategies/ 2>&1 | tail -20
+      at: 2026-10-12T12:50:47.664371Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -n 'type LineRange' -A4 symbol.go; perl -pi -e 's/s\.Span\.StartLine/s.Span.Start/g; s/s\.Span\.EndLine/s.Span.End/g' strategies/rust_decl_test.go && GOWORK=off go test -count=1 -run 'TestRust' ./strategies/ 2>&1 | tail -20
+      at: 2026-10-12T12:50:51.833532Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && GOWORK=off go test -count=1 ./... 2>&1 | grep -v '^ok' | tail; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-rust2 ./cmd/prism && echo built
+      at: 2026-10-12T12:51:01.18877Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; P=$S/bin/prism-rust2; cd $S/census/tokio; for mode in off on; do rm -rf .grove; if [ $mode = off ]; then export GROVE_RUST_ANALYZER=0; else unset GROVE_RUST_ANALYZER; fi; /usr/bin/time -p $P index . > $S/census/tokio2.$mode.log 2>&1; echo "$mode $(grep real $S/census/tokio2.$mode.log) symbols=$(sqlite3 .grove/grove.db 'select count(*) from symbols') declared=$(sqlite3 .grove/grove.db "select count(*) from symbols where modifiers like '%compiler-declared%'") files_with_declared=$(sqlite3 .grove/grove.db "select count(distinct file_path) from symbols where modifiers like '%compiler-declared%'")"; done; grep rust-analyzer $S/census/tokio2.on.log
+      at: 2026-10-12T12:51:24.963623Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; D=$S/census/tokio/.grove/grove.db; sqlite3 -separator $'\t' $D "select file_path, name, span_start, span_end, kind from symbols where modifiers like '%compiler-declared%'" | python3 -c "
+        import sys,re,collections
+        root='$S/census/tokio/'; c=collections.Counter(); src={}; ex=collections.defaultdict(list)
+        for l in sys.stdin:
+            f,n,s,e,k=l.rstrip('\n').split('\t'); s,e=int(s),int(e)
+            if f not in src: src[f]=open(root+f,errors='replace').read().split('\n')
+            body='\n'.join(src[f][s-1:e]); first=src[f][s-1].strip()
+            m=re.match(r'([A-Za-z_][\w:]*)!\s*([({\[])', first)
+            verb=re.search(r'\b(fn|struct|enum|trait|type|const|static|union)\s+(r#)?'+re.escape(n)+r'\b', body)
+            key=('verbatim' if verb else 'generated')+' via '+(m.group(1)+m.group(2) if m else first[:25])
+            c[key]+=1
+            if len(ex[key])<2: ex[key].append(f'{f}:{s} {k} {n}')
+        for k,v in c.most_common(14): print(v,k, ex[k])"
+      at: 2026-10-12T12:51:34.038656Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/extractors.go"
+        s = open(p).read()
+        old = '''	inner := src[tt.StartByte()+1 : tt.EndByte()-1]
+        	if strings.IndexByte(string(inner), '$') >= 0 || len(strings.TrimSpace(string(inner))) == 0 {
+        		return
+        	}
+        '''
+        new = '''	if len(strings.TrimSpace(string(src[tt.StartByte()+1:tt.EndByte()-1]))) == 0 {
+        		return
+        	}
+        '''
+        assert old in s; s = s.replace(old, new, 1)
+        s = s.replace('''// strictly smaller range. Only brace bodies outside function bodies are
+        // read, and not macro_rules templates ($x): a call-like `m!(a, b)` is
+        // arguments, not items, and a name a macro generates (`rgtest!(r16, ..)`
+        // -> fn r16) is the compiler's to report.''', '''// strictly smaller range. Only brace bodies outside function bodies and
+        // macro_rules templates are read: a call-like `m!(a, b)` is arguments, not
+        // items, and a name a macro generates (`rgtest!(r16, ..)` -> fn r16) is the
+        // compiler's to report.''', 1)
+        open(p, "w").write(s)
+        EOF
+        cat >> strategies/rust_decl_test.go <<'EOF'
+
+        // A wrapper body that defines a helper macro_rules (tokio's AsyncReadExt)
+        // still declares its items.
+        func TestRustItemMacroBodyWithHelperMacro(t *testing.T) {
+        	src := `cfg_io_util! {
+            macro_rules! read_impl {
+                ($name:ident) => { fn $name(&mut self) {} };
+            }
+            pub trait AsyncReadExt {
+                fn read(&mut self) {}
+            }
+        }
+        `
+        	syms, _ := extract(t, astkit.LangRust, src)
+        	gprWantDecls(t, syms, map[string]astkit.SymbolKind{
+        		"AsyncReadExt": astkit.KindTrait, "AsyncReadExt.read": astkit.KindMethod, "read_impl": astkit.KindMacro,
+        	})
+        }
+        EOF
+        gofmt -l strategies; GOWORK=off go test -count=1 ./... 2>&1 | grep -v '^ok' | tail
+      at: 2026-10-12T12:51:49.236065Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-rust3 ./cmd/prism && P=$S/bin/prism-rust3; for repo in tokio rg-time; do cd $S/census/$repo; for mode in off on; do rm -rf .grove; if [ $mode = off ]; then export GROVE_RUST_ANALYZER=0; else unset GROVE_RUST_ANALYZER; fi; /usr/bin/time -p $P index . > $S/census/$repo.3.$mode.log 2>&1; echo "$repo $mode $(grep real $S/census/$repo.3.$mode.log) symbols=$(sqlite3 .grove/grove.db 'select count(*) from symbols') edges=$(sqlite3 .grove/grove.db 'select count(*) from edges') declared=$(sqlite3 .grove/grove.db "select count(*) from symbols where modifiers like '%compiler-declared%'") files=$(sqlite3 .grove/grove.db "select count(distinct file_path) from symbols where modifiers like '%compiler-declared%'")"; done; done
+      at: 2026-10-12T12:52:22.945602Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; for repo in tokio rg-time; do cd $S/census/$repo; rm -rf .grove; /usr/bin/time -p prism index . > $S/census/$repo.base.log 2>&1; echo "$repo base $(grep real $S/census/$repo.base.log) symbols=$(sqlite3 .grove/grove.db 'select count(*) from symbols') edges=$(sqlite3 .grove/grove.db 'select count(*) from edges')"; done
+      at: 2026-10-12T12:52:33.550278Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census/tokio; export GROVE_RUST_ANALYZER=0; for b in prism $S/bin/prism-rust3 prism $S/bin/prism-rust3; do rm -rf .grove; /usr/bin/time -p $b index . 2>&1 >/dev/null | grep real | tr '\n' ' '; echo $(basename $b); done; rm -rf .grove; $S/bin/prism-rust3 index . --json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print({k:v for k,v in d.items() if 'tim' in k.lower() or 'phase' in k.lower()})" 2>&1 | head -5
+      at: 2026-10-12T12:52:58.741883Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -n '^func extract\b\|^func extract(' strategies/*_test.go | head -2; grep -n 'func.*Extract\w*(' engine.go strategies/registry.go | head -5
+      at: 2026-10-12T12:53:05.420651Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && sed -n 14,30p strategies/strategies_test.go
+      at: 2026-10-12T12:53:07.79468Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && cat > strategies/zz_tokio_timing_test.go <<'EOF'
+        package strategies_test
+
+        import (
+        	"context"
+        	"os"
+        	"path/filepath"
+        	"strings"
+        	"testing"
+        	"time"
+
+        	"github.com/provasign/astkit"
+        	"github.com/provasign/astkit/strategies"
+        )
+
+        func TestZZTokioExtractTiming(t *testing.T) {
+        	root := os.Getenv("TOKIO_ROOT")
+        	if root == "" {
+        		t.Skip()
+        	}
+        	eng := astkit.NewEngine()
+        	reg := strategies.Default()
+        	var parse, ext time.Duration
+        	n := 0
+        	filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+        		if err != nil || !strings.HasSuffix(p, ".rs") || strings.Contains(p, "/.grove/") {
+        			return nil
+        		}
+        		src, _ := os.ReadFile(p)
+        		a := time.Now()
+        		tree, _ := eng.Parse(context.Background(), astkit.LangRust, src)
+        		b := time.Now()
+        		syms, _ := reg.Extract(astkit.LangRust, tree, src)
+        		ext += time.Since(b)
+        		parse += b.Sub(a)
+        		n += len(syms)
+        		tree.Close()
+        		return nil
+        	})
+        	t.Logf("parse %v extract %v symbols %d", parse, ext, n)
+        }
+        EOF
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; for i in 1 2; do TOKIO_ROOT=$S/census/tokio GOWORK=off go test -count=1 -v -run ZZTokio ./strategies/ 2>&1 | grep 'parse '; done; git stash push -q strategies/extractors.go && TOKIO_ROOT=$S/census/tokio GOWORK=off go test -count=1 -v -run ZZTokio ./strategies/ 2>&1 | grep 'parse '; git stash pop -q && git diff --stat strategies/extractors.go
+      at: 2026-10-12T12:53:22.111595Z
+      classified: test
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/astkit && rm strategies/zz_tokio_timing_test.go; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; P=$S/bin/prism-rust3; unset GROVE_RUST_ANALYZER; cd $S/census/rg-time && git checkout -q . && q() { sqlite3 .grove/grove.db "select count(*) from edges e join symbols s on s.id=e.to_node where s.qualified_name=''TestCommand.assert_err'' and e.edge_type=''calls''"; }; cnt() { echo "symbols=$(sqlite3 .grove/grove.db ''select count(*) from symbols'') edges=$(sqlite3 .grove/grove.db ''select count(*) from edges'') declared=$(sqlite3 .grove/grove.db "select count(*) from symbols where modifiers like ''%compiler-declared%''") assert_err_callers=$(q)"; }; rm -rf .grove; $P index . >/dev/null 2>&1; echo "cold1 $(cnt)"; rm -rf .grove; $P index . > $S/census/rg.cold2.log 2>&1; echo "cold2 $(cnt)"; perl -0pi -e ''s/(pub fn assert_err\(&mut self\) \{)/$1\n        let _unused = 1;/'' tests/util.rs; /usr/bin/time -p $P index . > $S/census/rg.inc1.log 2>&1; echo "edit util.rs $(grep real $S/census/rg.inc1.log) $(cnt)"; grep -E ''rust: (incremental|full) pass|rust-analyzer'' $S/census/rg.inc1.log; perl -0pi -e ''s/(rgtest!\(r16, \|dir: Dir, mut cmd: TestCommand\| \{\n)/$1    dir.create_dir("extra");\n/'' tests/regression.rs; /usr/bin/time -p $P index . > $S/census/rg.inc2.log 2>&1; echo "edit regression.rs $(grep real $S/census/rg.inc2.log) $(cnt)"; grep -E ''rust: (incremental|full) pass|rust-analyzer'' $S/census/rg.inc2.log; git checkout -q .; /usr/bin/time -p $P index . > $S/census/rg.inc3.log 2>&1; echo "revert both $(grep real $S/census/rg.inc3.log) $(cnt)"'
+      at: 2026-10-12T12:53:55.53428Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'analyzedDirs' internal/graph/*.go | grep -v _test | head; grep -n 'func BuildEdgesDeltaMeta' -A5 internal/graph/*.go | head
+      at: 2026-10-12T12:54:23.234703Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'nativeAnalyzedDirs' -B3 -A12 internal/graph/incremental.go | sed -n 1,80p
+      at: 2026-10-12T12:54:26.309199Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust_scip.go"
+        s = open(p).read()
+        old = '''	declaredFiles := map[string]bool{}
+        	for _, s := range req.Symbols {
+        		if s.Language == "rust" && slices.Contains(s.Modifiers, "compiler-declared") {
+        			declaredFiles[s.FilePath] = true
+        		}
+        	}
+        	if len(req.ChangedFiles) == 0 {
+        		return len(macroFiles) > 0, nil
+        	}
+        	for _, file := range req.ChangedFiles {
+        		if macroFiles[file] || declaredFiles[file] {
+        			return true, nil
+        		}
+        	}
+        	if len(declaredFiles) == 0 {
+        		return false, nil // nothing rust-analyzer produced to carry
+        	}
+        '''
+        new = '''	// The indexer carries stored native edges per dir (Result.Partial), so
+        	// an edit anywhere in a dir holding compiler-declared symbols would drop
+        	// their rust-analyzer edges unless the pass re-runs.
+        	declaredDirs := map[string]bool{}
+        	for _, s := range req.Symbols {
+        		if s.Language == "rust" && slices.Contains(s.Modifiers, "compiler-declared") {
+        			declaredDirs[packageDir(s.FilePath)] = true
+        		}
+        	}
+        	if len(req.ChangedFiles) == 0 {
+        		return len(macroFiles) > 0, nil
+        	}
+        	for _, file := range req.ChangedFiles {
+        		if macroFiles[file] || declaredDirs[packageDir(file)] {
+        			return true, nil
+        		}
+        	}
+        	if len(declaredDirs) == 0 {
+        		return false, nil // nothing rust-analyzer produced to carry
+        	}
+        '''
+        assert old in s; s = s.replace(old, new, 1)
+        open(p, "w").write(s)
+        p = "internal/native/rust_scip_test.go"
+        s = open(p).read()
+        old = '''		{name: "plain edit carries the rest", changed: []string{"src/util.rs"}, symbols: []core.SymbolRecord{declared}, macros: macros, wantPartial: []string{"src"}},'''
+        new = '''		{name: "plain edit carries the rest", changed: []string{"src/util.rs"}, symbols: []core.SymbolRecord{declared}, macros: macros, wantPartial: []string{"src"}},
+        		{name: "plain edit beside compiler-declared symbols", changed: []string{"tests/util.rs"}, symbols: []core.SymbolRecord{declared}, macros: macros, wantRun: true},'''
+        assert old in s; s = s.replace(old, new, 1)
+        open(p, "w").write(s)
+        EOF
+        GOWORK=off go test -count=1 -run Rust ./internal/native/ 2>&1 | tail -3
+      at: 2026-10-12T12:54:41.625984Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-rust4 ./cmd/prism && P=$S/bin/prism-rust4; unset GROVE_RUST_ANALYZER; cd $S/census/rg-time && git checkout -q . && sqlite3 .grove/grove.db "select distinct file_path from symbols where modifiers like '%compiler-declared%'" | xargs -n1 dirname | sort -u | tr '\n' ' '; echo; q() { sqlite3 .grove/grove.db "select count(*) from edges e join symbols s on s.id=e.to_node where s.qualified_name='TestCommand.assert_err' and e.edge_type='calls'"; }; cnt() { echo "symbols=$(sqlite3 .grove/grove.db 'select count(*) from symbols') edges=$(sqlite3 .grove/grove.db 'select count(*) from edges') declared=$(sqlite3 .grove/grove.db "select count(*) from symbols where modifiers like '%compiler-declared%'") assert_err_callers=$(q)"; }; rm -rf .grove; $P index . >/dev/null 2>&1; echo "cold $(cnt)"; step() { /usr/bin/time -p $P index . > $S/census/rg.step.log 2>&1; echo "$1 $(grep real $S/census/rg.step.log) $(cnt) $(grep -c 'rust-analyzer declared' $S/census/rg.step.log) ra-run"; }; perl -0pi -e 's/(pub fn assert_err\(&mut self\) \{)/$1\n        let _unused = 1;/' tests/util.rs; step "edit tests/util.rs"; perl -0pi -e 's/(pub fn new\(\) -> SearcherBuilder \{)/$1\n        let _unused = 1;/' crates/searcher/src/searcher/mod.rs; step "edit searcher/mod.rs"; git checkout -q crates; step "revert searcher"; git checkout -q .; step "revert util"; rm -rf .grove; $P index . >/dev/null 2>&1; echo "cold-after $(cnt)"
+      at: 2026-10-12T12:55:11.397222Z
+      classified: build
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census/tokio && rm -rf .grove && unset GROVE_RUST_ANALYZER && $S/bin/prism-rust4 index . >/dev/null 2>&1; sqlite3 .grove/grove.db "select distinct file_path from symbols where modifiers like ''%compiler-declared%''" | xargs -n1 dirname | sort -u > $S/census/tokio.dirs; wc -l < $S/census/tokio.dirs; total=$(sqlite3 .grove/grove.db "select count(distinct file_path) from symbols where language=''rust''"); hit=$(sqlite3 .grove/grove.db "select distinct file_path from symbols where language=''rust''" | while read f; do d=$(dirname $f); grep -qx "$d" $S/census/tokio.dirs && echo $f; done | wc -l); echo "files whose edit re-runs rust-analyzer: $hit of $total"; sqlite3 .grove/grove.db "select distinct file_path from symbols where language=''rust''" | while read f; do d=$(dirname $f); grep -qx "$d" $S/census/tokio.dirs && echo $f; done | grep -c ''/src/'''
+      at: 2026-10-12T12:55:42.565973Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 344,380p internal/graph/incremental.go; grep -n 'func fileDirOfNode' -A15 internal/graph/*.go; grep -rn 'nativeResult.Partial\|\.Partial)' internal/index/*.go | grep -v _test
+      at: 2026-10-12T12:55:51.617848Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn 'NativeAnalyzedDirs' --include='*.go' internal | grep -v _test
+      at: 2026-10-12T12:55:54.278312Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 120,185p internal/index/indexer.go
+      at: 2026-10-12T12:55:56.831116Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'func CurrentNativeEdges' -A30 internal/graph/*.go | head -40
+      at: 2026-10-12T12:56:18.44029Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'func rustScipNeeded' -B3 internal/native/rust_scip.go | head -3; grep -n '^func \|^// rustEdgesInDirs' internal/native/rust_scip.go
+      at: 2026-10-12T12:56:50.086362Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust_scip.go"
+        s = open(p).read()
+        old_hdr = s[s.index("// It runs only where it can matter"):s.index("// rustAnalyzerBin locates")]
+        s = s.replace(old_hdr, '''// It runs only where it can matter — some Rust file has a macro invocation
+        // at item level. On an incremental re-index it runs again only when an
+        // edited file has one or holds compiler-declared symbols; any other edit
+        // reuses the edits of the last run (rustScipCache) instead of paying for a
+        // whole-workspace analysis (tokio: ~11s) on every save.
+
+        ''', 1)
+        start = s.index("// rustScipNeeded decides whether")
+        end = s.index("// runRustAnalyzerScip runs")
+        s = s[:start] + '''// rustScipNeeded decides whether this run invokes rust-analyzer. When it
+        // does not, the edges of the last run come from rustScipCache.
+        func rustScipNeeded(req Request, macroFiles map[string]bool) bool {
+        	if len(req.ChangedFiles) == 0 {
+        		return len(macroFiles) > 0
+        	}
+        	declared := map[string]bool{}
+        	for _, s := range req.Symbols {
+        		if s.Language == "rust" && slices.Contains(s.Modifiers, "compiler-declared") {
+        			declared[s.FilePath] = true
+        		}
+        	}
+        	for _, file := range req.ChangedFiles {
+        		if macroFiles[file] || declared[file] {
+        			return true
+        		}
+        	}
+        	return false
+        }
+
+        // rustHasDeclared reports whether the index holds compiler-declared Rust
+        // symbols, i.e. whether a previous run's rust-analyzer edges must be kept.
+        func rustHasDeclared(symbols []core.SymbolRecord) bool {
+        	for _, s := range symbols {
+        		if s.Language == "rust" && slices.Contains(s.Modifiers, "compiler-declared") {
+        			return true
+        		}
+        	}
+        	return false
+        }
+
+        // rustCachedEdge names an edge's endpoints by file, qualified name, kind and
+        // line rather than by ID: IDs embed the file's blob SHA and change on every
+        // edit, so the endpoint in an edited file is found again by name.
+        type rustCachedEdge struct {
+        	FromFile string `json:"ff"`
+        	FromName string `json:"fq"`
+        	FromKind string `json:"fk"`
+        	FromLine int    `json:"fl"`
+        	ToFile   string `json:"tf"`
+        	ToName   string `json:"tq"`
+        	ToKind   string `json:"tk"`
+        	ToLine   int    `json:"tl"`
+        	Type     string `json:"t"`
+        }
+
+        type rustScipCacheFile struct {
+        	Version string           `json:"version"`
+        	Edges   []rustCachedEdge `json:"edges"`
+        }
+
+        const rustScipCacheVersion = "1"
+
+        func rustScipCachePath(root string) string {
+        	return filepath.Join(rustAnalyzerTargetDir(root), "grove-edges.json")
+        }
+
+        // saveRustScipCache records the edges of a rust-analyzer run.
+        func saveRustScipCache(root string, symbols []core.SymbolRecord, edges []core.Edge) error {
+        	byID := make(map[string]*core.SymbolRecord, len(symbols))
+        	for i := range symbols {
+        		byID[symbols[i].ID] = &symbols[i]
+        	}
+        	file := rustScipCacheFile{Version: rustScipCacheVersion}
+        	for _, e := range edges {
+        		from, to := byID[e.From], byID[e.To]
+        		if from == nil || to == nil {
+        			continue
+        		}
+        		file.Edges = append(file.Edges, rustCachedEdge{
+        			FromFile: from.FilePath, FromName: from.QualifiedName, FromKind: string(from.Kind), FromLine: from.Span.Start,
+        			ToFile: to.FilePath, ToName: to.QualifiedName, ToKind: string(to.Kind), ToLine: to.Span.Start,
+        			Type: string(e.Type),
+        		})
+        	}
+        	data, err := json.Marshal(file)
+        	if err != nil {
+        		return err
+        	}
+        	path := rustScipCachePath(root)
+        	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+        		return err
+        	}
+        	tmp := path + ".tmp"
+        	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+        		return err
+        	}
+        	return os.Rename(tmp, path)
+        }
+
+        // loadRustScipCache returns the last run's edges re-resolved against the
+        // current symbols. An endpoint that no longer exists drops its edge; the
+        // caller must still be a compiler-declared symbol. ok is false when there is
+        // no usable cache (the caller then runs rust-analyzer).
+        func loadRustScipCache(root string, symbols []core.SymbolRecord) ([]core.Edge, bool) {
+        	data, err := osReadFile(rustScipCachePath(root))
+        	if err != nil {
+        		return nil, false
+        	}
+        	var file rustScipCacheFile
+        	if json.Unmarshal(data, &file) != nil || file.Version != rustScipCacheVersion {
+        		return nil, false
+        	}
+        	byName := map[string][]*core.SymbolRecord{}
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language == "rust" {
+        			key := s.FilePath + "\\x00" + s.QualifiedName + "\\x00" + string(s.Kind)
+        			byName[key] = append(byName[key], s)
+        		}
+        	}
+        	// Several symbols can share a qualified name in one file (two trait
+        	// impls' fmt); the one nearest the recorded line is the same declaration.
+        	find := func(file, name, kind string, line int) *core.SymbolRecord {
+        		var best *core.SymbolRecord
+        		for _, s := range byName[file+"\\x00"+name+"\\x00"+kind] {
+        			if best == nil || abs(s.Span.Start-line) < abs(best.Span.Start-line) {
+        				best = s
+        			}
+        		}
+        		return best
+        	}
+        	var edges []core.Edge
+        	for _, c := range file.Edges {
+        		from := find(c.FromFile, c.FromName, c.FromKind, c.FromLine)
+        		to := find(c.ToFile, c.ToName, c.ToKind, c.ToLine)
+        		if from == nil || to == nil || !slices.Contains(from.Modifiers, "compiler-declared") {
+        			continue
+        		}
+        		edges = append(edges, symbolEdge(*from, *to, core.EdgeType(c.Type), 0.98))
+        	}
+        	return edges, true
+        }
+
+        func abs(n int) int {
+        	if n < 0 {
+        		return -n
+        	}
+        	return n
+        }
+
+        ''' + s[end:]
+        # drop rustEdgesInDirs
+        i = s.index("// rustEdgesInDirs keeps the edges")
+        s = s[:i].rstrip() + "\n"
+        s = s.replace('"crypto/sha256"\n\t"encoding/hex"\n', '"crypto/sha256"\n\t"encoding/hex"\n\t"encoding/json"\n', 1)
+        open(p, "w").write(s)
+        EOF
+        grep -n 'func abs\b\|func abs(' internal/native/*.go
+      at: 2026-10-12T12:57:18.099095Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust.go"
+        s = open(p).read()
+        start = s.index("	run, partial := rustScipNeeded(")
+        end = s.index("	res.Edges = edges\n	return res\n}")
+        s = s[:start] + '''	run := rustScipNeeded(req, rustItemMacroFiles(req.Root, req.Files, req.Symbols))
+        	if !run && len(req.ChangedFiles) > 0 && rustHasDeclared(req.Symbols) {
+        		if cached, ok := loadRustScipCache(req.Root, req.Symbols); ok {
+        			edges = append(edges, cached...)
+        			res.Diagnostics = append(res.Diagnostics, "rust-analyzer edges reused from the last run: "+itoa(len(cached)))
+        		} else {
+        			run = true // no record of the last run's edges
+        		}
+        	}
+        	if run {
+        		if bin, reason := rustAnalyzerBin(); bin == "" {
+        			res.Diagnostics = append(res.Diagnostics, "rust-analyzer pass skipped: "+reason)
+        		} else if raw, err := runRustAnalyzerScip(ctx, bin, req.Root); err != nil {
+        			res.Diagnostics = append(res.Diagnostics, "rust-analyzer scip failed: "+err.Error())
+        		} else if docs, err := decodeScip(raw); err != nil {
+        			res.Diagnostics = append(res.Diagnostics, "rust-analyzer scip decode failed: "+err.Error())
+        		} else {
+        			declared, scipEdges := rustScipPass(req, docs)
+        			res.Symbols = declared
+        			edges = append(edges, scipEdges...)
+        			res.Diagnostics = append(res.Diagnostics,
+        				"rust-analyzer declared "+itoa(len(declared))+" symbol(s) the parser did not index (macro-generated items)",
+        				"rust-analyzer resolved "+itoa(len(scipEdges))+" edge(s) from compiler-declared symbols")
+        			if err := saveRustScipCache(req.Root, append(append([]core.SymbolRecord(nil), req.Symbols...), declared...), scipEdges); err != nil {
+        				res.Diagnostics = append(res.Diagnostics, "rust-analyzer edge record not saved: "+err.Error())
+        			}
+        		}
+        	}
+        ''' + s[end:]
+        open(p, "w").write(s)
+        p = "internal/native/rust_scip_test.go"
+        s = open(p).read()
+        start = s.index("func TestRustScipNeeded(")
+        end = s.index("func TestRustItemMacroFiles(")
+        s = s[:start] + '''func TestRustScipNeeded(t *testing.T) {
+        	declared := core.SymbolRecord{FilePath: "tests/t.rs", Language: "rust", Modifiers: []string{"compiler-declared"}}
+        	macros := map[string]bool{"tests/t.rs": true}
+        	for _, tc := range []struct {
+        		name    string
+        		changed []string
+        		symbols []core.SymbolRecord
+        		macros  map[string]bool
+        		want    bool
+        	}{
+        		{name: "full pass, item-level macro", macros: macros, want: true},
+        		{name: "full pass, no item-level macro", macros: map[string]bool{}},
+        		{name: "edit to a macro file", changed: []string{"tests/t.rs"}, macros: macros, want: true},
+        		{name: "edit to a file with compiler-declared symbols", changed: []string{"tests/t.rs"}, symbols: []core.SymbolRecord{declared}, macros: map[string]bool{}, want: true},
+        		{name: "plain edit beside them reuses the last run", changed: []string{"tests/util.rs"}, symbols: []core.SymbolRecord{declared}, macros: macros},
+        	} {
+        		if got := rustScipNeeded(Request{ChangedFiles: tc.changed, Symbols: tc.symbols}, tc.macros); got != tc.want {
+        			t.Errorf("%s: run=%v, want %v", tc.name, got, tc.want)
+        		}
+        	}
+        }
+
+        // The edges of a run survive an edit to their target's file: the endpoint is
+        // found again by name although its ID (blob SHA) and line changed, and an
+        // edge to a removed declaration drops.
+        func TestRustScipCacheFollowsEditedTargets(t *testing.T) {
+        	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+        	t.Setenv("HOME", t.TempDir())
+        	root := t.TempDir()
+        	gen := core.SymbolRecord{ID: "tests/t.rs::r16@b", FilePath: "tests/t.rs", Language: "rust", Kind: core.KindFunction, Name: "r16", QualifiedName: "r16", Span: core.LineRange{Start: 3, End: 6}, Modifiers: []string{"compiler-declared"}}
+        	run := core.SymbolRecord{ID: "src/util.rs::Tool.run@a", FilePath: "src/util.rs", Language: "rust", Kind: core.KindMethod, Name: "run", QualifiedName: "Tool.run", Span: core.LineRange{Start: 3, End: 3}}
+        	stop := core.SymbolRecord{ID: "src/util.rs::Tool.stop@a", FilePath: "src/util.rs", Language: "rust", Kind: core.KindMethod, Name: "stop", QualifiedName: "Tool.stop", Span: core.LineRange{Start: 4, End: 4}}
+        	if err := saveRustScipCache(root, []core.SymbolRecord{gen, run, stop}, []core.Edge{
+        		symbolEdge(gen, run, core.EdgeCalls, 0.98), symbolEdge(gen, stop, core.EdgeCalls, 0.98),
+        	}); err != nil {
+        		t.Fatal(err)
+        	}
+        	edited := run
+        	edited.ID, edited.Span = "src/util.rs::Tool.run@c", core.LineRange{Start: 9, End: 9}
+        	edges, ok := loadRustScipCache(root, []core.SymbolRecord{gen, edited})
+        	if !ok || len(edges) != 1 || edges[0].From != gen.ID || edges[0].To != edited.ID || edges[0].Type != core.EdgeCalls {
+        		t.Fatalf("want only r16 -> the edited Tool.run, got ok=%v %+v", ok, edges)
+        	}
+        	if _, ok := loadRustScipCache(t.TempDir(), nil); ok {
+        		t.Fatal("a repo with no record must report no cache")
+        	}
+        }
+
+        ''' + s[end:]
+        open(p, "w").write(s)
+        EOF
+        gofmt -l internal/native; GOWORK=off go vet ./internal/native && GOWORK=off go test -count=1 -run Rust ./internal/native/ 2>&1 | tail -5
+      at: 2026-10-12T12:57:40.573942Z
+      classified: lint
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-rust5 ./cmd/prism && P=$S/bin/prism-rust5; unset GROVE_RUST_ANALYZER; cd $S/census/rg-time && git checkout -q . && q() { sqlite3 .grove/grove.db "select count(*) from edges e join symbols s on s.id=e.to_node where s.qualified_name=''TestCommand.assert_err'' and e.edge_type=''calls''"; }; cnt() { echo "symbols=$(sqlite3 .grove/grove.db ''select count(*) from symbols'') edges=$(sqlite3 .grove/grove.db ''select count(*) from edges'') declared=$(sqlite3 .grove/grove.db "select count(*) from symbols where modifiers like ''%compiler-declared%''") assert_err_callers=$(q)"; }; rm -rf .grove; $P index . >/dev/null 2>&1; echo "cold $(cnt)"; step() { /usr/bin/time -p $P index . > $S/census/rg.step.log 2>&1; echo "$1 $(grep real $S/census/rg.step.log) $(cnt) ra=$(grep -c ''rust-analyzer declared'' $S/census/rg.step.log) reused=$(grep -o ''reused from the last run: [0-9]*'' $S/census/rg.step.log)"; }; perl -0pi -e ''s/(pub fn assert_err\(&mut self\) \{)/\n    \/\/ moved\n$1\n        let _unused = 1;/'' tests/util.rs; step "edit tests/util.rs (shifts assert_err)"; perl -0pi -e ''s/(pub fn new\(\) -> SearcherBuilder \{)/$1\n        let _unused = 1;/'' crates/searcher/src/searcher/mod.rs; step "edit searcher/mod.rs"; perl -0pi -e ''s/(rgtest!\(r16, \|dir: Dir, mut cmd: TestCommand\| \{\n)/$1    dir.create_dir("extra");\n/'' tests/regression.rs; step "edit regression.rs"; git checkout -q .; step "revert all"; rm -rf .grove; $P index . >/dev/null 2>&1; echo "cold-after $(cnt)"'
+      at: 2026-10-12T12:58:10.91414Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; P=$S/bin/prism-rust5; unset GROVE_RUST_ANALYZER; cd $S/census/rg-time && git checkout -q . && rm -rf .grove && $P index . >/dev/null 2>&1 && perl -0pi -e 's/(pub fn assert_err\(&mut self\) \{)/\n    \/\/ moved\n$1\n        let _unused = 1;/' tests/util.rs && $P index . >/dev/null 2>&1 && sqlite3 .grove/grove.db "select from_node||' '||edge_type||' '||to_node||' '||source from edges order by 1" > $S/census/inc.edges && sqlite3 .grove/grove.db "select id from symbols order by 1" > $S/census/inc.syms && rm -rf .grove && $P index . >/dev/null 2>&1 && sqlite3 .grove/grove.db "select from_node||' '||edge_type||' '||to_node||' '||source from edges order by 1" > $S/census/cold.edges && sqlite3 .grove/grove.db "select id from symbols order by 1" > $S/census/cold.syms; wc -l < $S/census/inc.edges; diff $S/census/inc.edges $S/census/cold.edges | head; diff $S/census/inc.syms $S/census/cold.syms | head; echo "diff-done"; git checkout -q .
+      at: 2026-10-12T12:58:30.598905Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; P=$S/bin/prism-rust5; unset GROVE_RUST_ANALYZER; cd $S/census/tokio && git checkout -q . && rm -rf .grove && /usr/bin/time -p $P index . 2>&1 >/dev/null | grep real; cnt() { echo "symbols=$(sqlite3 .grove/grove.db 'select count(*) from symbols') edges=$(sqlite3 .grove/grove.db 'select count(*) from edges')"; }; echo "cold $(cnt)"; step() { /usr/bin/time -p $P index . > $S/census/tk.step.log 2>&1; echo "$1 $(grep real $S/census/tk.step.log) $(cnt) ra=$(grep -c 'rust-analyzer declared' $S/census/tk.step.log)"; }; f=tokio/tests/io_read_line.rs; printf '\n// edit\n' >> $f; step "edit $f"; f=tokio/src/io/util/read_line.rs; printf '\n// edit\n' >> $f; step "edit $f"; f=tokio/src/io/util/read_int.rs; printf '\n// edit\n' >> $f; step "edit $f (holds reader! items)"; git checkout -q .; step "revert"; rm -rf .grove; $P index . >/dev/null 2>&1; echo "cold-after $(cnt)"
+      at: 2026-10-12T12:59:28.374161Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; grep -E '"rust|took|edge construction|native' $S/census/tk.step.log | head -20; grep -n 'reader!\|^cfg\|^macro_rules' $S/census/tokio/tokio/src/io/util/read_int.rs | head
+      at: 2026-10-12T12:59:38.865891Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'PrevChanged' internal/index/*.go | grep -v _test | head
+      at: 2026-10-12T13:00:00.453165Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 715,735p internal/index/indexer.go; grep -n 'replacedSymbols\b' internal/index/indexer.go | head -5
+      at: 2026-10-12T13:00:03.31412Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 585,600p internal/index/indexer.go; grep -n 'func.*keys\|keys :=' internal/index/indexer.go | sed -n 1,5p
+      at: 2026-10-12T13:00:06.388494Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'func (s \*Store) SymbolKeysForFile' -A20 internal/store/*.go | head -26
+      at: 2026-10-12T13:00:09.256843Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust_scip.go"
+        s = open(p).read()
+        # 1. macro files: record delimiters
+        old = s[s.index("// rustItemMacroFiles returns"):s.index("// rustScipNeeded decides")]
+        new = '''// rustItemMacroFiles returns, per file, the delimiters of its macro
+        // invocations outside every parsed function body — the places a macro can
+        // generate items. "{" bodies are mostly item lists the parser reads itself
+        // (astkit: cfg_rt! { pub fn .. }); "(" and "[" are arguments the macro turns
+        // into items only rust-analyzer can see (rgtest!(r16, ..) -> fn r16).
+        func rustItemMacroFiles(root string, files []string, symbols []core.SymbolRecord) map[string]string {
+        	bodies := map[string][]core.LineRange{}
+        	for _, s := range symbols {
+        		if s.Language == "rust" && callableKind(s.Kind) {
+        			bodies[s.FilePath] = append(bodies[s.FilePath], s.Span)
+        		}
+        	}
+        	out := map[string]string{}
+        	for _, file := range files {
+        		content, err := osReadFile(filepath.Join(root, filepath.FromSlash(file)))
+        		if err != nil {
+        			continue
+        		}
+        		masked := maskCode("rust", string(content))
+        		for _, loc := range rustItemMacroPattern.FindAllStringSubmatchIndex(masked, -1) {
+        			if masked[loc[2]:loc[3]] == "macro_rules" {
+        				continue
+        			}
+        			line := strings.Count(masked[:loc[2]], "\\n") + 1
+        			inBody := false
+        			for _, span := range bodies[file] {
+        				if span.Start <= line && line <= span.End {
+        					inBody = true
+        					break
+        				}
+        			}
+        			if delim := masked[loc[1]-1 : loc[1]]; !inBody && !strings.Contains(out[file], delim) {
+        				out[file] += delim
+        			}
+        		}
+        	}
+        	return out
+        }
+
+        '''
+        s = s.replace(old, new, 1)
+        old = s[s.index("// rustScipNeeded decides"):s.index("// rustHasDeclared reports")]
+        new = '''// rustScipNeeded decides whether this run invokes rust-analyzer: a full
+        // pass where any item-level macro exists, an incremental one where an
+        // edited file held compiler-declared symbols (record.Declared) or invokes a
+        // macro with arguments at item level. Any other edit reuses the last run's
+        // edges (rustScipCache).
+        func rustScipNeeded(req Request, macroFiles map[string]string, record *rustScipCacheFile) bool {
+        	if len(req.ChangedFiles) == 0 {
+        		return len(macroFiles) > 0
+        	}
+        	if record == nil {
+        		return rustHasDeclared(req.Symbols) || len(macroFiles) > 0 && rustChangedHasMacro(req.ChangedFiles, macroFiles)
+        	}
+        	for _, file := range req.ChangedFiles {
+        		if slices.Contains(record.Declared, file) || strings.ContainsAny(macroFiles[file], "([") {
+        			return true
+        		}
+        	}
+        	return false
+        }
+
+        func rustChangedHasMacro(changed []string, macroFiles map[string]string) bool {
+        	for _, file := range changed {
+        		if macroFiles[file] != "" {
+        			return true
+        		}
+        	}
+        	return false
+        }
+
+        '''
+        s = s.replace(old, new, 1)
+        # cache file gains Declared
+        s = s.replace('''type rustScipCacheFile struct {
+        	Version string           `json:"version"`
+        	Edges   []rustCachedEdge `json:"edges"`
+        }
+
+        const rustScipCacheVersion = "1"''', '''type rustScipCacheFile struct {
+        	Version string           `json:"version"`
+        	Edges   []rustCachedEdge `json:"edges"`
+        	// Declared lists the files holding compiler-declared symbols.
+        	Declared []string `json:"declared"`
+        }
+
+        const rustScipCacheVersion = "2"''', 1)
+        s = s.replace('''// saveRustScipCache records the edges of a rust-analyzer run.
+        func saveRustScipCache(root string, symbols []core.SymbolRecord, edges []core.Edge) error {
+        	byID := make(map[string]*core.SymbolRecord, len(symbols))
+        	for i := range symbols {
+        		byID[symbols[i].ID] = &symbols[i]
+        	}
+        	file := rustScipCacheFile{Version: rustScipCacheVersion}
+        ''', '''// saveRustScipCache records the edges of a rust-analyzer run and the files
+        // holding compiler-declared symbols.
+        func saveRustScipCache(root string, symbols []core.SymbolRecord, edges []core.Edge) error {
+        	byID := make(map[string]*core.SymbolRecord, len(symbols))
+        	file := rustScipCacheFile{Version: rustScipCacheVersion}
+        	for i := range symbols {
+        		s := &symbols[i]
+        		byID[s.ID] = s
+        		if s.Language == "rust" && slices.Contains(s.Modifiers, "compiler-declared") && !slices.Contains(file.Declared, s.FilePath) {
+        			file.Declared = append(file.Declared, s.FilePath)
+        		}
+        	}
+        	sort.Strings(file.Declared)
+        ''', 1)
+        # split load into read + resolve
+        old = s[s.index("// loadRustScipCache returns"):s.index("func abs(n int) int {")]
+        new = '''// readRustScipCache returns the record of the last rust-analyzer run, or nil.
+        func readRustScipCache(root string) *rustScipCacheFile {
+        	data, err := osReadFile(rustScipCachePath(root))
+        	if err != nil {
+        		return nil
+        	}
+        	var file rustScipCacheFile
+        	if json.Unmarshal(data, &file) != nil || file.Version != rustScipCacheVersion {
+        		return nil
+        	}
+        	return &file
+        }
+
+        // rustCachedEdges re-resolves a run's recorded edges against the current
+        // symbols. An endpoint that no longer exists drops its edge; the caller must
+        // still be a compiler-declared symbol.
+        func rustCachedEdges(file *rustScipCacheFile, symbols []core.SymbolRecord) []core.Edge {
+        	byName := map[string][]*core.SymbolRecord{}
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language == "rust" {
+        			key := s.FilePath + "\\x00" + s.QualifiedName + "\\x00" + string(s.Kind)
+        			byName[key] = append(byName[key], s)
+        		}
+        	}
+        	// Several symbols can share a qualified name in one file (two trait
+        	// impls' fmt); the one nearest the recorded line is the same declaration.
+        	find := func(file, name, kind string, line int) *core.SymbolRecord {
+        		var best *core.SymbolRecord
+        		for _, s := range byName[file+"\\x00"+name+"\\x00"+kind] {
+        			if best == nil || abs(s.Span.Start-line) < abs(best.Span.Start-line) {
+        				best = s
+        			}
+        		}
+        		return best
+        	}
+        	var edges []core.Edge
+        	for _, c := range file.Edges {
+        		from := find(c.FromFile, c.FromName, c.FromKind, c.FromLine)
+        		to := find(c.ToFile, c.ToName, c.ToKind, c.ToLine)
+        		if from == nil || to == nil || !slices.Contains(from.Modifiers, "compiler-declared") {
+        			continue
+        		}
+        		edges = append(edges, symbolEdge(*from, *to, core.EdgeType(c.Type), 0.98))
+        	}
+        	return edges
+        }
+
+        '''
+        s = s.replace(old, new, 1)
+        open(p, "w").write(s)
+
+        p = "internal/native/rust.go"
+        s = open(p).read()
+        start = s.index("	run := rustScipNeeded(")
+        end = s.index("	res.Edges = edges\n	return res\n}")
+        s = s[:start] + '''	record := readRustScipCache(req.Root)
+        	reuse := func(why string) {
+        		if record == nil || len(req.ChangedFiles) == 0 {
+        			return
+        		}
+        		cached := rustCachedEdges(record, req.Symbols)
+        		edges = append(edges, cached...)
+        		res.Diagnostics = append(res.Diagnostics, "rust-analyzer edges reused from the last run ("+why+"): "+itoa(len(cached)))
+        	}
+        	switch {
+        	case rustScipNeeded(req, rustItemMacroFiles(req.Root, req.Files, req.Symbols), record):
+        		if bin, reason := rustAnalyzerBin(); bin == "" {
+        			res.Diagnostics = append(res.Diagnostics, "rust-analyzer pass skipped: "+reason)
+        			reuse("rust-analyzer unavailable")
+        		} else if raw, err := runRustAnalyzerScip(ctx, bin, req.Root); err != nil {
+        			res.Diagnostics = append(res.Diagnostics, "rust-analyzer scip failed: "+err.Error())
+        			reuse("this run failed")
+        		} else if docs, err := decodeScip(raw); err != nil {
+        			res.Diagnostics = append(res.Diagnostics, "rust-analyzer scip decode failed: "+err.Error())
+        			reuse("this run failed")
+        		} else {
+        			declared, scipEdges := rustScipPass(req, docs)
+        			res.Symbols = declared
+        			edges = append(edges, scipEdges...)
+        			res.Diagnostics = append(res.Diagnostics,
+        				"rust-analyzer declared "+itoa(len(declared))+" symbol(s) the parser did not index (macro-generated items)",
+        				"rust-analyzer resolved "+itoa(len(scipEdges))+" edge(s) from compiler-declared symbols")
+        			if err := saveRustScipCache(req.Root, append(append([]core.SymbolRecord(nil), req.Symbols...), declared...), scipEdges); err != nil {
+        				res.Diagnostics = append(res.Diagnostics, "rust-analyzer edge record not saved: "+err.Error())
+        			}
+        		}
+        	case rustHasDeclared(req.Symbols):
+        		reuse("no edited file needs it")
+        	}
+        ''' + s[end:]
+        s = s.replace('''func (rustAnalyzer) Languages() []string { return []string{"rust"} }''', '''func (rustAnalyzer) Languages() []string { return []string{"rust"} }
+
+        // Budget: an edit to a file holding macro-generated items re-runs
+        // rust-analyzer over the whole workspace (tokio: ~11s), well past the
+        // default incremental budget; a pass killed there would drop those items.
+        func (rustAnalyzer) Budget(int) time.Duration { return 3 * time.Minute }''', 1)
+        s = s.replace('"strings"\n\n\t"github.com/provasign/grove/internal/core"', '"strings"\n\t"time"\n\n\t"github.com/provasign/grove/internal/core"', 1)
+        open(p, "w").write(s)
+
+        p = "internal/native/rust_scip_test.go"
+        s = open(p).read()
+        start = s.index("func TestRustScipNeeded(")
+        end = s.index("// The edges of a run survive an edit")
+        s = s[:start] + '''func TestRustScipNeeded(t *testing.T) {
+        	record := &rustScipCacheFile{Declared: []string{"tests/t.rs"}}
+        	for _, tc := range []struct {
+        		name    string
+        		changed []string
+        		macros  map[string]string
+        		record  *rustScipCacheFile
+        		want    bool
+        	}{
+        		{name: "full pass, item-level macro", macros: map[string]string{"src/a.rs": "{"}, want: true},
+        		{name: "full pass, no item-level macro", macros: map[string]string{}},
+        		{name: "edit to a file holding compiler-declared symbols", changed: []string{"tests/t.rs"}, macros: map[string]string{}, record: record, want: true},
+        		{name: "edit adding a macro with arguments", changed: []string{"tests/new.rs"}, macros: map[string]string{"tests/new.rs": "("}, record: record, want: true},
+        		{name: "edit to a wrapper the parser reads", changed: []string{"src/a.rs"}, macros: map[string]string{"src/a.rs": "{"}, record: record},
+        		{name: "plain edit beside them", changed: []string{"tests/util.rs"}, macros: map[string]string{"tests/t.rs": "("}, record: record},
+        		{name: "no record of the last run", changed: []string{"tests/util.rs"}, macros: map[string]string{"tests/t.rs": "("}, want: true},
+        	} {
+        		if got := rustScipNeeded(Request{ChangedFiles: tc.changed}, tc.macros, tc.record); got != tc.want {
+        			t.Errorf("%s: run=%v, want %v", tc.name, got, tc.want)
+        		}
+        	}
+        }
+
+        ''' + s[end:]
+        s = s.replace('''	edges, ok := loadRustScipCache(root, []core.SymbolRecord{gen, edited})
+        	if !ok || len(edges) != 1 || edges[0].From != gen.ID || edges[0].To != edited.ID || edges[0].Type != core.EdgeCalls {
+        		t.Fatalf("want only r16 -> the edited Tool.run, got ok=%v %+v", ok, edges)
+        	}
+        	if _, ok := loadRustScipCache(t.TempDir(), nil); ok {
+        		t.Fatal("a repo with no record must report no cache")
+        	}''', '''	record := readRustScipCache(root)
+        	if record == nil || !slices.Equal(record.Declared, []string{"tests/t.rs"}) {
+        		t.Fatalf("record: %+v", record)
+        	}
+        	edges := rustCachedEdges(record, []core.SymbolRecord{gen, edited})
+        	if len(edges) != 1 || edges[0].From != gen.ID || edges[0].To != edited.ID || edges[0].Type != core.EdgeCalls {
+        		t.Fatalf("want only r16 -> the edited Tool.run, got %+v", edges)
+        	}
+        	if readRustScipCache(t.TempDir()) != nil {
+        		t.Fatal("a repo with no record must report none")
+        	}''', 1)
+        s = s.replace('''	got := rustItemMacroFiles(root, []string{"a.rs", "b.rs", "c.rs", "d.rs"}, symbols)
+        	if !got["a.rs"] || got["b.rs"] || got["c.rs"] || !got["d.rs"] || len(got) != 2 {''', '''	got := rustItemMacroFiles(root, []string{"a.rs", "b.rs", "c.rs", "d.rs"}, symbols)
+        	if got["a.rs"] != "(" || got["d.rs"] != "{" || len(got) != 2 {''', 1)
+        open(p, "w").write(s)
+        EOF
+        gofmt -l internal/native; GOWORK=off go vet ./internal/native && GOWORK=off go test -count=1 -run Rust ./internal/native/ 2>&1 | tail -8
+      at: 2026-10-12T13:00:59.03058Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust_scip_test.go"
+        s = open(p).read()
+        s = s.replace('''		macros  map[string]string
+        		record  *rustScipCacheFile
+        		want    bool
+        	}{''', '''		macros  map[string]string
+        		record  *rustScipCacheFile
+        		symbols []core.SymbolRecord
+        		want    bool
+        	}{''', 1)
+        s = s.replace('''		{name: "no record of the last run", changed: []string{"tests/util.rs"}, macros: map[string]string{"tests/t.rs": "("}, want: true},''', '''		{name: "no record of the last run's edges", changed: []string{"tests/util.rs"}, macros: map[string]string{"tests/t.rs": "("}, symbols: []core.SymbolRecord{{FilePath: "tests/t.rs", Language: "rust", Modifiers: []string{"compiler-declared"}}}, want: true},
+        		{name: "no record and nothing to keep", changed: []string{"tests/util.rs"}, macros: map[string]string{"tests/t.rs": "("}},''', 1)
+        s = s.replace('''rustScipNeeded(Request{ChangedFiles: tc.changed}, tc.macros, tc.record)''', '''rustScipNeeded(Request{ChangedFiles: tc.changed, Symbols: tc.symbols}, tc.macros, tc.record)''', 1)
+        open(p, "w").write(s)
+        EOF
+        gofmt -w internal/native/rust_scip_test.go; GOWORK=off go test -count=1 -run Rust ./internal/native/ 2>&1 | tail -4
+      at: 2026-10-12T13:01:10.115797Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/census/tokio && git checkout -q . && rm -rf .grove && prism index . >/dev/null 2>&1; echo "base cold edges=$(sqlite3 .grove/grove.db 'select count(*) from edges')"; printf '\n// edit\n' >> tokio/tests/io_read_line.rs; prism index . >/dev/null 2>&1; echo "base after comment edit edges=$(sqlite3 .grove/grove.db 'select count(*) from edges')"; rm -rf .grove; prism index . >/dev/null 2>&1; echo "base cold of edited tree edges=$(sqlite3 .grove/grove.db 'select count(*) from edges')"; git checkout -q .
+      at: 2026-10-12T13:01:23.323193Z
+      classified: other
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-rust6 ./cmd/prism && P=$S/bin/prism-rust6; unset GROVE_RUST_ANALYZER; cd $S/census/tokio && git checkout -q . && rm -rf .grove && $P index . >/dev/null 2>&1; printf ''\n// edit\n'' >> tokio/tests/io_read_line.rs; $P index . > $S/census/tk.inc.log 2>&1; sqlite3 .grove/grove.db "select from_node||'' ''||edge_type||'' ''||to_node||'' ''||source from edges order by 1" > $S/census/tk.inc.edges; rm -rf .grove; $P index . >/dev/null 2>&1; sqlite3 .grove/grove.db "select from_node||'' ''||edge_type||'' ''||to_node||'' ''||source from edges order by 1" > $S/census/tk.cold.edges; diff $S/census/tk.inc.edges $S/census/tk.cold.edges | head -12; diff $S/census/tk.inc.edges $S/census/tk.cold.edges | grep -c ''^[<>]''; grep -E ''rust-analyzer|rust: '' $S/census/tk.inc.log | head; git checkout -q .'
+      at: 2026-10-12T13:02:04.864841Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'callers := map\|callers\[s.FilePath\]\|from := innermost(callers\|if from < 0 || from == to || inParsedBody\|if len(callers\[doc.Path\]) == 0' internal/native/rust_scip.go; grep -n 'typesByName\[symbol.Name\] = append\|byFile\[symbol.FilePath\] = append' internal/native/rust.go
+      at: 2026-10-12T13:02:20.050489Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust_scip.go"
+        s = open(p).read()
+        old = '''	byFileName := map[string][]int{}
+        	callers := map[string][]int{}
+        	for i, s := range all {
+        		byFileName[s.FilePath+"\\x00"+s.Name] = append(byFileName[s.FilePath+"\\x00"+s.Name], i)
+        		if slices.Contains(s.Modifiers, "compiler-declared") && (callableKind(s.Kind) || typeKind(s.Kind)) {
+        			callers[s.FilePath] = append(callers[s.FilePath], i)
+        		}
+        	}
+        '''
+        new = '''	byFileName := map[string][]int{}
+        	callers := map[string][]int{}
+        	isDeclared := make([]bool, len(all))
+        	for i, s := range all {
+        		byFileName[s.FilePath+"\\x00"+s.Name] = append(byFileName[s.FilePath+"\\x00"+s.Name], i)
+        		if callableKind(s.Kind) || typeKind(s.Kind) {
+        			callers[s.FilePath] = append(callers[s.FilePath], i)
+        		}
+        		isDeclared[i] = slices.Contains(s.Modifiers, "compiler-declared")
+        	}
+        '''
+        assert old in s; s = s.replace(old, new, 1)
+        old = '''			from := innermost(callers[doc.Path], o.Line+1)
+        			if from < 0 || from == to || inParsedBody(doc.Path, o.Line+1) {
+        				continue
+        			}
+        '''
+        new = '''			// An edge is rust-analyzer's when either end is a declaration
+        			// only it can see: calls made inside a generated item, and uses
+        			// of a generated item anywhere (no name-guessed edge may land on
+        			// one, graph.dropGuessesIntoCompilerDeclared).
+        			from := innermost(callers[doc.Path], o.Line+1)
+        			if from < 0 || from == to || !isDeclared[from] && !isDeclared[to] {
+        				continue
+        			}
+        '''
+        assert old in s; s = s.replace(old, new, 1)
+        s = s.replace('''// The pass adds only what the parser cannot see: declarations outside any
+        // parsed function body that the parser lacks, and the calls/type uses made
+        // from those declarations. Calls between parsed functions keep their
+        // existing resolution.''', '''// The pass adds only what the parser cannot see: declarations outside any
+        // parsed function body that the parser lacks, and the calls/type uses made
+        // from or to those declarations. Calls between parsed declarations keep
+        // their existing resolution.''', 1)
+        open(p, "w").write(s)
+
+        p = "internal/native/rust.go"
+        s = open(p).read()
+        old = '''	for _, symbol := range symbols {
+        		if symbol.Language == "rust" {
+        			byFile[symbol.FilePath] = append(byFile[symbol.FilePath], symbol)'''
+        new = '''	for _, symbol := range symbols {
+        		// Edges to or from compiler-declared symbols are rust-analyzer's
+        		// (rust_scip.go); a fresh pass declares them after this one runs, so
+        		// matching them here would differ between cold and incremental runs.
+        		if symbol.Language == "rust" && !slices.Contains(symbol.Modifiers, "compiler-declared") {
+        			byFile[symbol.FilePath] = append(byFile[symbol.FilePath], symbol)'''
+        assert old in s; s = s.replace(old, new, 1)
+        open(p, "w").write(s)
+        EOF
+        sed -n 200,225p internal/native/rust.go
+      at: 2026-10-12T13:02:35.844756Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust_scip.go"
+        s = open(p).read()
+        old = '''	for _, file := range req.ChangedFiles {
+        		if slices.Contains(record.Declared, file) || strings.ContainsAny(macroFiles[file], "([") {
+        			return true
+        		}
+        	}
+        	return false
+        }'''
+        new = '''	// A reused edge from an edited file could name a reference the edit
+        	// removed, so those files re-run the pass too.
+        	sources := map[string]bool{}
+        	for _, e := range record.Edges {
+        		sources[e.FromFile] = true
+        	}
+        	for _, file := range req.ChangedFiles {
+        		if slices.Contains(record.Declared, file) || sources[file] || strings.ContainsAny(macroFiles[file], "([") {
+        			return true
+        		}
+        	}
+        	return false
+        }'''
+        assert old in s; s = s.replace(old, new, 1)
+        s = s.replace('''// rustScipNeeded decides whether this run invokes rust-analyzer: a full
+        // pass where any item-level macro exists, an incremental one where an
+        // edited file held compiler-declared symbols (record.Declared) or invokes a
+        // macro with arguments at item level. Any other edit reuses the last run's
+        // edges (rustScipCache).''', '''// rustScipNeeded decides whether this run invokes rust-analyzer: a full
+        // pass where any item-level macro exists, an incremental one where an
+        // edited file held compiler-declared symbols (record.Declared), made one of
+        // the recorded edges, or invokes a macro with arguments at item level. Any
+        // other edit reuses the last run's edges (rustScipCache). Known gap until
+        // the next pass: a reference newly added to a file that made none.''', 1)
+        old = '''		if from == nil || to == nil || !slices.Contains(from.Modifiers, "compiler-declared") {'''
+        new = '''		if from == nil || to == nil || !slices.Contains(from.Modifiers, "compiler-declared") && !slices.Contains(to.Modifiers, "compiler-declared") {'''
+        assert old in s; s = s.replace(old, new, 1)
+        s = s.replace('''// symbols. An endpoint that no longer exists drops its edge; the caller must
+        // still be a compiler-declared symbol.''', '''// symbols. An endpoint that no longer exists drops its edge; one end must
+        // still be a compiler-declared symbol.''', 1)
+        open(p, "w").write(s)
+
+        p = "internal/native/rust_scip_test.go"
+        s = open(p).read()
+        old = '''		{name: "plain edit beside them", changed: []string{"tests/util.rs"}, macros: map[string]string{"tests/t.rs": "("}, record: record},'''
+        new = '''		{name: "plain edit beside them", changed: []string{"tests/util.rs"}, macros: map[string]string{"tests/t.rs": "("}, record: record},
+        		{name: "edit to a file using a generated item", changed: []string{"src/use.rs"}, macros: map[string]string{}, record: &rustScipCacheFile{Edges: []rustCachedEdge{{FromFile: "src/use.rs"}}}, want: true},'''
+        assert old in s; s = s.replace(old, new, 1)
+        # pass test: plain's call to Tool.run stays parser's; add a use of the generated r16 from plain
+        open(p, "w").write(s)
+        EOF
+        gofmt -l internal/native; GOWORK=off go vet ./internal/native && GOWORK=off go test -count=1 -run Rust ./internal/native/ 2>&1 | tail -4
+      at: 2026-10-12T13:02:59.347743Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/native/rust_scip_test.go"
+        s = open(p).read()
+        old = '''			{rng: []int32{8, 6, 9}, symbol: pkg + "util/impl#[Tool]run()."},
+        '''
+        new = '''			{rng: []int32{8, 6, 9}, symbol: pkg + "util/impl#[Tool]run()."},
+        			{rng: []int32{8, 4, 5}, symbol: pkg + "t/r16()."},
+        '''
+        assert old in s; s = s.replace(old, new, 1)
+        old = '''		r16.ID + " uses-type src/util.rs::Tool@a": true,
+        '''
+        assert old in s
+        s = s.replace(old, old + '''		"tests/t.rs::plain@b calls " + r16.ID:     true,
+        ''', 1)
+        s = s.replace('''			t.Errorf("unexpected edge %s (plain's call belongs to the parser's resolution)", key)''', '''			t.Errorf("unexpected edge %s (plain -> Tool.run belongs to the parser's resolution)", key)''', 1)
+        open(p, "w").write(s)
+        EOF
+        gofmt -w internal/native/rust_scip_test.go; GOWORK=off go test -count=1 -run Rust ./internal/native/ 2>&1 | tail -4
+      at: 2026-10-12T13:03:09.433374Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cat > $S/census/inccheck.sh <<'EOF'
+        #!/bin/bash
+        # inccheck.sh BIN REPO EDIT... : each EDIT is "file" (appends a comment) or
+        # "file|perl-subst". After every edit, the incremental index must equal a
+        # cold index of the same tree (a copy), edges and symbols.
+        set -u
+        BIN=$1; REPO=$2; shift 2
+        dump() { sqlite3 "$1/.grove/grove.db" "select from_node||' '||edge_type||' '||to_node||' '||source from edges order by 1" | md5; sqlite3 "$1/.grove/grove.db" "select id||' '||span_start||' '||span_end from symbols order by 1" | md5; }
+        cd "$REPO" && git checkout -q . && rm -rf .grove && "$BIN" index . >/dev/null 2>&1
+        for edit in "$@"; do
+          file=${edit%%|*}
+          if [[ "$edit" == *"|"* ]]; then perl -0pi -e "${edit#*|}" "$file"; else printf '\n// edit\n' >> "$file"; fi
+          start=$(perl -MTime::HiRes=time -e 'print time')
+          "$BIN" index . > /tmp/claude-501/inc.log 2>&1
+          t=$(perl -MTime::HiRes=time -e "printf '%.2f', time-$start")
+          ra=$(grep -c 'rust-analyzer declared' /tmp/claude-501/inc.log); reuse=$(grep -c 'reused from the last run' /tmp/claude-501/inc.log)
+          inc=$(dump .)
+          rm -rf /tmp/claude-501/cold && mkdir -p /tmp/claude-501/cold && rsync -a --exclude .grove --exclude target ./ /tmp/claude-501/cold/
+          # cold must index the same absolute layout? IDs are repo-relative, so a copy is fine
+          (cd /tmp/claude-501/cold && "$BIN" index . >/dev/null 2>&1)
+          cold=$(dump /tmp/claude-501/cold)
+          same=$([ "$inc" == "$cold" ] && echo SAME || echo DIFF)
+          echo "$same ${t}s ra=$ra reused=$reuse  $edit"
+        done
+        git checkout -q .
+        EOF
+        chmod +x $S/census/inccheck.sh; unset GROVE_RUST_ANALYZER; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go build -o $S/bin/prism-rust7 ./cmd/prism && $S/census/inccheck.sh $S/bin/prism-rust7 $S/census/tokio tokio/tests/io_read_line.rs tokio/src/io/util/read_line.rs tokio/src/io/util/read_int.rs tokio/src/io/util/async_read_ext.rs tokio/src/runtime/handle.rs
+      at: 2026-10-12T13:05:25.174658Z
+      classified: build
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; unset GROVE_RUST_ANALYZER; $S/census/inccheck.sh $S/bin/prism-rust7 $S/census/rg-time ''tests/util.rs|s/(pub fn assert_err\(&mut self\) \{)/\n    \/\/ moved\n$1/'' crates/searcher/src/searcher/mod.rs ''tests/regression.rs|s/(rgtest!\(r16, \|dir: Dir, mut cmd: TestCommand\| \{\n)/$1    dir.create_dir("extra");\n/'' ''tests/regression.rs|s/rgtest!\(r25,/rgtest!(r25_renamed,/'' crates/globset/src/glob.rs'
+      at: 2026-10-12T13:06:12.536745Z
+      classified: other
+    - cmd: grep -rn 'exit.*3\|Exit(3)\|exitCode = 3\|ExitCompilerMissing' --include='*.go' internal cmd | grep -v _test | head -5
+      at: 2026-10-12T13:06:19.946664Z
+      classified: other
+    - cmd: grep -rn 'allow-heuristic' --include='*.go' . | grep -v _test | head -5
+      at: 2026-10-12T13:06:22.916266Z
+      classified: other
+    - cmd: sed -n 2035,2066p internal/cli/commands.go; grep -rn 'func.*[Cc]ompilerGap\|func nativeBlockers\|func heuristicLanguages' --include='*.go' internal | head
+      at: 2026-10-12T13:06:26.166823Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -rn 'Readiness = append\|func.*[Rr]eadiness(' --include='*.go' prism/internal grove/internal | grep -v _test | head
+      at: 2026-10-12T13:06:29.584372Z
+      classified: other
+    - cmd: sed -n 1,80p /Users/tapabratapal/Projects/provasign/prism/internal/grove/readiness.go
+      at: 2026-10-12T13:06:32.228994Z
+      classified: other
+    - cmd: sed -n 80,140p /Users/tapabratapal/Projects/provasign/prism/internal/grove/readiness.go
+      at: 2026-10-12T13:06:34.790381Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=$S/ws/go.work go test -count=1 ./... 2>&1 | grep -v '^ok\|no test files' | tail -15; echo "grove-ws-exit=${pipestatus[1]}"
+      at: 2026-10-12T13:07:08.495108Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; rm -rf ~/ci-corpus/*/.grove && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism $S/bin/prism-rust7 --decoy-injector $S/bin/decoy 2>&1 | tail -45
+      at: 2026-10-12T13:07:08.549133Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=$S/ws/go.work go build -o $S/bin/grove-eval-ws ./cmd/grove-eval 2>&1 | tail -3; cd $S/census && ([ -d fd ] || (git clone -q https://github.com/sharkdp/fd.git fd && git -C fd checkout -q 5bbfa3e)); grep -n '"ripgrep\|"fd' /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json | head; for r in ripgrep:ripgrep@82313cf fd:fd@5bbfa3e; do d=${r%%:*}; rm -rf $S/census/$d/.grove; echo "== $d"; $S/bin/grove-eval-ws score --repo $S/census/$d --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/${r#*:}/calls-truth.jsonl.gz --out-dir $S/census/eval-$d --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json 2>&1 | tail -6; done
+      at: 2026-10-12T13:07:18.380145Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; mkdir -p $S/ws-eval && printf 'go 1.26\n\nuse (\n\t/Users/tapabratapal/Projects/provasign/grove/eval\n\t/Users/tapabratapal/Projects/provasign/grove\n\t/Users/tapabratapal/Projects/provasign/astkit\n)\n' > $S/ws-eval/go.work && cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=$S/ws-eval/go.work go build -o $S/bin/grove-eval-ws ./cmd/grove-eval 2>&1 | tail -3; for r in ripgrep:ripgrep@82313cf fd:fd@5bbfa3e; do d=${r%%:*}; rm -rf $S/census/$d/.grove; echo "== $d"; $S/bin/grove-eval-ws score --repo $S/census/$d --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/${r#*:}/calls-truth.jsonl.gz --out-dir $S/census/eval-$d --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json 2>&1 | tail -6; done
+      at: 2026-10-12T13:07:36.921615Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -n 'local_function_statement' strategies/*.go | head; grep -n '^func extractCSharp\|^func csharpVisit\|^func csharp[A-Z][a-zA-Z]*(' strategies/extractors.go | head -20
+      at: 2026-10-12T13:07:43.54764Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && sed -n 4150,4260p strategies/extractors.go
+      at: 2026-10-12T13:07:46.210242Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && git add strategies/extractors.go strategies/rust_decl_test.go && git diff --cached --stat && git commit -q -m "rust: index the items written inside item-level macro bodies
+
+        tree-sitter leaves a macro invocation's body as an unparsed token tree, so
+        every item tokio writes inside cfg_rt! { ... }, pin_project! { ... } and
+        similar wrappers had no symbol (AsyncReadExt, TcpStream::set_zero_linger,
+        FramedWrite). A brace body at item level is now re-parsed as Rust over its
+        own byte range, so positions stay those of the file, and visited like any
+        item list; nested wrappers recurse on a strictly smaller range. Bodies
+        inside function bodies and macro_rules templates are not read, and neither
+        are call-like m!(a, b) arguments: a name a macro generates (rgtest!(r16, ..)
+        -> fn r16) is left to the compiler pass.
+
+        tokio: 12021 -> 13277 symbols; extraction 1.06s -> 1.12s.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git log --oneline -2 && git status --short
+      at: 2026-10-12T13:07:58.926786Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git status --short && git diff --stat
+      at: 2026-10-12T13:08:02.475607Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && grep -n protobuf go.mod && git add go.mod go.sum internal/native/javac.go internal/native/rust.go internal/native/rust_scip.go internal/native/rust_scip_test.go internal/parser/languages.go && git commit -q -m "rust: rust-analyzer declares macro-generated items and resolves their edges
+
+        Items a macro generates from its arguments (ripgrep's 663 rgtest!(r16, ..)
+        tests, criterion_group!, tokio's reader!(ReadU16, ..)) have no syntax the
+        parser can see, so they had no symbol and no call inside them had a
+        caller: TestCommand.assert_err has 58 call sites in 49 ripgrep tests and
+        grove listed none. When rust-analyzer is installed (PATH, ~/.cargo/bin,
+        or the VS Code/Cursor extension's bundled server) and some file invokes a
+        macro at item level, the Rust analyzer runs \`rust-analyzer scip\` and:
+
+        - declares every definition outside a parsed function body that the
+          parser lacks as a compiler-declared symbol (span = the invocation);
+          struct-like enum-variant fields stay out, as in the parser;
+        - emits the calls and type uses whose either end is such a symbol
+          (assert_err: 0 -> 49 callers, exactly rust-analyzer's own count).
+
+        Text-matched type uses no longer target compiler-declared symbols, so cold
+        and incremental runs agree. The SCIP index is read with protowire (no scip
+        bindings and their dependencies).
+
+        Incremental runs re-run rust-analyzer only when an edited file holds
+        compiler-declared symbols, made a recorded edge, or invokes a macro with
+        arguments at item level; any other edit re-resolves the last run's edges
+        from a record kept beside rust-analyzer's grove-owned target dir. Every
+        edit in the ripgrep and tokio checks left the index byte-identical to a
+        cold index of the same tree. The analyzer's budget is 3 minutes; if
+        rust-analyzer fails, the recorded edges are kept.
+
+        Cost: ripgrep cold index 0.9s -> 4.1s, tokio 2.8s -> 14s (rust-analyzer
+        peaks ~2.6 GB); edits 0.5-1.3s, or ~4s/~12s where the pass re-runs.
+        GROVE_RUST_ANALYZER=0 turns the pass off. ExtractorVersion 2026-10-12.3.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git log --oneline -3
+      at: 2026-10-12T13:08:15.100969Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go mod tidy && grep -n protobuf go.mod && git diff --stat && git add go.mod go.sum && git commit -q --amend --no-edit && git log --oneline -1 && GOWORK=off go build ./... && echo ok
+      at: 2026-10-12T13:08:20.645667Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bow621bb5.output | tail -30
+      at: 2026-10-12T13:08:24.093189Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bow621bb5.output | grep -vE '\[OK\]$' | tail -25; grep -c '\[OK\]' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bow621bb5.output
+      at: 2026-10-12T13:11:00.938695Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/astkit && git push -q -u origin feat/rust-macro-items 2>&1 | tail -1; gh pr create --head feat/rust-macro-items --base main --title \"rust: index the items written inside item-level macro bodies\" --body \"tree-sitter leaves a macro body as an unparsed token tree, so every item tokio writes inside \\`cfg_rt! { ... }\\`, \\`pin_project! { ... }\\` and similar wrappers had no symbol (\\`AsyncReadExt\\`, \\`TcpStream::set_zero_linger\\`, \\`FramedWrite\\`).\n\nA brace body at item level is now re-parsed as Rust over its own byte range (positions stay those of the file) and visited like any item list; nested wrappers recurse on a strictly smaller range. Not read: bodies inside function bodies, macro_rules templates, and call-like \\`m!(a, b)\\` arguments. A name a macro *generates* (\\`rgtest!(r16, ..)\\` -> \\`fn r16\\`) is left to grove's rust-analyzer pass.\n\n- tokio: 12,021 -> 13,277 symbols; extraction 1.06s -> 1.12s; index 2.8s -> 3.3s.\n- Tests: \\`TestRustItemMacroBodiesAreIndexed\\`, \\`TestRustItemMacroBodyWithHelperMacro\\`; full suite green; grove's full suite green against this branch; engine gate (all invariants incl. decoy) held.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\""
+      at: 2026-10-12T13:11:21.46112Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && git push -q -u origin feat/rust-analyzer-declared 2>&1 | tail -1; gh pr create --head feat/rust-analyzer-declared --base main --title \"rust: rust-analyzer declares macro-generated items and resolves their edges\" --body \"Items a macro generates from its arguments (ripgrep's 663 \\`rgtest!(r16, ..)\\` tests, \\`criterion_group!\\`, tokio's \\`reader!(ReadU16, ..)\\`) had no symbol, so no call inside them had a caller: \\`TestCommand.assert_err\\` has 58 call sites in 49 ripgrep tests and grove listed **0** callers.\n\nWhen rust-analyzer is installed (PATH, ~/.cargo/bin, or the VS Code/Cursor extension's bundled server) and some file invokes a macro at item level, the Rust analyzer runs \\`rust-analyzer scip\\` and\n- declares each definition outside a parsed function body that the parser lacks (compiler-declared, span = the invocation);\n- emits calls/type uses whose either end is such a symbol. assert_err: 0 -> **49** callers = rust-analyzer's own count.\n\nIncremental: rust-analyzer re-runs only when an edited file holds compiler-declared symbols, made a recorded edge, or invokes a macro with arguments at item level; other edits re-resolve the last run's edges from a record. Every edit tested (5 ripgrep, 5 tokio) left the index byte-identical to a cold index of the same tree.\n\n| | before | after |\n|---|---|---|\n| ripgrep cold index | 0.9s | 4.1s |\n| tokio cold index | 2.8s | 14s (rust-analyzer peaks ~2.6 GB) |\n| ordinary edit | 0.5-1.2s | 0.5-1.3s |\n| edit to a file with generated items | — | ~4s ripgrep / ~12s tokio |\n\n\\`GROVE_RUST_ANALYZER=0\\` turns it off. SCIP read with protowire (only new dep: google.golang.org/protobuf). ExtractorVersion 2026-10-12.3. Pairs with astkit #6 (macro bodies the parser can read itself), which cuts tokio's generated-item files from 178 to 38.\n\nChecks: go test ./... green (also against astkit #6); Rust edge accuracy vs rust-analyzer truth unchanged (ripgrep P .937 R .905, fd P .952 R .913); engine gate all invariants held incl. decoy.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\""
+      at: 2026-10-12T13:11:24.749961Z
+      classified: test
+    - cmd: sleep 30; for r in astkit:6 grove:24; do gh -R provasign/${r%%:*} pr checks ${r#*:} --watch >/dev/null 2>&1; echo "== ${r}"; gh -R provasign/${r%%:*} pr checks ${r#*:} 2>&1 | awk -F'\t' '{print $2, $1}'; done
+      at: 2026-10-12T13:11:40.96959Z
+      classified: other
+    - cmd: 'M=/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory; perl -pi -e ''s/^(- \[Go\+TS compiler-declared 2026-10-12\].*)$/$1\n- [Rust analyzer pass 2026-10-12](project_rust_analyzer_pass_2026_10_12.md) — astkit #6 + grove #24: rust-analyzer declares macro-generated items (ripgrep assert_err 0->49 callers); C#\/C census = nothing to build/'' $M/MEMORY.md && grep -n ''Rust analyzer pass'' $M/MEMORY.md | cut -c1-80'
+      at: 2026-10-12T13:11:44.90176Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/byr1bbq76.output
+      at: 2026-10-12T13:15:36.416658Z
+      classified: other
+    - cmd: gh -R provasign/astkit pr merge 6 --merge && gh -R provasign/astkit pr view 6 --json state,mergeCommit --jq '{state,c:.mergeCommit.oid}'
+      at: 2026-10-12T13:20:55.380193Z
+      classified: other
+    - cmd: sleep 15; cd /Users/tapabratapal/Projects/provasign/astkit && for id in $(gh run list -b main -L 4 --json databaseId,headSha --jq '.[]|select(.headSha|startswith("a56291a8"))|.databaseId'); do gh run watch $id --exit-status >/dev/null 2>&1; echo "$id $?"; done; gh run list -b main -L 2 --json conclusion,headSha --jq '.[]|"\(.headSha[0:8]) \(.conclusion)"'; git tag --sort=-v:refname | head -2
+      at: 2026-10-12T13:22:08.210242Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/astkit && git fetch -q origin && git tag -a v0.16.2 a56291a8f5026d09baf55db56d8785a946368347 -m "v0.16.2: Rust items written inside item-level macro bodies" && git push origin v0.16.2 2>&1 | tail -1'
+      at: 2026-10-12T13:22:42.190534Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git checkout -q feat/rust-analyzer-declared && GOWORK=off GOPROXY=direct go get github.com/provasign/astkit@v0.16.2 2>&1 | tail -1 && GOWORK=off go mod tidy && (cd eval && GOWORK=off GOPROXY=direct go get github.com/provasign/astkit@v0.16.2 2>&1 | tail -1 && GOWORK=off go mod tidy) && grep -n 'provasign/astkit' go.mod eval/go.mod && GOWORK=off go build ./... && (cd eval && GOWORK=off go build ./...) && GOWORK=off go test -count=1 ./... 2>&1 | grep -v '^ok\|no test files' | tail; echo "tests=${pipestatus[1]}"
+      at: 2026-10-12T13:23:23.426283Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git add go.mod go.sum eval/go.mod eval/go.sum && git commit -q -m "deps: astkit v0.16.2 (Rust items inside item-level macro bodies)
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git push -q 2>&1 | tail -1; git log --oneline -3; sleep 25; gh pr checks 24 --watch >/dev/null 2>&1; gh pr checks 24 2>&1 | awk -F'\t' '{print $2, $1}'
+      at: 2026-10-12T13:23:56.756511Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git fetch -q origin && git log --oneline HEAD..origin/feat/rust-analyzer-declared; git log --oneline origin/feat/rust-analyzer-declared..HEAD
+      at: 2026-10-12T13:24:00.659688Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git push 2>&1 | tail -3
+      at: 2026-10-12T13:24:05.653849Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sleep 30; gh pr checks 24 --watch >/dev/null 2>&1; gh pr view 24 --json headRefOid --jq .headRefOid; gh pr checks 24 2>&1 | awk -F'\t' '{print $2, $1}'
+      at: 2026-10-12T13:27:59.237953Z
+      classified: other
+    - cmd: git checkout -q main && git pull -q --ff-only && git checkout -q -b deps/grove-rust-analyzer && grep -n 'func TestReadiness' internal/grove/*_test.go | head -5
+      at: 2026-10-12T13:28:20.25365Z
+      classified: other
+    - cmd: sed -n 1,50p internal/grove/readiness_test.go
+      at: 2026-10-12T13:28:22.676517Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p = "internal/grove/readiness.go"
+        s = open(p).read()
+        old = '''		case strings.HasPrefix(d, "go: "):'''
+        new = '''		case strings.HasPrefix(d, "rust: rust-analyzer "):
+        			// The pass runs only where a macro invoked at item level can
+        			// generate items; without it those items and every call inside
+        			// them are missing (ripgrep: 663 rgtest! tests).
+        			reason := strings.TrimPrefix(d, "rust: ")
+        			switch {
+        			case strings.Contains(reason, "rust-analyzer not found"):
+        				add("rust", "rust-analyzer is not installed, so items generated by macros (and the calls inside them) are missing",
+        					"run `rustup component add rust-analyzer`, then `prism index`")
+        			case strings.Contains(reason, "scip failed"), strings.Contains(reason, "scip decode failed"):
+        				add("rust", "rust-analyzer analysis did not complete: "+reason,
+        					"check that `cargo check` succeeds in "+root+", then `prism index`")
+        			}
+        		case strings.HasPrefix(d, "go: "):'''
+        assert old in s; s = s.replace(old, new, 1)
+        open(p, "w").write(s)
+        p = "internal/grove/readiness_test.go"
+        s = open(p).read()
+        s += '''
+        func TestReadinessRustAnalyzer(t *testing.T) {
+        	got := Readiness(t.TempDir(), []string{"rust: rust-analyzer pass skipped: rust-analyzer not found (PATH, ~/.cargo/bin, editor extensions)"})
+        	if len(got) != 1 || got[0].Language != "rust" || !strings.Contains(got[0].Fix, "rustup component add rust-analyzer") {
+        		t.Fatalf("missing rust-analyzer: %+v", got)
+        	}
+        	got = Readiness(t.TempDir(), []string{"rust: rust-analyzer scip failed: exit status 1: error: failed to load workspace"})
+        	if len(got) != 1 || !strings.Contains(got[0].Fix, "cargo check") {
+        		t.Fatalf("failed rust-analyzer: %+v", got)
+        	}
+        	for _, d := range []string{
+        		"rust: rust-analyzer pass skipped: disabled by GROVE_RUST_ANALYZER",
+        		"rust: rust-analyzer declared 734 symbol(s) the parser did not index (macro-generated items)",
+        		"rust: rust-analyzer edges reused from the last run (no edited file needs it): 1892",
+        	} {
+        		if got := Readiness(t.TempDir(), []string{d}); len(got) != 0 {
+        			t.Errorf("%q is not an issue: %+v", d, got)
+        		}
+        	}
+        }
+        '''
+        open(p, "w").write(s)
+        EOF
+        gofmt -l internal/grove; GOWORK=off go test -count=1 -run Readiness ./internal/grove/ 2>&1 | tail -3
+      at: 2026-10-12T13:28:33.940977Z
+      classified: test
+    - cmd: |-
+        git add internal/grove/readiness.go internal/grove/readiness_test.go && git commit -q -m "readiness: name a missing or failed rust-analyzer with its fix
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git log --oneline -2
+      at: 2026-10-12T13:28:39.944834Z
+      classified: other
+    - cmd: gh -R provasign/grove pr view 24 --json state,mergeCommit --jq '{state,c:.mergeCommit.oid}'
+      at: 2026-10-12T14:14:07.617934Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && for id in $(gh run list -b main -L 6 --json databaseId,headSha --jq '.[]|select(.headSha|startswith("6152749d"))|.databaseId'); do gh run watch $id --exit-status >/dev/null 2>&1; echo "$id $?"; done; gh run list -b main -L 4 --json name,conclusion,headSha --jq '.[]|"\(.headSha[0:8]) \(.name) \(.conclusion)"'
+      at: 2026-10-12T14:49:27.790894Z
+      classified: other
+    - cmd: git branch --show-current && GOWORK=off GOPROXY=direct go get github.com/provasign/grove@6152749d3b7d1dbf63dac2c5aa238f95e201d6db 2>&1 | tail -2 && GOWORK=off go mod tidy && grep -n 'provasign/' go.mod && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad && GOWORK=off go build -o $S/bin/prism-rc2 ./cmd/prism && echo built
+      at: 2026-10-12T14:50:26.76402Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b2tuyt6vo.output
+      at: 2026-10-12T14:50:29.843238Z
+      classified: other
+    - cmd: GOWORK=off go test -count=1 ./... 2>&1 | grep -v '^ok\|no test files' | tail -10; echo "tests=${pipestatus[1]}"
+      at: 2026-10-12T14:50:35.675332Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; rm -rf ~/ci-corpus/*/.grove && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism $S/bin/prism-rc2 --decoy-injector $S/bin/decoy 2>&1 | grep -vE '\[OK\]$' | tail -20; echo OKs=$(true)
+      at: 2026-10-12T14:50:35.721935Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && git fetch -q origin && git tag -a v0.63.7 6152749d3b7d1dbf63dac2c5aa238f95e201d6db -m "v0.63.7: rust-analyzer declares macro-generated Rust items and resolves their edges; astkit v0.16.2" && git push origin v0.63.7 2>&1 | tail -1'
+      at: 2026-10-12T14:50:56.656488Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/byshh6k4p.output; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=off GOPROXY=direct go get github.com/provasign/grove@v0.63.7 2>&1 | tail -1 && GOWORK=off go mod tidy && grep -n 'provasign/' go.mod && GOWORK=off go build ./... && echo built
+      at: 2026-10-12T14:51:32.966747Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bxeuibh23.output | tail -8
+      at: 2026-10-12T14:54:17.900881Z
+      classified: other
+notes:
+    - text: continuation of session b078ae73-7c6b-4498-a9f7-eeada0292d5a — events captured after its evidence was finalized
+      at: 2026-10-12T12:13:39.427726Z
+redactions: 0
