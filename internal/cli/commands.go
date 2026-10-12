@@ -81,6 +81,8 @@ Usage:
                                   --max-files N      source delivery: max files shown (default: 5)
                                   --format text|lean|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
+                                  --from N --to M  Line range (inclusive);
+                                  --offset N --limit N also work; --dir <path>
                                   --format text|lean|json  Output format (default: text)
   prism search <term>... [dir]    Search symbol names AND raw source text (a real
                                   rg/grep pass). Pass SEVERAL terms to search them
@@ -2270,16 +2272,41 @@ func cmdQuery(args []string) int {
 
 func cmdRead(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism read <file> [--offset N] [--limit N] [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism read <file> [--from N --to M | --offset N --limit N] [--dir <path>]")
 		return 2
 	}
 	file := args[0]
 	dir := "."
 	format := formatText
 	offset, limit := 0, 0
+	from, to := 0, 0
 	for i := 1; i < len(args); i++ {
 		a := args[i]
+		// --flag=value spellings, as other commands accept.
+		if name, value, ok := strings.Cut(a, "="); ok && strings.HasPrefix(name, "--") {
+			args = append(args[:i+1], append([]string{value}, args[i+1:]...)...)
+			args[i] = name
+			a = name
+		}
 		switch a {
+		case "--from", "--to":
+			// The MCP read's own field names (an agent switching from the
+			// tool to the CLI writes these): an inclusive line range.
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+					if a == "--from" {
+						from = n
+					} else {
+						to = n
+					}
+				}
+				i++
+			}
+		case "--dir":
+			if i+1 < len(args) {
+				dir = args[i+1]
+				i++
+			}
 		case "--offset", "--limit":
 			// Line-window parity with `sed -n A,Bp`, which is a quarter of
 			// every file read agents make.
@@ -2307,6 +2334,14 @@ func cmdRead(args []string) int {
 			}
 			dir = a
 		}
+	}
+	if from > 0 {
+		offset = from
+		if to >= from {
+			limit = to - from + 1
+		}
+	} else if to > 0 {
+		offset, limit = 1, to
 	}
 	readArgs := map[string]any{"file": file}
 	if offset > 0 {

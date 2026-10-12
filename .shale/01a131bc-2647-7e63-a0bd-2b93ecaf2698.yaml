@@ -1,29 +1,111 @@
 shale_version: "0"
 id: 01a131bc-2647-7e63-a0bd-2b93ecaf2698
-created_at: 2026-10-12T20:12:15.633468Z
-finalized_at: 2026-10-12T20:13:27.660487Z
+created_at: 2026-10-12T20:09:56.336586Z
+finalized_at: 2026-10-12T20:12:12.98416Z
 agent:
-    tool: ""
+    tool: codex
+    model: gpt-6-astra
     adapter_version: 0.1.0
 repo:
     root_hint: prism
-    branch: feat/javac-call-lines
+    branch: fix/cli-read-from-to
 privacy: redacted
 commands:
-    - cmd: git diff --stat
-      at: 2026-10-12T20:13:25.47946Z
-      classified: other
-    - cmd: git diff -- internal/mcp/impactoverloads.go internal/mcp/impactoverloads_test.go
-      at: 2026-10-12T20:13:25.479377Z
-      classified: other
     - cmd: git status --short --branch
-      at: 2026-10-12T20:13:25.478964Z
+      at: 2026-10-12T20:10:00.161454Z
       classified: other
-    - cmd: git diff main...HEAD -- internal/mcp/impactoverloads.go internal/mcp/impactoverloads_test.go
-      at: 2026-10-12T20:13:25.479472Z
+    - cmd: prism query --terms review --format text
+      at: 2026-10-12T20:10:00.388904Z
       classified: other
     - cmd: git diff --stat main...HEAD
-      at: 2026-10-12T20:13:25.480425Z
+      at: 2026-10-12T20:10:03.13595Z
+      classified: other
+    - cmd: git diff main...HEAD --
+      at: 2026-10-12T20:10:03.218019Z
+      classified: other
+    - cmd: go env GOWORK GOMOD GOPATH
+      at: 2026-10-12T20:10:08.115302Z
+      classified: other
+    - cmd: git diff --check main...HEAD
+      at: 2026-10-12T20:10:08.118676Z
+      classified: other
+    - cmd: prism search --help
+      at: 2026-10-12T20:10:17.723395Z
+      classified: other
+    - cmd: go list -m -json github.com/provasign/grove
+      at: 2026-10-12T20:10:17.798655Z
+      classified: other
+    - cmd: git show -s --format='%h %s' HEAD
+      at: 2026-10-12T20:10:17.890705Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp ./internal/grove -count=1
+      at: 2026-10-12T20:10:21.859739Z
+      classified: test
+    - cmd: GOWORK=off go list -m -json github.com/provasign/grove
+      at: 2026-10-12T20:10:21.902869Z
+      classified: other
+    - cmd: prism search CallerLines /Users/tapabratapal/Projects/provasign/grove --scope text --format text
+      at: 2026-10-12T20:10:24.33116Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-10-12T20:10:49.373108Z
+      classified: other
+    - cmd: GOWORK=off go build -o /private/tmp/prism-claude-review ./cmd/prism
+      at: 2026-10-12T20:10:49.398522Z
+      classified: build
+    - cmd: prism read internal/graph/changeimpact.go --from 114 --to 147 --dir /Users/tapabratapal/Projects/provasign/grove
+      at: 2026-10-12T20:10:49.46069Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-10-12T20:10:53.145426Z
+      classified: other
+    - cmd: /private/tmp/prism-claude-review change-impact --help
+      at: 2026-10-12T20:10:53.618252Z
+      classified: other
+    - cmd: prism lookup callerLines.note callerLines.sorted --dir /Users/tapabratapal/Projects/provasign/grove --format text
+      at: 2026-10-12T20:10:53.826888Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import tempfile
+        root=Path(tempfile.mkdtemp(prefix='prism-review-overloads-',dir='/private/tmp'))
+        for case, body in {
+        'same-line':'    void both(W w) { w.value("x"); w.value(2L); }\n',
+        'partial':'    void both(W w, Missing x) {\n        w.value("x");\n        x.value(2L);\n    }\n',
+        }.items():
+            p=root/case/'p'
+            p.mkdir(parents=True)
+            (p/'W.java').write_text('package p;\npublic class W {\n    public W value(String s) { return this; }\n    public W value(long n) { return this; }\n}\n')
+            (p/'U.java').write_text('package p;\npublic class U {\n'+body+'}\n')
+        print(root)
+        PY
+      at: 2026-10-12T20:11:00.958348Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestChangeImpactTagsCallersWithTheirOverload|TestCallSitesByOverloadSkipOtherArity' -count=1
+      at: 2026-10-12T20:11:00.978756Z
+      classified: test
+    - cmd: /private/tmp/prism-claude-review change-impact W.value /private/tmp/prism-review-overloads-dp8avnqb/same-line --format text
+      at: 2026-10-12T20:11:07.773347Z
+      classified: other
+    - cmd: /private/tmp/prism-claude-review change-impact W.value /private/tmp/prism-review-overloads-dp8avnqb/partial --format text
+      at: 2026-10-12T20:11:07.793125Z
+      classified: other
+    - cmd: prism lookup CodeGraph.changeImpactScoped --dir /Users/tapabratapal/Projects/provasign/grove --format text
+      at: 2026-10-12T20:11:07.916507Z
+      classified: build
+    - cmd: /private/tmp/prism-claude-review mcp --help
+      at: 2026-10-12T20:11:10.684296Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import subprocess,json
+        for case in ['same-line','partial']:
+            req={'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':'prism','arguments':{'op':'change_impact','args':{'name':'W.value'}}}}
+            result=subprocess.run(['/private/tmp/prism-claude-review','mcp','/private/tmp/prism-review-overloads-dp8avnqb/'+case],input=json.dumps(req)+'\n',text=True,capture_output=True,timeout=60)
+            print(case, result.stdout, result.stderr)
+        PY
+      at: 2026-10-12T20:11:15.289295Z
       classified: other
 notes: []
 redactions: 0
