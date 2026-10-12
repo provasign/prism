@@ -36,6 +36,7 @@ type SpanInfo struct {
 type CallSite struct {
 	Callee string `json:"callee"`
 	Line   int    `json:"line"`
+	Col    int    `json:"col,omitempty"`  // called name's 1-based column; 0 = unknown
 	Argc   int    `json:"argc,omitempty"` // argument count; 0 = none or unknown
 }
 
