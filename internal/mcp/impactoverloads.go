@@ -44,6 +44,7 @@ func (h *Handler) overloadCallerTags(ctx context.Context, r *grove.ChangeImpactR
 	}
 	tags := map[string][]string{}
 	callers := map[string]grove.SymbolRecord{}
+	compiled := map[string]map[string][]int{} // caller -> overload -> compiler call lines
 	for _, d := range overloads {
 		params, ok := signatureParamTypes(d.Signature, d.Language)
 		if !ok {
@@ -58,6 +59,12 @@ func (h *Handler) overloadCallerTags(ctx context.Context, r *grove.ChangeImpactR
 			k := overloadCallerKey(c.FilePath, c.Span.Start, displayQN(c))
 			tags[k] = append(tags[k], label)
 			callers[k] = c
+			if ls := one.CallerLines[c.ID]; len(ls) > 0 {
+				if compiled[k] == nil {
+					compiled[k] = map[string][]int{}
+				}
+				compiled[k][label] = ls
+			}
 		}
 	}
 	for k := range tags {
@@ -69,7 +76,7 @@ func (h *Handler) overloadCallerTags(ctx context.Context, r *grove.ChangeImpactR
 			arity[len(params)] = true
 		}
 	}
-	return tags, overloadCallLines(overloads[0].Name, arity, tags, callers)
+	return tags, overloadCallLines(overloads[0].Name, arity, tags, callers, compiled)
 }
 
 // overloadLines places each call line of an overloaded name under the
@@ -83,13 +90,35 @@ type overloadLines struct {
 	exact map[string]map[string][]int // overload -> file -> lines
 	mixed map[string]map[int]string   // file -> line -> "a | b"
 	calls int
+	// guessed: file -> line -> overloads, for callers reached only by name
+	// where the compiler resolved the others.
+	guessed map[string]map[int]string
+	// fromCompiler: every exact line came from the compiler's per-call
+	// resolution.
+	fromCompiler bool
 }
 
 // arity holds the overloads' parameter counts: a same-named call with
 // another count (an annotation's value()) is a different method.
-func overloadCallLines(name string, arity map[int]bool, tags map[string][]string, callers map[string]grove.SymbolRecord) *overloadLines {
-	out := &overloadLines{exact: map[string]map[string][]int{}, mixed: map[string]map[int]string{}}
+// compiled holds, per caller and overload, the lines the compiler resolved
+// (javac call lines): those place every line exactly, a caller calling
+// several overloads included. Callers without them fall back to their call
+// sites and the per-caller tags.
+func overloadCallLines(name string, arity map[int]bool, tags map[string][]string, callers map[string]grove.SymbolRecord, compiled map[string]map[string][]int) *overloadLines {
+	out := &overloadLines{exact: map[string]map[string][]int{}, mixed: map[string]map[int]string{}, guessed: map[string]map[int]string{}, fromCompiler: true}
 	claimed := map[string]bool{} // file:line placed exactly
+	place := func(label, file string, ln int) {
+		pos := file + ":" + strconv.Itoa(ln)
+		if claimed[pos] {
+			return
+		}
+		claimed[pos] = true
+		if out.exact[label] == nil {
+			out.exact[label] = map[string][]int{}
+		}
+		out.exact[label][file] = append(out.exact[label][file], ln)
+		out.calls++
+	}
 	lineSet := func(c grove.SymbolRecord) []int {
 		var lines []int
 		seen := map[int]bool{}
@@ -110,24 +139,53 @@ func overloadCallLines(name string, arity map[int]bool, tags map[string][]string
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
+	// Compiler lines first: they are per call, so they settle every line
+	// they cover, whatever else the caller calls.
 	for _, k := range keys {
-		if t := tags[k]; len(t) == 1 {
-			c := callers[k]
+		byLabel := compiled[k]
+		labels := make([]string, 0, len(byLabel))
+		for l := range byLabel {
+			labels = append(labels, l)
+		}
+		sort.Strings(labels)
+		for _, l := range labels {
+			for _, ln := range byLabel[l] {
+				place(l, callers[k].FilePath, ln)
+			}
+		}
+	}
+	// Where the compiler supplied lines, a caller without any is a name
+	// guess (a same-named static value() in another library): its lines
+	// are listed apart, never among the compiler's.
+	compilerRan := len(compiled) > 0
+	for _, k := range keys {
+		if len(compiled[k]) > 0 {
+			continue
+		}
+		c := callers[k]
+		if compilerRan {
 			for _, ln := range lineSet(c) {
-				pos := c.FilePath + ":" + strconv.Itoa(ln)
-				if claimed[pos] {
-					continue
+				if !claimed[c.FilePath+":"+strconv.Itoa(ln)] {
+					if out.guessed[c.FilePath] == nil {
+						out.guessed[c.FilePath] = map[int]string{}
+					}
+					out.guessed[c.FilePath][ln] = strings.Join(tags[k], " | ")
+					out.calls++
 				}
-				claimed[pos] = true
-				if out.exact[t[0]] == nil {
-					out.exact[t[0]] = map[string][]int{}
-				}
-				out.exact[t[0]][c.FilePath] = append(out.exact[t[0]][c.FilePath], ln)
-				out.calls++
+			}
+			continue
+		}
+		out.fromCompiler = false
+		if t := tags[k]; len(t) == 1 {
+			for _, ln := range lineSet(c) {
+				place(t[0], c.FilePath, ln)
 			}
 		}
 	}
 	for _, k := range keys {
+		if len(compiled[k]) > 0 || compilerRan {
+			continue
+		}
 		if t := tags[k]; len(t) > 1 {
 			c := callers[k]
 			for _, ln := range lineSet(c) {
@@ -190,6 +248,26 @@ func (o *overloadLines) render() []string {
 			parts := make([]string, 0, len(ls))
 			for _, ln := range ls {
 				parts = append(parts, strconv.Itoa(ln)+" ("+o.mixed[f][ln]+")")
+			}
+			lines = append(lines, "  "+f+": "+strings.Join(parts, ", "))
+		}
+	}
+	if len(o.guessed) > 0 {
+		lines = append(lines, "name-matched — the compiler resolved none of these calls to the overloads (likely a different method of the same name); check before editing:")
+		files := make([]string, 0, len(o.guessed))
+		for f := range o.guessed {
+			files = append(files, f)
+		}
+		sort.Strings(files)
+		for _, f := range files {
+			ls := make([]int, 0, len(o.guessed[f]))
+			for ln := range o.guessed[f] {
+				ls = append(ls, ln)
+			}
+			sort.Ints(ls)
+			parts := make([]string, 0, len(ls))
+			for _, ln := range ls {
+				parts = append(parts, strconv.Itoa(ln)+" ("+o.guessed[f][ln]+")")
 			}
 			lines = append(lines, "  "+f+": "+strings.Join(parts, ", "))
 		}

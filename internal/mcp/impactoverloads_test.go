@@ -14,16 +14,18 @@ func TestChangeImpactTagsCallersWithTheirOverload(t *testing.T) {
 		"p/U.java": "package p;\n\npublic class U {\n    void str(W w) { w.value(\"x\"); }\n    void flag(W w) { w.value(true); }\n    void num(W w) { w.value(1); }\n    void both(W w) {\n        w.value(\"y\");\n        w.value(2L);\n    }\n}\n",
 	})
 	got := callCompact(t, srv, "change_impact", map[string]any{"name": "W.value"})
+	if strings.Contains(got, "mixed") {
+		t.Fatalf("compiler lines leave nothing mixed:\n%s", got)
+	}
 	for _, want := range []string{
 		"U.str", "[calls value(String)]",
 		"U.flag", "[calls value(boolean)]",
 		"U.num", "[calls value(long)]",
 		"U.both", "[calls value(String), value(long)]",
-		"callSitesByOverload",
-		"value(String) — 1 call(s)", "p/U.java: 4",
+		"callSitesByOverload (javac resolved each of these lines to its overload; no line was inferred)",
+		"value(String) — 2 call(s)", "p/U.java: 4, 8",
 		"value(boolean) — 1 call(s)", "p/U.java: 5",
-		"value(long) — 1 call(s)", "p/U.java: 6",
-		"mixed", "p/U.java: 8 (value(String) | value(long)), 9 (value(String) | value(long))",
+		"value(long) — 2 call(s)", "p/U.java: 6, 9",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q:\n%s", want, got)

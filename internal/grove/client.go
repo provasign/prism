@@ -660,6 +660,7 @@ func convertChangeImpact(r groveeng.ChangeImpactResult) *ChangeImpactResult {
 		Completeness:       r.Completeness,
 		HasHeuristicRefs:   r.HasHeuristicRefs,
 		NameMatchedCallers: r.NameMatchedCallers,
+		CallerLines:        r.CallerLines,
 		MemberKind:         r.MemberKind,
 		Accesses:           convertMemberAccesses(r.Accesses),
 		AmbiguousAccesses:  convertMemberAccesses(r.AmbiguousAccesses),

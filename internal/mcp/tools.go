@@ -3450,6 +3450,13 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if tags, lines := h.overloadCallerTags(ctx, r); len(tags) > 0 {
 		if lines != nil {
 			out["callSitesByOverload"] = lines.render()
+			if lines.fromCompiler && len(lines.mixed) == 0 {
+				src := "javac resolved each of these lines to its overload; no line was inferred"
+				if len(lines.guessed) > 0 {
+					src = "javac resolved each line listed under an overload; the name-matched lines at the end were not resolved by it"
+				}
+				out["callSitesSource"] = src
+			}
 		}
 		if callers, ok := out["callers"].([]map[string]any); ok {
 			for _, c := range callers {

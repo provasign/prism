@@ -132,7 +132,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"familyCompleteness": true, "callerCoverage": true, "callerEvidence": true,
 		"completenessScope": true, "safeToClaimComplete": true,
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
-		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true,
+		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true,
 		"reExports": true, "related": true, "degradedAnalysis": true,
 		"resolvedAmbiguity": true,
 	}
@@ -173,7 +173,11 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if lines, ok := out["callSitesByOverload"].([]string); ok && len(lines) > 0 {
-		b.WriteString("callSitesByOverload (each call line under the overload the compiler resolved it to):\n")
+		header := "callSitesByOverload (each call line under the overload the compiler resolved it to):\n"
+		if src, _ := out["callSitesSource"].(string); src != "" {
+			header = "callSitesByOverload (" + src + "):\n"
+		}
+		b.WriteString(header)
 		for _, l := range lines {
 			b.WriteString("  " + l + "\n")
 		}
