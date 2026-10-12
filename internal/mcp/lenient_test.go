@@ -47,15 +47,25 @@ func TestCompactAcceptsCallsWhoseMeaningIsClear(t *testing.T) {
 }
 
 // chi walk / node.walk: two different functions. The rejection must carry
-// calls the agent can send back unchanged.
+// calls the agent can send back unchanged, and each of them must resolve:
+// until 2026-10-12 the function's own suggested retry (walk + tree.go) was
+// ambiguous again, so chi's URLParam and its 24 callers were unreachable.
 func TestAmbiguousImpactListsReadyCalls(t *testing.T) {
 	srv := compactFixture(t, map[string]string{
 		"go.mod":  "module ex\n\ngo 1.21\n",
 		"tree.go": "package ex\n\ntype node struct{}\n\nfunc (n *node) walk() {}\n\nfunc walk() {}\n\nfunc use(n *node) { n.walk(); walk() }\n",
 	})
-	raw := callCompactErr(t, srv, "change_impact", map[string]any{"name": "walk", "symbol_file": "tree.go"})
+	raw := callCompactErr(t, srv, "change_impact", map[string]any{"name": "walk"})
 	if !strings.Contains(raw, `{"op":"change_impact","args":{"name":"node.walk"`) || !strings.Contains(raw, `{"op":"change_impact","args":{"name":"walk"`) {
 		t.Fatalf("ambiguity answer lacks ready-to-use calls:\n%s", raw)
+	}
+	fn := callCompact(t, srv, "change_impact", map[string]any{"name": "walk", "symbol_file": "tree.go"})
+	if !strings.Contains(fn, "func walk()") || strings.Contains(fn, "is ambiguous") {
+		t.Fatalf("the suggested retry for the function must resolve to it:\n%s", fn)
+	}
+	method := callCompact(t, srv, "change_impact", map[string]any{"name": "node.walk", "symbol_file": "tree.go"})
+	if !strings.Contains(method, "node.walk") || strings.Contains(method, "is ambiguous") {
+		t.Fatalf("the suggested retry for the method must resolve to it:\n%s", method)
 	}
 }
 
