@@ -1,0 +1,29 @@
+shale_version: "0"
+id: 01a131bc-2647-7e63-a0bd-2b93ecaf2698
+created_at: 2026-10-12T20:12:15.633468Z
+finalized_at: 2026-10-12T20:13:27.660487Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: feat/javac-call-lines
+privacy: redacted
+commands:
+    - cmd: git diff --stat
+      at: 2026-10-12T20:13:25.47946Z
+      classified: other
+    - cmd: git diff -- internal/mcp/impactoverloads.go internal/mcp/impactoverloads_test.go
+      at: 2026-10-12T20:13:25.479377Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-10-12T20:13:25.478964Z
+      classified: other
+    - cmd: git diff main...HEAD -- internal/mcp/impactoverloads.go internal/mcp/impactoverloads_test.go
+      at: 2026-10-12T20:13:25.479472Z
+      classified: other
+    - cmd: git diff --stat main...HEAD
+      at: 2026-10-12T20:13:25.480425Z
+      classified: other
+notes: []
+redactions: 0
