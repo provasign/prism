@@ -764,9 +764,9 @@ func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any,
 // unique exact first symbol, or a lone symbol match. It also reports the
 // symbols whose source it delivered so the enclosing pass can serve the
 // remaining hits without repeating them.
-func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]any) (string, []grove.SymbolRecord) {
+func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]any) (string, []grove.SymbolRecord, func()) {
 	if h.Grove == nil {
-		return "", nil
+		return "", nil, func() {}
 	}
 	// A batched search may have many substring hits yet one exact match for
 	// its first, most specific term. A qualified query such as "class Foo"
@@ -775,7 +775,7 @@ func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]
 	if results, ok := out["results"].([]map[string]any); ok && len(results) > 0 {
 		first := results[0]
 		if boolArg(first, "symbolsTruncated") {
-			return "", nil
+			return "", nil, func() {}
 		}
 		term, _ := first["query"].(string)
 		symbols, _ := first["symbols"].([]map[string]any)
@@ -785,7 +785,7 @@ func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]
 				continue
 			}
 			if exact != nil {
-				return "", nil // ambiguous exact name
+				return "", nil, func() {} // ambiguous exact name
 			}
 			exact = item
 		}
@@ -796,30 +796,31 @@ func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]
 			label = "the unique small symbol match in the first batched term; other hits remain locators"
 		}
 		if selected == nil {
-			return "", nil
+			return "", nil, func() {}
 		}
 		file, _ := selected["filePath"].(string)
 		name, _ := selected["qualifiedName"].(string)
 		span, _ := selected["span"].(map[string]any)
 		if file == "" || name == "" || span == nil {
-			return "", nil
+			return "", nil, func() {}
 		}
 		syms, err := h.Grove.FileSymbols(ctx, file)
 		if err != nil {
-			return "", nil
+			return "", nil, func() {}
 		}
 		for _, sym := range syms {
 			if sym.QualifiedName == name && sym.Span.Start == intArg(span, "start", 0) &&
 				sym.Span.End == intArg(span, "end", 0) {
 				if exact == nil && (sym.Span.End-sym.Span.Start+1 > 40 || len(sym.RawText) > 2400) {
-					return "", nil
+					return "", nil, func() {}
 				}
 				pick := ranking.BudgetedSymbol{Symbol: sym, Score: 1,
 					Category: ranking.CategoryTarget, Disclosure: ranking.DisclosureFull}
-				return h.renderCompactSearchBodies([]ranking.BudgetedSymbol{pick}, label), []grove.SymbolRecord{sym}
+				text, commit := h.renderCompactSearchBodiesDeferred([]ranking.BudgetedSymbol{pick}, label)
+				return text, []grove.SymbolRecord{sym}, commit
 			}
 		}
-		return "", nil
+		return "", nil, func() {}
 	}
 	if symbols, ok := out["symbols"].([]map[string]any); ok && len(symbols) == 1 && !boolArg(out, "symbolsTruncated") {
 		picked := make([]ranking.BudgetedSymbol, 0, len(symbols))
@@ -852,24 +853,24 @@ func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]
 			}
 		}
 		if len(picked) == len(symbols) {
-			if body := h.renderCompactSearchBodies(picked); body != "" {
-				return body, budgetedSymbols(picked)
+			if body, commit := h.renderCompactSearchBodiesDeferred(picked); body != "" {
+				return body, budgetedSymbols(picked), commit
 			}
 		}
 	}
 	if !boolArg(out, "resultsComplete") {
-		return "", nil
+		return "", nil, func() {}
 	}
 	groups, ok := out["textHits"].([]map[string]any)
 	if !ok {
-		return "", nil
+		return "", nil, func() {}
 	}
 	totalHits := 0
 	for _, group := range groups {
 		totalHits += len(anySlice(group["hits"]))
 	}
 	if totalHits != 1 {
-		return "", nil
+		return "", nil, func() {}
 	}
 
 	seen := map[string]bool{}
@@ -906,10 +907,11 @@ func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]
 		}
 	}
 	if len(picked) == 0 || len(picked) > 2 {
-		return "", nil
+		return "", nil, func() {}
 	}
 
-	return h.renderCompactSearchBodies(picked), budgetedSymbols(picked)
+	body, commit := h.renderCompactSearchBodiesDeferred(picked)
+	return body, budgetedSymbols(picked), commit
 }
 
 func budgetedSymbols(picked []ranking.BudgetedSymbol) []grove.SymbolRecord {
@@ -1224,10 +1226,21 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 }
 
 func (h *Handler) renderCompactSearchBodies(picked []ranking.BudgetedSymbol, note ...string) string {
+	text, commit := h.renderCompactSearchBodiesDeferred(picked, note...)
+	commit()
+	return text
+}
+
+// renderCompactSearchBodiesDeferred renders like renderCompactSearchBodies
+// but records nothing as delivered until commit runs: a caller that may
+// still discard the rendering (a pick the budget rejects) commits only what
+// it sends. Recording a discarded pick made a later read answer
+// "[prism:cached] ... lines 1-71" for source the agent never saw.
+func (h *Handler) renderCompactSearchBodiesDeferred(picked []ranking.BudgetedSymbol, note ...string) (string, func()) {
 	const budget = 4000
 	for _, item := range picked {
 		if item.Symbol.Span.End-item.Symbol.Span.Start+1 > 160 || len(item.Symbol.RawText) > 10000 {
-			return ""
+			return "", func() {}
 		}
 	}
 	var sections []string
@@ -1236,26 +1249,27 @@ func (h *Handler) renderCompactSearchBodies(picked []ranking.BudgetedSymbol, not
 	for _, group := range groupPickedByFile(picked) {
 		section, commit, ok := h.renderFileSection(group)
 		if !ok {
-			return ""
+			return "", func() {}
 		}
 		tokens += ranking.EstimateTokens(section)
 		if tokens > budget {
-			return ""
+			return "", func() {}
 		}
 		sections = append(sections, section)
 		commits = append(commits, commit)
 	}
 	if len(sections) == 0 {
-		return ""
-	}
-	for _, commit := range commits {
-		commit()
+		return "", func() {}
 	}
 	label := compactPickedLabel
 	if len(note) > 0 {
 		label = note[0]
 	}
-	return "\n// Exact source for " + label + " (already read; do not fetch it again):\n" + strings.Join(sections, "")
+	return "\n// Exact source for " + label + " (already read; do not fetch it again):\n" + strings.Join(sections, ""), func() {
+		for _, commit := range commits {
+			commit()
+		}
+	}
 }
 
 // contextBearingTool reports whether a tool delivers code context the agent

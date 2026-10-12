@@ -34,8 +34,11 @@ func (h *Handler) attachSearchBodies(ctx context.Context, out map[string]any, sh
 	var bodies string
 	switch shape.bodies {
 	case bodiesOne:
-		picked, delivered := h.compactSearchBodiesPicked(ctx, labeled)
+		// A pick the budget rejects is never sent, so it is recorded as
+		// delivered only when chosen.
+		picked, delivered, commit := h.compactSearchBodiesPicked(ctx, labeled)
 		if picked != "" && budgetPickFits(delivered, budget.testsTargeted) {
+			commit()
 			bodies = picked
 		} else {
 			bodies = h.compactSearchBodiesBudgeted(ctx, labeled, budget.testsTargeted)
@@ -43,7 +46,8 @@ func (h *Handler) attachSearchBodies(ctx context.Context, out map[string]any, sh
 	case bodiesWide:
 		// The pick first; the enclosing pass skips what the pick printed
 		// (its file section, wider than the symbol), not only the symbol.
-		picked, delivered := h.compactSearchBodiesPicked(ctx, labeled)
+		picked, delivered, commit := h.compactSearchBodiesPicked(ctx, labeled)
+		commit()
 		skip := append(delivered, deliveredSpanSymbols(picked)...)
 		bodies = picked + h.compactSearchBodiesEnclosingExcept(ctx, labeled, skip)
 	case bodiesWideNoPick:
