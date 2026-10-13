@@ -54,6 +54,10 @@ type Result struct {
 	// project's own source).
 	Truncated bool `json:"truncated,omitempty"`
 	TimedOut  bool `json:"timedOut,omitempty"`
+	// HeavyDirs, set only on a timeout: the top-level folders holding the
+	// most searchable bytes, so the warning can say where the time went
+	// and what to exclude.
+	HeavyDirs []HeavyDir `json:"heavyDirs,omitempty"`
 	// TotalHits is how many matches the backend actually emitted and
 	// FilesMatched how many files they span -- reported even when Hits is
 	// capped, so truncation always carries a denominator.
@@ -240,8 +244,13 @@ var excludeDirs = []string{".git", ".grove", ".shale", ".claude", ".cursor",
 // failure mode is extra hits, not silent absence. `prism doctor` reports
 // which backend is active.
 func gitignoreDirs(root string) []string {
-	data, err := os.ReadFile(filepath.Join(root, ".gitignore"))
-	if err != nil {
+	var data []byte
+	for _, name := range []string{".gitignore", ".groveignore"} {
+		if b, err := os.ReadFile(filepath.Join(root, name)); err == nil {
+			data = append(append(data, b...), '\n')
+		}
+	}
+	if len(data) == 0 {
 		return nil
 	}
 	var out []string
@@ -435,7 +444,89 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	if opts.Context > 0 && len(res.Hits) > 0 && !contextAttached {
 		attachContext(root, res.Hits, opts.Context)
 	}
+	if res.TimedOut {
+		res.HeavyDirs = heavyDirs(root, opts)
+	}
 	return res
+}
+
+// HeavyDir is a top-level folder (or "." for files at the root) and the
+// searchable text it holds.
+type HeavyDir struct {
+	Dir   string `json:"dir"`
+	Files int    `json:"files"`
+	Bytes int64  `json:"bytes"`
+}
+
+// heavyDirs lists the three top-level folders with the most bytes a search
+// would read: rg --files with the search's own filters, then a stat per
+// file, bounded at one second (it runs after a search already ran out of
+// time). nil when rg is unavailable or the listing cannot finish.
+func heavyDirs(root string, opts Options) []HeavyDir {
+	if Backend() != "rg" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	args := []string{"--no-config", "--files", "--no-require-git", "--hidden", "--max-filesize", "2M"}
+	for _, d := range excludeDirs {
+		args = append(args, "--glob", "!"+d+"/")
+	}
+	args = append(args, groveIgnoreArgs(root)...)
+	for _, g := range opts.Glob {
+		args = append(args, "--glob", g)
+	}
+	operands, _ := scopeArgs(root, opts.Paths)
+	if len(operands) == 0 {
+		return nil
+	}
+	args = append(args, "--")
+	args = append(args, operands...)
+	cmd := exec.CommandContext(ctx, bin("rg"), args...)
+	cmd.Dir = root
+	out, err := cmd.Output()
+	if err != nil || ctx.Err() != nil {
+		return nil
+	}
+	byDir := map[string]*HeavyDir{}
+	for _, line := range strings.Split(string(out), "\n") {
+		if line == "" {
+			continue
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
+		rel := filepath.ToSlash(filepath.Clean(line))
+		dir := "."
+		if i := strings.IndexByte(rel, '/'); i > 0 {
+			dir = rel[:i] + "/"
+		}
+		fi, err := os.Stat(filepath.Join(root, rel))
+		if err != nil {
+			continue
+		}
+		d := byDir[dir]
+		if d == nil {
+			d = &HeavyDir{Dir: dir}
+			byDir[dir] = d
+		}
+		d.Files++
+		d.Bytes += fi.Size()
+	}
+	var dirs []HeavyDir
+	for _, d := range byDir {
+		dirs = append(dirs, *d)
+	}
+	sort.Slice(dirs, func(i, j int) bool {
+		if dirs[i].Bytes != dirs[j].Bytes {
+			return dirs[i].Bytes > dirs[j].Bytes
+		}
+		return dirs[i].Dir < dirs[j].Dir
+	})
+	if len(dirs) > 3 {
+		dirs = dirs[:3]
+	}
+	return dirs
 }
 
 const (
@@ -677,14 +768,12 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 		// (measured: an agent concluded six hidden configs did not exist).
 		// .gitignore still applies, so ignored venvs stay out.
 		"--hidden",
-		// Deterministic file order. rg is multi-threaded and emits files in
-		// completion order; when the hit list is capped downstream, WHICH
-		// files survive the cap varies per run — measured 2026-08-26 as
-		// prism_query returning different anchor sets on identical inputs
-		// (the text-confirmed seed promotion followed rg's race winners).
-		// --sort path forces single-threaded sorted output; on repo-scale
-		// trees the determinism is worth far more than the parallelism.
-		"--sort", "path",
+		// No --sort path: it forces rg onto one thread (grafana, 21k files:
+		// 0.50s sorted vs 0.22s parallel, 2026-10-13). runLineTool reads
+		// rg's whole output and sorts it in rg's path order before any cap,
+		// so which hits survive the cap stays deterministic — the reason
+		// --sort path was added (2026-08-26: prism_query returned different
+		// anchor sets on identical inputs).
 		"--max-count", strconv.Itoa(opts.MaxPerFile),
 		"--max-columns", strconv.Itoa(maxLineLen), "--max-columns-preview",
 		"--max-filesize", "2M",
@@ -696,6 +785,7 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 	for _, d := range excludeDirs {
 		args = append(args, "--glob", "!"+d+"/")
 	}
+	args = append(args, groveIgnoreArgs(root)...)
 	for _, g := range opts.Glob {
 		args = append(args, "--glob", g)
 	}
@@ -809,11 +899,21 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 		// is the one thing this package is not allowed to do.
 		res.TotalHits++
 		files[file] = true
-		if len(res.Hits) >= opts.MaxHits {
-			res.Truncated = true
-			continue
-		}
 		res.Hits = append(res.Hits, Hit{File: file, Line: ln, Text: truncateLine(parts[2])})
+	}
+	// The searcher emits files in completion order (rg runs unsorted for
+	// speed; grep -r follows directory order). Sort in rg's --sort path
+	// order before capping so the same search always keeps the same hits.
+	sort.SliceStable(res.Hits, func(i, j int) bool {
+		a, b := &res.Hits[i], &res.Hits[j]
+		if a.File != b.File {
+			return PathLess(a.File, b.File)
+		}
+		return a.Line < b.Line
+	})
+	if len(res.Hits) > opts.MaxHits {
+		res.Hits = res.Hits[:opts.MaxHits]
+		res.Truncated = true
 	}
 	res.FilesMatched = len(files)
 	// A searcher can emit partial output before the deadline kills it. Those
@@ -826,6 +926,41 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 		return res, false // engine failure: let the caller fall back
 	}
 	return res, true
+}
+
+// PathLess orders repo-relative slash paths the way rg --sort path does:
+// component by component, so "a/x" sorts before "a-b/x" (a plain string
+// compare puts '-' (0x2D) before '/' (0x2F) and would not).
+func PathLess(a, b string) bool {
+	for {
+		ai, bi := strings.IndexByte(a, '/'), strings.IndexByte(b, '/')
+		ac, bc := a, b
+		if ai >= 0 {
+			ac = a[:ai]
+		}
+		if bi >= 0 {
+			bc = b[:bi]
+		}
+		if ac != bc {
+			return ac < bc
+		}
+		if ai < 0 || bi < 0 {
+			return ai < 0 && bi >= 0 // a file sorts before entries under a same-named dir
+		}
+		a, b = a[ai+1:], b[bi+1:]
+	}
+}
+
+// groveIgnoreArgs makes rg skip what the project's root .groveignore
+// excludes from the index, as it skips .gitignore'd paths: a folder a user
+// keeps out of Prism (data exports, vendored copies) should not cost every
+// text search a scan. Nested .groveignore files are not passed.
+func groveIgnoreArgs(root string) []string {
+	p := filepath.Join(root, ".groveignore")
+	if _, err := os.Stat(p); err != nil {
+		return nil
+	}
+	return []string{"--ignore-file", p}
 }
 
 // regexUsable reports whether the pattern should run as a regex: requested,

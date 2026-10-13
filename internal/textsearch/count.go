@@ -55,7 +55,7 @@ func Count(ctx context.Context, root, pattern string, opts Options) CountResult 
 func runRgCount(ctx context.Context, root, pattern string, opts Options) (CountResult, bool) {
 	args := []string{
 		"--count", "--with-filename", "--color", "never", "--no-messages",
-		caseFlagRg(opts), "--no-require-git", "--hidden", "--sort", "path", "--max-filesize", "2M",
+		caseFlagRg(opts), "--no-require-git", "--hidden", "--max-filesize", "2M",
 	}
 	if !regexUsable(pattern, opts) {
 		args = append(args, "--fixed-strings")
@@ -63,6 +63,7 @@ func runRgCount(ctx context.Context, root, pattern string, opts Options) (CountR
 	for _, d := range excludeDirs {
 		args = append(args, "--glob", "!"+d+"/")
 	}
+	args = append(args, groveIgnoreArgs(root)...)
 	for _, g := range opts.Glob {
 		args = append(args, "--glob", g)
 	}
@@ -130,7 +131,7 @@ func runCountTool(ctx context.Context, root, executable string, args, extraEnv [
 		r.Files = append(r.Files, FileCount{File: file, Count: n})
 		r.TotalHits += n
 	}
-	sort.Slice(r.Files, func(i, j int) bool { return r.Files[i].File < r.Files[j].File })
+	sort.Slice(r.Files, func(i, j int) bool { return PathLess(r.Files[i].File, r.Files[j].File) })
 	r.FilesMatched = len(r.Files)
 	if ctx.Err() != nil {
 		r.TimedOut = true
