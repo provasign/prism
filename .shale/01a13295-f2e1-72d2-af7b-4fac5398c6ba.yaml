@@ -1,0 +1,394 @@
+shale_version: "0"
+id: 01a13295-f2e1-72d2-af7b-4fac5398c6ba
+created_at: 2026-10-13T00:08:00.184973Z
+finalized_at: 2026-10-13T12:53:08.490954Z
+agent:
+    tool: codex
+    model: gpt-6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: deps/grove-v0.63.15
+privacy: redacted
+commands:
+    - cmd: ollama ps
+      at: 2026-10-13T00:08:01.865212Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command
+      at: 2026-10-13T00:08:03.180908Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-10-13T00:10:26.867627Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-13T00:10:26.95305Z
+      classified: other
+    - cmd: prism search java sonnet --scope text --format text
+      at: 2026-10-13T00:10:28.637423Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command
+      at: 2026-10-13T00:10:33.663415Z
+      classified: other
+    - cmd: prism read AGENTS.md
+      at: 2026-10-13T00:10:33.744301Z
+      classified: other
+    - cmd: prism read harness/results/wide32-v08718-probe-manifest.json
+      at: 2026-10-13T00:10:33.744523Z
+      classified: other
+    - cmd: prism search wide32-v08718 java32 sessions-java-2026-10-12 --scope text --format text
+      at: 2026-10-13T00:10:33.904845Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-10-13T00:10:38.324852Z
+      classified: other
+    - cmd: prism read harness/results/java5-issue-manifest.json
+      at: 2026-10-13T00:10:38.435843Z
+      classified: other
+    - cmd: prism read harness/runners/run_session.py
+      at: 2026-10-13T00:10:38.435652Z
+      classified: other
+    - cmd: prism read harness/bench.py
+      at: 2026-10-13T00:10:38.435867Z
+      classified: other
+    - cmd: prism read harness/results/sessions-manifest.json
+      at: 2026-10-13T00:10:38.435502Z
+      classified: other
+    - cmd: prism read harness/results/wide32-v08718-2026-10-12/results.json
+      at: 2026-10-13T00:10:38.43589Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command
+      at: 2026-10-13T00:10:45.198626Z
+      classified: other
+    - cmd: prism search codex _cloud_cmd --scope text --format text --glob 'harness/runners/*.py'
+      at: 2026-10-13T00:10:49.17996Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py 600 850
+      at: 2026-10-13T00:10:51.207785Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-10-13T00:10:52.465436Z
+      classified: other
+    - cmd: codex exec --help
+      at: 2026-10-13T00:10:54.644578Z
+      classified: other
+    - cmd: prism read harness/bench.py --from 1 --to 220
+      at: 2026-10-13T00:10:54.654833Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py --from 620 --to 850
+      at: 2026-10-13T00:10:54.65475Z
+      classified: other
+    - cmd: prism read harness/runners/run_codex.py --from 55 --to 115
+      at: 2026-10-13T00:10:54.65622Z
+      classified: other
+    - cmd: prism read harness/results/sessions-java-2026-10-12/session.log
+      at: 2026-10-13T00:10:56.186203Z
+      classified: other
+    - cmd: prism search _run_codex codex --scope text --format text --paths harness/runners/run_e2e.py
+      at: 2026-10-13T00:10:58.778199Z
+      classified: other
+    - cmd: prism search --help
+      at: 2026-10-13T00:11:00.016133Z
+      classified: other
+    - cmd: prism search _run_codex codex --scope text --path harness/runners/run_e2e.py
+      at: 2026-10-13T00:11:01.272415Z
+      classified: other
+    - cmd: codex exec -m gpt-6.1-sol -s workspace-write -C /private/tmp --skip-git-repo-check --json -c 'approval_policy="never"' 'Reply with OK.'
+      at: 2026-10-13T00:11:06.617428Z
+      classified: other
+    - cmd: codex exec -m gpt-6.1-sol -s workspace-write -C /private/tmp --skip-git-repo-check --json -c 'approval_policy="never"' 'Reply with OK.'
+      at: 2026-10-13T00:11:21.089499Z
+      classified: other
+    - cmd: codex exec resume --help
+      at: 2026-10-13T00:11:30.053096Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py --from 1 --to 130
+      at: 2026-10-13T00:11:32.484125Z
+      classified: other
+    - cmd: prism read harness/runners/ab_endtoend_arms.py
+      at: 2026-10-13T00:11:34.780176Z
+      classified: other
+    - cmd: codex mcp list
+      at: 2026-10-13T00:11:36.30673Z
+      classified: other
+    - cmd: cp /Users/tapabratapal/Projects/provasign/research/harness/runners/run_session.py /private/tmp/run_session_codex.py
+      at: 2026-10-13T00:11:39.536503Z
+      classified: other
+    - cmd: prism search _index_graph --scope symbols --path harness/runners/run_e2e.py
+      at: 2026-10-13T00:11:43.72382Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py --from 290 --to 359
+      at: 2026-10-13T00:11:44.848635Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_session_codex.py --manifest results/sessions-manifest.json --out-dir /private/tmp/codex-java32-2026-10-12 --sessions databind-a,databind-b,dubbo --arms baseline,prism_init --model gpt-6.1-sol --list
+      at: 2026-10-13T00:12:16.275038Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command
+      at: 2026-10-13T00:13:21.761085Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:13:54.715561Z
+      classified: other
+    - cmd: python3 -B -c 'import glob,json,collections; p=glob.glob("/private/tmp/codex-java32-2026-10-12/transcripts/*")[0]; es=[json.loads(x) for x in open(p)]; print(p); print(collections.Counter((e.get("item") or {}).get("type") for e in es if e.get("type")=="item.completed")); print(next((e.get("usage") for e in reversed(es) if e.get("type")=="turn.completed"),None)); print([e.get("item",{}).get("text","")[:200] for e in es if (e.get("item") or {}).get("type")=="agent_message"][-1:])'
+      at: 2026-10-13T00:14:29.069357Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:17:42.529481Z
+      classified: other
+    - cmd: prism init --help
+      at: 2026-10-13T00:18:49.430601Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:20:26.80993Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:22:45.427693Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:24:39.927526Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:27:51.908776Z
+      classified: other
+    - cmd: python3 -B -c 'import glob,json,collections; p=glob.glob("/private/tmp/codex-java32-2026-10-12/transcripts/*pr6030*gpt-6.1-sol.prism_init*")[0]; es=[json.loads(x) for x in open(p)]; print(p); print(collections.Counter((e.get("item") or {}).get("type") for e in es if e.get("type")=="item.completed")); print([(e.get("item") or {}).get("server"),(e.get("item") or {}).get("tool") for e in es if (e.get("item") or {}).get("type")=="mcp_tool_call"][:10])'
+      at: 2026-10-13T00:29:41.592715Z
+      classified: other
+    - cmd: python3 -B -c 'import glob,json,collections; p=glob.glob("/private/tmp/codex-java32-2026-10-12/transcripts/*pr6030*gpt-6.1-sol.prism_init*")[0]; es=[json.loads(x) for x in open(p)]; print(p); print(collections.Counter((e.get("item") or {}).get("type") for e in es if e.get("type")=="item.completed")); print([(e.get("item") or {}).get("server") for e in es if (e.get("item") or {}).get("type")=="mcp_tool_call"][:10])'
+      at: 2026-10-13T00:29:43.789982Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,glob,pathlib; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12");
+        for arm in ("baseline","prism_init"):
+         d=json.loads((root/f"databind-a.claude-sonnet-5-5.{arm}.json").read_text()); s=d["steps"][0]; print("SONNET",arm,[(m.get("tokens"),m.get("cost_usd"),m.get("turns"),m.get("cost_usd_cumulative")) for m in s["messages"]]);
+         for p in sorted(glob.glob(f"/private/tmp/codex-java32-2026-10-12/transcripts/*pr6030*gpt-6.1-sol.{arm}.*")):
+          es=[json.loads(x) for x in open(p)]; print("CODEX",arm,pathlib.Path(p).name,next((e.get("usage") for e in reversed(es) if e.get("type")=="turn.completed"),{}))'
+      at: 2026-10-13T00:32:59.39898Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,glob,pathlib; ps=sorted(glob.glob("/private/tmp/codex-java32-2026-10-12/transcripts/*gpt-6.1-sol.baseline.*"));
+        for p in ps[:8]:
+         es=[json.loads(x) for x in open(p)]; u=next((e.get("usage") for e in reversed(es) if e.get("type")=="turn.completed"),{}); print(pathlib.Path(p).name.split(".")[0],u.get("input_tokens"),u.get("output_tokens"))'
+      at: 2026-10-13T00:33:03.291975Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib; p=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12/databind-a.claude-sonnet-5-5.baseline.json"); d=json.loads(p.read_text());
+        for s in d["steps"][:3]: print(s["task"].split("__")[-1],[(m["tokens"],m["cost_usd"]) for m in s["messages"]])'
+      at: 2026-10-13T00:33:08.576034Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import glob,json,pathlib; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12");
+        for arm in ("baseline","prism_init"):
+         d=json.loads((root/f"databind-a.claude-sonnet-5-5.{arm}.json").read_text()); ms=d["steps"][0]["messages"]; st={k:sum(m["tokens"][k] for m in ms) for k in ms[0]["tokens"]}; print("Sonnet",arm,st,"all",sum(st.values()),"cost",sum(m["cost_usd"] for m in ms));
+         ps=sorted(glob.glob(f"/private/tmp/codex-java32-2026-10-12/transcripts/*pr6030*gpt-6.1-sol.{arm}.*")); us=[];
+         for p in ps:
+          es=[json.loads(x) for x in open(p)]; us.append(next(e["usage"] for e in reversed(es) if e.get("type")=="turn.completed"));
+         u=us[-1]; unc=u["input_tokens"]-u["cached_input_tokens"]; cost=(unc*2+u["cached_input_tokens"]*.1+u["cache_write_input_tokens"]*2.5+u["output_tokens"]*10)/1e6; print("Codex",arm,u,"all",u["input_tokens"]+u["output_tokens"],"uncached",unc,"list_cost",round(cost,6))'
+      at: 2026-10-13T00:33:14.927137Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import glob,json,collections,pathlib;
+        for arm in ("baseline","prism_init"):
+         print("ARM",arm)
+         for p in sorted(glob.glob(f"/private/tmp/codex-java32-2026-10-12/transcripts/*pr6030*gpt-6.1-sol.{arm}.*")):
+          es=[json.loads(x) for x in open(p)]; print("FILE",pathlib.Path(p).name,collections.Counter((e.get("item") or {}).get("type") for e in es if e.get("type")=="item.completed"))
+          for e in es:
+           if e.get("type")!="item.completed": continue
+           i=e.get("item") or {}; t=i.get("type");
+           if t in ("mcp_tool_call","command_execution"): print(t,"name",i.get("tool") or i.get("command",""),"args",str(i.get("arguments",""))[:250],"output_chars",len(str(i.get("result") or i.get("aggregated_output") or "")))
+           elif t=="agent_message": print("MSG",str(i.get("text",""))[:240].replace("\n"," "))'
+      at: 2026-10-13T00:34:30.936749Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib,collections; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12/transcripts");
+        for arm in ("baseline","prism_init"):
+         p=root/f"databind-a.claude-sonnet-5-5.{arm}.jsonl"; es=[json.loads(x) for x in open(p)]; print(arm,len(es),collections.Counter(e.get("type") for e in es));
+         for e in es:
+          m=e.get("message") or {}; c=m.get("content") or [];
+          if isinstance(c,list) and any(isinstance(x,dict) and x.get("type") in ("tool_use","tool_result") for x in c):
+           print("example",e.get("type"),list(e.keys()),[(x.get("type"),x.get("name"),len(str(x.get("content") or ""))) for x in c if isinstance(x,dict)][:3]); break'
+      at: 2026-10-13T00:34:36.71647Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib; p=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12/transcripts/databind-a.claude-sonnet-5-5.prism_init.jsonl"); es=[json.loads(x) for x in open(p)];
+        for e in es:
+         if e.get("type")=="last-prompt": print({k:str(v)[:350] for k,v in e.items()}); break
+        for e in es:
+         if e.get("type")=="user": print({k:str(v)[:350] for k,v in e.items()}); break'
+      at: 2026-10-13T00:34:39.932499Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib,collections; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12/transcripts");
+        for arm in ("baseline","prism_init"):
+         es=[json.loads(x) for x in open(root/f"databind-a.claude-sonnet-5-5.{arm}.jsonl")]; print("ARM",arm); n=0;
+         for e in es:
+          t=e.get("type"); m=e.get("message") or {}; c=m.get("content") or [];
+          if t=="user" and isinstance(c,str) and "Next ticket" in c: break
+          if t=="user" and isinstance(c,str) and ("ISSUE:" in c or "I ran the tests" in c): print("PROMPT",c[:100].replace("\n"," "))
+          if t=="assistant" and isinstance(c,list):
+           for x in c:
+            if isinstance(x,dict) and x.get("type")=="tool_use": print("TOOL",x.get("name"),str(x.get("input",""))[:140].replace("\n"," ")); n+=1
+         print("TOTAL",n)'
+      at: 2026-10-13T00:34:44.666816Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib,collections; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12/transcripts");
+        for arm in ("baseline","prism_init"):
+         es=[json.loads(x) for x in open(root/f"databind-a.claude-sonnet-5-5.{arm}.jsonl")]; ids={}; out=[];
+         for e in es:
+          m=e.get("message") or {}; c=m.get("content") or []
+          if e.get("type")=="user" and isinstance(c,str) and "Next ticket" in c: break
+          if isinstance(c,list):
+           for x in c:
+            if not isinstance(x,dict): continue
+            if x.get("type")=="tool_use": ids[x.get("id")]=x.get("name")
+            if x.get("type")=="tool_result": out.append((ids.get(x.get("tool_use_id")),len(str(x.get("content") or ""))))
+         print(arm,"results",out,"sum",sum(n for _,n in out))'
+      at: 2026-10-13T00:34:48.316077Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12/transcripts");
+        for arm in ("baseline","prism_init"):
+         es=[json.loads(x) for x in open(root/f"databind-a.claude-sonnet-5-5.{arm}.jsonl")]; seen=set(); us=[]
+         for e in es:
+          m=e.get("message") or {}; c=m.get("content") or []
+          if e.get("type")=="user" and isinstance(c,str) and "Next ticket" in c: break
+          if e.get("type")=="assistant" and m.get("id") and m.get("id") not in seen:
+           seen.add(m["id"]); u=m.get("usage") or {}; us.append((u.get("cache_read_input_tokens"),u.get("cache_creation_input_tokens"),u.get("output_tokens")))
+         print(arm,len(us),us[:4],"sum",[sum((v[i] or 0) for v in us) for i in range(3)])'
+      at: 2026-10-13T00:34:53.802646Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import glob,json;
+        for arm in ("baseline","prism_init"):
+         ps=sorted(glob.glob(f"/private/tmp/codex-java32-2026-10-12/transcripts/*pr6030*gpt-6.1-sol.{arm}.*")); print(arm)
+         for n,p in enumerate(ps,1):
+          es=[json.loads(x) for x in open(p)]; items=[e["item"] for e in es if e.get("type")=="item.completed" and "item" in e]; cs=[i for i in items if i.get("type")=="command_execution"]; ms=[i for i in items if i.get("type")=="mcp_tool_call"]; print(n,"commands",len(cs),"mcp",len(ms),"command_output_chars",sum(len(i.get("aggregated_output") or "") for i in cs))'
+      at: 2026-10-13T00:35:01.774869Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command
+      at: 2026-10-13T00:36:07.285062Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import glob,json,pathlib; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12");
+        for arm in ("baseline","prism_init"):
+         m=json.loads((root/f"databind-a.claude-sonnet-5-5.{arm}.json").read_text())["steps"][0]["messages"][0]; st=m["tokens"]; print("sonnet",arm,sum(st.values()),m["cost_usd"]); p=sorted(glob.glob(f"/private/tmp/codex-java32-2026-10-12/transcripts/*pr6030*gpt-6.1-sol.{arm}.*"))[0]; es=[json.loads(x) for x in open(p)]; u=next(e["usage"] for e in reversed(es) if e.get("type")=="turn.completed"); cost=((u["input_tokens"]-u["cached_input_tokens"])*2+u["cached_input_tokens"]*.1+u["cache_write_input_tokens"]*2.5+u["output_tokens"]*10)/1e6; print("codex",arm,u["input_tokens"]+u["output_tokens"],round(cost,6))'
+      at: 2026-10-13T00:36:19.648211Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:36:29.337804Z
+      classified: other
+    - cmd: python3 -B /private/tmp/report_java32.py
+      at: 2026-10-13T00:44:38.310554Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:47:22.158864Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:51:48.019593Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:56:34.248127Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T00:57:41.013487Z
+      classified: other
+    - cmd: docker ps --format '{{.ID}} {{.Image}} {{.RunningFor}} {{.Names}}'
+      at: 2026-10-13T00:57:41.017763Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-13T01:11:03.887692Z
+      classified: other
+    - cmd: ps -p 72835 -o pid,ppid,etime,state,command
+      at: 2026-10-13T01:11:14.352005Z
+      classified: other
+    - cmd: ps -p 72835 -o pid,ppid,etime,state,command
+      at: 2026-10-13T01:45:28.454803Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_session_codex.py --manifest results/sessions-manifest.json --out-dir /private/tmp/codex-java32-2026-10-12 --sessions databind-a,databind-b,dubbo --arms baseline,prism_init --model gpt-6.1-sol
+      at: 2026-10-13T01:47:06.8868Z
+      classified: other
+    - cmd: python3 -B /private/tmp/report_java32.py
+      at: 2026-10-13T01:47:22.926825Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib; roots=[pathlib.Path("/private/tmp/codex-java32-2026-10-12"),pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12")];
+        for root in roots:
+         print(root)
+         for p in sorted(root.glob("*.json")):
+          if "databind" not in p.name and "dubbo" not in p.name: continue
+          d=json.loads(p.read_text()); print(p.name,len(d["steps"]),[(s["task"].split("__")[-1],s["resolved"],[(m.get("score_error"),m.get("agent_error"),m.get("score",{}).get("n_run")) for m in s["messages"]]) for s in d["steps"] if not s["resolved"]])'
+      at: 2026-10-13T01:47:31.879749Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12/dubbo.claude-sonnet-5-5.prism_init.json"); d=json.loads(p.read_text()); s=d["steps"][-1]; print([(m.get("agent_error"),m.get("score"),m.get("diff_lines")) for m in s["messages"]])'
+      at: 2026-10-13T01:47:35.877275Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib; roots=[pathlib.Path("/private/tmp/codex-java32-2026-10-12"),pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12")];
+        for root in roots:
+         print(root)
+         for p in sorted(root.glob("*.json")):
+          if "databind" not in p.name and "dubbo" not in p.name: continue
+          d=json.loads(p.read_text()); bad=[]
+          for s in d["steps"]:
+           for k,m in enumerate(s["messages"]):
+            sc=m.get("score") or {}
+            if sc.get("score_error") or m.get("agent_error") or sc.get("n_run")==0: bad.append((s["task"].split("__")[-1],k+1,str(sc.get("score_error") or m.get("agent_error") or "n_run=0")[:90]))
+          print(p.name,"bad",bad)'
+      at: 2026-10-13T01:47:42.462805Z
+      classified: other
+    - cmd: prism search _save_diff --scope symbols --path harness/runners/run_e2e.py
+      at: 2026-10-13T01:47:46.295757Z
+      classified: other
+    - cmd: python3 -B -c 'import json,sys,pathlib,os; sys.path.insert(0,"/Users/tapabratapal/Projects/provasign/research/harness/runners"); import run_e2e; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness"); task=json.loads((root/"tasks/e2e/apache__dubbo__pr16395.json").read_text()); diff=(root/"results/sessions-java-2026-10-12/apache__dubbo__pr16395.claude-sonnet-5-5.prism_init.dubbo.m1.diff").read_text(); print(len(diff),flush=True); print(run_e2e._score(task,diff),flush=True)'
+      at: 2026-10-13T01:49:36.590644Z
+      classified: other
+    - cmd: prism search score --scope symbols --path harness/scoring/java_eval.py
+      at: 2026-10-13T01:49:40.807838Z
+      classified: other
+    - cmd: prism lookup _run_tests --format text
+      at: 2026-10-13T01:49:43.175548Z
+      classified: other
+    - cmd: prism read harness/scoring/java_eval.py --from 85 --to 130
+      at: 2026-10-13T01:49:47.774096Z
+      classified: other
+    - cmd: prism read harness/results/sessions-java-2026-10-12/apache__dubbo__pr16395.claude-sonnet-5-5.prism_init.dubbo.m1.diff
+      at: 2026-10-13T01:49:51.334833Z
+      classified: other
+    - cmd: python3 -B /private/tmp/debug_pr16395.py
+      at: 2026-10-13T01:51:48.540366Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,glob,collections,pathlib; root=pathlib.Path("/private/tmp/codex-java32-2026-10-12/transcripts");
+        for arm in ("baseline","prism_init"):
+         files=list(root.glob(f"*.gpt-6.1-sol.{arm}.*.jsonl")); mcp=0; cli=0; tasks=set();
+         for p in files:
+          task=p.name.split(".gpt-6.1-sol.")[0]; tasks.add(task)
+          for line in p.read_text().splitlines():
+           e=json.loads(line); i=e.get("item") or {}; t=i.get("type");
+           if t=="mcp_tool_call" and i.get("server")=="prism": mcp+=1
+           if t=="command_execution" and "prism " in (i.get("command") or ""): cli+=1
+         print(arm,"tasks",len(tasks),"transcripts",len(files),"mcp",mcp,"cli",cli)'
+      at: 2026-10-13T01:52:02.289394Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib; root=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/sessions-java-2026-10-12/transcripts");
+        for arm in ("baseline","prism_init"):
+         n=0; alln=0
+         for s in ("databind-a","databind-b","dubbo"):
+          for line in (root/f"{s}.claude-sonnet-5-5.{arm}.jsonl").read_text().splitlines():
+           e=json.loads(line); m=e.get("message") or {}; c=m.get("content") or []
+           if e.get("type")=="assistant" and isinstance(c,list):
+            for x in c:
+             if isinstance(x,dict) and x.get("type")=="tool_use":
+              alln+=1
+              if x.get("name")=="mcp__prism__prism": n+=1
+         print(arm,"prism_mcp",n,"all_tools",alln)'
+      at: 2026-10-13T01:52:08.370006Z
+      classified: other
+    - cmd: python3 -B /private/tmp/report_java32.py
+      at: 2026-10-13T01:52:32.643351Z
+      classified: other
+    - cmd: python3 -B /private/tmp/report_java32.py
+      at: 2026-10-13T01:52:44.48984Z
+      classified: other
+notes: []
+redactions: 0
