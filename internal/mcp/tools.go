@@ -2176,11 +2176,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		}
 		if r.TimedOut {
 			out["timedOut"] = true
-			out["warning"] = "the text search hit its deadline before finishing — " +
-				"these results are INCOMPLETE and an empty list does NOT mean the " +
-				"string is absent. The built-in scanner is in use because neither " +
-				"ripgrep nor grep was found on this server's PATH; installing " +
-				"ripgrep fixes both the speed and this warning."
+			out["warning"] = appendNote(stringArg(out, "warning", ""), textTimeoutWarning(r))
 		}
 		// Structural hint first: the fan-out of the symbol this term names
 		// (implementations + callers with sites) outranks the noise-ratio
@@ -2349,7 +2345,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		}
 		if r.TimedOut {
 			out["timedOut"] = true
-			out["warning"] = appendNote(stringArg(out, "warning", ""), "INCOMPLETE text scan: deadline reached; absence is not established.")
+			out["warning"] = appendNote(stringArg(out, "warning", ""), textTimeoutWarning(r))
 		}
 		if len(r.RejectedPaths) > 0 {
 			out["rejectedPaths"] = r.RejectedPaths
