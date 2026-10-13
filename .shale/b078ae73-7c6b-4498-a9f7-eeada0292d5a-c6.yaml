@@ -1,0 +1,644 @@
+shale_version: "0"
+id: b078ae73-7c6b-4498-a9f7-eeada0292d5a-c6
+created_at: 2026-10-13T18:07:29.753116Z
+finalized_at: 2026-10-13T19:00:21.103967Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/textsearch-parallel
+privacy: redacted
+commands:
+    - cmd: 'sha=$(gh pr view 61 --json state,mergeCommit -q ''select(.state=="MERGED") | .mergeCommit.oid'') && echo "merged $sha" && until r=$(gh run list --commit $sha --json status,conclusion,name 2>/dev/null) && [ "$(echo "$r" | jq length)" -gt 0 ] && echo "$r" | jq -e ''all(.status=="completed")'' >/dev/null; do sleep 30; done; echo "$r" | jq -r ''.[] | "\(.name): \(.conclusion)"''; echo "$r" | jq -e ''all(.conclusion=="success")'' >/dev/null && git fetch -q origin && git tag v0.87.20 $sha && git push -q origin v0.87.20 2>&1 | grep -v "^$\|shale" ; git ls-remote --tags origin v0.87.20'
+      at: 2026-10-13T18:07:29.753116Z
+      classified: other
+    - cmd: 'until r=$(gh run list --branch v0.87.20 --json status,conclusion,name 2>/dev/null) && [ "$(echo "$r" | jq length)" -gt 0 ] && echo "$r" | jq -e ''all(.status=="completed")'' >/dev/null; do sleep 30; done; echo "$r" | jq -r ''.[] | "\(.name): \(.conclusion)"''; gh workflow run 330199422 -R provasign/homebrew-shale && sleep 10 && id=$(gh run list -R provasign/homebrew-shale --workflow 330199422 --limit 1 --json databaseId -q ''.[0].databaseId'') && gh run watch $id -R provasign/homebrew-shale --exit-status >/dev/null 2>&1; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version'
+      at: 2026-10-13T18:07:40.338444Z
+      classified: other
+    - cmd: grep -rn "deadline reached\|absence is not established" --include='*.go' internal | grep -v _test | head -5; grep -n "textSearchTimeout\s*=" -A3 internal/mcp/*.go | head; grep -rn "Exhaustive" internal/textsearch/textsearch.go | head -8; grep -rn "\"resultsComplete\"\|\"complete\"" --include='*.go' internal/mcp | grep -v _test | head -5
+      at: 2026-10-13T18:07:40.431505Z
+      classified: build
+    - cmd: sed -n 2320,2360p internal/mcp/tools.go; sed -n 318,334p internal/textsearch/textsearch.go
+      at: 2026-10-13T18:07:43.099204Z
+      classified: other
+    - cmd: grep -rn "fallback\|Fallback" --include='*.go' internal/mcp | grep -iv "_test\|native\|grep\b" | grep -i "term\|search\|query\|token\|split" | head -15
+      at: 2026-10-13T18:07:49.452743Z
+      classified: other
+    - cmd: grep -n "func (h \*Handler) appendBatchedSearchFallback" -A40 internal/mcp/*.go | grep -n "timedOut\|TimedOut\|resultsComplete\|len(\|empty\|noHits\|return" | head -20; sed -n 1765,1780p internal/mcp/tools.go
+      at: 2026-10-13T18:07:54.985818Z
+      classified: build
+    - cmd: sed -n 40,62p internal/mcp/searchfallback.go; grep -n "func searchResultEmpty" -A15 internal/mcp/*.go
+      at: 2026-10-13T18:07:57.208529Z
+      classified: other
+    - cmd: grep -n "func searchResultPartial" -A12 internal/mcp/*.go
+      at: 2026-10-13T18:07:59.148421Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bn5zlx1n7.output
+      at: 2026-10-13T18:10:38.710389Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p="project_index_size_release_2026_10_13.md"; s=open(p).read()
+        s=s.replace('description: "2026-10-13: RELEASED grove v0.63.15 / prism v0.87.19','description: "2026-10-13: RELEASED grove v0.63.15/v0.63.16, prism v0.87.19/v0.87.20')
+        s+="""
+        v0.87.20 (grove v0.63.16, PR #33/#61): edges -> graph_edges keyed UNIQUE(from,type,to), derived TEXT id dropped (id ==
+        from::type::to on 3.4M edges). Byte-identical graphs v0.87.19 vs new on gin/gson/typeorm/jackson/django/guava/grafana
+        (2.6M edges) + guava incremental edits. django 426->322MB, guava 1164->801MB, grafana 1249->941MB, time equal/faster.
+        Legacy edges table converted in place on open (+VACUUM), stamp 2026-10-13.1 -> .2 advanced so no re-extract; old
+        binaries rebuild. research decoy_invariant.py reads graph_edges (uncommitted). Equivalence script: scratchpad pyidx/equiv.py.
+        External feedback (other laptop, datacollection repo): real gap = text search fixed 3s deadline even with exhaustive=true;
+        fallback already labelled + skipped on timeout; dist_* not skipped by name.
+        """
+        open(p,"w").write(s)
+        p="MEMORY.md"; s=open(p).read()
+        s=s.replace("RELEASED grove v0.63.15/prism v0.87.19: imports once per file, venvs skipped, auto-VACUUM; next-hop not released","RELEASED v0.87.19+v0.87.20: imports once/file, venvs skipped, auto-VACUUM, edges w/o id (django 593->322MB, graph identical)")
+        open(p,"w").write(s)
+        EOF
+        echo ok
+      at: 2026-10-13T18:10:46.243527Z
+      classified: other
+    - cmd: grep -n "max-filesize\|maxFileSize\|MaxFileSize\|\"--hidden\"\|exec.CommandContext" internal/textsearch/*.go | grep -v _test | head
+      at: 2026-10-13T18:36:51.425777Z
+      classified: other
+    - cmd: sed -n 670,700p internal/textsearch/textsearch.go
+      at: 2026-10-13T18:36:54.38173Z
+      classified: other
+    - cmd: D=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx/eq/grafana-120119-new; for mode in sorted parallel; do extra=$([ $mode = sorted ] && echo "--sort path"); /usr/bin/time -p rg --no-require-git --hidden $extra --max-count 10000 --max-filesize 2M --fixed-strings -i -n --glob '!.git/' --glob '!.grove/' -e secret_detection_xyz $D >/dev/null 2>$D.err; echo "$mode $(grep real $D.err)"; done; nproc 2>/dev/null || sysctl -n hw.ncpu
+      at: 2026-10-13T18:37:01.371446Z
+      classified: other
+    - cmd: D=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx/eq/grafana-120119-new; for i in 1 2; do for mode in sorted parallel; do if [ $mode = sorted ]; then s=$(python3 -c 'import subprocess,time,sys;t=time.time();subprocess.run(["rg","--no-require-git","--hidden","--sort","path","--max-filesize","2M","-F","-i","-n","--glob","!.git/","--glob","!.grove/","-e","secret_detection_xyz",sys.argv[1]],capture_output=True);print(round(time.time()-t,2))' $D); else s=$(python3 -c 'import subprocess,time,sys;t=time.time();subprocess.run(["rg","--no-require-git","--hidden","--max-filesize","2M","-F","-i","-n","--glob","!.git/","--glob","!.grove/","-e","secret_detection_xyz",sys.argv[1]],capture_output=True);print(round(time.time()-t,2))' $D); fi; echo "run$i $mode ${s}s"; done; done; find $D -type f | wc -l
+      at: 2026-10-13T18:37:08.418494Z
+      classified: other
+    - cmd: git checkout -q main 2>/dev/null; git fetch -q origin && git checkout -q -b fix/textsearch-parallel origin/main && git log --oneline -1 && sed -n 336,470p internal/textsearch/textsearch.go
+      at: 2026-10-13T18:54:17.903665Z
+      classified: other
+    - cmd: 'grep -n "^func runRg" internal/textsearch/textsearch.go; sed -n "$(grep -n ''^func runRg'' internal/textsearch/textsearch.go | cut -d: -f1),+45p" internal/textsearch/textsearch.go; sed -n 775,900p internal/textsearch/textsearch.go'
+      at: 2026-10-13T18:54:20.573141Z
+      classified: other
+    - cmd: grep -n "groveignore\|ignore-file" internal/textsearch/*.go | grep -v _test | head; sed -n 50,80p internal/textsearch/count.go; grep -n "func sortFileHits" -A8 internal/textsearch/native.go
+      at: 2026-10-13T18:54:33.436407Z
+      classified: other
+    - cmd: grep -n "^func gitignoreDirs" -A30 internal/textsearch/textsearch.go; grep -n "^func runCountTool" -A40 internal/textsearch/count.go | head -45; grep -n "type CountResult" -A10 internal/textsearch/count.go; grep -n "type Result struct" -A25 internal/textsearch/textsearch.go
+      at: 2026-10-13T18:54:49.615129Z
+      classified: other
+    - cmd: grep -rn "TimedOut" --include='*.go' internal/mcp internal/cli 2>/dev/null | grep -v _test | head -20
+      at: 2026-10-13T18:54:58.272773Z
+      classified: other
+    - cmd: sed -n 2170,2185p internal/mcp/tools.go; sed -n 95,115p internal/mcp/textmerge.go
+      at: 2026-10-13T18:55:00.443321Z
+      classified: other
+    - cmd: sed -n 2140,2169p internal/mcp/tools.go
+      at: 2026-10-13T18:55:05.066745Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/textsearch/textsearch.go"; s=open(p).read()
+        def rep(old,new,count=1):
+            global s
+            n=s.count(old); assert n==count,(n,old[:80]); s=s.replace(old,new)
+
+        rep("""		// Deterministic file order. rg is multi-threaded and emits files in
+        		// completion order; when the hit list is capped downstream, WHICH
+        		// files survive the cap varies per run — measured 2026-08-26 as
+        		// prism_query returning different anchor sets on identical inputs
+        		// (the text-confirmed seed promotion followed rg's race winners).
+        		// --sort path forces single-threaded sorted output; on repo-scale
+        		// trees the determinism is worth far more than the parallelism.
+        		"--sort", "path",
+        ""","""		// No --sort path: it forces rg onto one thread (grafana, 21k files:
+        		// 0.50s sorted vs 0.22s parallel, 2026-10-13). runLineTool reads
+        		// rg's whole output and sorts it in rg's path order before any cap,
+        		// so which hits survive the cap stays deterministic — the reason
+        		// --sort path was added (2026-08-26: prism_query returned different
+        		// anchor sets on identical inputs).
+        """)
+        # ignore-file for .groveignore in runRg
+        rep("""	// --hidden would otherwise descend into the VCS dir and prism's state.
+        	for _, d := range excludeDirs {
+        		args = append(args, "--glob", "!"+d+"/")
+        	}
+        	for _, g := range opts.Glob {
+        		args = append(args, "--glob", g)
+        	}
+        	operands, rejected := scopeArgs(root, opts.Paths)""","""	// --hidden would otherwise descend into the VCS dir and prism's state.
+        	for _, d := range excludeDirs {
+        		args = append(args, "--glob", "!"+d+"/")
+        	}
+        	args = append(args, groveIgnoreArgs(root)...)
+        	for _, g := range opts.Glob {
+        		args = append(args, "--glob", g)
+        	}
+        	operands, rejected := scopeArgs(root, opts.Paths)""")
+
+        # gitignoreDirs also reads .groveignore
+        rep("""func gitignoreDirs(root string) []string {
+        	data, err := os.ReadFile(filepath.Join(root, ".gitignore"))
+        	if err != nil {
+        		return nil
+        	}
+        	var out []string
+        	for _, l := range strings.Split(string(data), "\\n") {""","""func gitignoreDirs(root string) []string {
+        	var data []byte
+        	for _, name := range []string{".gitignore", ".groveignore"} {
+        		if b, err := os.ReadFile(filepath.Join(root, name)); err == nil {
+        			data = append(append(data, b...), '\\n')
+        		}
+        	}
+        	if len(data) == 0 {
+        		return nil
+        	}
+        	var out []string
+        	for _, l := range strings.Split(string(data), "\\n") {""")
+
+        # runLineTool: collect, sort, then cap
+        rep("""		res.TotalHits++
+        		files[file] = true
+        		if len(res.Hits) >= opts.MaxHits {
+        			res.Truncated = true
+        			continue
+        		}
+        		res.Hits = append(res.Hits, Hit{File: file, Line: ln, Text: truncateLine(parts[2])})
+        	}
+        	res.FilesMatched = len(files)""","""		res.TotalHits++
+        		files[file] = true
+        		res.Hits = append(res.Hits, Hit{File: file, Line: ln, Text: truncateLine(parts[2])})
+        	}
+        	// The searcher emits files in completion order (rg runs unsorted for
+        	// speed; grep -r follows directory order). Sort in rg's --sort path
+        	// order before capping so the same search always keeps the same hits.
+        	sort.SliceStable(res.Hits, func(i, j int) bool {
+        		a, b := &res.Hits[i], &res.Hits[j]
+        		if a.File != b.File {
+        			return PathLess(a.File, b.File)
+        		}
+        		return a.Line < b.Line
+        	})
+        	if len(res.Hits) > opts.MaxHits {
+        		res.Hits = res.Hits[:opts.MaxHits]
+        		res.Truncated = true
+        	}
+        	res.FilesMatched = len(files)""")
+
+        rep("""// regexUsable reports""","""// PathLess orders repo-relative slash paths the way rg --sort path does:
+        // component by component, so "a/x" sorts before "a-b/x" (a plain string
+        // compare puts '-' (0x2D) before '/' (0x2F) and would not).
+        func PathLess(a, b string) bool {
+        	for {
+        		ai, bi := strings.IndexByte(a, '/'), strings.IndexByte(b, '/')
+        		ac, bc := a, b
+        		if ai >= 0 {
+        			ac = a[:ai]
+        		}
+        		if bi >= 0 {
+        			bc = b[:bi]
+        		}
+        		if ac != bc {
+        			return ac < bc
+        		}
+        		if ai < 0 || bi < 0 {
+        			return ai < 0 && bi >= 0 // a file sorts before entries under a same-named dir
+        		}
+        		a, b = a[ai+1:], b[bi+1:]
+        	}
+        }
+
+        // groveIgnoreArgs makes rg skip what the project's root .groveignore
+        // excludes from the index, as it skips .gitignore'd paths: a folder a user
+        // keeps out of Prism (data exports, vendored copies) should not cost every
+        // text search a scan. Nested .groveignore files are not passed.
+        func groveIgnoreArgs(root string) []string {
+        	p := filepath.Join(root, ".groveignore")
+        	if _, err := os.Stat(p); err != nil {
+        		return nil
+        	}
+        	return []string{"--ignore-file", p}
+        }
+
+        // regexUsable reports""")
+        open(p,"w").write(s)
+
+        p="internal/textsearch/count.go"; s=open(p).read()
+        old='''caseFlagRg(opts), "--no-require-git", "--hidden", "--sort", "path", "--max-filesize", "2M",'''
+        assert s.count(old)==1
+        s=s.replace(old,'''caseFlagRg(opts), "--no-require-git", "--hidden", "--max-filesize", "2M",''')
+        old='''	for _, d := range excludeDirs {
+        		args = append(args, "--glob", "!"+d+"/")
+        	}
+        	for _, g := range opts.Glob {
+        		args = append(args, "--glob", g)
+        	}
+        	operands, rejected := scopeArgs(root, opts.Paths)
+        	if len(operands) == 0 {
+        		return CountResult{Backend: "rg", Complete: true, RejectedPaths: rejected}, true'''
+        assert s.count(old)==1
+        s=s.replace(old,'''	for _, d := range excludeDirs {
+        		args = append(args, "--glob", "!"+d+"/")
+        	}
+        	args = append(args, groveIgnoreArgs(root)...)
+        	for _, g := range opts.Glob {
+        		args = append(args, "--glob", g)
+        	}
+        	operands, rejected := scopeArgs(root, opts.Paths)
+        	if len(operands) == 0 {
+        		return CountResult{Backend: "rg", Complete: true, RejectedPaths: rejected}, true''')
+        old='''	sort.Slice(r.Files, func(i, j int) bool { return r.Files[i].File < r.Files[j].File })'''
+        assert s.count(old)==1
+        s=s.replace(old,'''	sort.Slice(r.Files, func(i, j int) bool { return PathLess(r.Files[i].File, r.Files[j].File) })''')
+        open(p,"w").write(s)
+        EOF
+        go build ./... && echo ok
+      at: 2026-10-13T18:55:33.783412Z
+      classified: build
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/textsearch/textsearch.go"; s=open(p).read()
+        def rep(old,new,count=1):
+            global s
+            n=s.count(old); assert n==count,(n,old[:80]); s=s.replace(old,new)
+        rep("""	Truncated bool `json:"truncated,omitempty"`
+        	TimedOut  bool `json:"timedOut,omitempty"`
+        ""","""	Truncated bool `json:"truncated,omitempty"`
+        	TimedOut  bool `json:"timedOut,omitempty"`
+        	// HeavyDirs, set only on a timeout: the top-level folders holding the
+        	// most searchable bytes, so the warning can say where the time went
+        	// and what to exclude.
+        	HeavyDirs []HeavyDir `json:"heavyDirs,omitempty"`
+        """)
+        rep("""	if opts.Context > 0 && len(res.Hits) > 0 && !contextAttached {
+        		attachContext(root, res.Hits, opts.Context)
+        	}
+        	return res
+        }""","""	if opts.Context > 0 && len(res.Hits) > 0 && !contextAttached {
+        		attachContext(root, res.Hits, opts.Context)
+        	}
+        	if res.TimedOut {
+        		res.HeavyDirs = heavyDirs(root, opts)
+        	}
+        	return res
+        }
+
+        // HeavyDir is a top-level folder (or "." for files at the root) and the
+        // searchable text it holds.
+        type HeavyDir struct {
+        	Dir   string `json:"dir"`
+        	Files int    `json:"files"`
+        	Bytes int64  `json:"bytes"`
+        }
+
+        // heavyDirs lists the three top-level folders with the most bytes a search
+        // would read: rg --files with the search's own filters, then a stat per
+        // file, bounded at one second (it runs after a search already ran out of
+        // time). nil when rg is unavailable or the listing cannot finish.
+        func heavyDirs(root string, opts Options) []HeavyDir {
+        	if Backend() != "rg" {
+        		return nil
+        	}
+        	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+        	defer cancel()
+        	args := []string{"--no-config", "--files", "--no-require-git", "--hidden", "--max-filesize", "2M"}
+        	for _, d := range excludeDirs {
+        		args = append(args, "--glob", "!"+d+"/")
+        	}
+        	args = append(args, groveIgnoreArgs(root)...)
+        	for _, g := range opts.Glob {
+        		args = append(args, "--glob", g)
+        	}
+        	operands, _ := scopeArgs(root, opts.Paths)
+        	if len(operands) == 0 {
+        		return nil
+        	}
+        	args = append(args, "--")
+        	args = append(args, operands...)
+        	cmd := exec.CommandContext(ctx, bin("rg"), args...)
+        	cmd.Dir = root
+        	out, err := cmd.Output()
+        	if err != nil || ctx.Err() != nil {
+        		return nil
+        	}
+        	byDir := map[string]*HeavyDir{}
+        	for _, line := range strings.Split(string(out), "\\n") {
+        		if line == "" {
+        			continue
+        		}
+        		if ctx.Err() != nil {
+        			return nil
+        		}
+        		rel := filepath.ToSlash(filepath.Clean(line))
+        		dir := "."
+        		if i := strings.IndexByte(rel, '/'); i > 0 {
+        			dir = rel[:i] + "/"
+        		}
+        		fi, err := os.Stat(filepath.Join(root, rel))
+        		if err != nil {
+        			continue
+        		}
+        		d := byDir[dir]
+        		if d == nil {
+        			d = &HeavyDir{Dir: dir}
+        			byDir[dir] = d
+        		}
+        		d.Files++
+        		d.Bytes += fi.Size()
+        	}
+        	var dirs []HeavyDir
+        	for _, d := range byDir {
+        		dirs = append(dirs, *d)
+        	}
+        	sort.Slice(dirs, func(i, j int) bool {
+        		if dirs[i].Bytes != dirs[j].Bytes {
+        			return dirs[i].Bytes > dirs[j].Bytes
+        		}
+        		return dirs[i].Dir < dirs[j].Dir
+        	})
+        	if len(dirs) > 3 {
+        		dirs = dirs[:3]
+        	}
+        	return dirs
+        }""")
+        open(p,"w").write(s)
+        EOF
+        grep -n "^func bin(" internal/textsearch/*.go; go build ./... && echo ok
+      at: 2026-10-13T18:55:50.804496Z
+      classified: build
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/mcp/tools.go"; s=open(p).read()
+        def rep(old,new,count=1):
+            global s
+            n=s.count(old); assert n==count,(n,old[:80]); s=s.replace(old,new)
+        rep("""		if r.TimedOut {
+        			out["timedOut"] = true
+        			out["warning"] = "the text search hit its deadline before finishing — " +
+        				"these results are INCOMPLETE and an empty list does NOT mean the " +
+        				"string is absent. The built-in scanner is in use because neither " +
+        				"ripgrep nor grep was found on this server's PATH; installing " +
+        				"ripgrep fixes both the speed and this warning."
+        		}""","""		if r.TimedOut {
+        			out["timedOut"] = true
+        			out["warning"] = appendNote(stringArg(out, "warning", ""), textTimeoutWarning(r))
+        		}""")
+        rep("""		if r.TimedOut {
+        			out["timedOut"] = true
+        			out["warning"] = appendNote(stringArg(out, "warning", ""), "INCOMPLETE text scan: deadline reached; absence is not established.")
+        		}""","""		if r.TimedOut {
+        			out["timedOut"] = true
+        			out["warning"] = appendNote(stringArg(out, "warning", ""), textTimeoutWarning(r))
+        		}""")
+        open(p,"w").write(s)
+        EOF
+        cat > internal/mcp/texttimeout.go <<'EOF'
+        package mcp
+
+        import (
+        	"fmt"
+        	"strings"
+
+        	"github.com/provasign/prism/internal/textsearch"
+        )
+
+        // textTimeoutWarning says a text scan ran out of time, and why when Prism
+        // can tell. The scope=text path used to blame a missing ripgrep on every
+        // timeout, rg or not (2026-10-13: a data-collection repo with rg installed
+        // timed out and the advice pointed at the wrong fix). A timeout on a normal
+        // source tree is rare (grafana, 21k files: 0.2s), so it usually means bulk
+        // text — data exports, vendored copies — that the project can exclude.
+        func textTimeoutWarning(r textsearch.Result) string {
+        	msg := "INCOMPLETE text scan: deadline reached; absence is not established."
+        	if r.Backend == "native" {
+        		msg += " The built-in scanner is in use because neither ripgrep nor grep was found on PATH; installing ripgrep makes text search much faster."
+        	}
+        	if len(r.HeavyDirs) > 0 {
+        		parts := make([]string, 0, len(r.HeavyDirs))
+        		for _, d := range r.HeavyDirs {
+        			parts = append(parts, fmt.Sprintf("%s (%d files, %s)", d.Dir, d.Files, humanBytes(d.Bytes)))
+        		}
+        		msg += " Most searched text: " + strings.Join(parts, ", ") +
+        			". If any are data, exports or copies, list them in .groveignore: Prism then skips them in the index and in text search."
+        	}
+        	return msg
+        }
+
+        func humanBytes(n int64) string {
+        	switch {
+        	case n >= 1<<30:
+        		return fmt.Sprintf("%.1fGB", float64(n)/(1<<30))
+        	case n >= 1<<20:
+        		return fmt.Sprintf("%.0fMB", float64(n)/(1<<20))
+        	case n >= 1<<10:
+        		return fmt.Sprintf("%.0fKB", float64(n)/(1<<10))
+        	}
+        	return fmt.Sprintf("%dB", n)
+        }
+        EOF
+        grep -rn "func humanBytes" internal/mcp/ | head; go build ./... && go vet ./internal/mcp ./internal/textsearch && echo ok
+      at: 2026-10-13T18:56:08.136421Z
+      classified: lint
+    - cmd: |-
+        cat > internal/textsearch/parallelsort_test.go <<'EOF'
+        package textsearch
+
+        import (
+        	"context"
+        	"os"
+        	"path/filepath"
+        	"sort"
+        	"testing"
+        )
+
+        // rg runs unsorted (parallel); results must still come back in rg's
+        // --sort path order, component by component.
+        func TestPathLessMatchesRgPathOrder(t *testing.T) {
+        	got := []string{"a-b/x.go", "a/z.go", "a/b/c.go", "b.go", "a.go", "A/q.go"}
+        	sort.Slice(got, func(i, j int) bool { return PathLess(got[i], got[j]) })
+        	want := []string{"A/q.go", "a/b/c.go", "a/z.go", "a-b/x.go", "a.go", "b.go"}
+        	for i := range want {
+        		if got[i] != want[i] {
+        			t.Fatalf("order = %v, want %v", got, want)
+        		}
+        	}
+        }
+
+        func writeTree(t *testing.T, files map[string]string) string {
+        	t.Helper()
+        	root := t.TempDir()
+        	for name, body := range files {
+        		p := filepath.Join(root, name)
+        		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+        			t.Fatal(err)
+        		}
+        		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	return root
+        }
+
+        // The same capped search keeps the same hits on every run, in path order.
+        func TestCappedSearchIsDeterministicAndSorted(t *testing.T) {
+        	files := map[string]string{}
+        	for _, d := range []string{"zeta", "alpha", "a-b", "a", "mid"} {
+        		for _, f := range []string{"one.go", "two.go", "three.go"} {
+        			files[d+"/"+f] = "needle\nneedle\n"
+        		}
+        	}
+        	root := writeTree(t, files)
+        	var first []Hit
+        	for run := 0; run < 5; run++ {
+        		r := Search(context.Background(), root, "needle", Options{MaxHits: 7})
+        		if len(r.Hits) != 7 || !r.Truncated {
+        			t.Fatalf("run %d: %d hits truncated=%v", run, len(r.Hits), r.Truncated)
+        		}
+        		for i := 1; i < len(r.Hits); i++ {
+        			a, b := r.Hits[i-1], r.Hits[i]
+        			if PathLess(b.File, a.File) || (a.File == b.File && b.Line < a.Line) {
+        				t.Fatalf("run %d: hits out of path order: %+v", run, r.Hits)
+        			}
+        		}
+        		if run == 0 {
+        			first = r.Hits
+        			continue
+        		}
+        		for i := range first {
+        			if r.Hits[i].File != first[i].File || r.Hits[i].Line != first[i].Line {
+        				t.Fatalf("run %d differs from run 0:\n%+v\n%+v", run, r.Hits, first)
+        			}
+        		}
+        	}
+        }
+
+        // A folder the project lists in .groveignore is skipped by text search, as
+        // a .gitignore'd one is.
+        func TestSearchHonorsRootGroveIgnore(t *testing.T) {
+        	root := writeTree(t, map[string]string{
+        		".groveignore":        "exports/\n",
+        		"src/app.py":          "token = 1\n",
+        		"exports/dump.csv":    "token,token\n",
+        		"exports/deep/x.json": "{\"token\": 1}\n",
+        	})
+        	for _, opts := range []Options{{MaxHits: 50}, {MaxHits: 50, Exhaustive: true}} {
+        		r := Search(context.Background(), root, "token", opts)
+        		for _, h := range r.Hits {
+        			if filepath.Dir(h.File) != "src" {
+        				t.Fatalf("hit in a .groveignore'd folder: %+v", r.Hits)
+        			}
+        		}
+        		if len(r.Hits) != 1 {
+        			t.Fatalf("hits = %+v, want src/app.py only", r.Hits)
+        		}
+        	}
+        	c := Count(context.Background(), root, "token", Options{})
+        	if c.TotalHits != 1 {
+        		t.Fatalf("count = %d, want 1 (exports/ ignored)", c.TotalHits)
+        	}
+        }
+
+        func TestHeavyDirsRanksFoldersByBytes(t *testing.T) {
+        	if Backend() != "rg" {
+        		t.Skip("heavyDirs needs rg")
+        	}
+        	big := make([]byte, 50_000)
+        	for i := range big {
+        		big[i] = 'x'
+        	}
+        	root := writeTree(t, map[string]string{
+        		"exports/a.csv": string(big), "exports/b.csv": string(big),
+        		"src/app.py": "x = 1\n", "README.md": "hi\n",
+        	})
+        	got := heavyDirs(root, Options{})
+        	if len(got) == 0 || got[0].Dir != "exports/" || got[0].Files != 2 || got[0].Bytes != 100_000 {
+        		t.Fatalf("heavyDirs = %+v, want exports/ first with 2 files, 100000 bytes", got)
+        	}
+        }
+        EOF
+        gofmt -l internal/textsearch internal/mcp; go test ./internal/textsearch/ -count=1 2>&1 | tail -15
+      at: 2026-10-13T18:56:26.520245Z
+      classified: test
+    - cmd: |-
+        cat > internal/mcp/texttimeout_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"strings"
+        	"testing"
+
+        	"github.com/provasign/prism/internal/textsearch"
+        )
+
+        // A timeout with ripgrep in use must not blame a missing ripgrep, and names
+        // the folders that hold the bulk of the searched text.
+        func TestTextTimeoutWarningNamesHeavyDirsAndRightCause(t *testing.T) {
+        	rg := textTimeoutWarning(textsearch.Result{Backend: "rg", TimedOut: true,
+        		HeavyDirs: []textsearch.HeavyDir{{Dir: "exports/", Files: 8214, Bytes: 3 << 30}, {Dir: "src/", Files: 120, Bytes: 2 << 20}}})
+        	for _, want := range []string{"INCOMPLETE", "absence is not established", "exports/ (8214 files, 3.0GB)", "src/ (120 files, 2MB)", ".groveignore"} {
+        		if !strings.Contains(rg, want) {
+        			t.Fatalf("rg warning missing %q:\n%s", want, rg)
+        		}
+        	}
+        	if strings.Contains(rg, "installing ripgrep") {
+        		t.Fatalf("rg timeout blamed a missing ripgrep:\n%s", rg)
+        	}
+        	native := textTimeoutWarning(textsearch.Result{Backend: "native", TimedOut: true})
+        	if !strings.Contains(native, "installing ripgrep") || strings.Contains(native, ".groveignore") {
+        		t.Fatalf("native warning:\n%s", native)
+        	}
+        }
+        EOF
+        GOWORK=off go test ./... -count=1 2>&1 | grep -v "^ok\|no test files" | tail -30; echo tests-done
+      at: 2026-10-13T18:57:13.660316Z
+      classified: test
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=off go build -o $SP/prism-ts ./cmd/prism && D=$SP/eq/grafana-120119-new && python3 - "$SP/prism-rel20" "$SP/prism-ts" "$D" <<'EOF'
+        import subprocess, sys, time, hashlib
+        old, new, d = sys.argv[1:4]
+        qs = [["secret_detection_xyz"], ["DataKeyCache"], ["func "], ["datasource"], ["TODO"], ["GetById"]]
+        for q in qs:
+            row = []
+            outs = []
+            for b in (old, new):
+                best = 9e9
+                for _ in range(3):
+                    t = time.time()
+                    r = subprocess.run([b, "search", *q, "--scope", "text", "--format", "text"], cwd=d, capture_output=True, text=True)
+                    best = min(best, time.time() - t)
+                outs.append(r.stdout)
+                row.append(best)
+            same = outs[0] == outs[1]
+            print(f"{q[0]!r:24} old {row[0]:.2f}s  new {row[1]:.2f}s  same_output={same}")
+            if not same:
+                import difflib
+                print("".join(list(difflib.unified_diff(outs[0].splitlines(1), outs[1].splitlines(1)))[:30]))
+        EOF
+      at: 2026-10-13T19:00:01.461599Z
+      classified: build
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root $SP/ci-corpus2 --prism $SP/prism-ts > $SP/ci-inv-ts.log 2>&1; echo "exit=$?" >> $SP/ci-inv-ts.log; grep -cE "\[OK\]" $SP/ci-inv-ts.log; grep -E "FAIL|MISMATCH|All invariants|exit=" $SP/ci-inv-ts.log
+      at: 2026-10-13T19:00:16.092767Z
+      classified: other
+    - cmd: |-
+        git add internal/textsearch/textsearch.go internal/textsearch/count.go internal/textsearch/parallelsort_test.go internal/mcp/tools.go internal/mcp/texttimeout.go internal/mcp/texttimeout_test.go && git status --short | grep -v "^??" ; git commit -q -F - <<'EOF'
+        textsearch: parallel rg, .groveignore honored, timeouts name the heavy folders
+
+        From a report: a text search in a data-collection repo hit the 3s deadline.
+
+        - rg no longer runs with --sort path, which forced it onto one thread
+          (grafana, 21k files: 0.50s -> 0.22s per scan). The whole output is
+          sorted in Go in rg's own path order before any cap, so results stay
+          deterministic: six searches on grafana give byte-identical output to
+          v0.87.20, 0.5-1.0s faster end to end.
+        - Text search and count honor the root .groveignore, as they honor
+          .gitignore: a folder kept out of the index no longer costs every scan.
+        - A timeout names the three top-level folders with the most searchable
+          bytes and points at .groveignore.
+        - The scope=text timeout warning blamed a missing ripgrep on every
+          timeout; it now says so only when the built-in scanner ran.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX
+        EOF
+        git log --oneline -1
+      at: 2026-10-13T19:00:16.231755Z
+      classified: other
+notes:
+    - text: continuation of session b078ae73-7c6b-4498-a9f7-eeada0292d5a — events captured after its evidence was finalized
+      at: 2026-10-13T18:07:29.753116Z
+redactions: 0
