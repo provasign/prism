@@ -1,0 +1,800 @@
+shale_version: "0"
+id: b078ae73-7c6b-4498-a9f7-eeada0292d5a-c5
+created_at: 2026-10-13T13:25:03.483855Z
+finalized_at: 2026-10-13T17:50:06.405563Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: deps/grove-v0.63.16
+privacy: redacted
+commands:
+    - cmd: git tag -l 'v0.87.1*' | sort -V | tail -1 && git tag v0.87.19 8152c7a1 && git push -q origin v0.87.19 2>&1 | grep -v "^$" | tail -2; git ls-remote --tags origin v0.87.19
+      at: 2026-10-13T13:25:03.483855Z
+      classified: other
+    - cmd: 'until r=$(gh run list --branch v0.87.19 --json status,conclusion,name 2>/dev/null) && [ "$(echo "$r" | jq length)" -gt 0 ] && echo "$r" | jq -e ''all(.status=="completed")'' >/dev/null; do sleep 30; done; echo "$r" | jq -r ''.[] | "\(.name): \(.conclusion)"''; gh release view v0.87.19 --json assets -q ''.assets|length'''
+      at: 2026-10-13T13:25:09.842935Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b8u8kvyjy.output; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content 2>/dev/null | base64 -d | grep -m1 version
+      at: 2026-10-13T13:27:48.048322Z
+      classified: other
+    - cmd: gh workflow list -R provasign/homebrew-shale 2>&1 | head -5
+      at: 2026-10-13T13:27:51.648739Z
+      classified: other
+    - cmd: 'gh workflow run 330199422 -R provasign/homebrew-shale && sleep 5 && id=$(gh run list -R provasign/homebrew-shale --workflow 330199422 --limit 1 --json databaseId -q ''.[0].databaseId'') && gh run watch $id -R provasign/homebrew-shale --exit-status >/dev/null 2>&1; echo "run $id: $(gh run view $id -R provasign/homebrew-shale --json conclusion -q .conclusion)"; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version'
+      at: 2026-10-13T13:28:13.070961Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p="MEMORY.md"; s=open(p).read()
+        line="- [Index size release 2026-10-13](project_index_size_release_2026_10_13.md) — RELEASED grove v0.63.15/prism v0.87.19: imports once per file, venvs skipped, auto-VACUUM; next-hop not released\n"
+        s=s.replace("# Memory Index\n\n","# Memory Index\n\n"+line,1)
+        open(p,"w").write(s)
+        EOF
+        head -4 MEMORY.md
+      at: 2026-10-13T13:28:27.322468Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; DB=$SP/dc-fresh/.grove/grove.db; sqlite3 $DB "SELECT sql FROM sqlite_master WHERE tbl_name='edges';"; sqlite3 -header $DB "SELECT * FROM edges LIMIT 3;"; sqlite3 -header -column $DB "SELECT ROUND(AVG(LENGTH(id))) id, ROUND(AVG(LENGTH(from_node))) frm, ROUND(AVG(LENGTH(to_node))) too, ROUND(AVG(LENGTH(reason))) rsn, ROUND(AVG(LENGTH(lines))) lns, ROUND(AVG(LENGTH(source))) src, COUNT(*) n FROM edges;"; sqlite3 $DB "SELECT edge_type, source, COUNT(*) FROM edges GROUP BY 1,2 ORDER BY 3 DESC LIMIT 10;"
+      at: 2026-10-13T17:22:50.016405Z
+      classified: other
+    - cmd: 'SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; for db in $SP/dc-fresh/.grove/grove.db $(ls -d $SP/ci-corpus/*/.grove/grove.db 2>/dev/null); do echo "$(basename $(dirname $(dirname $db))): $(sqlite3 $db "SELECT COUNT(*), SUM(id <> from_node||''::''||edge_type||''::''||to_node) FROM edges;")"; done; cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "ID:\s*.*\"::\"\|func EdgeID\|edgeID(" --include=''*.go'' internal | grep -v _test | head'
+      at: 2026-10-13T17:23:02.186959Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "type Edge struct" -A14 internal/core/types.go; grep -n "edges" internal/store/store.go | grep -iE "select|insert|delete|update|where|create|index" | head -40
+      at: 2026-10-13T17:23:06.325626Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -rln "FROM edges\|from edges\|edges WHERE" --include='*.go' --include='*.py' prism research grove astkit 2>/dev/null | grep -v "grove/internal/store/store.go"
+      at: 2026-10-13T17:23:21.860641Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -n "edges" research/harness/scoring/decoy_invariant.py | head; grep -n "edges" grove/pkg/grove/splicecheck_test.go grove/internal/store/deletefileedges_test.go | grep -i "select\|insert" | head
+      at: 2026-10-13T17:23:24.22867Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; cp $SP/dc-fresh/.grove/grove.db $SP/proto.db; du -m $SP/proto.db | cut -f1; time sqlite3 $SP/proto.db <<'EOF'
+        CREATE TABLE graph_edges (
+          from_node TEXT NOT NULL, to_node TEXT NOT NULL, edge_type TEXT NOT NULL,
+          confidence REAL NOT NULL DEFAULT 1.0, source TEXT NOT NULL DEFAULT 'unknown',
+          reason TEXT NOT NULL DEFAULT '', lines TEXT NOT NULL DEFAULT '',
+          UNIQUE(from_node, edge_type, to_node));
+        INSERT INTO graph_edges SELECT from_node,to_node,edge_type,confidence,source,reason,lines FROM edges;
+        CREATE INDEX idx_gedge_to ON graph_edges(to_node);
+        CREATE INDEX idx_gedge_source ON graph_edges(source);
+        DROP TABLE edges;
+        VACUUM;
+        EOF
+        du -m $SP/proto.db | cut -f1; sqlite3 $SP/proto.db "SELECT name, ROUND(SUM(pgsize)/1048576.0,1) FROM dbstat GROUP BY name ORDER BY 2 DESC LIMIT 6;"; sqlite3 $SP/proto.db "EXPLAIN QUERY PLAN DELETE FROM graph_edges WHERE from_node >= 'a' AND from_node < 'b'; EXPLAIN QUERY PLAN SELECT 1 FROM graph_edges WHERE to_node >= 'a' AND to_node < 'b';"
+      at: 2026-10-13T17:23:44.842763Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 470,650p internal/store/store.go
+      at: 2026-10-13T17:23:50.65161Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 730,800p internal/store/store.go; echo ----; sed -n 945,1135p internal/store/store.go
+      at: 2026-10-13T17:23:56.979941Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git checkout -q main && git pull -q origin main && git checkout -q -b fix/edge-table-size && grep -n "extractor-version\|resolver-version\|ResolverVersion =" internal/index/indexer.go pkg/grove/grove.go internal/graph/*.go | grep -v _test | head; sed -n 1355,1380p internal/store/store.go
+      at: 2026-10-13T17:24:23.056209Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'\nimport re\np=\"internal/store/store.go\"; s=open(p).read()\ndef rep(old,new,count=1):\n    global s\n    n=s.count(old)\n    assert n==count, (n, old[:70])\n    s=s.replace(old,new)\n\n# 1. Schema: new table, no id column, unique on (from, type, to).\nrep(\"\"\"CREATE TABLE IF NOT EXISTS edges (\n    id         TEXT PRIMARY KEY,\n    from_node  TEXT NOT NULL,\n    to_node    TEXT NOT NULL,\n    edge_type  TEXT NOT NULL,\n    confidence REAL NOT NULL DEFAULT 1.0,\n    source     TEXT NOT NULL DEFAULT 'unknown'\n);\n\nCREATE INDEX IF NOT EXISTS idx_edge_from   ON edges(from_node);\nCREATE INDEX IF NOT EXISTS idx_edge_to     ON edges(to_node);\"\"\",\"\"\"-- graph_edges (was: edges). An edge is identified by (from_node,\n-- edge_type, to_node); the old TEXT id column was exactly\n-- from||'::'||type||'::'||to (checked over 3.4M edges in 8 repos,\n-- 2026-10-13), stored once in the row and again in its PRIMARY KEY index.\n-- Dropping it took django's index 427MB -> 316MB. The unique index leads\n-- with from_node, so it also serves every from_node lookup and range\n-- (no separate idx_edge_from). The table was renamed so an older binary\n-- never reads this layout as its own: it finds no \"edges\" table, creates\n-- an empty one, and its stamp mismatch makes it rebuild.\nCREATE TABLE IF NOT EXISTS graph_edges (\n    from_node  TEXT NOT NULL,\n    to_node    TEXT NOT NULL,\n    edge_type  TEXT NOT NULL,\n    confidence REAL NOT NULL DEFAULT 1.0,\n    source     TEXT NOT NULL DEFAULT 'unknown',\n    reason     TEXT NOT NULL DEFAULT '',\n    lines      TEXT NOT NULL DEFAULT '',\n    UNIQUE (from_node, edge_type, to_node)\n);\n\nCREATE INDEX IF NOT EXISTS idx_gedge_to     ON graph_edges(to_node);\"\"\")\nrep(\"\"\"CREATE INDEX IF NOT EXISTS idx_edge_source ON edges(source);\"\"\",\n    \"\"\"CREATE INDEX IF NOT EXISTS idx_gedge_source ON graph_edges(source);\"\"\")\nopen(p,\"w\").write(s)\nEOF\ngrep -n \"edges\" internal/store/store.go | grep -vn \"graph_edges\" | grep -E \"FROM edges|INTO edges|TABLE edges|ON edges|edges WHERE|idx_edge\" "
+      at: 2026-10-13T17:24:35.780267Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        import re
+        p="internal/store/store.go"; s=open(p).read()
+        def rep(old,new,count=1):
+            global s
+            n=s.count(old)
+            assert n==count, (n, old[:80])
+            s=s.replace(old,new)
+
+        # --- Legacy migration: ALTERs on the old table move into a conditional block.
+        rep("""		`ALTER TABLE edges ADD COLUMN source            TEXT NOT NULL DEFAULT 'unknown'`,
+        		`ALTER TABLE edges ADD COLUMN reason            TEXT NOT NULL DEFAULT ''`,
+        		`ALTER TABLE edges ADD COLUMN lines             TEXT NOT NULL DEFAULT ''`,
+        ""","")
+        rep("""	// Heuristic tests edges were removed from the graph entirely; purge rows""","""	if err := s.migrateLegacyEdges(ctx); err != nil {
+        		return err
+        	}
+        	// Heuristic tests edges were removed from the graph entirely; purge rows""")
+        rep("""	// Drop AFTER the purge above, which is its last user on a legacy database.
+        	if _, err := s.db.ExecContext(ctx, `DROP INDEX IF EXISTS idx_edge_type`); err != nil {
+        		return fmt.Errorf("migration (drop idx_edge_type): %w", err)
+        	}
+        	return nil
+        }
+        ""","""	return nil
+        }
+
+        // legacyEdgesStamp is the extractor stamp of the last release that stored
+        // edges in the old "edges" table; a database at exactly this stamp holds
+        // otherwise-current data, so converting its edges in place is a complete
+        // upgrade and needs no re-extract.
+        const legacyEdgesStamp = "2026-10-13.1"
+
+        // migrateLegacyEdges moves rows from the pre-2026-10-13 "edges" table (TEXT
+        // id column) into graph_edges, then drops it. Every column but the derived
+        // id is copied, so the edge set is unchanged. When the database was current
+        // apart from this layout, the extractor stamp is advanced so the next index
+        // does not re-extract; any other stamp is left alone and the indexer's
+        // usual stamp check decides.
+        func (s *Store) migrateLegacyEdges(ctx context.Context) error {
+        	var n int
+        	if err := s.db.QueryRowContext(ctx,
+        		`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'edges'`).Scan(&n); err != nil || n == 0 {
+        		return err
+        	}
+        	// Columns very old databases lack, so the copy below can name them.
+        	for _, stmt := range []string{
+        		`ALTER TABLE edges ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'`,
+        		`ALTER TABLE edges ADD COLUMN reason TEXT NOT NULL DEFAULT ''`,
+        		`ALTER TABLE edges ADD COLUMN lines  TEXT NOT NULL DEFAULT ''`,
+        	} {
+        		if _, err := s.db.ExecContext(ctx, stmt); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+        			return fmt.Errorf("migration %q: %w", stmt, err)
+        		}
+        	}
+        	tx, err := s.db.BeginTx(ctx, nil)
+        	if err != nil {
+        		return err
+        	}
+        	defer func() { _ = tx.Rollback() }()
+        	if _, err := tx.ExecContext(ctx, `
+        		INSERT OR IGNORE INTO graph_edges (from_node, to_node, edge_type, confidence, source, reason, lines)
+        		SELECT from_node, to_node, edge_type, confidence, COALESCE(source, 'unknown'), COALESCE(reason, ''), COALESCE(lines, '')
+        		FROM edges`); err != nil {
+        		return fmt.Errorf("migration (copy edges): %w", err)
+        	}
+        	if _, err := tx.ExecContext(ctx, `DROP TABLE edges`); err != nil {
+        		return fmt.Errorf("migration (drop edges): %w", err)
+        	}
+        	var stamp string
+        	_ = tx.QueryRowContext(ctx, `SELECT value FROM meta WHERE key = 'extractor-version'`).Scan(&stamp)
+        	if stamp == legacyEdgesStamp {
+        		if _, err := tx.ExecContext(ctx,
+        			`UPDATE meta SET value = ? WHERE key = 'extractor-version'`, parser.ExtractorVersion); err != nil {
+        			return err
+        		}
+        	}
+        	return tx.Commit()
+        }
+        """)
+
+        # --- Straight renames.
+        for old in ["`DELETE FROM edges WHERE edge_type = 'tests'`",
+                    "`DELETE FROM edges WHERE from_node >= ? AND from_node < ? AND +source = 'native'`",
+                    "`DELETE FROM edges WHERE from_node = ? AND +source = 'native'`",
+                    "`SELECT COUNT(*) FROM edges WHERE source = ?`",
+                    "`DELETE FROM edges WHERE from_node IN (`",
+                    "`DELETE FROM edges WHERE from_node = ?`",
+                    "`DELETE FROM edges WHERE from_node >= ? AND from_node < ?`",
+                    "`DELETE FROM edges WHERE to_node >= ? AND to_node < ?`"]:
+            rep(old, old.replace("FROM edges","FROM graph_edges"))
+        rep("`SELECT COUNT(*) FROM edges`","`SELECT COUNT(*) FROM graph_edges`",4)
+        rep("\t\tFROM edges\n","\t\tFROM graph_edges\n",4)
+        open(p,"w").write(s)
+        EOF
+        grep -n "meta\b\|CREATE TABLE IF NOT EXISTS meta" internal/store/store.go | head -5; grep -n '"github.com/provasign/grove/internal/' internal/store/store.go
+      at: 2026-10-13T17:24:55.533084Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go list -deps ./internal/parser | grep provasign/grove/internal; git diff --stat
+      at: 2026-10-13T17:25:00.802803Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'\np=\"internal/store/store.go\"; s=open(p).read()\ndef rep(old,new,count=1):\n    global s\n    n=s.count(old)\n    assert n==count, (n, old[:80])\n    s=s.replace(old,new)\nrep(\"\"\"\t\t`ALTER TABLE edges ADD COLUMN source            TEXT NOT NULL DEFAULT 'unknown'`,\n\t\t`ALTER TABLE edges ADD COLUMN reason            TEXT NOT NULL DEFAULT ''`,\n\t\t`ALTER TABLE edges ADD COLUMN lines             TEXT NOT NULL DEFAULT ''`,\n\"\"\",\"\")\nrep(\"\"\"\t// Heuristic tests edges were removed from the graph entirely; purge rows\"\"\",\"\"\"\tif err := s.migrateLegacyEdges(ctx); err != nil {\n\t\treturn err\n\t}\n\t// Heuristic tests edges were removed from the graph entirely; purge rows\"\"\")\nrep(\"\"\"\t// Drop AFTER the purge above, which is its last user on a legacy database.\n\tif _, err := s.db.ExecContext(ctx, `DROP INDEX IF EXISTS idx_edge_type`); err != nil {\n\t\treturn fmt.Errorf(\"migration (drop idx_edge_type): %w\", err)\n\t}\n\treturn nil\n}\n\"\"\",\"\"\"\treturn nil\n}\n\n// legacyEdgesStamp is the extractor stamp of the last release that stored\n// edges in the old \"edges\" table; a database at exactly this stamp holds\n// otherwise-current data, so converting its edges in place is a complete\n// upgrade and needs no re-extract.\nconst legacyEdgesStamp = \"2026-10-13.1\"\n\n// migrateLegacyEdges moves rows from the pre-2026-10-13 \"edges\" table (TEXT\n// id column) into graph_edges, then drops it. Every column but the derived\n// id is copied, so the edge set is unchanged. When the database was current\n// apart from this layout, the extractor stamp is advanced so the next index\n// does not re-extract; any other stamp is left alone and the indexer's\n// usual stamp check decides.\nfunc (s *Store) migrateLegacyEdges(ctx context.Context) error {\n\tvar n int\n\tif err := s.db.QueryRowContext(ctx,\n\t\t`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'edges'`).Scan(&n); err != nil || n == 0 {\n\t\treturn err\n\t}\n\t// Columns very old databases lack, so the copy below can name them.\n\tfor _, stmt := range []string{\n\t\t`ALTER TABLE edges ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'`,\n\t\t`ALTER TABLE edges ADD COLUMN reason TEXT NOT NULL DEFAULT ''`,\n\t\t`ALTER TABLE edges ADD COLUMN lines  TEXT NOT NULL DEFAULT ''`,\n\t} {\n\t\tif _, err := s.db.ExecContext(ctx, stmt); err != nil && !strings.Contains(err.Error(), \"duplicate column name\") {\n\t\t\treturn fmt.Errorf(\"migration %q: %w\", stmt, err)\n\t\t}\n\t}\n\ttx, err := s.db.BeginTx(ctx, nil)\n\tif err != nil {\n\t\treturn err\n\t}\n\tdefer func() { _ = tx.Rollback() }()\n\tif _, err := tx.ExecContext(ctx, `\n\t\tINSERT OR IGNORE INTO graph_edges (from_node, to_node, edge_type, confidence, source, reason, lines)\n\t\tSELECT from_node, to_node, edge_type, confidence, COALESCE(source, 'unknown'), COALESCE(reason, ''), COALESCE(lines, '')\n\t\tFROM edges`); err != nil {\n\t\treturn fmt.Errorf(\"migration (copy edges): %w\", err)\n\t}\n\tif _, err := tx.ExecContext(ctx, `DROP TABLE edges`); err != nil {\n\t\treturn fmt.Errorf(\"migration (drop edges): %w\", err)\n\t}\n\tvar stamp string\n\t_ = tx.QueryRowContext(ctx, `SELECT value FROM meta WHERE key = 'extractor-version'`).Scan(&stamp)\n\tif stamp == legacyEdgesStamp {\n\t\tif _, err := tx.ExecContext(ctx,\n\t\t\t`UPDATE meta SET value = ? WHERE key = 'extractor-version'`, parser.ExtractorVersion); err != nil {\n\t\t\treturn err\n\t\t}\n\t}\n\treturn tx.Commit()\n}\n\"\"\")\nfor old,c in [(\"`DELETE FROM edges WHERE edge_type = 'tests'`\",1),\n            (\"`DELETE FROM edges WHERE from_node >= ? AND from_node < ? AND +source = 'native'`\",1),\n            (\"`DELETE FROM edges WHERE from_node = ? AND +source = 'native'`\",1),\n            (\"`SELECT COUNT(*) FROM edges WHERE source = ?`\",2),\n            (\"`DELETE FROM edges WHERE from_node IN (`\",1),\n            (\"`DELETE FROM edges WHERE from_node = ?`\",1),\n            (\"`DELETE FROM edges WHERE from_node >= ? AND from_node < ?`\",1),\n            (\"`DELETE FROM edges WHERE to_node >= ? AND to_node < ?`\",1),\n            (\"`SELECT COUNT(*) FROM edges`\",3)]:\n    rep(old, old.replace(\"FROM edges\",\"FROM graph_edges\"), c)\nn=s.count(\"\\t\\tFROM edges\\n\"); print(\"FROM edges lines:\", n)\ns=s.replace(\"\\t\\tFROM edges\\n\",\"\\t\\tFROM graph_edges\\n\")\ns=s.replace('\\t\"github.com/provasign/grove/internal/core\"\\n','\\t\"github.com/provasign/grove/internal/core\"\\n\\t\"github.com/provasign/grove/internal/parser\"\\n',1)\nopen(p,\"w\").write(s)\nEOF\ngrep -n \"edges\" internal/store/store.go | grep -v graph_edges | grep -E \"FROM edges|INTO edges|ON edges|idx_edge|SELECT id\" "
+      at: 2026-10-13T17:25:16.220075Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="internal/store/store.go"; s=open(p).read()
+        def rep(old,new,count=1):
+            global s
+            n=s.count(old)
+            assert n==count, (n, old[:80])
+            s=s.replace(old,new)
+
+        rep("""	stored := map[string]edgeMeta{}
+        	rows, err := s.db.QueryContext(ctx, `SELECT id, confidence, source, COALESCE(reason, ''), COALESCE(lines, '') FROM edges`)
+        	if err != nil {
+        		return err
+        	}
+        	for rows.Next() {
+        		var id, source, reason, lines string
+        		var conf float64
+        		if err := rows.Scan(&id, &conf, &source, &reason, &lines); err != nil {
+        			rows.Close()
+        			return err
+        		}
+        		stored[id] = edgeMeta{confidence: conf, source: source, reason: reason, lines: lines}
+        	}""","""	stored := map[edgeKey]edgeMeta{}
+        	rows, err := s.db.QueryContext(ctx, `SELECT from_node, edge_type, to_node, confidence, source, COALESCE(reason, ''), COALESCE(lines, '') FROM graph_edges`)
+        	if err != nil {
+        		return err
+        	}
+        	for rows.Next() {
+        		var k edgeKey
+        		var source, reason, lines string
+        		var conf float64
+        		if err := rows.Scan(&k.from, &k.typ, &k.to, &conf, &source, &reason, &lines); err != nil {
+        			rows.Close()
+        			return err
+        		}
+        		stored[k] = edgeMeta{confidence: conf, source: source, reason: reason, lines: lines}
+        	}""")
+        rep("""	wantIDs := make(map[string]bool, len(edges))
+        	var upserts []core.Edge
+        	var upsertIDs []string
+        	for _, edge := range edges {
+        		id := edge.From + "::" + string(edge.Type) + "::" + edge.To
+        		if wantIDs[id] {
+        			continue // duplicate (from, type, to); first one wins
+        		}
+        		wantIDs[id] = true
+        		if meta, ok := stored[id]; ok && meta.confidence == edge.Confidence && meta.source == string(edge.Source) && meta.reason == string(edge.Reason) && meta.lines == edge.Lines {
+        			continue
+        		}
+        		upserts = append(upserts, edge)
+        		upsertIDs = append(upsertIDs, id)
+        	}
+        	var deletes []string
+        	for id := range stored {
+        		if !wantIDs[id] {
+        			deletes = append(deletes, id)
+        		}
+        	}""","""	wantIDs := make(map[edgeKey]bool, len(edges))
+        	var upserts []core.Edge
+        	for _, edge := range edges {
+        		k := edgeKey{from: edge.From, typ: string(edge.Type), to: edge.To}
+        		if wantIDs[k] {
+        			continue // duplicate (from, type, to); first one wins
+        		}
+        		wantIDs[k] = true
+        		if meta, ok := stored[k]; ok && meta.confidence == edge.Confidence && meta.source == string(edge.Source) && meta.reason == string(edge.Reason) && meta.lines == edge.Lines {
+        			continue
+        		}
+        		upserts = append(upserts, edge)
+        	}
+        	var deletes []edgeKey
+        	for k := range stored {
+        		if !wantIDs[k] {
+        			deletes = append(deletes, k)
+        		}
+        	}""")
+        rep("""		// Insert in primary-key order: random-order TEXT-key insertion lands
+        		// on random b-tree pages (the PK index cannot be dropped); sorted
+        		// insertion is append-like and keeps the hot page set tiny.
+        		order := make([]int, len(upserts))
+        		for i := range order {
+        			order[i] = i
+        		}
+        		sort.Slice(order, func(a, b int) bool { return upsertIDs[order[a]] < upsertIDs[order[b]] })
+        		sortedUpserts := make([]core.Edge, len(upserts))
+        		sortedIDs := make([]string, len(upserts))
+        		for i, idx := range order {
+        			sortedUpserts[i] = upserts[idx]
+        			sortedIDs[i] = upsertIDs[idx]
+        		}
+        		upserts, upsertIDs = sortedUpserts, sortedIDs
+        		for _, p := range []string{
+        			`PRAGMA cache_size=-262144`, // 256MB
+        			`PRAGMA wal_autocheckpoint=0`,
+        			`DROP INDEX IF EXISTS idx_edge_from`,
+        			`DROP INDEX IF EXISTS idx_edge_to`,
+        			`DROP INDEX IF EXISTS idx_edge_source`,
+        		} {""","""		// Insert in unique-key order: random-order TEXT-key insertion lands
+        		// on random b-tree pages (the unique index cannot be dropped);
+        		// sorted insertion is append-like and keeps the hot page set tiny.
+        		sort.Slice(upserts, func(a, b int) bool { return edgeKeyLess(&upserts[a], &upserts[b]) })
+        		for _, p := range []string{
+        			`PRAGMA cache_size=-262144`, // 256MB
+        			`PRAGMA wal_autocheckpoint=0`,
+        			`DROP INDEX IF EXISTS idx_gedge_to`,
+        			`DROP INDEX IF EXISTS idx_gedge_source`,
+        		} {""")
+        rep("""	const deleteChunk = 500
+        	for start := 0; start < len(deletes); start += deleteChunk {
+        		end := start + deleteChunk
+        		if end > len(deletes) {
+        			end = len(deletes)
+        		}
+        		chunk := deletes[start:end]
+        		placeholders := strings.TrimSuffix(strings.Repeat("?,", len(chunk)), ",")
+        		args := make([]any, len(chunk))
+        		for i, id := range chunk {
+        			args[i] = id
+        		}
+        		if _, err := tx.ExecContext(ctx, `DELETE FROM edges WHERE id IN (`+placeholders+`)`, args...); err != nil {
+        			return err
+        		}
+        	}
+        ""","""	if len(deletes) > 0 {
+        		del, err := tx.PrepareContext(ctx, `DELETE FROM graph_edges WHERE from_node = ? AND edge_type = ? AND to_node = ?`)
+        		if err != nil {
+        			return err
+        		}
+        		for _, k := range deletes {
+        			if _, err := del.ExecContext(ctx, k.from, k.typ, k.to); err != nil {
+        				del.Close()
+        				return err
+        			}
+        		}
+        		del.Close()
+        	}
+        """)
+        rep("""	const insertChunk = 342 // 7 columns × 342 = 2394 parameters per statement
+        	for start := 0; start < len(upserts); start += insertChunk {
+        		end := start + insertChunk
+        		if end > len(upserts) {
+        			end = len(upserts)
+        		}
+        		chunk := upserts[start:end]
+        		var sb strings.Builder
+        		sb.WriteString(`INSERT INTO edges (id, from_node, to_node, edge_type, confidence, source, reason, lines) VALUES `)
+        		args := make([]any, 0, len(chunk)*8)
+        		for i, edge := range chunk {
+        			if i > 0 {
+        				sb.WriteString(",")
+        			}
+        			sb.WriteString("(?,?,?,?,?,?,?,?)")
+        			args = append(args, upsertIDs[start+i], edge.From, edge.To, string(edge.Type), edge.Confidence, string(edge.Source), string(edge.Reason), edge.Lines)
+        		}
+        		sb.WriteString(` ON CONFLICT(id) DO UPDATE SET confidence = excluded.confidence, source = excluded.source, reason = excluded.reason, lines = excluded.lines`)
+        		if _, err := tx.ExecContext(ctx, sb.String(), args...); err != nil {
+        			return err
+        		}
+        	}""","""	if err := upsertEdges(ctx, tx, upserts); err != nil {
+        		return err
+        	}""")
+        rep("""			`CREATE INDEX IF NOT EXISTS idx_edge_from   ON edges(from_node)`,
+        			`CREATE INDEX IF NOT EXISTS idx_edge_to     ON edges(to_node)`,
+        			`CREATE INDEX IF NOT EXISTS idx_edge_source ON edges(source)`,""","""			`CREATE INDEX IF NOT EXISTS idx_gedge_to     ON graph_edges(to_node)`,
+        			`CREATE INDEX IF NOT EXISTS idx_gedge_source ON graph_edges(source)`,""")
+        rep("""	const insertChunk = 342
+        	for start := 0; start < len(inserts); start += insertChunk {
+        		end := start + insertChunk
+        		if end > len(inserts) {
+        			end = len(inserts)
+        		}
+        		part := inserts[start:end]
+        		var sb strings.Builder
+        		sb.WriteString(`INSERT INTO edges (id, from_node, to_node, edge_type, confidence, source, reason, lines) VALUES `)
+        		args := make([]any, 0, len(part)*8)
+        		for i, edge := range part {
+        			if i > 0 {
+        				sb.WriteString(",")
+        			}
+        			sb.WriteString("(?,?,?,?,?,?,?,?)")
+        			id := edge.From + "::" + string(edge.Type) + "::" + edge.To
+        			args = append(args, id, edge.From, edge.To, string(edge.Type), edge.Confidence, string(edge.Source), string(edge.Reason), edge.Lines)
+        		}
+        		sb.WriteString(` ON CONFLICT(id) DO UPDATE SET confidence = excluded.confidence, source = excluded.source, reason = excluded.reason, lines = excluded.lines`)
+        		if _, err := tx.ExecContext(ctx, sb.String(), args...); err != nil {
+        			return err
+        		}
+        	}
+        	return tx.Commit()""","""	if err := upsertEdges(ctx, tx, inserts); err != nil {
+        		return err
+        	}
+        	return tx.Commit()""")
+        rep("""// firstWords shortens""","""// edgeKey identifies a stored edge: graph_edges' unique key.
+        type edgeKey struct{ from, typ, to string }
+
+        // edgeKeyLess orders edges by graph_edges' unique key (from, type, to) —
+        // also AllEdges' order.
+        func edgeKeyLess(a, b *core.Edge) bool {
+        	if a.From != b.From {
+        		return a.From < b.From
+        	}
+        	if a.Type != b.Type {
+        		return a.Type < b.Type
+        	}
+        	return a.To < b.To
+        }
+
+        // upsertEdges writes edges in multi-row statements; an existing (from, type,
+        // to) row takes the incoming metadata.
+        func upsertEdges(ctx context.Context, tx *sql.Tx, edges []core.Edge) error {
+        	const insertChunk = 342 // 7 columns × 342 = 2394 parameters per statement
+        	for start := 0; start < len(edges); start += insertChunk {
+        		end := start + insertChunk
+        		if end > len(edges) {
+        			end = len(edges)
+        		}
+        		chunk := edges[start:end]
+        		var sb strings.Builder
+        		sb.WriteString(`INSERT INTO graph_edges (from_node, to_node, edge_type, confidence, source, reason, lines) VALUES `)
+        		args := make([]any, 0, len(chunk)*7)
+        		for i, edge := range chunk {
+        			if i > 0 {
+        				sb.WriteString(",")
+        			}
+        			sb.WriteString("(?,?,?,?,?,?,?)")
+        			args = append(args, edge.From, edge.To, string(edge.Type), edge.Confidence, string(edge.Source), string(edge.Reason), edge.Lines)
+        		}
+        		sb.WriteString(` ON CONFLICT(from_node, edge_type, to_node) DO UPDATE SET confidence = excluded.confidence, source = excluded.source, reason = excluded.reason, lines = excluded.lines`)
+        		if _, err := tx.ExecContext(ctx, sb.String(), args...); err != nil {
+        			return err
+        		}
+        	}
+        	return nil
+        }
+
+        // firstWords shortens""")
+        # AllEdges: reuse edgeKeyLess
+        rep("""	sort.Slice(edges, func(i, j int) bool {
+        		a, b := &edges[i], &edges[j]
+        		if a.From != b.From {
+        			return a.From < b.From
+        		}
+        		if a.Type != b.Type {
+        			return a.Type < b.Type
+        		}
+        		return a.To < b.To
+        	})
+        	return edges, nil""","""	sort.Slice(edges, func(i, j int) bool { return edgeKeyLess(&edges[i], &edges[j]) })
+        	return edges, nil""")
+        open(p,"w").write(s)
+        EOF
+        gofmt -l internal/store; go build ./... && go vet ./internal/store && grep -rn "idx_edge_\|FROM edges\|INTO edges" --include='*.go' . | grep -v "_test.go" | grep -v "store.go:2[0-3][0-9]"
+      at: 2026-10-13T17:25:54.152086Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="internal/store/store.go"; s=open(p).read()
+        s=s.replace("// idx_edge_source and scanned every native edge once per file","// the source index and scanned every native edge once per file",1)
+        s=s.replace("each statement provably uses idx_edge_from / idx_edge_to.","each statement provably uses the from_node (unique) / to_node index.",1)
+        open(p,"w").write(s)
+        p="internal/parser/languages.go"; s=open(p).read()
+        old='const ExtractorVersion = "2026-10-13.1"'
+        assert s.count(old)==1
+        s=s.replace(old,'''// 2026-10-13.2: edges live in graph_edges keyed (from, type, to), without
+        // the derived TEXT id. store.migrateLegacyEdges converts a 2026-10-13.1
+        // database in place and advances its stamp; older binaries see the new
+        // stamp and rebuild instead of reading an empty "edges" table.
+        const ExtractorVersion = "2026-10-13.2"''')
+        open(p,"w").write(s)
+        EOF
+        go build ./... && go test ./internal/store/ -count=1 2>&1 | tail -30
+      at: 2026-10-13T17:26:03.864508Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && cat internal/store/indexmigration_test.go; grep -n "edges\|idx_edge" internal/store/deletefileedges_test.go internal/store/spliceplan_test.go
+      at: 2026-10-13T17:26:08.000685Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        def edit(p, pairs):
+            s=open(p).read()
+            for old,new in pairs:
+                assert s.count(old)>=1, (p, old[:60])
+                s=s.replace(old,new)
+            open(p,"w").write(s)
+        edit("internal/store/indexmigration_test.go", [
+         ("name='idx_edge_source'","name='idx_gedge_source'"),
+         ('"idx_edge_source missing','"idx_gedge_source missing'),
+         ("""		`INSERT INTO edges (id, from_node, to_node, edge_type, confidence, source, reason)
+        		 VALUES ('x','a.go::A@s','b.go::B@s','tests',1.0,'heuristic','')`""","""		`INSERT INTO graph_edges (from_node, to_node, edge_type, confidence, source, reason)
+        		 VALUES ('a.go::A@s','b.go::B@s','tests',1.0,'heuristic','')`"""),
+        ])
+        edit("internal/store/spliceplan_test.go", [
+         ('sqlDeleteNativeFromFile:   "idx_edge_from"','sqlDeleteNativeFromFile:   "sqlite_autoindex_graph_edges_1"'),
+         ('sqlDeleteNativeFromFileID: "idx_edge_from"','sqlDeleteNativeFromFileID: "sqlite_autoindex_graph_edges_1"'),
+         ('sqlNativeEdgesInto:        "idx_edge_to"','sqlNativeEdgesInto:        "idx_gedge_to"'),
+         ("chose idx_edge_source","chose the source index"),
+        ])
+        edit("internal/store/deletefileedges_test.go", [
+         ("`INSERT INTO edges (id, from_node, to_node, edge_type, confidence, source) VALUES (?, ?, ?, 'calls', 1.0, 'astkit')`",
+          "`INSERT INTO graph_edges (from_node, to_node, edge_type, confidence, source) VALUES (?, ?, 'calls', 1.0, 'astkit')`"),
+         ("FROM edges ORDER BY id`","FROM graph_edges ORDER BY from_node, edge_type, to_node`"),
+         ('{`DELETE FROM edges WHERE from_node = ?`, []any{"file:x.go"}, "idx_edge_from"}','{`DELETE FROM graph_edges WHERE from_node = ?`, []any{"file:x.go"}, "sqlite_autoindex_graph_edges_1"}'),
+         ('{`DELETE FROM edges WHERE from_node >= ? AND from_node < ?`, []any{"x.go::", "x.go:;"}, "idx_edge_from"}','{`DELETE FROM graph_edges WHERE from_node >= ? AND from_node < ?`, []any{"x.go::", "x.go:;"}, "sqlite_autoindex_graph_edges_1"}'),
+         ('{`DELETE FROM edges WHERE to_node >= ? AND to_node < ?`, []any{"x.go::", "x.go:;"}, "idx_edge_to"}','{`DELETE FROM graph_edges WHERE to_node >= ? AND to_node < ?`, []any{"x.go::", "x.go:;"}, "idx_gedge_to"}'),
+         ("must be served by idx_edge_from / idx_edge_to","must be served by the from_node (unique) / to_node index"),
+        ])
+        EOF
+        sed -n 13,25p internal/store/deletefileedges_test.go
+      at: 2026-10-13T17:26:19.597769Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="internal/store/deletefileedges_test.go"; s=open(p).read()
+        old="""			e[0]+"::"+e[1], e[0], e[1],
+        """
+        assert s.count(old)==1
+        s=s.replace(old,"""			e[0], e[1],
+        """)
+        open(p,"w").write(s)
+        EOF
+        cat > internal/store/legacyedges_test.go <<'EOF'
+        package store
+
+        import (
+        	"context"
+        	"reflect"
+        	"testing"
+
+        	"github.com/provasign/grove/internal/core"
+        	"github.com/provasign/grove/internal/parser"
+        )
+
+        // A database written before graph_edges (TEXT id column in "edges") is
+        // converted in place on open: every edge, with all its metadata, survives;
+        // the old table is gone; and a database that was current apart from the
+        // layout has its stamp advanced so the next index does not re-extract.
+        func TestLegacyEdgesMigrateLosslessly(t *testing.T) {
+        	for _, tc := range []struct {
+        		stamp, want string
+        	}{
+        		{legacyEdgesStamp, parser.ExtractorVersion}, // current data: no rebuild
+        		{"2026-10-12.7", "2026-10-12.7"},             // older data: indexer rebuilds
+        	} {
+        		dir := t.TempDir()
+        		st, err := Open(dir)
+        		if err != nil {
+        			t.Fatal(err)
+        		}
+        		ctx := context.Background()
+        		legacy := []core.Edge{
+        			{From: "a.go::A@s", To: "b.go::B@s", Type: "calls", Confidence: 0.95, Source: "astkit", Reason: "ast-narrowed"},
+        			{From: "a.go::A@s", To: "b.go::B@s", Type: "uses-type", Confidence: 0.7, Source: "heuristic"},
+        			{From: "c.go::C@s", To: "a.go::A@s", Type: "calls", Confidence: 1, Source: "native", Lines: "12:5,40:9"},
+        		}
+        		mustExec := func(q string, args ...any) {
+        			t.Helper()
+        			if _, err := st.db.ExecContext(ctx, q, args...); err != nil {
+        				t.Fatalf("%s: %v", q, err)
+        			}
+        		}
+        		mustExec(`CREATE TABLE edges (id TEXT PRIMARY KEY, from_node TEXT NOT NULL, to_node TEXT NOT NULL,
+        			edge_type TEXT NOT NULL, confidence REAL NOT NULL DEFAULT 1.0, source TEXT NOT NULL DEFAULT 'unknown',
+        			reason TEXT NOT NULL DEFAULT '', lines TEXT NOT NULL DEFAULT '')`)
+        		for _, e := range legacy {
+        			mustExec(`INSERT INTO edges VALUES (?,?,?,?,?,?,?,?)`,
+        				e.From+"::"+string(e.Type)+"::"+e.To, e.From, e.To, string(e.Type), e.Confidence, string(e.Source), string(e.Reason), e.Lines)
+        		}
+        		must(t, st.SetMeta(ctx, "extractor-version", tc.stamp))
+        		must(t, st.Close())
+
+        		st, err = Open(dir)
+        		if err != nil {
+        			t.Fatal(err)
+        		}
+        		got, err := st.AllEdges(ctx)
+        		must(t, err)
+        		want := append([]core.Edge(nil), legacy...)
+        		// AllEdges order: (from, type, to).
+        		want[0], want[1], want[2] = legacy[0], legacy[1], legacy[2]
+        		if !reflect.DeepEqual(got, want) {
+        			t.Fatalf("stamp %s: edges after migration\n got %+v\nwant %+v", tc.stamp, got, want)
+        		}
+        		var n int
+        		must(t, st.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE name = 'edges'`).Scan(&n))
+        		if n != 0 {
+        			t.Fatalf("stamp %s: legacy edges table still present", tc.stamp)
+        		}
+        		stamp, _, err := st.GetMeta(ctx, "extractor-version")
+        		must(t, err)
+        		if stamp != tc.want {
+        			t.Fatalf("stamp %s: after migration = %s, want %s", tc.stamp, stamp, tc.want)
+        		}
+        		must(t, st.Close())
+        	}
+        }
+        EOF
+        gofmt -w internal/store/legacyedges_test.go && go test ./internal/store/ -count=1 2>&1 | tail -15
+      at: 2026-10-13T17:26:33.700173Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./... -count=1 > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx/grove-test2.log 2>&1; echo "exit=$?" >> /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx/grove-test2.log
+      at: 2026-10-13T17:26:48.823827Z
+      classified: test
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; cd /Users/tapabratapal/Projects/provasign/prism && git checkout -q main 2>&1; git pull -q origin main 2>&1 | tail -1; git log --oneline -1; cp go.mod $SP/cand2.mod; cp go.sum $SP/cand2.sum; echo 'replace github.com/provasign/grove => /Users/tapabratapal/Projects/provasign/grove' >> $SP/cand2.mod; GOWORK=off go build -modfile=$SP/cand2.mod -o $SP/prism-edge ./cmd/prism && echo built; ls $SP/ci-corpus/
+      at: 2026-10-13T17:26:52.987417Z
+      classified: build
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; du -sh $SP/ci-corpus/* 2>/dev/null | sort -h | tail -9; cat > $SP/equiv.py <<'EOF'
+        import hashlib, json, os, shutil, sqlite3, subprocess, sys, time
+        SP, OLD, NEW = sys.argv[1], sys.argv[2], sys.argv[3]
+        repos = sys.argv[4].split(",")
+        def run(binp, d):
+            t=time.time(); r=subprocess.run([binp,"index",d],capture_output=True,text=True); el=time.time()-t
+            j={}
+            try: j=json.loads(r.stdout[r.stdout.index("{"):])
+            except Exception: pass
+            return el, j, r.returncode
+        def dump(db):
+            c=sqlite3.connect(db)
+            tbl = "graph_edges" if c.execute("select count(*) from sqlite_master where name='graph_edges'").fetchone()[0] else "edges"
+            if tbl=="graph_edges" and c.execute("select count(*) from sqlite_master where name='edges'").fetchone()[0]:
+                tbl="BOTH"
+            e=c.execute(f"select from_node,to_node,edge_type,confidence,source,reason,lines from {'graph_edges' if tbl=='BOTH' else tbl} order by from_node,edge_type,to_node").fetchall()
+            cols=[r[1] for r in c.execute("pragma table_info(symbols)")]
+            s=c.execute(f"select {','.join(cols)} from symbols order by id").fetchall()
+            f=c.execute("select file_path,blob_sha,language,symbol_count,imports from file_index order by file_path").fetchall()
+            h=lambda rows: hashlib.sha256(repr(rows).encode()).hexdigest()[:12]
+            return tbl, len(e), h(e), len(s), h(s), len(f), h(f)
+        for repo in repos:
+            src=f"{SP}/ci-corpus/{repo}"
+            dirs={}
+            for tag in ("old","new","mig"):
+                d=f"{SP}/eq/{repo}-{tag}"; shutil.rmtree(d, ignore_errors=True)
+                shutil.copytree(src, d, ignore=shutil.ignore_patterns(".grove"), symlinks=True); dirs[tag]=d
+            eo,jo,ro=run(OLD,dirs["old"]); en,jn,rn=run(NEW,dirs["new"])
+            run(OLD,dirs["mig"]); em,jm,rm=run(NEW,dirs["mig"])
+            so=os.path.getsize(dirs["old"]+"/.grove/grove.db")>>20; sn=os.path.getsize(dirs["new"]+"/.grove/grove.db")>>20; sm=os.path.getsize(dirs["mig"]+"/.grove/grove.db")>>20
+            do,dn,dm=dump(dirs["old"]+"/.grove/grove.db"),dump(dirs["new"]+"/.grove/grove.db"),dump(dirs["mig"]+"/.grove/grove.db")
+            same = do[1:]==dn[1:]==dm[1:]
+            print(f"{repo:16} old {eo:5.1f}s {so:5}MB | new {en:5.1f}s {sn:5}MB | upgrade {em:5.1f}s {sm:5}MB files_updated={jm.get('filesUpdated')} | edges {do[1]}/{dn[1]}/{dm[1]} symbols {do[3]}/{dn[3]}/{dm[3]} files {do[5]} | tables {do[0]}/{dn[0]}/{dm[0]} | IDENTICAL={same} rc={ro},{rn},{rm}", flush=True)
+            if not same: print("   hashes", do, dn, dm, flush=True)
+        EOF
+        echo ok
+      at: 2026-10-13T17:27:13.785522Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; mkdir -p $SP/eq && python3 $SP/equiv.py $SP $SP/prism-rel $SP/prism-edge gin,gson,typeorm,jackson-databind,django,guava,grafana-120119 > $SP/equiv.log 2>&1; echo done >> $SP/equiv.log
+      at: 2026-10-13T17:27:21.824295Z
+      classified: other
+    - cmd: grep -v "^ok\|no test files" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx/grove-test2.log | tail -30
+      at: 2026-10-13T17:27:25.168935Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 55,80p pkg/grove/splicecheck_test.go; grep -rn '"edges"\|edges WHERE\|FROM edges' --include='*_test.go' . | grep -v internal/store | head
+      at: 2026-10-13T17:27:28.661731Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        def edit(p, old, new):
+            s=open(p).read(); assert s.count(old)==1, (p, old[:60]); open(p,"w").write(s.replace(old,new))
+        edit("pkg/grove/splicecheck_test.go","`DELETE FROM edges WHERE rowid IN (SELECT rowid FROM edges LIMIT 1)`","`DELETE FROM graph_edges WHERE rowid IN (SELECT rowid FROM graph_edges LIMIT 1)`")
+        edit("internal/store/store.go","""			return err
+        		}
+        	}
+        	return tx.Commit()
+        }
+        ""","""			return err
+        		}
+        	}
+        	if err := tx.Commit(); err != nil {
+        		return err
+        	}
+        	// The dropped table's pages stay in the file as free space; give them
+        	// back once. Best effort: another connection holding the database makes
+        	// VACUUM fail with "busy", and the indexer's free-space check compacts
+        	// later instead.
+        	_, _ = s.db.ExecContext(ctx, `VACUUM`)
+        	return nil
+        }
+        """)
+        EOF
+        go build ./... && go test ./pkg/grove/ ./internal/store/ -count=1 2>&1 | tail -3
+      at: 2026-10-13T17:27:45.089574Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="internal/store/store.go"; s=open(p).read()
+        old="""			`UPDATE meta SET value = ? WHERE key = 'extractor-version'`, parser.ExtractorVersion); err != nil {
+        			return err
+        		}
+        	}
+        	return tx.Commit()
+        }
+        """
+        assert s.count(old)==1
+        s=s.replace(old,"""			`UPDATE meta SET value = ? WHERE key = 'extractor-version'`, parser.ExtractorVersion); err != nil {
+        			return err
+        		}
+        	}
+        	if err := tx.Commit(); err != nil {
+        		return err
+        	}
+        	// The dropped table's pages stay in the file as free space; give them
+        	// back once. Best effort: another connection holding the database makes
+        	// VACUUM fail with "busy", and the indexer's free-space check compacts
+        	// later instead.
+        	_, _ = s.db.ExecContext(ctx, `VACUUM`)
+        	return nil
+        }
+        """)
+        open(p,"w").write(s)
+        EOF
+        go build ./... && go test ./internal/store/ -count=1 2>&1 | tail -2
+      at: 2026-10-13T17:27:53.254378Z
+      classified: test
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=off go build -modfile=$SP/cand2.mod -o $SP/prism-edge2 ./cmd/prism && echo built
+      at: 2026-10-13T17:28:04.279647Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx/equiv.log
+      at: 2026-10-13T17:29:22.533628Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; sed -i '' 's/    c=sqlite3.connect(db)/    c=sqlite3.connect(db); c.text_factory=bytes/' $SP/equiv.py && grep -n text_factory $SP/equiv.py && python3 $SP/equiv.py $SP $SP/prism-rel $SP/prism-edge2 gin,gson,django,guava,grafana-120119 > $SP/equiv2.log 2>&1; echo done >> $SP/equiv2.log
+      at: 2026-10-13T17:29:32.178193Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n 50,60p harness/scoring/decoy_invariant.py
+      at: 2026-10-13T17:29:36.864425Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; python3 - "$SP/equiv.py" <<'EOF'
+        import sys
+        p=sys.argv[1]; s=open(p).read()
+        s=s.replace("    c=sqlite3.connect(db); c.text_factory=bytes","    c=sqlite3.connect(db)")
+        old='    s=c.execute(f"select {\',\'.join(cols)} from symbols order by id").fetchall()'
+        assert s.count(old)==1
+        s=s.replace(old,'    c.text_factory=bytes\n'+old)
+        open(p,"w").write(s)
+        EOF
+        sed -n 10,22p $SP/equiv.py; python3 $SP/equiv.py $SP $SP/prism-rel $SP/prism-edge2 gin,gson,django,guava,grafana-120119 > $SP/equiv2.log 2>&1; echo done >> $SP/equiv2.log
+      at: 2026-10-13T17:29:45.924816Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 - <<'EOF'
+        p="harness/scoring/decoy_invariant.py"; s=open(p).read()
+        old='''    for f, t, et, src, conf in db.execute("select from_node,to_node,edge_type,source,confidence from edges"):'''
+        new='''    # grove >= v0.63.16 stores edges in graph_edges (no derived id column).
+            table = "graph_edges" if db.execute(
+                "select count(*) from sqlite_master where type='table' and name='graph_edges'").fetchone()[0] else "edges"
+            for f, t, et, src, conf in db.execute(f"select from_node,to_node,edge_type,source,confidence from {table}"):'''
+        assert s.count(old)==1; open(p,"w").write(s.replace(old,new))
+        EOF
+        python3 -c "import ast;ast.parse(open('harness/scoring/decoy_invariant.py').read())" && git diff --stat harness/scoring/decoy_invariant.py
+      at: 2026-10-13T17:29:50.465202Z
+      classified: other
+    - cmd: tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx/equiv2.log
+      at: 2026-10-13T17:36:46.248372Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; cat > $SP/edits.py <<'EOF'
+        import sys, time, subprocess, json, os, importlib.util
+        SP, OLD, NEW, repo = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+        spec = importlib.util.spec_from_file_location("eq", f"{SP}/equiv_dump.py"); eq = importlib.util.module_from_spec(spec); spec.loader.exec_module(eq)
+        dirs = {"old": f"{SP}/eq/{repo}-old", "new": f"{SP}/eq/{repo}-new"}
+        f1 = "guava/src/com/google/common/collect/Lists.java"
+        f2 = "guava/src/com/google/common/base/Strings.java"
+        f3 = "guava/src/com/google/common/base/Ascii.java"
+        def edit(d, step):
+            if step == 1:
+                p = f"{d}/{f1}"; s = open(p).read(); s = s.replace("checkNotNull(elements);", "checkNotNull(elements); /* edit1 */", 1); open(p, "w").write(s)
+            if step == 2:
+                p = f"{d}/{f2}"; s = open(p).read(); i = s.rindex("}"); s = s[:i] + "  public static String edit2Probe(String s) { return Strings.nullToEmpty(s) + Lists.newArrayList(s).size(); }\n}\n"; open(p, "w").write(s)
+            if step == 3:
+                os.remove(f"{d}/{f3}")
+        for step in (1, 2, 3):
+            res = {}
+            for tag, binp in (("old", OLD), ("new", NEW)):
+                edit(dirs[tag], step)
+                t = time.time(); r = subprocess.run([binp, "index", dirs[tag]], capture_output=True, text=True); el = time.time() - t
+                j = json.loads(r.stdout[r.stdout.index("{"):])
+                res[tag] = (el, j.get("filesUpdated"), j.get("filesPruned"), eq.dump(dirs[tag] + "/.grove/grove.db"))
+            o, n = res["old"], res["new"]
+            print(f"step {step}: old {o[0]:.1f}s updated={o[1]} pruned={o[2]} | new {n[0]:.1f}s updated={n[1]} pruned={n[2]} | edges {o[3][1]}/{n[3][1]} | IDENTICAL={o[3][1:] == n[3][1:]}", flush=True)
+        EOF
+        python3 - <<EOF
+        s=open("$SP/equiv.py").read()
+        i=s.index("for repo in repos:")
+        open("$SP/equiv_dump.py","w").write(s[:i].replace('SP, OLD, NEW = sys.argv[1], sys.argv[2], sys.argv[3]\nrepos = sys.argv[4].split(",")',''))
+        EOF
+        python3 $SP/edits.py $SP $SP/prism-rel $SP/prism-edge2 guava
+      at: 2026-10-13T17:39:18.476936Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal pkg | grep -v changeimpact_signatures_test; go vet ./internal/store ./pkg/grove && go test ./... -count=1 2>&1 | grep -v "^ok\|no test files"; echo "grove tests done"
+      at: 2026-10-13T17:39:54.973799Z
+      classified: lint
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx; cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root $SP/ci-corpus2 --prism $SP/prism-edge2 > $SP/ci-inv-edge.log 2>&1; echo "exit=$?" >> $SP/ci-inv-edge.log; grep -cE "\[OK\]" $SP/ci-inv-edge.log; grep -E "FAIL|MISMATCH|REGRESS|All invariants|exit=" $SP/ci-inv-edge.log
+      at: 2026-10-13T17:39:59.469987Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && git add internal/store/store.go internal/store/legacyedges_test.go internal/store/deletefileedges_test.go internal/store/indexmigration_test.go internal/store/spliceplan_test.go internal/parser/languages.go pkg/grove/splicecheck_test.go && git status --short | grep -v \"^??\" && git commit -q -F - <<'EOF'\nstore: edges keyed (from, type, to) without the derived id column\n\nThe edges table stored a TEXT id that was exactly from||'::'||type||'::'||to\n(checked over 3.4M edges in 8 repos), once in the row and again in its\nPRIMARY KEY index, plus a from_node index the key could have served.\ngraph_edges drops the id and keys rows UNIQUE(from_node, edge_type, to_node),\nwhich also serves every from_node lookup and range delete.\n\nLossless: indexing with v0.87.19 and with this build gives byte-identical\nsymbols, edges (confidence, source, reason, lines) and file rows on gin,\ngson, typeorm, jackson-databind, django, guava and grafana (2.6M edges);\nso do three incremental edits on guava (body edit, new method, deleted file).\n\nSize, full index: django 426MB -> 322MB, guava 1164MB -> 801MB,\ngrafana 1249MB -> 941MB, jackson-databind 268MB -> 189MB; index time\nequal or slightly faster (guava 46.5s -> 43.8s).\n\nUpgrade: a 2026-10-13.1 database is converted in place on open (copy,\ndrop, one VACUUM) and its stamp advanced, so it does not re-extract:\nguava 8.8s, django 2.9s. The table is renamed so an older binary never\nreads the new layout; ExtractorVersion 2026-10-13.2 makes it rebuild.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\ngit push -q -u origin fix/edge-table-size 2>&1 | tail -1; gh pr create --title \"store: edges keyed (from, type, to) without the derived id column\" --body \"$(git log -1 --format=%b | sed '/^Co-Authored-By/,$d')\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\" 2>&1 | tail -1"
+      at: 2026-10-13T17:40:16.092088Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && until s=$(gh pr checks 33 --json name,bucket 2>/dev/null) && [ -n "$s" ] && echo "$s" | jq -e ''length>0 and all(.bucket!="pending")'' >/dev/null; do sleep 30; done; echo "$s" | jq -r ''.[] | "\(.name): \(.bucket)"'''
+      at: 2026-10-13T17:40:18.805275Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bmtka44q9.output; tail -4 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/pyidx/ci-inv-edge.log
+      at: 2026-10-13T17:43:29.179175Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b4d4j646f.output
+      at: 2026-10-13T17:43:52.642257Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && gh pr view 33 --json state,mergeCommit -q ''.state+" "+.mergeCommit.oid'' && git checkout -q main && git pull -q origin main && git log --oneline -1 && sha=$(git rev-parse HEAD) && until r=$(gh run list --commit $sha --json status,conclusion,name 2>/dev/null) && [ "$(echo "$r" | jq length)" -gt 0 ] && echo "$r" | jq -e ''all(.status=="completed")'' >/dev/null; do sleep 30; done; echo "$r" | jq -r ''.[] | "\(.name): \(.conclusion)"'''
+      at: 2026-10-13T17:48:53.721951Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git tag v0.63.16 3117bd64 && git push -q origin v0.63.16 2>&1 | tail -1; git ls-remote --tags origin v0.63.16; cd /Users/tapabratapal/Projects/provasign/prism && git fetch -q origin && git checkout -q -b deps/grove-v0.63.16 origin/main && GOPROXY=direct GOWORK=off go get github.com/provasign/grove@v0.63.16 2>&1 | tail -1 && GOWORK=off go mod tidy && git diff --stat && GOWORK=off go build ./... && GOWORK=off go test ./... -count=1 2>&1 | grep -v "^ok\|no test files"; echo tests-done
+      at: 2026-10-13T17:49:51.694604Z
+      classified: test
+notes:
+    - text: continuation of session b078ae73-7c6b-4498-a9f7-eeada0292d5a — events captured after its evidence was finalized
+      at: 2026-10-13T13:25:03.483855Z
+redactions: 0
