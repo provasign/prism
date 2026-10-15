@@ -326,3 +326,18 @@ func TestLookupVariableKeepsItsDeclarationKeyword(t *testing.T) {
 		t.Fatalf("first line is not the source line:\n%s", got)
 	}
 }
+
+// A file-scoped bare name resolves to the package-level function by rule;
+// the answer names the same-named members so the agent can tell it is not
+// the interface method it may have meant.
+func TestFileScopedBareNameNamesSameFileMembers(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"go.mod": "module m\n\ngo 1.22\n",
+		"a.go": "package m\n\ntype Coder interface {\n\tStatusCode() int\n}\n\ntype E struct{}\n\nfunc (E) StatusCode() int { return 1 }\n\n" +
+			"func StatusCode(err error) int { return 0 }\n\nfunc use(c Coder) int { return c.StatusCode() + StatusCode(nil) }\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "StatusCode", "symbol_file": "a.go"})
+	if !strings.Contains(got, "also declares Coder.StatusCode, E.StatusCode") {
+		t.Fatalf("same-file members not named:\n%s", got)
+	}
+}

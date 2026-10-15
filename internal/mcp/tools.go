@@ -3515,10 +3515,54 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	applyCompilerBackedCompleteness(out, r)
 	h.addUnindexedNote(ctx, out, targetLeaf)
 	markNameMatchedSites(out, r)
+	if familyPickNote == "" {
+		familyPickNote = h.sameFileNamesakesNote(ctx, query, stringArg(args, "file", ""), r)
+	}
 	if familyPickNote != "" {
 		out["resolvedAmbiguity"] = familyPickNote
 	}
 	return out, nil
+}
+
+// sameFileNamesakesNote names the members that share a bare name with the
+// package-level function the file-scoped query resolved to. The bare name
+// means the function there by rule, but an agent asking about echo's
+// HTTPStatusCoder.StatusCode as "StatusCode in httperror.go" got the
+// function's change set marked complete with no word that the interface
+// method of the same name exists (replay, 2026-10-15).
+func (h *Handler) sameFileNamesakesNote(ctx context.Context, query, file string, r *grove.ChangeImpactResult) string {
+	if file == "" || r == nil || strings.ContainsAny(query, ".(") || len(r.Declarations) == 0 {
+		return ""
+	}
+	for _, d := range r.Declarations {
+		if d.ParentSymbol != "" {
+			return ""
+		}
+	}
+	syms, err := h.Grove.FileSymbols(ctx, file)
+	if err != nil {
+		return ""
+	}
+	var others []string
+	seen := map[string]bool{}
+	for _, s := range syms {
+		if s.Name != query || s.ParentSymbol == "" || seen[s.QualifiedName] {
+			continue
+		}
+		switch s.Kind {
+		case "method", "function", "constructor":
+		default:
+			continue
+		}
+		seen[s.QualifiedName] = true
+		others = append(others, s.QualifiedName)
+	}
+	if len(others) == 0 {
+		return ""
+	}
+	sort.Strings(others)
+	return fmt.Sprintf("this is the change set of the package-level function %s; %s also declares %s — for one of those, call change_impact with its full name",
+		query, file, strings.Join(others, ", "))
 }
 
 // compilerBackedImpactLangs have a type-checked native pass in grove.
