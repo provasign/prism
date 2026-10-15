@@ -178,11 +178,14 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	// In MCP mode, Grove connection and initial index run in the background so
 	// the MCP handshake (initialize / tools/list) can complete immediately.
 	// Wait here until Grove is ready before dispatching any tool call.
-	if h.readyCh != nil {
+	// A read serves file text from disk and needs no graph, so it is not
+	// held behind the first index: on a large cold repository every early
+	// call, reads included, failed after a minute (2026-10-15 replay).
+	if h.readyCh != nil && name != "prism_read" && name != "prism_read_compact" {
 		select {
 		case <-h.readyCh:
 		case <-ctx.Done():
-			return nil, errors.New("the first index of this repository is still running (a never-built project compiles its dependencies once; this can take several minutes) — it continues in the background; retry this call shortly")
+			return nil, errors.New("the first index of this repository is still running (a never-built project compiles its dependencies once; this can take several minutes) — it continues in the background; retry this call shortly. op=read works meanwhile")
 		}
 	}
 	// Every tool — including prism_index — resolves against the root the
@@ -2575,7 +2578,7 @@ func searchTestLabel(s grove.SymbolRecord) string {
 // projectSymbol returns only the requested columns of a symbol. file, line and
 // name are always included as identity. Recognized fields: signature, doc, body,
 // kind, parent, modifiers. An empty list means "default" (caller adds the body).
-func projectSymbol(s grove.SymbolRecord, fields []string) map[string]any {
+func projectSymbol(root string, s grove.SymbolRecord, fields []string) map[string]any {
 	qn := s.QualifiedName
 	if qn == "" {
 		qn = s.Name
@@ -2588,7 +2591,7 @@ func projectSymbol(s grove.SymbolRecord, fields []string) map[string]any {
 		case "doc", "docstring":
 			out["doc"] = s.Docstring
 		case "body", "source":
-			out["body"] = s.RawText
+			out["body"] = symbolSourceText(root, s)
 		case "kind":
 			out["kind"] = string(s.Kind)
 		case "parent":
@@ -2634,7 +2637,7 @@ func lookupCandidateLabel(s grove.SymbolRecord) string {
 // body plus overloads) stays within searchFullBodyMaxBytes; past that, an
 // overload keeps its signature and span so the agent can read it by range.
 // fields= projections apply to each overload the same way as the primary.
-func lookupOverloads(overloads []grove.SymbolRecord, fields []string, primaryBytes int) []map[string]any {
+func lookupOverloads(root string, overloads []grove.SymbolRecord, fields []string, primaryBytes int) []map[string]any {
 	sorted := append([]grove.SymbolRecord(nil), overloads...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Span.Start < sorted[j].Span.Start })
 	wantBody := len(fields) == 0
@@ -2648,7 +2651,7 @@ func lookupOverloads(overloads []grove.SymbolRecord, fields []string, primaryByt
 	for _, s := range sorted {
 		var entry map[string]any
 		if len(fields) > 0 {
-			entry = projectSymbol(s, fields)
+			entry = projectSymbol(root, s, fields)
 			delete(entry, "body")
 		} else {
 			entry = map[string]any{"name": lookupSymbolName(s), "file": s.FilePath, "line": s.Span.Start,
@@ -2659,9 +2662,9 @@ func lookupOverloads(overloads []grove.SymbolRecord, fields []string, primaryByt
 			if used+len(s.RawText) <= searchFullBodyMaxBytes {
 				used += len(s.RawText)
 				if len(fields) > 0 {
-					entry["body"] = s.RawText
+					entry["body"] = symbolSourceText(root, s)
 				} else {
-					entry["content"] = s.RawText
+					entry["content"] = symbolSourceText(root, s)
 				}
 			} else {
 				entry["bodyOmitted"] = true
@@ -3512,10 +3515,54 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	applyCompilerBackedCompleteness(out, r)
 	h.addUnindexedNote(ctx, out, targetLeaf)
 	markNameMatchedSites(out, r)
+	if familyPickNote == "" {
+		familyPickNote = h.sameFileNamesakesNote(ctx, query, stringArg(args, "file", ""), r)
+	}
 	if familyPickNote != "" {
 		out["resolvedAmbiguity"] = familyPickNote
 	}
 	return out, nil
+}
+
+// sameFileNamesakesNote names the members that share a bare name with the
+// package-level function the file-scoped query resolved to. The bare name
+// means the function there by rule, but an agent asking about echo's
+// HTTPStatusCoder.StatusCode as "StatusCode in httperror.go" got the
+// function's change set marked complete with no word that the interface
+// method of the same name exists (replay, 2026-10-15).
+func (h *Handler) sameFileNamesakesNote(ctx context.Context, query, file string, r *grove.ChangeImpactResult) string {
+	if file == "" || r == nil || strings.ContainsAny(query, ".(") || len(r.Declarations) == 0 {
+		return ""
+	}
+	for _, d := range r.Declarations {
+		if d.ParentSymbol != "" {
+			return ""
+		}
+	}
+	syms, err := h.Grove.FileSymbols(ctx, file)
+	if err != nil {
+		return ""
+	}
+	var others []string
+	seen := map[string]bool{}
+	for _, s := range syms {
+		if s.Name != query || s.ParentSymbol == "" || seen[s.QualifiedName] {
+			continue
+		}
+		switch s.Kind {
+		case "method", "function", "constructor":
+		default:
+			continue
+		}
+		seen[s.QualifiedName] = true
+		others = append(others, s.QualifiedName)
+	}
+	if len(others) == 0 {
+		return ""
+	}
+	sort.Strings(others)
+	return fmt.Sprintf("this is the change set of the package-level function %s; %s also declares %s — for one of those, call change_impact with its full name",
+		query, file, strings.Join(others, ", "))
 }
 
 // compilerBackedImpactLangs have a type-checked native pass in grove.

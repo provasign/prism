@@ -170,9 +170,9 @@ func (h *Handler) deliverLookup(ctx context.Context, syms []grove.SymbolRecord, 
 	var out map[string]any
 	if len(fields) > 0 {
 		// Column projection requested: return just those fields.
-		out = projectSymbol(best, fields)
+		out = projectSymbol(h.Root, best, fields)
 	} else {
-		out = map[string]any{"symbol": best, "content": best.RawText}
+		out = map[string]any{"symbol": best, "content": h.sourceText(best)}
 	}
 	if cFamilyDefinition(best) {
 		var decls []string
@@ -241,7 +241,7 @@ func (h *Handler) deliverLookup(ctx context.Context, syms []grove.SymbolRecord, 
 		}
 	}
 	if len(overloads) > 0 {
-		out["overloads"] = lookupOverloads(overloads, fields, len(best.RawText))
+		out["overloads"] = lookupOverloads(h.Root, overloads, fields, len(best.RawText))
 	}
 	if len(cands) > 1 {
 		out["ambiguous"] = true
@@ -462,7 +462,7 @@ func (h *Handler) lookupMissCandidates(ctx context.Context, loc *lookupLocator, 
 	}
 	if ownedBy(primary) {
 		out["symbol"] = primary
-		out["content"] = primary.RawText
+		out["content"] = h.sourceText(primary)
 	}
 	return out
 }

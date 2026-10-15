@@ -1,9 +1,14 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
+	"github.com/provasign/prism/internal/config"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/provasign/prism/internal/grove"
 )
@@ -262,5 +267,94 @@ func TestGoFreeFunctionValueReferencesAndCompleteness(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q:\n%s", want, got)
 		}
+	}
+}
+
+// A read is served while the first index still runs: it reads the file from
+// disk. Every early call on a large cold repository used to fail after a
+// minute, reads included.
+func TestReadIsNotHeldBehindTheFirstIndex(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("one\ntwo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(context.Background()); err != nil { // open, as before the first index starts
+		t.Fatal(err)
+	}
+	defer gc.Shutdown()
+	h := NewHandlerWithReady(config.Default(), root, gc, make(chan struct{})) // never ready
+	done := make(chan any, 1)
+	go func() {
+		out, err := h.Invoke("prism_read", map[string]any{"file": "a.txt"})
+		if err != nil {
+			done <- err
+			return
+		}
+		done <- out
+	}()
+	select {
+	case got := <-done:
+		if err, isErr := got.(error); isErr {
+			t.Fatalf("read failed while indexing: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("read waited for the first index")
+	}
+}
+
+// A delivered body keeps the first line's indentation: an agent copies it
+// into an Edit, and a flush-left first line matched nothing in the file.
+func TestLookupBodyKeepsFirstLineIndentation(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"a.py": "class A:\n    def run(self):\n        return 1\n",
+	})
+	got := callCompact(t, srv, "lookup", map[string]any{"name": []string{"A.run"}})
+	if !strings.Contains(got, "2→    def run(self):") {
+		t.Fatalf("first line lost its indentation:\n%s", got)
+	}
+}
+
+// A variable's indexed text starts at its name; the delivered first line is
+// the whole source line, declaration keyword included.
+func TestLookupVariableKeepsItsDeclarationKeyword(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"a.ts": "export function f() {}\nconst request = new Request('http://localhost/')\n",
+	})
+	got := callCompact(t, srv, "lookup", map[string]any{"name": []string{"request"}})
+	if !strings.Contains(got, "2→const request = new Request('http://localhost/')") {
+		t.Fatalf("first line is not the source line:\n%s", got)
+	}
+}
+
+// A file-scoped bare name resolves to the package-level function by rule;
+// the answer names the same-named members so the agent can tell it is not
+// the interface method it may have meant.
+func TestFileScopedBareNameNamesSameFileMembers(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"go.mod": "module m\n\ngo 1.22\n",
+		"a.go": "package m\n\ntype Coder interface {\n\tStatusCode() int\n}\n\ntype E struct{}\n\nfunc (E) StatusCode() int { return 1 }\n\n" +
+			"func StatusCode(err error) int { return 0 }\n\nfunc use(c Coder) int { return c.StatusCode() + StatusCode(nil) }\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "StatusCode", "symbol_file": "a.go"})
+	if !strings.Contains(got, "also declares Coder.StatusCode, E.StatusCode") {
+		t.Fatalf("same-file members not named:\n%s", got)
+	}
+}
+
+// A bare name matching an interface method and one implementation resolves
+// to the interface's family, which also holds the other implementations;
+// the implementation's own change set lacks its siblings.
+func TestFamilyPickCoversSiblingImplementations(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"go.mod": "module m\n\ngo 1.22\n",
+		"router.go": "package m\n\ntype Router interface {\n\tRoute(p string) int\n}\n\ntype DefaultRouter struct{}\n\n" +
+			"func (r *DefaultRouter) Route(p string) int { return len(p) }\n\nfunc Use(r Router) int { return r.Route(\"x\") }\n" +
+			"func UseDefault(r *DefaultRouter) int { return r.Route(\"y\") + r.Route(\"z\") }\n",
+		"concurrent.go": "package m\n\ntype concurrentRouter struct{ router Router }\n\nfunc (r *concurrentRouter) Route(p string) int { return r.router.Route(p) }\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Route", "symbol_file": "router.go"})
+	if !strings.Contains(got, "concurrentRouter.Route") || strings.Contains(got, "change set of DefaultRouter.Route") {
+		t.Fatalf("the sibling implementation is not in the picked family:\n%s", got)
 	}
 }

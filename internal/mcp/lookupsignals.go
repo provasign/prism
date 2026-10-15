@@ -88,7 +88,7 @@ func (h *Handler) selectLookupOverload(ctx context.Context, out map[string]any, 
 	m := match[0]
 	out["symbol"] = m
 	if _, has := out["content"]; has {
-		out["content"] = m.RawText
+		out["content"] = h.sourceText(m)
 	}
 	delete(out, "overloads")
 	out["note"] = appendNote(stringArg(out, "note", ""), fmt.Sprintf("signature selected 1 of %d overloads (line %d)", len(cands), m.Span.Start))
