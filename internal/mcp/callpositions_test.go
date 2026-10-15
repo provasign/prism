@@ -195,8 +195,8 @@ func TestImpactCallerEvidenceCountsOnlyCompilerResolution(t *testing.T) {
 // the other family silently dropped (databind createContextual, 2026-10-14).
 func TestWideBareNameKeepsEveryLocalFamily(t *testing.T) {
 	files := map[string]string{
-		"src/z/Contract.java": "package z;\n\npublic interface Contract {\n    void handle(String s);\n}\n",
-		"src/z/Other.java":    "package z;\n\npublic interface Other {\n    void handle(int a, int b);\n}\n",
+		"src/z/Contract.java":  "package z;\n\npublic interface Contract {\n    void handle(String s);\n}\n",
+		"src/z/Other.java":     "package z;\n\npublic interface Other {\n    void handle(int a, int b);\n}\n",
 		"src/z/OtherImpl.java": "package z;\n\npublic class OtherImpl implements Other {\n    public void handle(int a, int b) {}\n}\n",
 	}
 	for i := 0; i < 30; i++ {
@@ -207,5 +207,29 @@ func TestWideBareNameKeepsEveryLocalFamily(t *testing.T) {
 	got := callCompactErr(t, srv, "change_impact", map[string]any{"name": "handle"})
 	if !strings.Contains(got, "2 separate override families") || strings.Contains(got, "overridesExternal") {
 		t.Fatalf("both local families must be named, none inferred external:\n%s", got)
+	}
+}
+
+// Type.method on a type that only inherits the method still resolves when
+// the type name is shared: a test's nested `class Flask(pkg.app.Flask)` and
+// flask's Blueprint subclassing the sansio Blueprint made change_impact
+// Flask.route and Blueprint.route fail while lookup resolved them.
+func TestInheritedImpactWithSameNamedTypes(t *testing.T) {
+	files := map[string]string{
+		"pkg/__init__.py":          "",
+		"pkg/sansio/__init__.py":   "",
+		"pkg/sansio/scaffold.py":   "class Scaffold:\n    def route(self, rule):\n        return rule\n",
+		"pkg/sansio/app.py":        "from .scaffold import Scaffold\n\n\nclass App(Scaffold):\n    pass\n",
+		"pkg/sansio/blueprints.py": "from .scaffold import Scaffold\n\n\nclass Blueprint(Scaffold):\n    pass\n",
+		"pkg/app.py":               "from .sansio.app import App\n\n\nclass Flask(App):\n    pass\n",
+		"pkg/blueprints.py":        "from .sansio.blueprints import Blueprint as SansioBlueprint\n\n\nclass Blueprint(SansioBlueprint):\n    pass\n",
+		"tests/test_cfg.py":        "import pkg.app\n\n\ndef test_sub():\n    class Flask(pkg.app.Flask):\n        pass\n",
+	}
+	srv := compactFixture(t, files)
+	for _, q := range []string{"Flask.route", "Blueprint.route"} {
+		got := callCompact(t, srv, "change_impact", map[string]any{"name": q})
+		if !strings.Contains(got, "it is inherited from Scaffold.route") {
+			t.Fatalf("%s: inherited answer missing:\n%s", q, got)
+		}
 	}
 }
