@@ -233,3 +233,16 @@ func TestInheritedImpactWithSameNamedTypes(t *testing.T) {
 		}
 	}
 }
+
+// A class body passing a method to property() references it on the
+// argument's own line; the class is listed with that position.
+func TestChangeImpactClassBodyPropertyReference(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"resp.py": "class Response:\n    def get_data(self):\n        return b''\n\n    def set_data(self, v):\n        pass\n\n" +
+			"    data = property(\n        get_data,\n        set_data,\n    )\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Response.get_data"})
+	if !strings.Contains(got, "Response  resp.py:1  [by name at 9:9]") {
+		t.Fatalf("property(get_data, ...) reference missing:\n%s", got)
+	}
+}

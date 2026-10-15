@@ -370,6 +370,12 @@ func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[str
 				misfit = append(misfit, pos)
 			}
 		}
+		if len(ps) == 0 && len(misfit) == 0 && len(other) == 0 {
+			// No call site carries the name (a class body's
+			// property(get_data, set_data) reference): the resolver's own
+			// positions are the sites.
+			ps = append(ps, r.ResolvedCallerLines[c.ID]...)
+		}
 		if len(ps) > 0 || len(misfit) > 0 || len(other) > 0 {
 			for _, l := range [][]string{ps, misfit, other} {
 				sort.Slice(l, func(a, b int) bool { return positionLess(l[a], l[b]) })
