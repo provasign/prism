@@ -143,6 +143,9 @@ type ChangeImpactResult struct {
 	// CallerLines: per caller ID, the positions ("line:col" of the called
 	// name) where the compiler resolved its calls into the change set (javac).
 	CallerLines map[string][]string `json:"callerLines,omitempty"`
+	// ResolvedCallerLines: the same for callers no compiler resolved, from
+	// grove's resolver; a same-named call absent here went to another target.
+	ResolvedCallerLines map[string][]string `json:"resolvedCallerLines,omitempty"`
 
 	// Data-member anchors only (fields, properties, constants, variables).
 	// MemberKind is non-empty exactly for those. Accesses are the source

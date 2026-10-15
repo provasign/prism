@@ -3202,7 +3202,11 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// interface declares.
 			if owners := h.localContractOwners(ctx, query); len(owners) > 0 {
 				err = localContractError(query, owners, err)
-			} else if families, ok := h.partitionLocalFamilies(ctx, query); ok {
+			} else if families, ok, capped := h.partitionLocalFamiliesCapped(ctx, query); capped {
+				// Too many candidates to partition: keep the ambiguity rather
+				// than infer one "external" family from parameter shapes,
+				// which silently dropped local families.
+			} else if ok {
 				// Nominal language: the graph already knows the families.
 				// One family is the answer; several are listed, never guessed.
 				if len(families) == 1 && families[0].result != nil {
@@ -3250,12 +3254,16 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 				return nil, fmt.Errorf("%w\nThese are different functions; pick one and call it by its full name:\n%s", err, calls)
 			}
 		}
+		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
+			return nil, fmt.Errorf("%w\n%s", err, note)
+		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_change_impact")
 	if r.MemberKind != "" {
 		mout := memberImpactOutput(r, stringArg(args, "file", "") != "")
 		h.addDegradedNote(ctx, mout, r)
+		h.addUnindexedNote(ctx, mout, leafOf(r.Query))
 		return mout, nil
 	}
 	signatureNote := ""
@@ -3291,6 +3299,8 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		}
 	}
 
+	callPositions := callerCallPositions(r, methodTarget)
+	memberPositions := memberCallPositions(r)
 	compactWithScope := func(syms []grove.SymbolRecord, annotate bool) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
 		for _, s := range syms {
@@ -3312,8 +3322,27 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// the enclosing declaration, so name the nested scope that
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
+			if annotate {
+				if p, ok := callPositions[overloadCallerKey(s.FilePath, s.Span.Start, displayQN(s))]; ok {
+					entry["calls"] = p.label()
+				}
+			} else if p, ok := memberPositions[overloadCallerKey(s.FilePath, s.Span.Start, displayQN(s))]; ok {
+				entry["calls"] = "itself calls the change set " + p.label()
+			}
 			if annotate && !wideImpact {
-				addPlanCheckedCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, verifiedCallLines)
+				if p, ok := callPositions[overloadCallerKey(s.FilePath, s.Span.Start, displayQN(s))]; ok {
+					// A same-named call the compiler did not report, or whose
+					// arguments the signature cannot take, is another method.
+					switch {
+					case len(p.positions) == 0:
+					case p.byName:
+						addPlanCheckedCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, verifiedCallLines, p.lines())
+					default:
+						addImpactCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, p.lines())
+					}
+				} else {
+					addPlanCheckedCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, verifiedCallLines)
+				}
 			}
 			if annotate {
 				if via := nestedScopeFor(s, targetLeaf); via != "" {
@@ -3443,28 +3472,18 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if hint := h.widerAnchorHint(ctx, r); hint != nil {
 		out["widerAnchor"] = hint
 	}
-	if pos := callerCallPositions(r); len(pos) > 0 {
-		if callers, ok := out["callers"].([]map[string]any); ok {
-			byName := 0
-			for _, c := range callers {
-				file, _ := c["filePath"].(string)
-				line, _ := c["line"].(int)
-				qn, _ := c["qualifiedName"].(string)
-				if p, ok := pos[overloadCallerKey(file, line, qn)]; ok {
-					label := "at " + strings.Join(p.positions, ", ")
-					if p.byName {
-						label = "by name at " + strings.Join(p.positions, ", ")
-						byName++
-					}
-					c["calls"] = label
-				}
+	if len(callPositions) > 0 {
+		byName := 0
+		for _, p := range callPositions {
+			if p.byName && len(p.positions) > 0 {
+				byName++
 			}
-			note := "Each caller lists where it calls the change set (line:col of the called name); the compiler resolved these."
-			if byName > 0 {
-				note = fmt.Sprintf("Each caller lists where it calls the change set (line:col of the called name). %d caller(s) marked \"by name\" were matched by name only (no compiler resolution): check those positions before editing.", byName)
-			}
-			out["callPositionsNote"] = note
 		}
+		note := "Each caller lists where it calls the change set (line:col of the called name); the compiler resolved these."
+		if byName > 0 {
+			note = fmt.Sprintf("Each caller lists where it calls the change set (line:col of the called name). %d caller(s) marked \"by name\" were matched by name only (no compiler resolution): check those positions before editing.", byName)
+		}
+		out["callPositionsNote"] = note
 	}
 	if tags, lines := h.overloadCallerTags(ctx, r); len(tags) > 0 {
 		if lines != nil {
@@ -3491,6 +3510,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 	h.addDegradedNote(ctx, out, r)
 	applyCompilerBackedCompleteness(out, r)
+	h.addUnindexedNote(ctx, out, targetLeaf)
 	markNameMatchedSites(out, r)
 	if familyPickNote != "" {
 		out["resolvedAmbiguity"] = familyPickNote
@@ -3518,15 +3538,24 @@ func applyCompilerBackedCompleteness(out map[string]any, r *grove.ChangeImpactRe
 	if _, degraded := out["degradedAnalysis"]; degraded {
 		return
 	}
-	if c, _ := out["completeness"].(string); c != "closed" {
-		return
-	}
 	lang := ""
 	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
 		if len(group) > 0 {
 			lang = group[0].Language
 			break
 		}
+	}
+	c, _ := out["completeness"].(string)
+	// A free function has no family to close: its change set is complete
+	// when the compiler resolved every call and value reference to it, which
+	// the Go and TypeScript passes record (chi URLParam answered
+	// "callers-only" while Context.URLParam answered complete).
+	if c == "callers-only" && (lang == "go" || lang == "typescript" || lang == "tsx") && len(r.NameMatchedCallers) == 0 {
+		c = "closed"
+		out["completeness"] = "closed"
+	}
+	if c != "closed" {
+		return
 	}
 	if !compilerBackedImpactLangs[lang] {
 		return
@@ -3545,6 +3574,19 @@ func applyCompilerBackedCompleteness(out map[string]any, r *grove.ChangeImpactRe
 // sites confirmed name-based vs 44 of 44 with the compiler). The fix command
 // lets the agent repair it and re-index.
 func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *grove.ChangeImpactResult) {
+	// Name-matched callers do not close anything: "completeness: closed"
+	// next to "compiler-backed analysis did not run" contradicted itself
+	// (hono Router.match without tsc, 2026-10-14).
+	defer func() {
+		if _, degraded := out["degradedAnalysis"]; degraded {
+			if c, _ := out["completeness"].(string); c == "closed" {
+				out["completeness"] = "partial"
+			}
+			if _, ok := out["callerCoverage"]; ok {
+				out["callerCoverage"] = "partial"
+			}
+		}
+	}()
 	lang := ""
 	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
 		if len(group) > 0 {
@@ -3694,7 +3736,38 @@ func markNameMatchedSites(out map[string]any, r *grove.ChangeImpactResult) {
 // and names the ones reached only by name matching, instead of labelling the
 // whole answer by its weakest edge. Empty when every caller is resolved.
 func impactCallerEvidence(r *grove.ChangeImpactResult) string {
-	if r == nil || len(r.NameMatchedCallers) == 0 || len(r.Callers) == 0 {
+	if r == nil || len(r.Callers) == 0 {
+		return ""
+	}
+	// Only a compiler resolves a call. grove's "AST-narrowed" also covers a
+	// receiver it could not type (an untyped parameter's .get bound to the
+	// only get in the repository), so counting those as resolved claimed
+	// "6 of 8 resolved" over positions marked by name (hono, 2026-10-14).
+	compiled := 0
+	for _, c := range r.Callers {
+		if len(r.CallerLines[c.ID]) > 0 {
+			compiled++
+		}
+	}
+	named := impactNameOnlyCallers(r)
+	switch {
+	case compiled > 0 && compiled < len(r.Callers):
+		note := fmt.Sprintf("%d of %d callers resolved by the compiler; the others are matched by name and receiver inference", compiled, len(r.Callers))
+		if named != "" {
+			note += "; name-matched only (most likely false positives): " + named
+		}
+		return note
+	case named != "":
+		// No compiler ran: the language note already says every caller is
+		// inferred; name the weakest ones.
+		return "name-matched only (most likely false positives): " + named
+	}
+	return ""
+}
+
+// impactNameOnlyCallers lists the callers grove matched by name alone.
+func impactNameOnlyCallers(r *grove.ChangeImpactResult) string {
+	if len(r.NameMatchedCallers) == 0 {
 		return ""
 	}
 	byID := make(map[string]grove.SymbolRecord, len(r.Callers))
@@ -3711,8 +3784,7 @@ func impactCallerEvidence(r *grove.ChangeImpactResult) string {
 		return ""
 	}
 	sort.Strings(named)
-	return fmt.Sprintf("%d of %d callers resolved by the compiler or AST; name-matched only (included, may be false positives): %s",
-		len(r.Callers)-len(named), len(r.Callers), strings.Join(named, ", "))
+	return strings.Join(named, ", ")
 }
 
 // addIndexedCompletenessSafety keeps task-shaped graph tools honest about the
@@ -3742,6 +3814,9 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	}
 	r, err := h.Grove.MissingImplementations(ctx, query)
 	if err != nil {
+		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
+			return nil, fmt.Errorf("%w\n%s", err, note)
+		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_missing_implementations")
@@ -3813,6 +3888,9 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 	}
 	r, err := h.Grove.RenamePlan(ctx, query, newName)
 	if err != nil {
+		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
+			return nil, fmt.Errorf("%w\n%s", err, note)
+		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_rename_plan")

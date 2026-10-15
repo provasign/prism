@@ -367,7 +367,22 @@ func (h *Handler) typeMembers(ctx context.Context, t grove.SymbolRecord, name st
 // and short candidate lines (name, location, signature). No body is
 // delivered unless the closest candidate belongs to the type the caller
 // named: an unrelated body read first is worse than no body.
+// lookupMiss answers a name the index does not hold. When the name appears
+// in source prism does not index (a Ruby class, a .vue component), the miss
+// says so: "no symbol" alone reads as "not in the code".
 func (h *Handler) lookupMiss(ctx context.Context, loc *lookupLocator, q lookupQuery, name string, pool []grove.SymbolRecord) map[string]any {
+	out := h.lookupMissCandidates(ctx, loc, q, name, pool)
+	if un := h.unindexedNote(ctx, leafOf(name)); un != "" {
+		if note, _ := out["note"].(string); note != "" {
+			out["note"] = note + " " + un
+		} else {
+			out["note"] = un
+		}
+	}
+	return out
+}
+
+func (h *Handler) lookupMissCandidates(ctx context.Context, loc *lookupLocator, q lookupQuery, name string, pool []grove.SymbolRecord) map[string]any {
 	var conflicts, others []grove.SymbolRecord
 	for _, s := range pool {
 		if _, _, conflict := loc.lookupMatch(q, s, false); conflict {

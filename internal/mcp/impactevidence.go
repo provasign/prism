@@ -69,7 +69,8 @@ func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, targ
 	if len(ordered) == 0 || unavailable > 0 {
 		notes = append(notes, callExpressionUnavailableNote)
 	}
-	if omitted > 0 {
+	// A caller with call positions already lists every call line.
+	if omitted > 0 && entry["calls"] == nil {
 		notes = append(notes, fmt.Sprintf("%d matching line(s) omitted by evidence limit; lookup this caller for all expressions", omitted))
 	}
 	if len(notes) > 0 {
@@ -114,13 +115,33 @@ func renamePlanLines(plan *grove.RenamePlanResult) impactPlanSites {
 // as unresolved, as with qualified `new Outer.Inner(...)` calls) the
 // name-matched evidence is kept rather than reporting the call expression as
 // unavailable.
-func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, methodTarget bool, budget *int, plan impactPlanSites) {
+//
+// only, when given, further limits the lines to these (the caller's
+// name-matched calls that fit the target's signature).
+func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, methodTarget bool, budget *int, plan impactPlanSites, only ...map[int]bool) {
 	file := filepath.Clean(caller.FilePath)
+	var verified map[int]bool
 	if lines, ok := plan.lines[file]; ok && !plan.unresolved[file+":"+caller.Name] {
-		addImpactCallEvidence(entry, caller, target, methodTarget, budget, lines)
+		verified = lines
+	}
+	if len(only) > 0 {
+		if verified == nil {
+			verified = only[0]
+		} else {
+			both := map[int]bool{}
+			for l := range verified {
+				if only[0][l] {
+					both[l] = true
+				}
+			}
+			verified = both
+		}
+	}
+	if verified == nil {
+		addImpactCallEvidence(entry, caller, target, methodTarget, budget)
 		return
 	}
-	addImpactCallEvidence(entry, caller, target, methodTarget, budget)
+	addImpactCallEvidence(entry, caller, target, methodTarget, budget, verified)
 }
 
 // bareCallCannotBeMethod reports a call written without a receiver in a

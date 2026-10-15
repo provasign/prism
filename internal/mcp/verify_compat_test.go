@@ -150,3 +150,26 @@ func TestVerifyGoVariadicIgnoresUntypedBinding(t *testing.T) {
 		t.Fatalf("untyped bindings still compile, but verify flagged them: %v", m)
 	}
 }
+
+func TestVerifyGoVariadicStillFlagsMethodValue(t *testing.T) {
+	m := variadicVerify(t, map[string]string{
+		"core/core.go": "package core\n\ntype S struct{}\n\nfunc (S) Do(x string) string { return x }\n",
+		"use/use.go":   "package use\n\nimport \"example.com/v/core\"\n\nvar Hook func(string) string = core.S{}.Do\n\nfunc Run() string { return core.S{}.Do(\"a\") }\n",
+	}, map[string]string{
+		"core/core.go": "package core\n\ntype S struct{}\n\nfunc (S) Do(x string, n ...int) string { return x }\n",
+	})
+	if m["verdict"] == "complete" {
+		t.Fatalf("Hook's type no longer matches S.Do, but verify said complete: %v", m)
+	}
+}
+
+func TestVerifyGoVariadicIgnoresUntypedMethodValue(t *testing.T) {
+	m := variadicVerify(t, map[string]string{
+		"core/core.go": "package core\n\ntype S struct{}\n\nfunc (S) Do(x string) string { return x }\n\nfunc Self(s S) string { f := s.Do; return f(\"b\") }\n",
+	}, map[string]string{
+		"core/core.go": "package core\n\ntype S struct{}\n\nfunc (S) Do(x string, n ...int) string { return x }\n\nfunc Self(s S) string { f := s.Do; return f(\"b\") }\n",
+	})
+	if m["verdict"] != "complete" || len(anySlice(m["missedSites"])) != 0 {
+		t.Fatalf("an untyped method value still compiles, but verify flagged it: %v", m)
+	}
+}

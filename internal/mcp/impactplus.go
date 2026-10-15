@@ -10,6 +10,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -212,10 +213,35 @@ func (h *Handler) inheritedImpact(ctx context.Context, query, file string) (*gro
 			owners = append(owners, t)
 		}
 	}
-	if len(owners) != 1 {
-		return nil, "", false // unknown or ambiguous owner: keep the original error
+	if len(owners) > 1 {
+		owners = preferProductionTopLevel(owners)
 	}
-	owner := owners[0]
+	if len(owners) == 0 {
+		return nil, "", false
+	}
+	// Several same-named owners (flask's Blueprint subclasses the sansio
+	// Blueprint) are no ambiguity when every one inherits the method from
+	// the same declaration.
+	var answer *grove.ChangeImpactResult
+	var answerNote, answerDecl string
+	for _, owner := range owners {
+		r, note, ok := h.inheritedImpactFrom(ctx, owner, method, params)
+		if !ok || len(r.Declarations) == 0 {
+			return nil, "", false
+		}
+		if answer != nil && r.Declarations[0].ID != answerDecl {
+			return nil, "", false // they inherit different methods: keep the original error
+		}
+		if answer == nil {
+			answer, answerNote, answerDecl = r, note, r.Declarations[0].ID
+		}
+	}
+	return answer, answerNote, true
+}
+
+// inheritedImpactFrom walks owner's supertypes to the nearest one declaring
+// method and returns that declaration's change set.
+func (h *Handler) inheritedImpactFrom(ctx context.Context, owner grove.SymbolRecord, method, params string) (*grove.ChangeImpactResult, string, bool) {
 	type hop struct {
 		sym   grove.SymbolRecord
 		chain []string
@@ -484,4 +510,24 @@ func FormatImpactExtrasText(out map[string]any) string {
 		}
 	}
 	return b.String()
+}
+
+// preferProductionTopLevel narrows same-named types to the one a bare type
+// name means: not in a test file, not nested in another type. A test's
+// `class Flask(pkg.app.Flask)` made change_impact Flask.route fail while
+// lookup Flask.route resolved (flask, 2026-10-14). More than one survivor is
+// still ambiguous.
+func preferProductionTopLevel(types []grove.SymbolRecord) []grove.SymbolRecord {
+	var out []grove.SymbolRecord
+	for _, t := range types {
+		nested := t.ParentSymbol != ""
+		if isVerifiedTestCaller("/"+filepath.ToSlash(t.FilePath)) || nested {
+			continue
+		}
+		out = append(out, t)
+	}
+	if len(out) == 0 {
+		return types
+	}
+	return out
 }

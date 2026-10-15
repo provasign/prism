@@ -275,14 +275,15 @@ func overloadCallerKey(file string, line int, qn string) string {
 
 // callerCallPositions gives each caller the positions of its calls into the
 // change set: the compiler's (line:col of the called name, javac / go/types
-// / tsc / rust-analyzer) when it supplied them, else the parser's call sites
-// that name a declaration with a matching arity, marked byName. A rename's
-// edit list then names tokens, not lines, and says which it can trust.
-func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions {
+// / tsc / rust-analyzer) when it supplied them, else every parser call site
+// that names a declaration, marked byName. A rename's edit list then names
+// tokens, not lines, and says which it can trust.
+func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[string]callerPositions {
 	if r == nil || len(r.Callers) == 0 {
 		return nil
 	}
-	names := map[string]map[int]bool{} // callable name -> arities (-1: unknown)
+	names := map[string]map[int]bool{}   // callable name -> arities (-1: unknown)
+	sigs := map[string][]*fitSignature{} // callable name -> parameter lists (nil: unreadable)
 	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
 		for _, d := range group {
 			if d.Kind != "method" && d.Kind != "function" && d.Kind != "constructor" {
@@ -290,6 +291,13 @@ func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions
 			}
 			if names[d.Name] == nil {
 				names[d.Name] = map[int]bool{}
+			}
+			if signatureFitLanguage(d.Language) {
+				var fs *fitSignature
+				if sig, ok := parseFitSignature(d.Signature, d.Language); ok {
+					fs = &sig
+				}
+				sigs[d.Name] = append(sigs[d.Name], fs)
 			}
 			if params, ok := signatureParamTypes(d.Signature, d.Language); ok {
 				names[d.Name][len(params)] = true
@@ -305,29 +313,94 @@ func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions
 			out[k] = callerPositions{positions: ps}
 			continue
 		}
-		var ps []string
+		var ps, misfit, other []string
 		seen := map[string]bool{}
+		var resolved map[string]bool // positions grove's resolver tied to the change set
+		if rl := r.ResolvedCallerLines[c.ID]; len(rl) > 0 {
+			resolved = map[string]bool{}
+			for _, p := range rl {
+				resolved[p] = true
+			}
+		}
 		for _, cs := range c.CallSites {
 			callee := cs.Callee
 			if i := strings.LastIndexByte(callee, '.'); i >= 0 {
 				callee = callee[i+1:]
 			}
 			arities := names[callee]
-			if arities == nil || cs.Line <= 0 || !(arities[-1] || arities[cs.Argc] || cs.Argc == 0) {
+			if arities == nil || cs.Line <= 0 {
+				continue
+			}
+			if methodTarget && bareCallCannotBeMethod(c.Language, cs.Callee) {
 				continue
 			}
 			pos := strconv.Itoa(cs.Line)
 			if cs.Col > 0 {
 				pos += ":" + strconv.Itoa(cs.Col)
 			}
-			if !seen[pos] {
-				seen[pos] = true
+			if seen[pos] {
+				continue
+			}
+			seen[pos] = true
+			if resolved != nil && !resolved[pos] {
+				// grove typed this call's receiver as another class, or
+				// left it unresolved: resp.get_data() vs req.get_data().
+				other = append(other, pos)
+				continue
+			}
+			fits := true
+			if list, checked := sigs[callee]; checked && signatureFitLanguage(c.Language) {
+				// Defaults and keyword arguments make a count wrong here, so
+				// the call's own arguments are checked against each signature.
+				if args, ok := callArgsAt(c.RawText, c.Span.Start, cs.Line, cs.Col, callee, c.Language); ok {
+					fits = false
+					for _, sig := range list {
+						if sig == nil || callFits(args, *sig) {
+							fits = true
+							break
+						}
+					}
+				}
+			} else if !(arities[-1] || arities[cs.Argc] || cs.Argc == 0) {
+				fits = false
+			}
+			if fits {
 				ps = append(ps, pos)
+			} else {
+				misfit = append(misfit, pos)
 			}
 		}
-		if len(ps) > 0 {
-			sort.Slice(ps, func(a, b int) bool { return positionLess(ps[a], ps[b]) })
-			out[k] = callerPositions{positions: ps, byName: true}
+		if len(ps) == 0 && len(misfit) == 0 && len(other) == 0 {
+			// No call site carries the name (a class body's
+			// property(get_data, set_data) reference): the resolver's own
+			// positions are the sites.
+			ps = append(ps, r.ResolvedCallerLines[c.ID]...)
+		}
+		if len(ps) > 0 || len(misfit) > 0 || len(other) > 0 {
+			for _, l := range [][]string{ps, misfit, other} {
+				sort.Slice(l, func(a, b int) bool { return positionLess(l[a], l[b]) })
+			}
+			out[k] = callerPositions{positions: ps, misfit: misfit, other: other, byName: true}
+		}
+	}
+	return out
+}
+
+// memberCallPositions gives each declaration or family member the positions
+// of its own calls into the change set (super().m() in an override, a
+// recursive call), from the compiler or grove's resolver only: a member is
+// in the set already, and a same-named call in it that nothing resolved is
+// not evidence of anything.
+func memberCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions {
+	out := map[string]callerPositions{}
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		for _, m := range group {
+			k := overloadCallerKey(m.FilePath, m.Span.Start, displayQN(m))
+			if ps := r.CallerLines[m.ID]; len(ps) > 0 {
+				out[k] = callerPositions{positions: ps}
+			} else if ps := r.ResolvedCallerLines[m.ID]; len(ps) > 0 {
+				out[k] = callerPositions{positions: ps, byName: true}
+			}
 		}
 	}
 	return out
@@ -335,5 +408,41 @@ func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions
 
 type callerPositions struct {
 	positions []string
+	misfit    []string // name-matched calls whose arguments the signature cannot take
+	other     []string // same-named calls the resolver did not tie to the change set
 	byName    bool
+}
+
+func (p callerPositions) label() string {
+	var parts []string
+	switch {
+	case len(p.positions) > 0 && p.byName:
+		parts = append(parts, "by name at "+strings.Join(p.positions, ", "))
+	case len(p.positions) > 0:
+		parts = append(parts, "at "+strings.Join(p.positions, ", "))
+	default:
+		parts = append(parts, "by name")
+	}
+	if len(p.misfit) > 0 {
+		parts = append(parts, "not fitting the signature: "+strings.Join(p.misfit, ", "))
+	}
+	if len(p.other) > 0 {
+		parts = append(parts, "same name, other receiver: "+strings.Join(p.other, ", "))
+	}
+	if len(p.positions) == 0 && len(parts) > 1 {
+		return parts[0] + ", " + strings.Join(parts[1:], "; ")
+	}
+	return strings.Join(parts, "; ")
+}
+
+// lines is the set of source lines the positions fall on.
+func (p callerPositions) lines() map[int]bool {
+	out := map[int]bool{}
+	for _, pos := range p.positions {
+		l, _, _ := strings.Cut(pos, ":")
+		if n, err := strconv.Atoi(l); err == nil {
+			out[n] = true
+		}
+	}
+	return out
 }

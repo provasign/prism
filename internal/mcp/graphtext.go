@@ -134,7 +134,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
 		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true, "callPositionsNote": true,
 		"reExports": true, "related": true, "degradedAnalysis": true,
-		"resolvedAmbiguity": true,
+		"resolvedAmbiguity": true, "unindexedNote": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -186,6 +186,9 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if note, _ := out["unresolvedCallsNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if note, _ := out["unindexedNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if note, _ := out["coverageNote"].(string); note != "" {
