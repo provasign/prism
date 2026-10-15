@@ -121,3 +121,27 @@ func TestChangeImpactPHPCallsCheckedAgainstSignature(t *testing.T) {
 		t.Fatalf("PHP calls not checked against the signature:\n%s", got)
 	}
 }
+
+// Source in a language prism does not index is invisible to the graph. A
+// name it carries is reported, and a compiler-backed "complete" answer is
+// withdrawn: a TypeScript function's callers in .vue files are not counted.
+func TestUnindexedLanguageMentionsAreReported(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"lib.ts":      "export function formatPrice(n: number): string {\n  return String(n)\n}\n",
+		"use.ts":      "import { formatPrice } from './lib'\nexport const a = formatPrice(1)\n",
+		"Price.vue":   "<script setup lang=\"ts\">\nimport { formatPrice } from './lib'\nconst p = formatPrice(2)\n</script>\n",
+		"cache.rb":    "class Cache\n  def fetch(key)\n    key\n  end\nend\n",
+		"Gemfile.txt": "fetch\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "formatPrice"})
+	if !strings.Contains(got, "also appears in 1 file(s) in Vue, which prism does not index: Price.vue") {
+		t.Fatalf("Vue mention not reported:\n%s", got)
+	}
+	if strings.Contains(got, "safeToClaimComplete: true") {
+		t.Fatalf("an answer missing .vue callers must not claim completeness:\n%s", got)
+	}
+	got = callCompact(t, srv, "lookup", map[string]any{"name": []string{"Cache.fetch"}})
+	if !strings.Contains(got, "in Ruby, which prism does not index: cache.rb") {
+		t.Fatalf("Ruby definition not reported on a lookup miss:\n%s", got)
+	}
+}

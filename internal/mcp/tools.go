@@ -3250,12 +3250,16 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 				return nil, fmt.Errorf("%w\nThese are different functions; pick one and call it by its full name:\n%s", err, calls)
 			}
 		}
+		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
+			return nil, fmt.Errorf("%w\n%s", err, note)
+		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_change_impact")
 	if r.MemberKind != "" {
 		mout := memberImpactOutput(r, stringArg(args, "file", "") != "")
 		h.addDegradedNote(ctx, mout, r)
+		h.addUnindexedNote(ctx, mout, leafOf(r.Query))
 		return mout, nil
 	}
 	signatureNote := ""
@@ -3499,6 +3503,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 	h.addDegradedNote(ctx, out, r)
 	applyCompilerBackedCompleteness(out, r)
+	h.addUnindexedNote(ctx, out, targetLeaf)
 	markNameMatchedSites(out, r)
 	if familyPickNote != "" {
 		out["resolvedAmbiguity"] = familyPickNote
@@ -3750,6 +3755,9 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	}
 	r, err := h.Grove.MissingImplementations(ctx, query)
 	if err != nil {
+		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
+			return nil, fmt.Errorf("%w\n%s", err, note)
+		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_missing_implementations")
@@ -3821,6 +3829,9 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 	}
 	r, err := h.Grove.RenamePlan(ctx, query, newName)
 	if err != nil {
+		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
+			return nil, fmt.Errorf("%w\n%s", err, note)
+		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_rename_plan")
