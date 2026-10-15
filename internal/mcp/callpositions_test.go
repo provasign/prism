@@ -3,6 +3,8 @@ package mcp
 import (
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/grove"
 )
 
 // A rename's callers list where each one calls the target: the compiler's
@@ -159,5 +161,28 @@ func TestChangeImpactMembersShowTheirOwnCalls(t *testing.T) {
 	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Base.hl"})
 	if !strings.Contains(got, "Json.hl  pkg/h.py:7  [itself calls the change set by name at 8:17]") {
 		t.Fatalf("the override's super() call is missing:\n%s", got)
+	}
+}
+
+// The caller header counts only compiler-resolved callers as resolved: an
+// AST-narrowed guess through an untyped receiver is not a resolution.
+func TestImpactCallerEvidenceCountsOnlyCompilerResolution(t *testing.T) {
+	r := &grove.ChangeImpactResult{
+		Callers: []grove.SymbolRecord{
+			{ID: "a", Name: "a", QualifiedName: "a", FilePath: "a.ts", Span: grove.SpanInfo{Start: 1}},
+			{ID: "b", Name: "b", QualifiedName: "b", FilePath: "b.ts", Span: grove.SpanInfo{Start: 2}},
+			{ID: "c", Name: "c", QualifiedName: "c", FilePath: "c.ts", Span: grove.SpanInfo{Start: 3}},
+		},
+		CallerLines:        map[string][]string{"a": {"1:5"}},
+		NameMatchedCallers: []string{"c"},
+	}
+	got := impactCallerEvidence(r)
+	want := "1 of 3 callers resolved by the compiler; the others are matched by name and receiver inference; name-matched only (most likely false positives): c.ts:3:c"
+	if got != want {
+		t.Fatalf("got %q\nwant %q", got, want)
+	}
+	r.CallerLines = nil
+	if got := impactCallerEvidence(r); got != "name-matched only (most likely false positives): c.ts:3:c" {
+		t.Fatalf("no compiler: got %q", got)
 	}
 }

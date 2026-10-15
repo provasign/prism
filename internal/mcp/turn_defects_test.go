@@ -71,6 +71,9 @@ func TestDisabledNativeImpactDoesNotClaimCompilerCoverage(t *testing.T) {
 	if result["degradedAnalysis"] == nil {
 		t.Fatalf("disabled native analysis needs a visible warning: %#v", result)
 	}
+	if result["completeness"] == "closed" {
+		t.Fatalf("name-matched callers cannot be reported closed: %#v", result["completeness"])
+	}
 }
 
 func TestPythonImpactHasNoNativeWarning(t *testing.T) {

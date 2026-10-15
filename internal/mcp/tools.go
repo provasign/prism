@@ -3561,6 +3561,19 @@ func applyCompilerBackedCompleteness(out map[string]any, r *grove.ChangeImpactRe
 // sites confirmed name-based vs 44 of 44 with the compiler). The fix command
 // lets the agent repair it and re-index.
 func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *grove.ChangeImpactResult) {
+	// Name-matched callers do not close anything: "completeness: closed"
+	// next to "compiler-backed analysis did not run" contradicted itself
+	// (hono Router.match without tsc, 2026-10-14).
+	defer func() {
+		if _, degraded := out["degradedAnalysis"]; degraded {
+			if c, _ := out["completeness"].(string); c == "closed" {
+				out["completeness"] = "partial"
+			}
+			if _, ok := out["callerCoverage"]; ok {
+				out["callerCoverage"] = "partial"
+			}
+		}
+	}()
 	lang := ""
 	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
 		if len(group) > 0 {
@@ -3710,7 +3723,38 @@ func markNameMatchedSites(out map[string]any, r *grove.ChangeImpactResult) {
 // and names the ones reached only by name matching, instead of labelling the
 // whole answer by its weakest edge. Empty when every caller is resolved.
 func impactCallerEvidence(r *grove.ChangeImpactResult) string {
-	if r == nil || len(r.NameMatchedCallers) == 0 || len(r.Callers) == 0 {
+	if r == nil || len(r.Callers) == 0 {
+		return ""
+	}
+	// Only a compiler resolves a call. grove's "AST-narrowed" also covers a
+	// receiver it could not type (an untyped parameter's .get bound to the
+	// only get in the repository), so counting those as resolved claimed
+	// "6 of 8 resolved" over positions marked by name (hono, 2026-10-14).
+	compiled := 0
+	for _, c := range r.Callers {
+		if len(r.CallerLines[c.ID]) > 0 {
+			compiled++
+		}
+	}
+	named := impactNameOnlyCallers(r)
+	switch {
+	case compiled > 0 && compiled < len(r.Callers):
+		note := fmt.Sprintf("%d of %d callers resolved by the compiler; the others are matched by name and receiver inference", compiled, len(r.Callers))
+		if named != "" {
+			note += "; name-matched only (most likely false positives): " + named
+		}
+		return note
+	case named != "":
+		// No compiler ran: the language note already says every caller is
+		// inferred; name the weakest ones.
+		return "name-matched only (most likely false positives): " + named
+	}
+	return ""
+}
+
+// impactNameOnlyCallers lists the callers grove matched by name alone.
+func impactNameOnlyCallers(r *grove.ChangeImpactResult) string {
+	if len(r.NameMatchedCallers) == 0 {
 		return ""
 	}
 	byID := make(map[string]grove.SymbolRecord, len(r.Callers))
@@ -3727,8 +3771,7 @@ func impactCallerEvidence(r *grove.ChangeImpactResult) string {
 		return ""
 	}
 	sort.Strings(named)
-	return fmt.Sprintf("%d of %d callers resolved by the compiler or AST; name-matched only (included, may be false positives): %s",
-		len(r.Callers)-len(named), len(r.Callers), strings.Join(named, ", "))
+	return strings.Join(named, ", ")
 }
 
 // addIndexedCompletenessSafety keeps task-shaped graph tools honest about the
