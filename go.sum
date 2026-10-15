@@ -16,10 +16,10 @@ github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOF
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/provasign/astkit v0.16.7 h1:oKwRp8g173HjGaAHuQ1WmCfjr+tk9wv1Odtq1v7KSEY=
-github.com/provasign/astkit v0.16.7/go.mod h1:uSQxIxw3dVpK/6KmHvqIE8+DK/nhxDuPklKv7g96Jr4=
-github.com/provasign/grove v0.63.19 h1:6hb/B5daRwQQ16FZr66BmDfZCxSD6jUeSW1nyuBMIeg=
-github.com/provasign/grove v0.63.19/go.mod h1:zBp2eGNWDRB5ujpmmk30TNyheIKr4Ed6bDwMtRsFKeA=
+github.com/provasign/astkit v0.16.8 h1:J9yrSEhLwDw5yAO3QRrbodQxDy962pjqltaKHq7eQrc=
+github.com/provasign/astkit v0.16.8/go.mod h1:uSQxIxw3dVpK/6KmHvqIE8+DK/nhxDuPklKv7g96Jr4=
+github.com/provasign/grove v0.63.20 h1:8pp7qnLX+gg5b0P2GBhIzY/abMwGTFikUlaYPwIL0Dg=
+github.com/provasign/grove v0.63.20/go.mod h1:PAJx3XsSzdZSKEhHBupdCf7jgNCjalKT2WGKuaxWsHs=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82 h1:6C8qej6f1bStuePVkLSFxoU22XBS165D3klxlzRg8F4=
