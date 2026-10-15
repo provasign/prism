@@ -21,9 +21,9 @@ func symbolSourceText(root string, s grove.SymbolRecord) string {
 	if raw == "" || s.Span.Start < 1 || root == "" {
 		return raw
 	}
-	first, rest, _ := strings.Cut(raw, "\n")
-	if first != strings.TrimLeft(first, " \t") {
-		return raw // already indented
+	first, rest, multi := strings.Cut(raw, "\n")
+	if strings.TrimSpace(first) == "" {
+		return raw
 	}
 	data, err := os.ReadFile(filepath.Join(root, s.FilePath))
 	if err != nil {
@@ -34,16 +34,18 @@ func symbolSourceText(root string, s grove.SymbolRecord) string {
 		return raw
 	}
 	line := strings.TrimRight(lines[s.Span.Start-1], "\r")
-	trimmed := strings.TrimLeft(line, " \t")
-	if trimmed == "" || !strings.HasPrefix(trimmed, first) && !strings.HasPrefix(first, trimmed) {
-		return raw // the file changed since indexing, or the body does not start the line
-	}
-	indent := line[:len(line)-len(trimmed)]
-	if indent == "" || !strings.Contains(raw, "\n") && rest == "" && first != trimmed {
+	if line == first {
 		return raw
 	}
-	if strings.Contains(raw, "\n") {
-		return indent + first + "\n" + rest
+	// The index stores a declaration from its own first token: the
+	// indentation, and for a variable the "const "/"let " before its name,
+	// are not part of it. Deliver the whole first source line.
+	full := line
+	if !strings.Contains(line, strings.TrimSpace(first)) {
+		return raw // the file changed since indexing
 	}
-	return indent + first
+	if multi {
+		return full + "\n" + rest
+	}
+	return full
 }

@@ -314,3 +314,15 @@ func TestLookupBodyKeepsFirstLineIndentation(t *testing.T) {
 		t.Fatalf("first line lost its indentation:\n%s", got)
 	}
 }
+
+// A variable's indexed text starts at its name; the delivered first line is
+// the whole source line, declaration keyword included.
+func TestLookupVariableKeepsItsDeclarationKeyword(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"a.ts": "export function f() {}\nconst request = new Request('http://localhost/')\n",
+	})
+	got := callCompact(t, srv, "lookup", map[string]any{"name": []string{"request"}})
+	if !strings.Contains(got, "2→const request = new Request('http://localhost/')") {
+		t.Fatalf("first line is not the source line:\n%s", got)
+	}
+}
