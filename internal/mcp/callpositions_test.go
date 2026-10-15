@@ -1,9 +1,14 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
+	"github.com/provasign/prism/internal/config"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/provasign/prism/internal/grove"
 )
@@ -262,5 +267,50 @@ func TestGoFreeFunctionValueReferencesAndCompleteness(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q:\n%s", want, got)
 		}
+	}
+}
+
+// A read is served while the first index still runs: it reads the file from
+// disk. Every early call on a large cold repository used to fail after a
+// minute, reads included.
+func TestReadIsNotHeldBehindTheFirstIndex(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("one\ntwo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(context.Background()); err != nil { // open, as before the first index starts
+		t.Fatal(err)
+	}
+	defer gc.Shutdown()
+	h := NewHandlerWithReady(config.Default(), root, gc, make(chan struct{})) // never ready
+	done := make(chan any, 1)
+	go func() {
+		out, err := h.Invoke("prism_read", map[string]any{"file": "a.txt"})
+		if err != nil {
+			done <- err
+			return
+		}
+		done <- out
+	}()
+	select {
+	case got := <-done:
+		if err, isErr := got.(error); isErr {
+			t.Fatalf("read failed while indexing: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("read waited for the first index")
+	}
+}
+
+// A delivered body keeps the first line's indentation: an agent copies it
+// into an Edit, and a flush-left first line matched nothing in the file.
+func TestLookupBodyKeepsFirstLineIndentation(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"a.py": "class A:\n    def run(self):\n        return 1\n",
+	})
+	got := callCompact(t, srv, "lookup", map[string]any{"name": []string{"A.run"}})
+	if !strings.Contains(got, "2→    def run(self):") {
+		t.Fatalf("first line lost its indentation:\n%s", got)
 	}
 }
