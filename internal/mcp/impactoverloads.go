@@ -275,14 +275,15 @@ func overloadCallerKey(file string, line int, qn string) string {
 
 // callerCallPositions gives each caller the positions of its calls into the
 // change set: the compiler's (line:col of the called name, javac / go/types
-// / tsc / rust-analyzer) when it supplied them, else the parser's call sites
-// that name a declaration with a matching arity, marked byName. A rename's
-// edit list then names tokens, not lines, and says which it can trust.
-func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions {
+// / tsc / rust-analyzer) when it supplied them, else every parser call site
+// that names a declaration, marked byName. A rename's edit list then names
+// tokens, not lines, and says which it can trust.
+func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[string]callerPositions {
 	if r == nil || len(r.Callers) == 0 {
 		return nil
 	}
-	names := map[string]map[int]bool{} // callable name -> arities (-1: unknown)
+	names := map[string]map[int]bool{}   // callable name -> arities (-1: unknown)
+	sigs := map[string][]*fitSignature{} // callable name -> parameter lists (nil: unreadable)
 	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
 		for _, d := range group {
 			if d.Kind != "method" && d.Kind != "function" && d.Kind != "constructor" {
@@ -290,6 +291,13 @@ func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions
 			}
 			if names[d.Name] == nil {
 				names[d.Name] = map[int]bool{}
+			}
+			if signatureFitLanguage(d.Language) {
+				var fs *fitSignature
+				if sig, ok := parseFitSignature(d.Signature, d.Language); ok {
+					fs = &sig
+				}
+				sigs[d.Name] = append(sigs[d.Name], fs)
 			}
 			if params, ok := signatureParamTypes(d.Signature, d.Language); ok {
 				names[d.Name][len(params)] = true
@@ -305,7 +313,7 @@ func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions
 			out[k] = callerPositions{positions: ps}
 			continue
 		}
-		var ps []string
+		var ps, misfit []string
 		seen := map[string]bool{}
 		for _, cs := range c.CallSites {
 			callee := cs.Callee
@@ -313,21 +321,46 @@ func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions
 				callee = callee[i+1:]
 			}
 			arities := names[callee]
-			if arities == nil || cs.Line <= 0 || !(arities[-1] || arities[cs.Argc] || cs.Argc == 0) {
+			if arities == nil || cs.Line <= 0 {
+				continue
+			}
+			if methodTarget && bareCallCannotBeMethod(c.Language, cs.Callee) {
 				continue
 			}
 			pos := strconv.Itoa(cs.Line)
 			if cs.Col > 0 {
 				pos += ":" + strconv.Itoa(cs.Col)
 			}
-			if !seen[pos] {
-				seen[pos] = true
+			if seen[pos] {
+				continue
+			}
+			seen[pos] = true
+			fits := true
+			if list, checked := sigs[callee]; checked && signatureFitLanguage(c.Language) {
+				// Defaults and keyword arguments make a count wrong here, so
+				// the call's own arguments are checked against each signature.
+				if args, ok := callArgsAt(c.RawText, c.Span.Start, cs.Line, cs.Col, callee, c.Language); ok {
+					fits = false
+					for _, sig := range list {
+						if sig == nil || callFits(args, *sig) {
+							fits = true
+							break
+						}
+					}
+				}
+			} else if !(arities[-1] || arities[cs.Argc] || cs.Argc == 0) {
+				fits = false
+			}
+			if fits {
 				ps = append(ps, pos)
+			} else {
+				misfit = append(misfit, pos)
 			}
 		}
-		if len(ps) > 0 {
+		if len(ps) > 0 || len(misfit) > 0 {
 			sort.Slice(ps, func(a, b int) bool { return positionLess(ps[a], ps[b]) })
-			out[k] = callerPositions{positions: ps, byName: true}
+			sort.Slice(misfit, func(a, b int) bool { return positionLess(misfit[a], misfit[b]) })
+			out[k] = callerPositions{positions: ps, misfit: misfit, byName: true}
 		}
 	}
 	return out
@@ -335,5 +368,33 @@ func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions
 
 type callerPositions struct {
 	positions []string
+	misfit    []string // name-matched calls whose arguments the signature cannot take
 	byName    bool
+}
+
+func (p callerPositions) label() string {
+	label := "at " + strings.Join(p.positions, ", ")
+	if p.byName {
+		label = "by name at " + strings.Join(p.positions, ", ")
+	}
+	if len(p.misfit) == 0 {
+		return label
+	}
+	misfit := "not fitting the signature: " + strings.Join(p.misfit, ", ")
+	if len(p.positions) == 0 {
+		return "by name, " + misfit
+	}
+	return label + "; " + misfit
+}
+
+// lines is the set of source lines the positions fall on.
+func (p callerPositions) lines() map[int]bool {
+	out := map[int]bool{}
+	for _, pos := range p.positions {
+		l, _, _ := strings.Cut(pos, ":")
+		if n, err := strconv.Atoi(l); err == nil {
+			out[n] = true
+		}
+	}
+	return out
 }

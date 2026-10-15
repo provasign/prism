@@ -3291,6 +3291,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		}
 	}
 
+	callPositions := callerCallPositions(r, methodTarget)
 	compactWithScope := func(syms []grove.SymbolRecord, annotate bool) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
 		for _, s := range syms {
@@ -3312,8 +3313,25 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// the enclosing declaration, so name the nested scope that
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
+			if annotate {
+				if p, ok := callPositions[overloadCallerKey(s.FilePath, s.Span.Start, displayQN(s))]; ok {
+					entry["calls"] = p.label()
+				}
+			}
 			if annotate && !wideImpact {
-				addPlanCheckedCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, verifiedCallLines)
+				if p, ok := callPositions[overloadCallerKey(s.FilePath, s.Span.Start, displayQN(s))]; ok {
+					// A same-named call the compiler did not report, or whose
+					// arguments the signature cannot take, is another method.
+					switch {
+					case len(p.positions) == 0:
+					case p.byName:
+						addPlanCheckedCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, verifiedCallLines, p.lines())
+					default:
+						addImpactCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, p.lines())
+					}
+				} else {
+					addPlanCheckedCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, verifiedCallLines)
+				}
 			}
 			if annotate {
 				if via := nestedScopeFor(s, targetLeaf); via != "" {
@@ -3443,28 +3461,18 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if hint := h.widerAnchorHint(ctx, r); hint != nil {
 		out["widerAnchor"] = hint
 	}
-	if pos := callerCallPositions(r); len(pos) > 0 {
-		if callers, ok := out["callers"].([]map[string]any); ok {
-			byName := 0
-			for _, c := range callers {
-				file, _ := c["filePath"].(string)
-				line, _ := c["line"].(int)
-				qn, _ := c["qualifiedName"].(string)
-				if p, ok := pos[overloadCallerKey(file, line, qn)]; ok {
-					label := "at " + strings.Join(p.positions, ", ")
-					if p.byName {
-						label = "by name at " + strings.Join(p.positions, ", ")
-						byName++
-					}
-					c["calls"] = label
-				}
+	if len(callPositions) > 0 {
+		byName := 0
+		for _, p := range callPositions {
+			if p.byName && len(p.positions) > 0 {
+				byName++
 			}
-			note := "Each caller lists where it calls the change set (line:col of the called name); the compiler resolved these."
-			if byName > 0 {
-				note = fmt.Sprintf("Each caller lists where it calls the change set (line:col of the called name). %d caller(s) marked \"by name\" were matched by name only (no compiler resolution): check those positions before editing.", byName)
-			}
-			out["callPositionsNote"] = note
 		}
+		note := "Each caller lists where it calls the change set (line:col of the called name); the compiler resolved these."
+		if byName > 0 {
+			note = fmt.Sprintf("Each caller lists where it calls the change set (line:col of the called name). %d caller(s) marked \"by name\" were matched by name only (no compiler resolution): check those positions before editing.", byName)
+		}
+		out["callPositionsNote"] = note
 	}
 	if tags, lines := h.overloadCallerTags(ctx, r); len(tags) > 0 {
 		if lines != nil {
