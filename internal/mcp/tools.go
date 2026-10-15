@@ -3202,7 +3202,11 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// interface declares.
 			if owners := h.localContractOwners(ctx, query); len(owners) > 0 {
 				err = localContractError(query, owners, err)
-			} else if families, ok := h.partitionLocalFamilies(ctx, query); ok {
+			} else if families, ok, capped := h.partitionLocalFamiliesCapped(ctx, query); capped {
+				// Too many candidates to partition: keep the ambiguity rather
+				// than infer one "external" family from parameter shapes,
+				// which silently dropped local families.
+			} else if ok {
 				// Nominal language: the graph already knows the families.
 				// One family is the answer; several are listed, never guessed.
 				if len(families) == 1 && families[0].result != nil {

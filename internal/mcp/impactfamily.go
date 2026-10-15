@@ -70,7 +70,7 @@ func (h *Handler) pickAmbiguousByFamily(ctx context.Context, err error) (*grove.
 // wide bare name is a set of distinct families, not one external contract to
 // infer from parameter shapes. Go satisfies interfaces implicitly and keeps
 // the inference (grafana QueryData, external interface, no local root).
-var nominalFamilyLanguages = map[string]bool{"java": true, "kotlin": true, "csharp": true, "scala": true, "swift": true}
+var nominalFamilyLanguages = map[string]bool{"java": true, "kotlin": true, "csharp": true, "scala": true, "swift": true, "python": true, "php": true}
 
 // localFamily is one override family a wide bare name partitions into.
 type localFamily struct {
@@ -89,17 +89,25 @@ type localFamily struct {
 // "one family", silently. ok is false when the name is not nominal-language
 // or any candidate stays uncovered (an external root: inference applies).
 func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]localFamily, bool) {
+	families, ok, _ := h.partitionLocalFamiliesCapped(ctx, query)
+	return families, ok
+}
+
+// partitionLocalFamiliesCapped is partitionLocalFamilies that also reports
+// whether it stopped at the query cap: an unfinished partition is not
+// evidence of an external root, so the caller must not infer one.
+func (h *Handler) partitionLocalFamiliesCapped(ctx context.Context, query string) ([]localFamily, bool, bool) {
 	leaf := query
 	if i := strings.IndexByte(leaf, '('); i >= 0 {
 		leaf = leaf[:i]
 	}
 	leaf = strings.TrimSpace(leaf)
 	if leaf == "" || strings.Contains(leaf, ".") {
-		return nil, false
+		return nil, false, false
 	}
 	candidates, err := h.Grove.SearchSymbols(ctx, leaf, exhaustiveSymbolCap)
 	if err != nil {
-		return nil, false
+		return nil, false, false
 	}
 	var methods []grove.SymbolRecord
 	for _, c := range candidates {
@@ -107,12 +115,12 @@ func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]l
 			continue
 		}
 		if !nominalFamilyLanguages[c.Language] {
-			return nil, false
+			return nil, false, false
 		}
 		methods = append(methods, c)
 	}
 	if len(methods) < 2 {
-		return nil, false
+		return nil, false, false
 	}
 	sort.Slice(methods, func(i, j int) bool {
 		if methods[i].FilePath != methods[j].FilePath {
@@ -176,7 +184,7 @@ func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]l
 			continue
 		}
 		if queries == maxQueries {
-			return nil, false
+			return nil, false, true
 		}
 		r, ok := ask(m)
 		if !ok {
@@ -188,6 +196,18 @@ func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]l
 		}
 		p := &part{keys: map[string]bool{key(m): true}, queried: m, result: r, sites: len(impactSites(r, true))}
 		p.root = rootOf(r, m, p.keys)
+		// Ask the root now: an override's change set holds itself and its
+		// supers, the root's holds every sibling. Queried in path order,
+		// overrides sorting before their interface each cost a query and
+		// the cap was hit (databind createContextual: 30 overrides).
+		for hops := 0; hops < 4 && key(p.root) != key(p.queried) && !seen[key(p.root)]; hops++ {
+			rr, ok := ask(p.root)
+			if !ok {
+				break
+			}
+			p.queried, p.result, p.sites = p.root, rr, len(impactSites(rr, true))
+			p.root = rootOf(rr, p.root, p.keys)
+		}
 		for k := range p.keys {
 			seen[k] = true
 		}
@@ -246,7 +266,7 @@ func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]l
 		families = append(families, localFamily{root: p.root, result: p.result, members: len(p.keys)})
 	}
 	if len(families) == 0 {
-		return nil, false
+		return nil, false, false
 	}
 	// A candidate no family's change set holds and whose own query failed
 	// stays visible as its own entry (result nil: never answered directly).
@@ -258,12 +278,12 @@ func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]l
 	}
 	for _, m := range methods {
 		if !covered[key(m)] {
-			return nil, false
+			return nil, false, false
 		}
 	}
 	// Largest family first: the retry most callers mean is listed first.
 	sort.SliceStable(families, func(i, j int) bool { return families[i].members > families[j].members })
-	return families, true
+	return families, true, false
 }
 
 // familiesAmbiguityError names each override family a wide bare name spans,

@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -184,5 +185,27 @@ func TestImpactCallerEvidenceCountsOnlyCompilerResolution(t *testing.T) {
 	r.CallerLines = nil
 	if got := impactCallerEvidence(r); got != "name-matched only (most likely false positives): c.ts:3:c" {
 		t.Fatalf("no compiler: got %q", got)
+	}
+}
+
+// A wide bare name over two local families is reported as two families even
+// when the overrides sort before their interface: each override's own change
+// set covers only itself, and querying them in path order hit the query cap,
+// after which one "external" family was inferred from parameter shapes and
+// the other family silently dropped (databind createContextual, 2026-10-14).
+func TestWideBareNameKeepsEveryLocalFamily(t *testing.T) {
+	files := map[string]string{
+		"src/z/Contract.java": "package z;\n\npublic interface Contract {\n    void handle(String s);\n}\n",
+		"src/z/Other.java":    "package z;\n\npublic interface Other {\n    void handle(int a, int b);\n}\n",
+		"src/z/OtherImpl.java": "package z;\n\npublic class OtherImpl implements Other {\n    public void handle(int a, int b) {}\n}\n",
+	}
+	for i := 0; i < 30; i++ {
+		name := fmt.Sprintf("A%02d", i)
+		files["src/a/"+name+".java"] = "package a;\n\nimport z.Contract;\n\npublic class " + name + " implements Contract {\n    public void handle(String s) {}\n}\n"
+	}
+	srv := compactFixture(t, files)
+	got := callCompactErr(t, srv, "change_impact", map[string]any{"name": "handle"})
+	if !strings.Contains(got, "2 separate override families") || strings.Contains(got, "overridesExternal") {
+		t.Fatalf("both local families must be named, none inferred external:\n%s", got)
 	}
 }
