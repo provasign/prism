@@ -380,6 +380,26 @@ func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[str
 	return out
 }
 
+// memberCallPositions gives each declaration or family member the positions
+// of its own calls into the change set (super().m() in an override, a
+// recursive call), from the compiler or grove's resolver only: a member is
+// in the set already, and a same-named call in it that nothing resolved is
+// not evidence of anything.
+func memberCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions {
+	out := map[string]callerPositions{}
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		for _, m := range group {
+			k := overloadCallerKey(m.FilePath, m.Span.Start, displayQN(m))
+			if ps := r.CallerLines[m.ID]; len(ps) > 0 {
+				out[k] = callerPositions{positions: ps}
+			} else if ps := r.ResolvedCallerLines[m.ID]; len(ps) > 0 {
+				out[k] = callerPositions{positions: ps, byName: true}
+			}
+		}
+	}
+	return out
+}
+
 type callerPositions struct {
 	positions []string
 	misfit    []string // name-matched calls whose arguments the signature cannot take

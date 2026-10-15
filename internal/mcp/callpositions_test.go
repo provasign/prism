@@ -145,3 +145,19 @@ func TestUnindexedLanguageMentionsAreReported(t *testing.T) {
 		t.Fatalf("Ruby definition not reported on a lookup miss:\n%s", got)
 	}
 }
+
+// A member of the change set that itself calls into it carries those call
+// positions: super().hl(text) inside an override changes with the
+// signature. The override was listed, its call was not (19 of 21 Python
+// misses on the wide bed, 2026-10-14).
+func TestChangeImpactMembersShowTheirOwnCalls(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"pkg/__init__.py": "",
+		"pkg/h.py": "class Base:\n    def hl(self, text):\n        return text\n\n\nclass Json(Base):\n" +
+			"    def hl(self, text):\n        super().hl(text)\n        return text\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Base.hl"})
+	if !strings.Contains(got, "Json.hl  pkg/h.py:7  [itself calls the change set by name at 8:17]") {
+		t.Fatalf("the override's super() call is missing:\n%s", got)
+	}
+}

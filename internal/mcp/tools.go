@@ -3296,6 +3296,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 
 	callPositions := callerCallPositions(r, methodTarget)
+	memberPositions := memberCallPositions(r)
 	compactWithScope := func(syms []grove.SymbolRecord, annotate bool) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
 		for _, s := range syms {
@@ -3321,6 +3322,8 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 				if p, ok := callPositions[overloadCallerKey(s.FilePath, s.Span.Start, displayQN(s))]; ok {
 					entry["calls"] = p.label()
 				}
+			} else if p, ok := memberPositions[overloadCallerKey(s.FilePath, s.Span.Start, displayQN(s))]; ok {
+				entry["calls"] = "itself calls the change set " + p.label()
 			}
 			if annotate && !wideImpact {
 				if p, ok := callPositions[overloadCallerKey(s.FilePath, s.Span.Start, displayQN(s))]; ok {
