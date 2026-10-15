@@ -341,3 +341,20 @@ func TestFileScopedBareNameNamesSameFileMembers(t *testing.T) {
 		t.Fatalf("same-file members not named:\n%s", got)
 	}
 }
+
+// A bare name matching an interface method and one implementation resolves
+// to the interface's family, which also holds the other implementations;
+// the implementation's own change set lacks its siblings.
+func TestFamilyPickCoversSiblingImplementations(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"go.mod": "module m\n\ngo 1.22\n",
+		"router.go": "package m\n\ntype Router interface {\n\tRoute(p string) int\n}\n\ntype DefaultRouter struct{}\n\n" +
+			"func (r *DefaultRouter) Route(p string) int { return len(p) }\n\nfunc Use(r Router) int { return r.Route(\"x\") }\n" +
+			"func UseDefault(r *DefaultRouter) int { return r.Route(\"y\") + r.Route(\"z\") }\n",
+		"concurrent.go": "package m\n\ntype concurrentRouter struct{ router Router }\n\nfunc (r *concurrentRouter) Route(p string) int { return r.router.Route(p) }\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Route", "symbol_file": "router.go"})
+	if !strings.Contains(got, "concurrentRouter.Route") || strings.Contains(got, "change set of DefaultRouter.Route") {
+		t.Fatalf("the sibling implementation is not in the picked family:\n%s", got)
+	}
+}

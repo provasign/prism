@@ -30,8 +30,20 @@ func (h *Handler) pickAmbiguousByFamily(ctx context.Context, err error) (*grove.
 	if len(cands) < 2 || len(cands) >= wideMemberAmbiguityThreshold {
 		return nil, "", false
 	}
-	var best *grove.ChangeImpactResult
-	bestQN, bestSites := "", -1
+	// Each candidate's change set names its members; the pick must cover
+	// every member any candidate names. Anchored at an implementation the
+	// set holds its supers but not its siblings: echo's "Route" picked
+	// DefaultRouter.Route (more sites) over Router.Route and dropped the
+	// sibling concurrentRouter.Route while saying "includes all of them"
+	// (replay, 2026-10-15).
+	type option struct {
+		qn      string
+		r       *grove.ChangeImpactResult
+		members map[string]bool
+		sites   int
+	}
+	var opts []option
+	union := map[string]bool{}
 	for _, c := range cands {
 		r, cerr := h.Grove.ChangeImpactScoped(ctx, c.qn, c.file)
 		if cerr != nil || r == nil {
@@ -43,15 +55,26 @@ func (h *Handler) pickAmbiguousByFamily(ctx context.Context, err error) (*grove.
 				have[normalizePath(s.FilePath)+":"+strconv.Itoa(s.Span.Start)] = true
 			}
 		}
-		all := true
 		for _, o := range cands {
-			if !have[normalizePath(o.file)+":"+strconv.Itoa(o.line)] {
+			union[normalizePath(o.file)+":"+strconv.Itoa(o.line)] = true
+		}
+		for k := range have {
+			union[k] = true
+		}
+		opts = append(opts, option{c.qn, r, have, len(impactSites(r, true))})
+	}
+	var best *grove.ChangeImpactResult
+	bestQN, bestSites := "", -1
+	for _, o := range opts {
+		all := true
+		for k := range union {
+			if !o.members[k] {
 				all = false
 				break
 			}
 		}
-		if n := len(impactSites(r, true)); all && n > bestSites {
-			best, bestQN, bestSites = r, c.qn, n
+		if all && o.sites > bestSites {
+			best, bestQN, bestSites = o.r, o.qn, o.sites
 		}
 	}
 	if best == nil {
