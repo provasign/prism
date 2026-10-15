@@ -738,6 +738,13 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 				}
 				continue
 			}
+			if sd.callsStayValid && valueOnlyCaller(impact, site) {
+				// A caller where no call names the seed holds it as a value,
+				// and goFuncValueRefs above decided those (a typed slot
+				// breaks, `f := Do` does not). Contract members still fall
+				// through: an interface's Do no longer matches.
+				continue
+			}
 			// Span-level fallback (no AST call sites recorded).
 			if !touched(changed, site.FilePath, site.Span) {
 				key := fmt.Sprintf("%s:%d:%s", site.FilePath, site.Span.Start, sd.sym.Name)
@@ -1466,4 +1473,25 @@ func refreshErrorsFor(errs []string, changed map[string][]lineRange) []string {
 		}
 	}
 	return keep
+}
+
+// valueOnlyCaller reports whether site is one of impact's callers rather
+// than a declaration, family member or super.
+func valueOnlyCaller(impact *grove.ChangeImpactResult, site grove.SymbolRecord) bool {
+	if impact == nil {
+		return false
+	}
+	for _, group := range [][]grove.SymbolRecord{impact.Declarations, impact.Family, impact.Supers} {
+		for _, m := range group {
+			if m.ID == site.ID {
+				return false
+			}
+		}
+	}
+	for _, c := range impact.Callers {
+		if c.ID == site.ID {
+			return true
+		}
+	}
+	return false
 }

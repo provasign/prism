@@ -246,3 +246,21 @@ func TestChangeImpactClassBodyPropertyReference(t *testing.T) {
 		t.Fatalf("property(get_data, ...) reference missing:\n%s", got)
 	}
 }
+
+// A Go free function's change set includes its uses as a value (the
+// compiler resolves them), and with both calls and values listed it is
+// complete like a method's (chi URLParam answered "callers-only").
+func TestGoFreeFunctionValueReferencesAndCompleteness(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"go.mod":  "module ex\n\ngo 1.22\n",
+		"lib.go":  "package ex\n\nfunc Handle(n int) int { return n }\n",
+		"call.go": "package ex\n\nfunc Direct() int { return Handle(1) }\n",
+		"val.go":  "package ex\n\nfunc apply(f func(int) int) int { return f(2) }\n\nfunc AsValue() int { return apply(Handle) }\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Handle"})
+	for _, want := range []string{"Direct  call.go:3  [at 3:28]", "AsValue  val.go:5  [at 5:35]", "safeToClaimComplete: true"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing %q:\n%s", want, got)
+		}
+	}
+}

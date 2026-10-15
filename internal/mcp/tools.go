@@ -3538,15 +3538,24 @@ func applyCompilerBackedCompleteness(out map[string]any, r *grove.ChangeImpactRe
 	if _, degraded := out["degradedAnalysis"]; degraded {
 		return
 	}
-	if c, _ := out["completeness"].(string); c != "closed" {
-		return
-	}
 	lang := ""
 	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
 		if len(group) > 0 {
 			lang = group[0].Language
 			break
 		}
+	}
+	c, _ := out["completeness"].(string)
+	// A free function has no family to close: its change set is complete
+	// when the compiler resolved every call and value reference to it, which
+	// the Go and TypeScript passes record (chi URLParam answered
+	// "callers-only" while Context.URLParam answered complete).
+	if c == "callers-only" && (lang == "go" || lang == "typescript" || lang == "tsx") && len(r.NameMatchedCallers) == 0 {
+		c = "closed"
+		out["completeness"] = "closed"
+	}
+	if c != "closed" {
+		return
 	}
 	if !compilerBackedImpactLangs[lang] {
 		return
