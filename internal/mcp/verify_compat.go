@@ -93,7 +93,13 @@ var goUntypedBinding = regexp.MustCompile(`(^|[{;])\s*(var\s+)?\w+(\s*,\s*\w+)*\
 // is name-based, so a reference counts only as `pkg.Name` from another
 // package or a bare `Name` inside the declaring package.
 func (h *Handler) goFuncValueRefs(ctx context.Context, sym grove.SymbolRecord) []missedSite {
-	if h.Grove == nil || sym.Kind != "function" || sym.Name == "" {
+	if h.Grove == nil || sym.Name == "" {
+		return nil
+	}
+	if sym.Kind == "method" {
+		return h.goMethodValueRefs(ctx, sym)
+	}
+	if sym.Kind != "function" {
 		return nil
 	}
 	res, err := h.Grove.References(ctx, sym.Name)
@@ -129,6 +135,57 @@ func (h *Handler) goFuncValueRefs(ctx context.Context, sym grove.SymbolRecord) [
 				Symbol: sym.Name, QualifiedName: r.Enclosing, File: r.File, Line: r.Line,
 				Kind: "value-reference", BecauseOf: displayQN(sym),
 				Detail: "uses " + sym.Name + " as a value; its type changed with the new variadic parameter",
+			})
+			break
+		}
+		if len(out) == 25 {
+			break
+		}
+	}
+	return out
+}
+
+// goMethodValueRefs is goFuncValueRefs for a method: a method value
+// (`var m func(int) int = sq.Area`) or method expression (`Square.Area`)
+// has the method's type, which a new trailing variadic parameter changes,
+// while calls stay valid. The scan is by name (`.Area` not followed by a
+// call); a same-named field anywhere in the repository is called out so the
+// receiver gets checked.
+func (h *Handler) goMethodValueRefs(ctx context.Context, sym grove.SymbolRecord) []missedSite {
+	res, err := h.Grove.References(ctx, sym.Name)
+	if err != nil {
+		return nil
+	}
+	detail := "uses " + sym.Name + " as a method value; its type changed with the new variadic parameter"
+	if fields, ferr := h.Grove.SearchSymbols(ctx, sym.Name, 50); ferr == nil {
+		for _, f := range fields {
+			if f.Name == sym.Name && f.Kind == "field" && f.Language == "go" {
+				detail += " (a field named " + sym.Name + " also exists: check the receiver)"
+				break
+			}
+		}
+	}
+	sel := regexp.MustCompile(`\.` + regexp.QuoteMeta(sym.Name) + `\b`)
+	var out []missedSite
+	for _, r := range res.Refs {
+		if !strings.HasSuffix(r.File, ".go") {
+			continue
+		}
+		line := stripCommentsAndStringsLine(sourceLineAt(h.Root, r.File, r.Line))
+		if strings.HasPrefix(strings.TrimSpace(line), "func ") && strings.Contains(line, ") "+sym.Name+"(") {
+			continue // the declaration
+		}
+		for _, loc := range sel.FindAllStringIndex(line, -1) {
+			rest := strings.TrimLeft(line[loc[1]:], " \t")
+			if strings.HasPrefix(rest, "(") || strings.HasPrefix(rest, "[") {
+				continue // a call
+			}
+			if goUntypedBinding.MatchString(line[:strings.LastIndexAny(line[:loc[0]+1], " \t=(,{")+1]) && (rest == "" || strings.HasPrefix(rest, ";") || strings.HasPrefix(rest, "}")) {
+				continue // `m := sq.Area` takes the new type
+			}
+			out = append(out, missedSite{
+				Symbol: sym.Name, QualifiedName: r.Enclosing, File: r.File, Line: r.Line,
+				Kind: "value-reference", BecauseOf: displayQN(sym), Detail: detail,
 			})
 			break
 		}
