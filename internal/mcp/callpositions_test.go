@@ -68,21 +68,56 @@ func TestChangeImpactCompilerPositionsDropOtherSameNamedCalls(t *testing.T) {
 	}
 }
 
-// A same-named call whose argument count the signature cannot take is named
-// as not fitting, not listed as a call: hono's path.match(/re/) is
-// String.match, not Router.match(method, path). The regex literal's brackets
+// Same-named calls that are not the target are named, not listed as calls:
+// part.match(/re/) on an untyped callback parameter cannot fit
+// Router.match(method, path) (hono PatternRouter.add), and path.match on a
+// string parameter went to another receiver. The regex literals' brackets
 // must not upset the argument reading.
 func TestChangeImpactNameMatchedPositionsNameMisfits(t *testing.T) {
 	srv := compactFixture(t, map[string]string{
 		"router.ts": "export class Router {\n  match(method: string, path: string): string[] {\n    return [method, path]\n  }\n}\n",
 		"use.ts": "import { Router } from './router'\nexport function add(router: Router, path: string) {\n  const parts = path.match(/[^}]+(?:{x})?/g)\n" +
-			"  const hit = router.match('GET', path)\n  return [parts, hit]\n}\n",
+			"  const hit = router.match('GET', path)\n  const more = [path].map((part) => part.match(/[^}]x/))\n  return [parts, hit, more]\n}\n",
 	})
 	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Router.match"})
-	if !strings.Contains(got, "[by name at 4:22; not fitting the signature: 3:22]") {
-		t.Fatalf("String.match call should be named as not fitting:\n%s", got)
+	if !strings.Contains(got, "[by name at 4:22; not fitting the signature: 5:42; same name, other receiver: 3:22]") {
+		t.Fatalf("String.match calls should be named as not fitting / other receiver:\n%s", got)
 	}
-	if strings.Contains(got, "3: const parts") {
+	if strings.Contains(got, "3: const parts") || strings.Contains(got, "5: const more") {
 		t.Fatalf("a call that does not fit must not be shown as evidence:\n%s", got)
+	}
+}
+
+// A same-named call whose receiver grove typed as another class is named
+// as such, not listed as a call: req is a Request (from_values -> Self), so
+// only resp.get_data() calls Response.get_data. A test that only uses req
+// is no caller at all.
+func TestChangeImpactNameMatchedPositionsNameOtherReceivers(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"wrappers.py": "import typing_extensions as te\n\nclass Request:\n    @classmethod\n    def from_values(cls, data=b'') -> te.Self:\n        return cls()\n\n" +
+			"    def get_data(self, cache=True):\n        return b''\n\n\nclass Response:\n    def get_data(self, as_text=False):\n        return b''\n",
+		"test_w.py": "from wrappers import Request, Response\n\n\ndef test_request_only():\n    req = Request.from_values(b'x')\n    assert req.get_data() == b''\n\n\n" +
+			"def test_mixed():\n    resp = Response()\n    req = Request.from_values(b'x')\n    assert resp.get_data() == b''\n    assert req.get_data() == b''\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Response.get_data"})
+	if !strings.Contains(got, "[by name at 12:17; same name, other receiver: 13:16]") {
+		t.Fatalf("req.get_data() should be named as another receiver:\n%s", got)
+	}
+	if strings.Contains(got, "test_request_only") || strings.Contains(got, "13: assert req") {
+		t.Fatalf("Request calls must not appear as Response.get_data callers or evidence:\n%s", got)
+	}
+}
+
+// PHP: defaults and named arguments fit; extra or unknown named arguments do
+// not. A plain count rejected get('k') against get($key, $default = null).
+func TestChangeImpactPHPCallsCheckedAgainstSignature(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"Cache.php": "<?php\nclass Cache {\n    public function get(string $key, $default = null) {\n        return $default;\n    }\n}\n",
+		"use.php": "<?php\nfunction useIt(Cache $cache) {\n    $a = $cache->get('k');\n    $b = $cache->get(key: 'k', default: 2);\n" +
+			"    $c = $cache->get('k', 1, 2);\n    $d = $cache->get(name: 'x');\n    return [$a, $b, $c, $d];\n}\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "Cache.get"})
+	if !strings.Contains(got, "[by name at 3:18, 4:18; not fitting the signature: 5:18, 6:18]") {
+		t.Fatalf("PHP calls not checked against the signature:\n%s", got)
 	}
 }

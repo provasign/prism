@@ -21,65 +21,93 @@ type fitParam struct {
 }
 
 type fitSignature struct {
+	lang     string
 	params   []fitParam
-	varPos   bool // *args / ...rest
+	varPos   bool // *args / ...rest / ...$rest
 	varKw    bool // **kwargs
-	keywords bool // the language passes arguments by name (Python)
+	keywords bool // calls may pass arguments by name
 }
 
 // signatureFitLanguage reports languages whose parameter rules callFits knows.
 func signatureFitLanguage(lang string) bool {
 	switch strings.ToLower(lang) {
-	case "python", "typescript", "tsx", "javascript":
+	case "python", "typescript", "tsx", "javascript", "php":
 		return true
 	}
 	return false
 }
 
+var (
+	phpParamName  = regexp.MustCompile(`&?\$(\w+)`)
+	pyKeywordArg  = regexp.MustCompile(`^([A-Za-z_]\w*)\s*=[^=]`)
+	phpKeywordArg = regexp.MustCompile(`^([A-Za-z_]\w*)\s*:[^:]`)
+)
+
 // parseFitSignature reads the parameter list of a declaration's signature.
 // ok is false when the signature has no readable parameter list.
 func parseFitSignature(signature, lang string) (fitSignature, bool) {
+	lang = strings.ToLower(lang)
 	inner, ok := firstParenGroup(signature, 0, false)
 	if !ok {
 		return fitSignature{}, false
 	}
-	py := strings.ToLower(lang) == "python"
-	sig := fitSignature{keywords: py}
+	sig := fitSignature{lang: lang, keywords: lang == "python" || lang == "php"}
 	keywordOnly := false
-	for i, raw := range splitTopLevel(inner, false, true) {
+	for i, raw := range splitTopLevel(inner, false, lang == "typescript" || lang == "tsx") {
 		p := strings.TrimSpace(raw)
-		switch {
-		case p == "":
-			continue
-		case py && p == "/":
-			continue
-		case py && p == "*":
-			keywordOnly = true
-			continue
-		case py && strings.HasPrefix(p, "**"):
-			sig.varKw = true
-			continue
-		case py && strings.HasPrefix(p, "*"), !py && strings.HasPrefix(p, "..."):
-			sig.varPos = true
-			keywordOnly = py
+		if p == "" {
 			continue
 		}
-		name := p
-		if j := strings.IndexAny(name, ":="); j >= 0 {
-			name = name[:j]
+		var param fitParam
+		switch lang {
+		case "python":
+			switch {
+			case p == "/":
+				continue
+			case p == "*":
+				keywordOnly = true
+				continue
+			case strings.HasPrefix(p, "**"):
+				sig.varKw = true
+				continue
+			case strings.HasPrefix(p, "*"):
+				sig.varPos, keywordOnly = true, true
+				continue
+			}
+			param = fitParam{name: strings.TrimSpace(strings.FieldsFunc(p, func(r rune) bool { return r == ':' || r == '=' })[0]),
+				optional: topLevelIndex(p, '=') >= 0, keywordOnly: keywordOnly}
+			if i == 0 && (param.name == "self" || param.name == "cls") {
+				continue
+			}
+		case "php":
+			m := phpParamName.FindStringSubmatch(p)
+			if m == nil {
+				return fitSignature{}, false
+			}
+			if strings.Contains(p, "...") {
+				sig.varPos = true
+				continue
+			}
+			param = fitParam{name: m[1], optional: topLevelIndex(p, '=') >= 0}
+		default: // TypeScript / JavaScript
+			if strings.HasPrefix(p, "...") {
+				sig.varPos = true
+				continue
+			}
+			name := p
+			if j := strings.IndexAny(name, ":="); j >= 0 {
+				name = name[:j]
+			}
+			name = strings.TrimSpace(name)
+			param = fitParam{name: strings.TrimSuffix(name, "?"), optional: topLevelIndex(p, '=') >= 0 || strings.HasSuffix(name, "?")}
+			if i == 0 && param.name == "this" {
+				continue
+			}
 		}
-		name = strings.TrimSpace(name)
-		optional := topLevelIndex(p, '=') >= 0 || strings.HasSuffix(name, "?")
-		name = strings.TrimSuffix(name, "?")
-		if i == 0 && ((py && (name == "self" || name == "cls")) || (!py && name == "this")) {
-			continue
-		}
-		sig.params = append(sig.params, fitParam{name: name, optional: optional, keywordOnly: keywordOnly})
+		sig.params = append(sig.params, param)
 	}
 	return sig, true
 }
-
-var pyKeywordArg = regexp.MustCompile(`^([A-Za-z_]\w*)\s*=[^=]`)
 
 // callFits reports whether a call's arguments could bind to sig. Spread
 // arguments, and anything it cannot read, fit.
@@ -91,11 +119,16 @@ func callFits(args []string, sig fitSignature) bool {
 		if strings.HasPrefix(a, "*") || strings.HasPrefix(a, "...") {
 			return true
 		}
-		if sig.keywords {
-			if m := pyKeywordArg.FindStringSubmatch(a); m != nil {
-				given[m[1]] = true
-				continue
-			}
+		var kw []string
+		switch sig.lang {
+		case "python":
+			kw = pyKeywordArg.FindStringSubmatch(a)
+		case "php":
+			kw = phpKeywordArg.FindStringSubmatch(a)
+		}
+		if kw != nil {
+			given[kw[1]] = true
+			continue
 		}
 		positional++
 	}
@@ -151,7 +184,7 @@ func callArgsAt(body string, start, line, col int, name, lang string) ([]string,
 	if from >= len(body) || body[from] != '(' {
 		return nil, false // a generic call (f<T>(x)) or a reference, not read
 	}
-	js := !strings.EqualFold(lang, "python")
+	js := strings.Contains("typescript tsx javascript", strings.ToLower(lang))
 	inner, ok := firstParenGroup(body, from, js)
 	if !ok {
 		return nil, false

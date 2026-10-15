@@ -24,6 +24,15 @@ func TestCallFits(t *testing.T) {
 		{"get(key: Map<string, number>, fallback?: number)", "typescript", "m.get(k, 1, 2)", false},
 		{"use(...handlers: H[])", "typescript", "app.use(a, b, c)", true},
 		{"route(path: string, app?: Hono)", "typescript", "app.route(a < b, c)", true},
+		{"public function get(string $key, $default = null)", "php", "$c->get('k')", true},
+		{"public function get(string $key, $default = null)", "php", "$c->get('k', 1)", true},
+		{"public function get(string $key, $default = null)", "php", "$c->get(key: 'k', default: 2)", true},
+		{"public function get(string $key, $default = null)", "php", "$c->get('k', 1, 2)", false},
+		{"public function get(string $key, $default = null)", "php", "$c->get(name: 'x')", false},
+		{"public function get(string $key, $default = null)", "php", "$c->get($a ? $b : $d)", true},
+		{"public function get(?string $key)", "php", "$c->get()", false},
+		{"public function get(string ...$keys)", "php", "$c->get('a', 'b', 'c')", true},
+		{"public function get(string $key, $default = null)", "php", "$c->get(...$args)", true},
 	}
 	for _, c := range cases {
 		sig, ok := parseFitSignature(c.sig, c.lang)
@@ -31,7 +40,7 @@ func TestCallFits(t *testing.T) {
 			t.Fatalf("%q: signature not read", c.sig)
 		}
 		name := "get_data"
-		for _, n := range []string{"get_data", "match", "get", "use", "route", "f"} {
+		for _, n := range []string{"get_data", "match", "get", "use", "route", "fetch", "f"} {
 			if containsCall(c.call, n) {
 				name = n
 				break
@@ -49,7 +58,7 @@ func TestCallFits(t *testing.T) {
 
 func containsCall(call, name string) bool {
 	for i := 0; i+len(name) < len(call); i++ {
-		if call[i:i+len(name)] == name && call[i+len(name)] == '(' && (i == 0 || call[i-1] == '.') {
+		if call[i:i+len(name)] == name && call[i+len(name)] == '(' && (i == 0 || call[i-1] == '.' || call[i-1] == '>') {
 			return true
 		}
 	}

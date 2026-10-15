@@ -313,8 +313,15 @@ func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[str
 			out[k] = callerPositions{positions: ps}
 			continue
 		}
-		var ps, misfit []string
+		var ps, misfit, other []string
 		seen := map[string]bool{}
+		var resolved map[string]bool // positions grove's resolver tied to the change set
+		if rl := r.ResolvedCallerLines[c.ID]; len(rl) > 0 {
+			resolved = map[string]bool{}
+			for _, p := range rl {
+				resolved[p] = true
+			}
+		}
 		for _, cs := range c.CallSites {
 			callee := cs.Callee
 			if i := strings.LastIndexByte(callee, '.'); i >= 0 {
@@ -335,6 +342,12 @@ func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[str
 				continue
 			}
 			seen[pos] = true
+			if resolved != nil && !resolved[pos] {
+				// grove typed this call's receiver as another class, or
+				// left it unresolved: resp.get_data() vs req.get_data().
+				other = append(other, pos)
+				continue
+			}
 			fits := true
 			if list, checked := sigs[callee]; checked && signatureFitLanguage(c.Language) {
 				// Defaults and keyword arguments make a count wrong here, so
@@ -357,10 +370,11 @@ func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[str
 				misfit = append(misfit, pos)
 			}
 		}
-		if len(ps) > 0 || len(misfit) > 0 {
-			sort.Slice(ps, func(a, b int) bool { return positionLess(ps[a], ps[b]) })
-			sort.Slice(misfit, func(a, b int) bool { return positionLess(misfit[a], misfit[b]) })
-			out[k] = callerPositions{positions: ps, misfit: misfit, byName: true}
+		if len(ps) > 0 || len(misfit) > 0 || len(other) > 0 {
+			for _, l := range [][]string{ps, misfit, other} {
+				sort.Slice(l, func(a, b int) bool { return positionLess(l[a], l[b]) })
+			}
+			out[k] = callerPositions{positions: ps, misfit: misfit, other: other, byName: true}
 		}
 	}
 	return out
@@ -369,22 +383,30 @@ func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[str
 type callerPositions struct {
 	positions []string
 	misfit    []string // name-matched calls whose arguments the signature cannot take
+	other     []string // same-named calls the resolver did not tie to the change set
 	byName    bool
 }
 
 func (p callerPositions) label() string {
-	label := "at " + strings.Join(p.positions, ", ")
-	if p.byName {
-		label = "by name at " + strings.Join(p.positions, ", ")
+	var parts []string
+	switch {
+	case len(p.positions) > 0 && p.byName:
+		parts = append(parts, "by name at "+strings.Join(p.positions, ", "))
+	case len(p.positions) > 0:
+		parts = append(parts, "at "+strings.Join(p.positions, ", "))
+	default:
+		parts = append(parts, "by name")
 	}
-	if len(p.misfit) == 0 {
-		return label
+	if len(p.misfit) > 0 {
+		parts = append(parts, "not fitting the signature: "+strings.Join(p.misfit, ", "))
 	}
-	misfit := "not fitting the signature: " + strings.Join(p.misfit, ", ")
-	if len(p.positions) == 0 {
-		return "by name, " + misfit
+	if len(p.other) > 0 {
+		parts = append(parts, "same name, other receiver: "+strings.Join(p.other, ", "))
 	}
-	return label + "; " + misfit
+	if len(p.positions) == 0 && len(parts) > 1 {
+		return parts[0] + ", " + strings.Join(parts[1:], "; ")
+	}
+	return strings.Join(parts, "; ")
 }
 
 // lines is the set of source lines the positions fall on.
