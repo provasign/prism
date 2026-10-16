@@ -36,7 +36,7 @@ func TestWideBareNameInJavaListsEveryOverrideFamily(t *testing.T) {
 	}
 	// Each listed retry answers its own family.
 	ser := callCompact(t, srv, "change_impact", map[string]any{"name": "Ser.swt", "symbol_file": "p/Ser.java"})
-	if !strings.Contains(ser, "S5.swt") || strings.Contains(ser, "A0.swt") {
+	if !strings.Contains(ser, "S5.swt") || strings.Contains(evidenceOnly(ser), "A0.swt") {
 		t.Fatalf("Ser.swt family wrong:\n%s", ser)
 	}
 }

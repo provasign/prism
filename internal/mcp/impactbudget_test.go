@@ -92,3 +92,25 @@ func TestCompactImpactTextKeepsGroupedLayoutSites(t *testing.T) {
 		t.Error("evidence lines should be dropped")
 	}
 }
+
+// Over budget, the line partition's lists shrink to their counts before any
+// evidence line is dropped.
+func TestCompactImpactShrinksPartitionFirst(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("callSitesByOverload:\n    a/B.java: 1:2, 3:4\n")
+	b.WriteString("Every line naming value in this repository (whole word, 900): 1 in editSites above, 0 code line(s) naming something else, 0 string literal(s), 899 comment/doc line(s).\n")
+	b.WriteString("comments/docs naming value (899):\n")
+	for i := 0; i < 899; i++ {
+		b.WriteString(fmt.Sprintf("  docs/f.md:%d: %s\n", i+1, strings.Repeat("value ", 10)))
+	}
+	b.WriteString("related (1; NOT in the change set):\n")
+	got := compactImpactText(b.String())
+	for _, want := range []string{"    a/B.java: 1:2, 3:4", "comments/docs naming value (899): not listed, to fit one answer", "related (1;", "Every line naming value"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "docs/f.md:1:") || strings.Contains(got, "evidence lines omitted") {
+		t.Errorf("partition list kept or evidence dropped:\n%s", got[:400])
+	}
+}

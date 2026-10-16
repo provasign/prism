@@ -300,6 +300,7 @@ func FormatMemberImpactText(out map[string]any) (string, bool) {
 			fmt.Fprintf(&b, "// %s\n", note)
 		}
 	}
+	b.WriteString(formatEditSitesText(out))
 	if decls := anySlice(out["declarations"]); len(decls) > 0 {
 		fmt.Fprintf(&b, "declarations (%d):\n", len(decls))
 		for _, d := range decls {

@@ -134,7 +134,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
 		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true, "callPositionsNote": true,
 		"reExports": true, "related": true, "degradedAnalysis": true,
-		"resolvedAmbiguity": true, "unindexedNote": true,
+		"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -160,6 +160,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "// %s\n", boundary)
 	}
 	b.WriteString(FormatImpactRelaySitesText(out))
+	b.WriteString(formatEditSitesText(out))
 	b.WriteString(FormatImpactExtrasText(out))
 	for _, key := range []string{"familyCompleteness", "callerCoverage"} {
 		if value, _ := out[key].(string); value != "" {

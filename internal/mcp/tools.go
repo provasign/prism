@@ -3267,6 +3267,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		mout := memberImpactOutput(r, stringArg(args, "file", "") != "")
 		h.addDegradedNote(ctx, mout, r)
 		h.addUnindexedNote(ctx, mout, leafOf(r.Query))
+		leaf := leafOf(r.Query)
+		c, unsure := h.memberEditSites(r, leaf)
+		h.attachEditSites(ctx, mout, r, c, leaf, unsure)
 		return mout, nil
 	}
 	signatureNote := ""
@@ -3515,6 +3518,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	applyCompilerBackedCompleteness(out, r)
 	h.addUnindexedNote(ctx, out, targetLeaf)
 	markNameMatchedSites(out, r)
+	h.attachEditSites(ctx, out, r, h.impactEditSites(r, callPositions, memberPositions), targetLeaf, nil)
 	if familyPickNote == "" {
 		familyPickNote = h.sameFileNamesakesNote(ctx, query, stringArg(args, "file", ""), r)
 	}

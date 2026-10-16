@@ -41,6 +41,16 @@ func compactImpactText(text string) string {
 	if len(text) <= impactTextBudget {
 		return text
 	}
+	// Step 0: the line partition below editSites is the least needed part:
+	// its lists shrink to their counts, least useful first, before any
+	// evidence goes (gson JsonWriter.value lost its per-overload call
+	// positions to it, 2026-10-18 replay).
+	for _, title := range partitionShrinkOrder {
+		text = shrinkPartitionGroup(text, title)
+		if len(text) <= impactTextBudget {
+			return text
+		}
+	}
 	// Step 1: drop evidence/signature lines, keep every site line.
 	kept := dropImpactEvidence(text)
 	step1 := strings.Join(kept, "\n")
@@ -135,4 +145,34 @@ func siteLineNumber(entry string) string {
 		n += "t"
 	}
 	return n
+}
+
+// partitionShrinkOrder: the line-partition group titles (othermentions.go),
+// least useful first.
+var partitionShrinkOrder = []string{"comments/docs naming ", "code naming another ", "string literals naming ", "unconfirmed: names ", "other declarations named "}
+
+var partitionCount = regexp.MustCompile(` \((\d+)(?:, by file)?\):`)
+
+// shrinkPartitionGroup replaces the list under a partition group title by
+// its count.
+func shrinkPartitionGroup(text, title string) string {
+	lines := strings.Split(text, "\n")
+	out := make([]string, 0, len(lines))
+	skip := false
+	for _, l := range lines {
+		if skip && strings.HasPrefix(l, "  ") {
+			continue
+		}
+		skip = false
+		if strings.HasPrefix(l, title) {
+			if strings.HasPrefix(title, "other declarations") {
+				l = l[:strings.Index(l, ":")] + ": not listed, to fit one answer"
+			} else if m := partitionCount.FindStringSubmatchIndex(l); m != nil {
+				l = l[:m[1]] + " not listed, to fit one answer"
+			}
+			skip = true
+		}
+		out = append(out, l)
+	}
+	return strings.Join(out, "\n")
 }

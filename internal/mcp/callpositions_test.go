@@ -68,7 +68,7 @@ func TestChangeImpactCompilerPositionsDropOtherSameNamedCalls(t *testing.T) {
 	if !strings.Contains(got, "[at 6:9, 7:9, 8:9]") {
 		t.Fatalf("compiler positions missing:\n%s", got)
 	}
-	if strings.Contains(got, "v.Value") || strings.Contains(got, "omitted by evidence limit") {
+	if strings.Contains(evidenceOnly(got), "v.Value") || strings.Contains(got, "omitted by evidence limit") {
 		t.Fatalf("V.Value calls must not appear as W.Value evidence or omitted lines:\n%s", got)
 	}
 	if !strings.Contains(got, "6: c := w.Value(3)") {
@@ -91,7 +91,7 @@ func TestChangeImpactNameMatchedPositionsNameMisfits(t *testing.T) {
 	if !strings.Contains(got, "[by name at 4:22; not fitting the signature: 5:42; same name, other receiver: 3:22]") {
 		t.Fatalf("String.match calls should be named as not fitting / other receiver:\n%s", got)
 	}
-	if strings.Contains(got, "3: const parts") || strings.Contains(got, "5: const more") {
+	if strings.Contains(evidenceOnly(got), "3: const parts") || strings.Contains(evidenceOnly(got), "5: const more") {
 		t.Fatalf("a call that does not fit must not be shown as evidence:\n%s", got)
 	}
 }
@@ -111,7 +111,7 @@ func TestChangeImpactNameMatchedPositionsNameOtherReceivers(t *testing.T) {
 	if !strings.Contains(got, "[by name at 12:17; same name, other receiver: 13:16]") {
 		t.Fatalf("req.get_data() should be named as another receiver:\n%s", got)
 	}
-	if strings.Contains(got, "test_request_only") || strings.Contains(got, "13: assert req") {
+	if strings.Contains(evidenceOnly(got), "test_request_only") || strings.Contains(evidenceOnly(got), "13: assert req") {
 		t.Fatalf("Request calls must not appear as Response.get_data callers or evidence:\n%s", got)
 	}
 }
