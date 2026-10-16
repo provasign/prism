@@ -118,8 +118,23 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 		}
 	}
 	total := edits + len(code) + len(comments)
-	out := []string{fmt.Sprintf("Every line naming %s in this repository (whole word, %d): %d in editSites above, %d code line(s) naming something else, %d comment/doc line(s).",
-		leaf, total, edits, len(code), len(comments))}
+	inTests := func(ls []mentionLine) int {
+		n := 0
+		for _, l := range ls {
+			if isTestFilePath(l.file) {
+				n++
+			}
+		}
+		return n
+	}
+	editTests := 0
+	for k := range editKeys {
+		if f, _, ok := strings.Cut(k, ":"); ok && isTestFilePath(f) {
+			editTests++
+		}
+	}
+	out := []string{fmt.Sprintf("Every line naming %s in this repository (whole word, %d): %d in editSites above, %d code line(s) naming something else, %d comment/doc line(s). In test files: %d, %d and %d of those.",
+		leaf, total, edits, len(code), len(comments), editTests, inTests(code), inTests(comments))}
 	if len(otherDecls) > 0 {
 		shown := otherDecls
 		if len(shown) > 12 {
@@ -161,12 +176,10 @@ func renderMentionGroup(title string, lines []mentionLine, decl map[string]strin
 		}
 		per[l.file]++
 	}
+	// Every file, never "and N more": a truncated list was read as
+	// "something might be hidden" and searched (jackson forProperty probe).
 	parts := make([]string, 0, len(files))
-	for i, f := range files {
-		if i == 15 {
-			parts = append(parts, fmt.Sprintf("and %d more file(s)", len(files)-15))
-			break
-		}
+	for _, f := range files {
 		parts = append(parts, fmt.Sprintf("%s (%d)", f, per[f]))
 	}
 	return []string{fmt.Sprintf("%s (%d, by file): %s", title, len(lines), strings.Join(parts, ", "))}

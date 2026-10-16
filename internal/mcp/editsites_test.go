@@ -32,7 +32,7 @@ func TestChangeImpactEditSites(t *testing.T) {
 		t.Errorf("a docstring is no edit site:\n%s", joined)
 	}
 	other := strings.Join(toStrings(anySlice(out["otherMentions"])), "\n")
-	if !strings.Contains(other, "Every line naming get_command in this repository (whole word, 5): 4 in editSites above, 0 code line(s) naming something else, 1 comment/doc line(s).") {
+	if !strings.Contains(other, "Every line naming get_command in this repository (whole word, 5): 4 in editSites above, 0 code line(s) naming something else, 1 comment/doc line(s). In test files: 0, 0 and 0 of those.") {
 		t.Errorf("partition wrong:\n%s", other)
 	}
 	rendered, ok := renderChangeImpactAsText(out)
