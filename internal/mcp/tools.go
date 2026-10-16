@@ -3515,6 +3515,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	applyCompilerBackedCompleteness(out, r)
 	h.addUnindexedNote(ctx, out, targetLeaf)
 	markNameMatchedSites(out, r)
+	if rows := h.impactEditSites(r, callPositions, memberPositions); len(rows) > 0 {
+		out["editSites"] = rows
+	}
 	if familyPickNote == "" {
 		familyPickNote = h.sameFileNamesakesNote(ctx, query, stringArg(args, "file", ""), r)
 	}
