@@ -67,8 +67,7 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 	sort.Strings(otherDecls)
 	blocks := map[string]map[int]bool{}
 	read := 0
-	var code, comments []mentionLine
-	strs := 0
+	var code, comments, strs []mentionLine
 	edits := 0
 	for _, hit := range res.Hits {
 		if !word.MatchString(hit.Text) {
@@ -111,13 +110,16 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 		case "comment":
 			comments = append(comments, m)
 		case "string":
-			strs++
-			code = append(code, m)
+			// Inside a string: a generated-code template, a getattr name, a
+			// message. It may be a use the graph cannot see (werkzeug's
+			// rules.py builds `converter.to_url(...)` from a string), so it
+			// is never filed as "something else".
+			strs = append(strs, m)
 		default:
 			code = append(code, m)
 		}
 	}
-	total := edits + len(code) + len(comments)
+	total := edits + len(code) + len(strs) + len(comments)
 	inTests := func(ls []mentionLine) int {
 		n := 0
 		for _, l := range ls {
@@ -133,8 +135,8 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 			editTests++
 		}
 	}
-	out := []string{fmt.Sprintf("Every line naming %s in this repository (whole word, %d): %d in editSites above, %d code line(s) naming something else, %d comment/doc line(s). In test files: %d, %d and %d of those.",
-		leaf, total, edits, len(code), len(comments), editTests, inTests(code), inTests(comments))}
+	out := []string{fmt.Sprintf("Every line naming %s in this repository (whole word, %d): %d in editSites above, %d code line(s) naming something else, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d and %d of those.",
+		leaf, total, edits, len(code), len(strs), len(comments), editTests, inTests(code), inTests(strs), inTests(comments))}
 	if len(otherDecls) > 0 {
 		shown := otherDecls
 		if len(shown) > 12 {
@@ -143,6 +145,7 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 		out = append(out, "other declarations named "+leaf+" (not in this change): "+strings.Join(shown, ", "))
 	}
 	out = append(out, renderMentionGroup("code naming another "+leaf+" (not in this change)", code, otherDecl)...)
+	out = append(out, renderMentionGroup("string literals naming "+leaf+" (a string may be a use the graph cannot see: generated code, getattr, reflection; decide per line)", strs, nil)...)
 	out = append(out, renderMentionGroup("comments/docs naming "+leaf, comments, nil)...)
 	return out
 }
