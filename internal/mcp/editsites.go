@@ -34,9 +34,9 @@ type editSite struct {
 // answer marks as another receiver or a misfit are not edits and are left
 // out. Nil when there is nothing positional to list or the list is too long
 // to be an edit list.
-func (h *Handler) impactEditSites(r *grove.ChangeImpactResult, callers, members map[string]callerPositions) []string {
+func (h *Handler) impactEditSites(r *grove.ChangeImpactResult, callers, members map[string]callerPositions) ([]string, map[string]bool) {
 	if r == nil || h.Root == "" {
-		return nil
+		return nil, nil
 	}
 	files := map[string][]string{}
 	lines := func(path string) []string {
@@ -103,7 +103,7 @@ func (h *Handler) impactEditSites(r *grove.ChangeImpactResult, callers, members 
 		}
 	}
 	if len(out) == 0 || len(out) > editSitesMax {
-		return nil
+		return nil, nil
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].file != out[j].file {
@@ -115,14 +115,16 @@ func (h *Handler) impactEditSites(r *grove.ChangeImpactResult, callers, members 
 		return out[i].col < out[j].col
 	})
 	rows := make([]string, 0, len(out))
+	keys := make(map[string]bool, len(out))
 	for _, s := range out {
+		keys[s.file+":"+strconv.Itoa(s.line)] = true
 		text := strings.TrimSpace(s.text)
 		if len(text) > 160 {
 			text = text[:160] + "…"
 		}
 		rows = append(rows, fmt.Sprintf("%s:%d:%d: %s", s.file, s.line, s.col, text))
 	}
-	return rows
+	return rows, keys
 }
 
 // parsePosition reads "12:5" (line:col) or "12" (line only).

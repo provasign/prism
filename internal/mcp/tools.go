@@ -3515,8 +3515,15 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	applyCompilerBackedCompleteness(out, r)
 	h.addUnindexedNote(ctx, out, targetLeaf)
 	markNameMatchedSites(out, r)
-	if rows := h.impactEditSites(r, callPositions, memberPositions); len(rows) > 0 {
+	if rows, keys := h.impactEditSites(r, callPositions, memberPositions); len(rows) > 0 {
 		out["editSites"] = rows
+		if other := h.impactOtherMentions(ctx, r, targetLeaf, keys); len(other) > 0 {
+			out["otherMentions"] = other
+			if out["coverageNote"] == dynamicCallerNote && !strings.Contains(other[0], "not checked") {
+				// The partition above is the text search this note asked for.
+				out["coverageNote"] = "dynamic-language callers are inferred from names and receiver types; the line count below editSites accounts for every line naming the symbol."
+			}
+		}
 	}
 	if familyPickNote == "" {
 		familyPickNote = h.sameFileNamesakesNote(ctx, query, stringArg(args, "file", ""), r)

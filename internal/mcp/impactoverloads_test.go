@@ -52,7 +52,7 @@ func TestCallSitesByOverloadSkipOtherArity(t *testing.T) {
 		"p/U.java": "package p;\n\npublic class U {\n    void mix(W w, V v) {\n        w.value(\"z\");\n        int n = v.value();\n    }\n    void num(W w) { w.value(3L); }\n}\n",
 	})
 	got := callCompact(t, srv, "change_impact", map[string]any{"name": "W.value"})
-	if !strings.Contains(got, "value(String) — 1 call(s)") || !strings.Contains(got, "p/U.java: 5:11") || strings.Contains(got, "6:") {
+	if !strings.Contains(got, "value(String) — 1 call(s)") || !strings.Contains(got, "p/U.java: 5:11") || strings.Contains(evidenceOnly(got), "6:") {
 		t.Fatalf("other-arity value() listed, or the real call missing:\n%s", got)
 	}
 }
