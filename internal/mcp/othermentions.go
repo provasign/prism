@@ -31,8 +31,10 @@ type mentionLine struct {
 }
 
 // impactOtherMentions partitions every whole-word line naming leaf outside
-// the edit list. editKeys holds "file:line" of each edit row.
-func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpactResult, leaf string, editKeys map[string]bool) []string {
+// the edit list. editKeys holds "file:line" of each edit row; unsure holds
+// the lines the answer already lists as unconfirmed (a field access whose
+// receiver could not be typed), which get their own group.
+func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpactResult, leaf string, editKeys, unsure map[string]bool) []string {
 	if h.Root == "" || leaf == "" || len(editKeys) == 0 {
 		return nil
 	}
@@ -67,7 +69,7 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 	sort.Strings(otherDecls)
 	blocks := map[string]map[int]bool{}
 	read := 0
-	var code, comments, strs []mentionLine
+	var code, comments, strs, unconfirmed []mentionLine
 	edits := 0
 	for _, hit := range res.Hits {
 		if !word.MatchString(hit.Text) {
@@ -87,6 +89,10 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 			text = text[:140] + "…"
 		}
 		m := mentionLine{file, hit.Line, text}
+		if unsure[fmt.Sprintf("%s:%d", file, hit.Line)] {
+			unconfirmed = append(unconfirmed, m)
+			continue
+		}
 		kind := ""
 		switch {
 		case docFileExts[ext], isCommentLineExt(hit.Text, ext):
@@ -119,7 +125,7 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 			code = append(code, m)
 		}
 	}
-	total := edits + len(code) + len(strs) + len(comments)
+	total := edits + len(unconfirmed) + len(code) + len(strs) + len(comments)
 	inTests := func(ls []mentionLine) int {
 		n := 0
 		for _, l := range ls {
@@ -135,8 +141,14 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 			editTests++
 		}
 	}
-	out := []string{fmt.Sprintf("Every line naming %s in this repository (whole word, %d): %d in editSites above, %d code line(s) naming something else, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d and %d of those.",
-		leaf, total, edits, len(code), len(strs), len(comments), editTests, inTests(code), inTests(strs), inTests(comments))}
+	var out []string
+	if len(unconfirmed) == 0 {
+		out = append(out, fmt.Sprintf("Every line naming %s in this repository (whole word, %d): %d in editSites above, %d code line(s) naming something else, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d and %d of those.",
+			leaf, total, edits, len(code), len(strs), len(comments), editTests, inTests(code), inTests(strs), inTests(comments)))
+	} else {
+		out = append(out, fmt.Sprintf("Every line naming %s in this repository (whole word, %d): %d in editSites above, %d unconfirmed (receiver not typed), %d code line(s) naming something else, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d, %d and %d of those.",
+			leaf, total, edits, len(unconfirmed), len(code), len(strs), len(comments), editTests, inTests(unconfirmed), inTests(code), inTests(strs), inTests(comments)))
+	}
 	if len(otherDecls) > 0 {
 		shown := otherDecls
 		if len(shown) > 12 {
@@ -144,6 +156,7 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 		}
 		out = append(out, "other declarations named "+leaf+" (not in this change): "+strings.Join(shown, ", "))
 	}
+	out = append(out, renderMentionGroup("unconfirmed: names "+leaf+" but the receiver could not be typed (the ambiguousAccesses above; decide per line)", unconfirmed, nil)...)
 	out = append(out, renderMentionGroup("code naming another "+leaf+" (not in this change)", code, otherDecl)...)
 	out = append(out, renderMentionGroup("string literals naming "+leaf+" (a string may be a use the graph cannot see: generated code, getattr, reflection; decide per line)", strs, nil)...)
 	out = append(out, renderMentionGroup("comments/docs naming "+leaf, comments, nil)...)

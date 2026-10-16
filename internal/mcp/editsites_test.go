@@ -1,6 +1,8 @@
 package mcp
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -67,4 +69,70 @@ func evidenceOnly(rendered string) string {
 		}
 	}
 	return b.String()
+}
+
+// A field rename gets the same edit list: the declaration and every
+// confirmed access line (wide bed, cli Command.Subcommands had none).
+func TestChangeImpactEditSitesField(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"go.mod": "module example.com/app\n\ngo 1.22\n",
+		"command.go": "package app\n\ntype Command struct {\n\tSubcommands []*Command\n\tName        string\n}\n\n" +
+			"// Visible returns the Subcommands.\nfunc (c *Command) Visible() []*Command {\n\treturn c.Subcommands\n}\n\n" +
+			"func build() *Command {\n\treturn &Command{Subcommands: nil}\n}\n",
+	})
+	raw, err := h.Invoke("prism_change_impact", map[string]any{"query": "Command.Subcommands"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := raw.(map[string]any)
+	joined := strings.Join(toStrings(anySlice(out["editSites"])), "\n")
+	for _, want := range []string{
+		"command.go:4:2: Subcommands []*Command",
+		"command.go:10:11: return c.Subcommands",
+		"command.go:14:18: return &Command{Subcommands: nil}",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("missing %q in editSites:\n%s", want, joined)
+		}
+	}
+	other := strings.Join(toStrings(anySlice(out["otherMentions"])), "\n")
+	if !strings.Contains(other, "(whole word, 4): 3 in editSites above, 0 code line(s) naming something else, 0 string literal(s), 1 comment/doc line(s).") {
+		t.Errorf("partition wrong:\n%s", other)
+	}
+	rendered, ok := renderChangeImpactAsText(out)
+	if !ok || !strings.Contains(rendered, "editSites (3;") {
+		t.Fatalf("editSites not rendered:\n%s", rendered)
+	}
+}
+
+// Past editSitesMax the list is per file as line:col positions, never
+// dropped (gson TypeAdapter.write: 137 declarations).
+func TestEditCollectorCompactForm(t *testing.T) {
+	dir := t.TempDir()
+	var src strings.Builder
+	for i := 0; i < editSitesMax+10; i++ {
+		src.WriteString("x = write(1)\n")
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a.py"), []byte(src.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "b.py"), []byte("y = write(2)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := newEditCollector(dir)
+	for i := 1; i <= editSitesMax+10; i++ {
+		c.add("a.py", i, 0, "write")
+	}
+	c.add("b.py", 1, 0, "write")
+	rows, keys := c.finish()
+	if len(rows) != 2 || len(keys) != editSitesMax+11 {
+		t.Fatalf("rows=%d keys=%d:\n%s", len(rows), len(keys), strings.Join(rows, "\n"))
+	}
+	if !strings.HasPrefix(rows[0], "a.py (160): 1:5 2:5 3:5") || rows[1] != "b.py (1): 1:5" {
+		t.Errorf("compact rows wrong:\n%s", strings.Join(rows, "\n"))
+	}
+	out := map[string]any{"editSites": rows, "editSiteCount": c.count()}
+	if got := formatEditSitesText(out); !strings.HasPrefix(got, "editSites (161 in 2 files;") {
+		t.Errorf("header wrong:\n%s", got)
+	}
 }
