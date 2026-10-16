@@ -29,6 +29,23 @@ func rankSearchSymbols(symbols []grove.SymbolRecord, query string) []rankedSearc
 		out[i] = rankedSearchSymbol{symbol: sym, matchKind: kind, tier: tier}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].tier > out[j].tier })
+	// Grove has no order between symbols at one location (a Java record
+	// component is a field and an accessor on the same line); the two came
+	// back either way round across runs (jackson replay, 2026-10-16).
+	for i := 0; i < len(out); {
+		j := i + 1
+		for j < len(out) && out[j].tier == out[i].tier && sameSymbolSpot(out[j].symbol, out[i].symbol) {
+			j++
+		}
+		run := out[i:j]
+		sort.SliceStable(run, func(a, b int) bool {
+			if run[a].symbol.Kind != run[b].symbol.Kind {
+				return run[a].symbol.Kind < run[b].symbol.Kind
+			}
+			return run[a].symbol.QualifiedName < run[b].symbol.QualifiedName
+		})
+		i = j
+	}
 	// For weaker path/signature/body matches, give each file a first slot
 	// before taking a second from the same file. Keep exact/name matches in
 	// Grove order: an explicitly named symbol must not lose its position.
@@ -171,4 +188,8 @@ func listedOwner(qn string, listed map[string]bool) string {
 		}
 	}
 	return ""
+}
+
+func sameSymbolSpot(a, b grove.SymbolRecord) bool {
+	return a.FilePath == b.FilePath && a.Span.Start == b.Span.Start
 }

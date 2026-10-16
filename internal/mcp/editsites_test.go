@@ -1,10 +1,13 @@
 package mcp
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/grove"
 )
 
 // editSites lists every occurrence the change touches in grep's shape:
@@ -34,7 +37,7 @@ func TestChangeImpactEditSites(t *testing.T) {
 		t.Errorf("a docstring is no edit site:\n%s", joined)
 	}
 	other := strings.Join(toStrings(anySlice(out["otherMentions"])), "\n")
-	if !strings.Contains(other, "Every line naming get_command in this repository (whole word, 5): 4 in editSites above, 0 code line(s) naming something else, 0 string literal(s), 1 comment/doc line(s). In test files: 0, 0, 0 and 0 of those.") {
+	if !strings.Contains(other, "Every line naming get_command in this repository (whole word, 5): 4 in editSites above, 0 code line(s) not tied to this change, 0 string literal(s), 1 comment/doc line(s). In test files: 0, 0, 0 and 0 of those.") {
 		t.Errorf("partition wrong:\n%s", other)
 	}
 	rendered, ok := renderChangeImpactAsText(out)
@@ -134,5 +137,24 @@ func TestEditCollectorCompactForm(t *testing.T) {
 	out := map[string]any{"editSites": rows, "editSiteCount": c.count()}
 	if got := formatEditSitesText(out); !strings.HasPrefix(got, "editSites (161 in 2 files;") {
 		t.Errorf("header wrong:\n%s", got)
+	}
+}
+
+// When the answer is partial, code the graph did not tie to the change is
+// not called "another" symbol: some of it may be uses (zod _zod.parse).
+func TestOtherMentionsPartialLabel(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.ts"), []byte("interface I {\n  parse(): void\n}\nx._zod.parse()\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := &Handler{Root: dir}
+	keys := map[string]bool{"a.ts:2": true}
+	got := strings.Join(h.impactOtherMentions(context.Background(), &grove.ChangeImpactResult{}, "parse", keys, nil, true), "\n")
+	if !strings.Contains(got, "1 code line(s) not tied to this change") || !strings.Contains(got, "some of these may be uses") || strings.Contains(got, "naming another") {
+		t.Errorf("partial label wrong:\n%s", got)
+	}
+	got = strings.Join(h.impactOtherMentions(context.Background(), &grove.ChangeImpactResult{}, "parse", keys, nil, false), "\n")
+	if !strings.Contains(got, "code naming another parse (not in this change) (1):") {
+		t.Errorf("closed label wrong:\n%s", got)
 	}
 }

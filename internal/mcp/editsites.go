@@ -210,7 +210,8 @@ func (h *Handler) attachEditSites(ctx context.Context, out map[string]any, r *gr
 	}
 	out["editSites"] = rows
 	out["editSiteCount"] = c.count()
-	other := h.impactOtherMentions(ctx, r, leaf, keys, unsure)
+	partial, _ := out["completeness"].(string)
+	other := h.impactOtherMentions(ctx, r, leaf, keys, unsure, partial == "partial")
 	if len(other) == 0 {
 		return
 	}
