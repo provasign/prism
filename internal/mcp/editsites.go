@@ -210,8 +210,13 @@ func (h *Handler) attachEditSites(ctx context.Context, out map[string]any, r *gr
 	}
 	out["editSites"] = rows
 	out["editSiteCount"] = c.count()
-	partial, _ := out["completeness"].(string)
-	other := h.impactOtherMentions(ctx, r, leaf, keys, unsure, partial == "partial")
+	// Dynamic-language answers are always partial (callers are inferred);
+	// the "some of these may be uses" label there sent agents to grep the
+	// listed lines (rich highlight, 2 of 2 runs, 2026-10-16), so it is kept
+	// for answers partial for another reason (zod _zod.parse, TypeScript).
+	completeness, _ := out["completeness"].(string)
+	partial := completeness == "partial" && out["coverageNote"] != dynamicCallerNote
+	other := h.impactOtherMentions(ctx, r, leaf, keys, unsure, partial)
 	if len(other) == 0 {
 		return
 	}
