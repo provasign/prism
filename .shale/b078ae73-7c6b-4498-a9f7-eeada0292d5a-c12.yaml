@@ -1,0 +1,1637 @@
+shale_version: "0"
+id: b078ae73-7c6b-4498-a9f7-eeada0292d5a-c12
+created_at: 2026-10-16T11:34:38.576506Z
+finalized_at: 2026-10-16T15:11:04.732956Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; gh pr merge 68 --merge -d 2>&1 | tail -2; git fetch -q origin; git checkout -q main; git reset -q --hard origin/main; git log --oneline -1; git tag -a v0.87.27 -m "v0.87.27" && git push -q origin v0.87.27 && echo tagged; sleep 60; gh run list --limit 4
+      at: 2026-10-16T11:34:38.576506Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; gh run watch 38894579594 --exit-status > /dev/null 2>&1; echo release-rc=$?; gh release view v0.87.27 --json assets -q '.assets|length'
+      at: 2026-10-16T11:35:55.317393Z
+      classified: other
+    - cmd: |-
+        M=~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory; cat >> $M/project_php_pass_2026_10_18.md <<'EOF'
+
+        ## RELEASED v0.87.27 (2026-10-16): editSites + line partition
+        - change_impact gives `editSites` (path:line:col: text of every occurrence the change touches; field renames from confirmed accesses; >150 rows -> per file line:col) and a whole-word line partition (editSites / unconfirmed field accesses / other code / strings / comments, test counts). Over the 36k budget the partition lists shrink first (else gson JsonWriter.value lost callSitesByOverload).
+        - 3-replicate wide A/B (60 pairs, results/partition-rep{1,2,3}-2026-10-18) vs v0.87.26: resolved 60/60 both, turns 0.84x, searches after answer 0.67x, tokens 0.83x, cost 0.91x. Losses/ties = cells that got no list (gson >150 cap, cli field path) — fixed before release, NOT re-measured.
+        - Why it worked where mention lists failed 3x: the grep before sed was rebuilding the line list; giving lines in grep's shape + accounting for every other line removed it.
+        - Open: zod `parse` partition "not checked" (>5000 hits); search equal-score tie order nondeterministic (jackson pr6030 replay).
+        EOF
+        sed -i '' 's|^- \[PHP pass 2026-10-18\](project_php_pass_2026_10_18.md) — .*|- [PHP pass + editSites 2026-10-18](project_php_pass_2026_10_18.md) — RELEASED v0.87.26 (PHP) and v0.87.27 (editSites + line partition: turns 0.84x, cost 0.91x over 60 pairs)|' $M/MEMORY.md; grep -n "PHP pass" $M/MEMORY.md
+      at: 2026-10-16T11:36:03.232716Z
+      classified: other
+    - cmd: cat /tmp/partition_reps.sh
+      at: 2026-10-16T12:18:02.468374Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; python3 -c "
+        import json;m=json.load(open('results/coverage-ab-manifest.json'));print(type(m), (list(m.keys()) if isinstance(m,dict) else m[:2]))"
+      at: 2026-10-16T12:18:04.932722Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; cp ~/prism-ab-bins/prism-partition5 ~/prism-ab-bins/prism-v0.87.27-local; echo '["deephard__gson__JsonWriter_value_typed_names","deephard__gson__TypeAdapter_writeValue_swap","wide__cli__Command_Subcommands"]' > results/fix3-manifest.json
+        cat > /tmp/fix3.sh <<'EOF'
+        #!/bin/zsh
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        PRISM_BODY_BASELINE_BIN=$HOME/prism-ab-bins/prism-v0.87.26-darwin-arm64 PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-v0.87.27-local python3 -u runners/run_overnight.py --manifest results/fix3-manifest.json --out-dir results/fix3-2026-10-16 --native-arm prism_body_baseline --prism-arm prism_body_exp --model claude-sonnet-5-5 > results/fix3-2026-10-16.log 2>&1
+        echo DONE > results/fix3-done.flag
+        EOF
+        rm -f results/fix3-done.flag; nohup zsh /tmp/fix3.sh > /dev/null 2>&1 & echo launched
+      at: 2026-10-16T12:18:10.10191Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; grep -n "type Options" -A30 internal/textsearch/*.go | head -45; grep -n "Truncated\s*=\|Truncated =\|MaxHits" internal/textsearch/*.go | grep -v _test | head
+      at: 2026-10-16T12:18:12.845744Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $W; echo substr $(rg -F -s -c parse --no-filename | paste -sd+ - | bc); echo word $(rg -s -c -w parse --no-filename | paste -sd+ - | bc); time (rg -s -w -n parse > /dev/null)
+      at: 2026-10-16T12:18:20.493887Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; python3 - <<'EOF'
+        p='internal/mcp/othermentions.go'
+        s=open(p).read()
+        old='''	res := textsearch.Search(ctx, h.Root, leaf, textsearch.Options{
+        		CaseSensitive: true, MaxHits: 5000, MaxPerFile: 400, Timeout: 5 * time.Second,
+        	})'''
+        new='''	// Whole-word regex: a common name (zod parse, 5107 lines) passed the
+        	// old 5000-hit cap on substring hits alone (parseAsync, safeParse).
+        	res := textsearch.Search(ctx, h.Root, wordPattern(leaf), textsearch.Options{
+        		Regex: true, CaseSensitive: true, MaxHits: 50000, MaxPerFile: 5000, Timeout: 10 * time.Second,
+        	})'''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('if _, ok := blocks[file]; !ok && read < 80 {','if _, ok := blocks[file]; !ok && read < 1000 {')
+        s+='''
+        // wordPattern is a regex for leaf as a whole word; \\b is only placed next to
+        // a word character (a leading $ has no boundary before it).
+        func wordPattern(leaf string) string {
+        	isWord := func(c byte) bool {
+        		return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= 0x80
+        	}
+        	p := regexp.QuoteMeta(leaf)
+        	if isWord(leaf[0]) {
+        		p = `\\b` + p
+        	}
+        	if isWord(leaf[len(leaf)-1]) {
+        		p += `\\b`
+        	}
+        	return p
+        }
+        '''
+        open(p,'w').write(s)
+        EOF
+        go build ./... && go test ./internal/mcp -run 'EditSites|EditCollector|Compact' 2>&1 | tail -5
+      at: 2026-10-16T12:18:37.442269Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; grep -rn "sort.Slice\b\|sort.SliceStable" internal/mcp/search*.go internal/mcp/tools.go internal/ranking/*.go 2>/dev/null | grep -v _test | head -40
+      at: 2026-10-16T12:18:41.162694Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/p2; python3 -c "
+        import json
+        A=json.load(open('out-r15-base/FasterXML__jackson-databind__pr6030.json'))
+        for a in A:
+          if a['op']=='search' and a['args'].get('terms')==['2883','unwrapped','Unwrapped']:
+            L=a['out'].split('\n'); print('\n'.join(x[:170] for x in L[25:42]))"
+      at: 2026-10-16T12:18:46.611697Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; sed -n 1,60p internal/mcp/searchrank.go
+      at: 2026-10-16T12:18:55.610041Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; python3 - <<'EOF'
+        p='internal/mcp/searchrank.go'
+        s=open(p).read()
+        old='''	sort.SliceStable(out, func(i, j int) bool { return out[i].tier > out[j].tier })
+        '''
+        new='''	sort.SliceStable(out, func(i, j int) bool { return out[i].tier > out[j].tier })
+        	// Grove has no order between symbols at one location (a Java record
+        	// component is a field and an accessor on the same line); the two came
+        	// back either way round across runs (jackson replay, 2026-10-16).
+        	for i := 0; i < len(out); {
+        		j := i + 1
+        		for j < len(out) && out[j].tier == out[i].tier && sameSymbolSpot(out[j].symbol, out[i].symbol) {
+        			j++
+        		}
+        		run := out[i:j]
+        		sort.SliceStable(run, func(a, b int) bool {
+        			if run[a].symbol.Kind != run[b].symbol.Kind {
+        				return run[a].symbol.Kind < run[b].symbol.Kind
+        			}
+        			return run[a].symbol.QualifiedName < run[b].symbol.QualifiedName
+        		})
+        		i = j
+        	}
+        '''
+        assert old in s; s=s.replace(old,new)
+        s+='''
+        func sameSymbolSpot(a, b grove.SymbolRecord) bool {
+        	return a.FilePath == b.FilePath && a.Span.Start == b.Span.Start
+        }
+        '''
+        open(p,'w').write(s)
+        EOF
+        cat >> internal/mcp/searchrank_test.go <<'EOF'
+
+        // Symbols at one location come back in one order whatever grove returned.
+        func TestRankSearchSymbolsSameSpotDeterministic(t *testing.T) {
+        	m := grove.SymbolRecord{Name: "unwrapped", QualifiedName: "R.unwrapped", Kind: "method", FilePath: "R.java", Span: grove.SpanInfo{Start: 46, End: 46}}
+        	f := m
+        	f.Kind = "field"
+        	a := rankSearchSymbols([]grove.SymbolRecord{m, f}, "unwrapped")
+        	b := rankSearchSymbols([]grove.SymbolRecord{f, m}, "unwrapped")
+        	if a[0].symbol.Kind != "field" || b[0].symbol.Kind != "field" {
+        		t.Fatalf("order depends on input: %s/%s vs %s/%s", a[0].symbol.Kind, a[1].symbol.Kind, b[0].symbol.Kind, b[1].symbol.Kind)
+        	}
+        }
+        EOF
+        ls internal/mcp/searchrank_test.go >/dev/null && head -12 internal/mcp/searchrank_test.go | grep -q grove || echo "need import"; go test ./internal/mcp -run 'RankSearch' 2>&1 | tail -5
+      at: 2026-10-16T12:19:06.498096Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; body=$(cat internal/mcp/searchrank_test.go); printf 'package mcp\n\nimport (\n\t"testing"\n\n\t"github.com/provasign/prism/internal/grove"\n)\n%s\n' "$body" > internal/mcp/searchrank_test.go; go test ./internal/mcp -run 'RankSearch' 2>&1 | tail -5
+      at: 2026-10-16T12:19:11.341015Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; go build -o ~/prism-ab-bins/prism-p6 ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "grep-rc=$?"
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/p2; rm -rf out-p6a out-p6b; REPLAY_OUT=out-p6a python3 replay_dbg.py ~/prism-ab-bins/prism-p6 > /dev/null 2>&1; REPLAY_OUT=out-p6b python3 replay_dbg.py ~/prism-ab-bins/prism-p6 > /dev/null 2>&1
+        python3 - <<'EOF'
+        import json,glob,os
+        d=0;n=0
+        for f in glob.glob('out-p6a/*.json'):
+          A=json.load(open(f));B=json.load(open(f.replace('out-p6a','out-p6b')))
+          for a,b in zip(A,B):
+            n+=1
+            if a['out']!=b['out']: d+=1; print('NONDET',os.path.basename(f),a['op'],a['args'])
+        print('calls',n,'run-to-run diffs',d)
+        for x in json.load(open('out-p6a/wide__zod__ZodTypeInternals_parse.json')):
+          if x['op']=='change_impact':
+            o=x['out']; i=o.find('Every line naming'); print(len(o),x['secs'],'s'); print('\n'.join(l[:200] for l in o[i:].split('\n')[:6]))
+        EOF
+        sed -i '' 's/out-r15-cand/out-p6a/' cmp15.py; python3 cmp15.py
+      at: 2026-10-16T12:20:54.580675Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; python3 -c "
+        import json;d=json.load(open('tasks/e2e/wide__zod__ZodTypeInternals_parse.json'))
+        print(d['instruction'][:700]); print(d.get('gold_sites'), str(d.get('gold_counts'))[:400])"
+      at: 2026-10-16T12:21:01.721395Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/p2; python3 -c "
+        import json
+        for x in json.load(open('out-p6a/wide__zod__ZodTypeInternals_parse.json')):
+          if x['op']=='change_impact': o=x['out']; print(x['args']); print(o[:o.find('Every line naming')][:3500])"; cd wt/wide__zod__ZodTypeInternals_parse; rg -n "_zod\.parse\b" packages/zod/src/v4/core/schemas.ts | head -5; rg -c "_zod\.parse\b" | head
+      at: 2026-10-16T12:21:07.979732Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; grep -rhoE 'Completeness\s*=\s*"[a-z-]+"' --include=*.go . | sort | uniq -c | sort -rn | head -20
+      at: 2026-10-16T12:21:21.717561Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; grep -rhoE 'Completeness *= *"[a-z-]+"' . 2>/dev/null | sort | uniq -c | sort -rn | head -20
+      at: 2026-10-16T12:21:23.832092Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign; grep -rnoE '"(closed|partial|member-accesses|compiler[a-z-]*|open)"' grove/*.go grove/internal 2>/dev/null | grep -i complet | head; grep -rn 'Completeness = ' grove --include='*.go' 2>/dev/null | head -10
+      at: 2026-10-16T12:21:26.543183Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; python3 - <<'EOF'
+        import re
+        p='internal/mcp/othermentions.go'
+        s=open(p).read()
+        s=s.replace('func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpactResult, leaf string, editKeys, unsure map[string]bool) []string {',
+        '''//
+        // partial: the answer says its site list is incomplete, so a code line the
+        // graph did not tie to the change may still be a use (zod
+        // _$ZodTypeInternals.parse: ~60 `inst._zod.parse` uses were filed as
+        // "naming another parse").
+        func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpactResult, leaf string, editKeys, unsure map[string]bool, partial bool) []string {''')
+        s=s.replace('''	out = append(out, renderMentionGroup("code naming another "+leaf+" (not in this change)", code, otherDecl)...)''','''	codeTitle := "code naming another " + leaf + " (not in this change)"
+        	if partial {
+        		codeTitle = "code naming " + leaf + " that the graph did not tie to this change (the answer above is partial, so some of these may be uses; decide per line)"
+        	}
+        	out = append(out, renderMentionGroup(codeTitle, code, otherDecl)...)''')
+        old_hdr='%d code line(s) naming something else'
+        assert s.count(old_hdr)==2
+        s=s.replace('''	var out []string
+        	if len(unconfirmed) == 0 {''','''	else_ := "naming something else"
+        	if partial {
+        		else_ = "not tied to this change"
+        	}
+        	var out []string
+        	if len(unconfirmed) == 0 {''')
+        s=s.replace('%d code line(s) naming something else','%d code line(s) %s')
+        s=s.replace('in editSites above, %d code line(s) %s, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d and %d of those.",\n\t\t\tleaf, total, edits, len(code),','in editSites above, %d code line(s) %s, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d and %d of those.",\n\t\t\tleaf, total, edits, len(code), else_,')
+        s=s.replace('%d unconfirmed (receiver not typed), %d code line(s) %s, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d, %d and %d of those.",\n\t\t\tleaf, total, edits, len(unconfirmed), len(code),','%d unconfirmed (receiver not typed), %d code line(s) %s, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d, %d and %d of those.",\n\t\t\tleaf, total, edits, len(unconfirmed), len(code), else_,')
+        open(p,'w').write(s)
+        p='internal/mcp/editsites.go'
+        s=open(p).read()
+        s=s.replace('other := h.impactOtherMentions(ctx, r, leaf, keys, unsure)','partial, _ := out["completeness"].(string)\n\tother := h.impactOtherMentions(ctx, r, leaf, keys, unsure, partial == "partial")')
+        open(p,'w').write(s)
+        EOF
+        go vet ./internal/mcp && grep -n "else_" internal/mcp/othermentions.go | head
+      at: 2026-10-16T12:21:41.710706Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; sed -i '' 's/else_/codeKind/g' internal/mcp/othermentions.go; cat >> internal/mcp/editsites_test.go <<'EOF'
+
+        // When the answer is partial, code the graph did not tie to the change is
+        // not called "another" symbol: some of it may be uses (zod _zod.parse).
+        func TestOtherMentionsPartialLabel(t *testing.T) {
+        	dir := t.TempDir()
+        	if err := os.WriteFile(filepath.Join(dir, "a.ts"), []byte("interface I {\n  parse(): void\n}\nx._zod.parse()\n"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	h := &Handler{Root: dir}
+        	keys := map[string]bool{"a.ts:2": true}
+        	got := strings.Join(h.impactOtherMentions(context.Background(), &grove.ChangeImpactResult{}, "parse", keys, nil, true), "\n")
+        	if !strings.Contains(got, "1 code line(s) not tied to this change") || !strings.Contains(got, "some of these may be uses") || strings.Contains(got, "naming another") {
+        		t.Errorf("partial label wrong:\n%s", got)
+        	}
+        	got = strings.Join(h.impactOtherMentions(context.Background(), &grove.ChangeImpactResult{}, "parse", keys, nil, false), "\n")
+        	if !strings.Contains(got, "code naming another parse (not in this change) (1):") {
+        		t.Errorf("closed label wrong:\n%s", got)
+        	}
+        }
+        EOF
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/Projects/provasign/prism/internal/mcp/editsites_test.go'
+        s=open(p).read(); s=s.replace('import (\n\t"os"','import (\n\t"context"\n\t"os"',1)
+        s=s.replace('\t"strings"\n\t"testing"\n)','\t"strings"\n\t"testing"\n\n\t"github.com/provasign/prism/internal/grove"\n)',1); open(p,'w').write(s)
+        EOF
+        go test ./internal/mcp -run 'OtherMentions|EditSites|EditCollector' 2>&1 | tail -8
+      at: 2026-10-16T12:21:53.804872Z
+      classified: test
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/prism; sed -i '''' ''s/4 in editSites above, 0 code line(s) naming something else, 0 string literal(s), 1 comment\/doc line(s). In test files: 0, 0, 0 and 0 of those./4 in editSites above, 0 code line(s) not tied to this change, 0 string literal(s), 1 comment\/doc line(s). In test files: 0, 0, 0 and 0 of those./'' internal/mcp/editsites_test.go; go test ./internal/mcp 2>&1 | tail -8'
+      at: 2026-10-16T12:22:53.529415Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; git add internal/mcp && git commit -q -m "change_impact partition: whole-word search, honest label when partial; search: fixed order at one spot
+
+        The partition searched substrings under a 5000-hit cap, so a common name
+        (zod parse, 5107 whole-word lines) came back unchecked; it now searches
+        whole words with a 50000 cap. When the answer is partial, code the graph did
+        not tie to the change is no longer called another symbol: zod's ~60
+        inst._zod.parse uses were filed that way. Search orders symbols at one
+        location (a Java record component's field and accessor) by kind and name;
+        the two came back either way round across runs.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX"; git log --oneline -1; cat /Users/tapabratapal/Projects/provasign/research/harness/results/fix3-done.flag 2>/dev/null; tail -3 /Users/tapabratapal/Projects/provasign/research/harness/results/fix3-2026-10-16.log
+      at: 2026-10-16T12:23:04.706681Z
+      classified: other
+    - cmd: 'W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $W/packages/zod/src/v4/core; sed -n 115,125p schemas.ts; rg -n "^export const \\\$ZodType\b|^export interface \\\$ZodType\b|_zod: " schemas.ts | head -5; sed -n 195,205p schemas.ts; rg -n "export function \\\$constructor" -A12 core.ts | head -25'
+      at: 2026-10-16T12:23:09.906007Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; grep -rln "tsc\|typescript" internal/mcp/*.go | grep -v _test | head; grep -n "func.*[Pp]ositions" internal/mcp/callpositions.go | head
+      at: 2026-10-16T12:23:19.003379Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; grep -n "func (h \*Handler) callerCallPositions\|func callerCallPositions" -A40 internal/mcp/impactoverloads.go | head -70
+      at: 2026-10-16T12:23:21.175771Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results; until [ -f fix3-done.flag ]; do sleep 30; done; python3 - <<'EOF'
+        import json,glob
+        r=json.load(open('fix3-2026-10-16/results.json'))
+        old={}
+        for d in glob.glob('partition-rep*-2026-10-18/results.json'):
+          for c in json.load(open(d)): old.setdefault(c['task'],[]).append(c)
+        for c in r:
+          t=c['task']; n,p=c['native'],c['prism']
+          sid=p['session_id']; f=glob.glob(f'/Users/tapabratapal/.claude/projects/*/{sid}.jsonl'); s=open(f[0]).read() if f else ''
+          print(t[:45].ljust(45),'base',n['resolved'],n['turns'],int(n['tokens']/1000),'k $%.2f'%n['cost_usd'],'| new',p['resolved'],p['turns'],int(p['tokens']/1000),'k $%.2f'%p['cost_usd'],'| editSites' if 'editSites (' in s else '| NO list', p['tool_trace'])
+          print('   A/B before fix (exp turns):',[o['prism']['turns'] for o in old[t]],' baseline turns:',[o['native']['turns'] for o in old[t]])
+        EOF
+      at: 2026-10-16T12:27:34.787723Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results; sid=$(python3 -c "import json;print([c for c in json.load(open('fix3-2026-10-16/results.json')) if 'JsonWriter' in c['task']][0]['prism']['session_id'])"); f=$(ls ~/.claude/projects/*/$sid.jsonl); python3 - "$f" <<'EOF'
+        import json,sys
+        for l in open(sys.argv[1]):
+            d=json.loads(l); m=d.get('message',{})
+            if not isinstance(m,dict) or not isinstance(m.get('content'),list): continue
+            for b in m['content']:
+                if b.get('type')=='tool_use': print('USE', json.dumps(b['input'])[:330])
+                elif b.get('type')=='text' and d.get('type')=='assistant': print('TXT', b['text'][:250])
+        EOF
+      at: 2026-10-16T12:27:40.874868Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; B=~/prism-ab-bins/prism-p7; go build -o $B ./cmd/prism; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad
+        sed "s#^B=[^;]*;#B=$B;#; s/fz15-/fz17-/g; s/FUZZ15/FUZZ17/" $S/p2/fuzzall15.sh > $S/p2/fuzzall17.sh; grep "^B=" $S/p2/fuzzall17.sh | cut -c1-80
+        cat > $S/gate17.sh <<EOF
+        #!/bin/zsh
+        S=$S
+        (cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" > \$S/gotest17.out; echo done >> \$S/gotest17.out) &
+        (cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root \$S/ci-corpus-r17 --prism $B > \$S/ci_r17.out 2>&1; echo ci-rc=\$? >> \$S/ci_r17.out) &
+        (zsh \$S/eval/all.sh \$S/eval /Users/tapabratapal/Projects/provasign/grove > \$S/eval/run-p7.out 2>&1) &
+        (zsh \$S/p2/fuzzall17.sh > \$S/p2/fuzz17.out 2>&1) &
+        (cd \$S/p2 && rm -rf out-p7 && REPLAY_OUT=out-p7 python3 replay_dbg.py $B > /dev/null 2>&1) &
+        wait
+        touch \$S/gate17.done
+        EOF
+        rm -f $S/gate17.done; nohup zsh $S/gate17.sh > /dev/null 2>&1 & echo started
+      at: 2026-10-16T12:27:56.36641Z
+      classified: test
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; until [ -f $S/gate17.done ]; do sleep 30; done; cat $S/gotest17.out; tail -2 $S/ci_r17.out; echo "oracles within: $(grep -c ''within baseline'' $S/eval/run-p7.out)"; grep -v "within baseline\|DONE" $S/eval/run-p7.out; tail -17 $S/p2/fuzz17.out; cd $S/p2; sed -i '''' ''s/out-p6a/out-p7/'' cmp15.py; python3 cmp15.py'
+      at: 2026-10-16T12:38:02.084207Z
+      classified: other
+    - cmd: |-
+        M=~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory; cat >> $M/project_php_pass_2026_10_18.md <<'EOF'
+        - 2026-10-16 paid fix3 rerun (v0.87.27, results/fix3-2026-10-16): all 3 previously list-less cells now get editSites; cli 5/5 turns ($0.11 vs $0.17), gson write 12 vs 13, gson value 14 vs 13 (agent scripted from callSitesByOverload; one post-edit Javadoc grep).
+        - Local after v0.87.27 (ed5eeec, unreleased): partition whole-word regex + 50k cap (zod parse now checked), "not tied to this change ... some may be uses" label when completeness=partial (ALL Python answers are partial -> wording change on Python cells, unmeasured), search same-spot tiebreak (kind, QN).
+        - ENGINE GAP found: zod _$ZodTypeInternals.parse -> grove finds 0 callers of ~60 `inst._zod.parse` uses (inst typed via generic $constructor callback). Fix options: tsc-backed TS call pass (big) or type `x._zod` from a property's unique declared type. Not started; put to Topo.
+        EOF
+        echo ok
+      at: 2026-10-16T12:38:08.217171Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bsre6hqn7.output
+      at: 2026-10-16T12:39:04.546987Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/p2; sed -i '' "s/'code naming another',/'code naming ',/" cmp15.py; python3 cmp15.py
+      at: 2026-10-16T12:39:09.738467Z
+      classified: other
+    - cmd: |-
+        M=~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory; cat > $M/feedback_decide_and_proceed.md <<'EOF'
+        ---
+        name: feedback-decide-and-proceed
+        description: Topo 2026-10-16 "You are the expert here not me" — make the call on experiments, small paid checks and engine work; report decisions, don't hand back option lists
+        metadata:
+          type: feedback
+        ---
+        When I ended with "decisions for you" (run a $3-5 check? build a grove rule?), Topo replied "You are the expert here not me."
+
+        **Why:** option menus push expert judgment back onto the user; extends [[feedback-decide-technical-calls]] and [[feedback-dont-ask-proceed-autonomously]].
+        **How to apply:** decide small paid confirmation runs (single-digit $) and engine work myself, state the call and reason, proceed. Still confirm large/open-ended spend and releases that change direction.
+        EOF
+        sed -i '' 's|^- \[Decide technical calls myself\](feedback_decide_technical_calls.md).*|&\n- [Decide and proceed](feedback_decide_and_proceed.md) — 2026-10-16 "You are the expert here not me": decide small paid checks + engine work, no option menus|' $M/MEMORY.md
+        cd /Users/tapabratapal/Projects/provasign/research/harness; echo '["wide__click__Command_invoke","wide__click__Group_get_command","wide__rich__Highlighter_highlight","wide__rich__ProgressColumn_render","wide__werkzeug__BaseConverter_to_url","wide__werkzeug__Response_get_data","wide__zod__ZodTypeInternals_parse"]' > results/label-manifest.json
+        cat > /tmp/label.sh <<'EOF'
+        #!/bin/zsh
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        for rep in 1 2; do
+        PRISM_BODY_BASELINE_BIN=$HOME/prism-ab-bins/prism-v0.87.27-local PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-p7 python3 -u runners/run_overnight.py --manifest results/label-manifest.json --out-dir results/label-rep$rep-2026-10-16 --native-arm prism_body_baseline --prism-arm prism_body_exp --model claude-sonnet-5-5 > results/label-rep$rep-2026-10-16.log 2>&1
+        done
+        echo DONE > results/label-done.flag
+        EOF
+        rm -f results/label-done.flag; nohup zsh /tmp/label.sh >/dev/null 2>&1 & echo launched
+      at: 2026-10-16T14:25:05.452301Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; git status --short | head -5; git log --oneline -1; grep -rln "fieldType\|FieldType\|memberType\|propertyType" --include=*.go internal 2>/dev/null | grep -v _test | head -20
+      at: 2026-10-16T14:25:09.57716Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; rg -l "fieldType|FieldType|memberType|propertyType|chainType|ChainType" -g '*.go' -g '!*_test.go' | head -20
+      at: 2026-10-16T14:25:12.148986Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git status --short | head && git log --oneline -3 && ls internal/graph | head -80 && wc -l internal/graph/tslocaltypes.go internal/graph/memberclassify.go internal/graph/edges.go
+      at: 2026-10-16T14:25:43.091255Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results; until [ -f label-done.flag ]; do sleep 60; done; python3 - <<'EOF'
+        import json,glob
+        tot={'native':[0,0,0,0],'prism':[0,0,0,0]}
+        rows={}
+        for d in sorted(glob.glob('label-rep*-2026-10-16/results.json')):
+          for c in json.load(open(d)):
+            for arm in ('native','prism'):
+              x=c[arm]; tot[arm][0]+=x['resolved']; tot[arm][1]+=x['turns']; tot[arm][2]+=x['tokens']; tot[arm][3]+=x['cost_usd']
+            rows.setdefault(c['task'],[]).append((c['native']['turns'],c['prism']['turns'],c['native']['resolved'],c['prism']['resolved']))
+        print('v0.87.27 resolved %d turns %d tokens %.2fM cost $%.2f'%(tot['native'][0],tot['native'][1],tot['native'][2]/1e6,tot['native'][3]))
+        print('new      resolved %d turns %d tokens %.2fM cost $%.2f'%(tot['prism'][0],tot['prism'][1],tot['prism'][2]/1e6,tot['prism'][3]))
+        for t,v in rows.items(): print(t[:40].ljust(40),v)
+        EOF
+      at: 2026-10-16T14:25:45.741569Z
+      classified: other
+    - cmd: go build -o /tmp/prism-grove-chain-base ./cmd/prism && Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse && /tmp/prism-grove-chain-base change-impact --help 2>&1 | head -30; ls -a $Z | head; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval/all.sh
+      at: 2026-10-16T14:25:51.193936Z
+      classified: build
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && git status --short | head; rm -rf .grove && time /tmp/prism-grove-chain-base index . 2>&1 | tail -3; /tmp/prism-grove-chain-base change-impact '_$ZodTypeInternals.parse' . > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_before.txt 2>&1; head -60 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_before.txt
+      at: 2026-10-16T14:25:57.05253Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && grep -rnE '\b_zod\??\s*[:]' --include=*.ts packages | grep -v '\.test\.' | head -30; sed -n 100,130p packages/zod/src/v4/core/schemas.ts; grep -n 'interface \$ZodTypeInternals\|interface \$ZodType<\|interface _\$ZodType' packages/zod/src/v4/core/schemas.ts; grep -rn '_zod\.parse' --include=*.ts packages | wc -l
+      at: 2026-10-16T14:26:01.873523Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && grep -rnE '\b_zod\??\s*:' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mts' --include='*.cts' packages scripts 2>/dev/null | head -40; echo ---; sed -n 180,210p packages/zod/src/v4/core/schemas.ts; grep -rn '_zod\.parse\b' --include='*.ts' packages | wc -l
+      at: 2026-10-16T14:26:05.450043Z
+      classified: other
+    - cmd: 'Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && grep -rnE ''^\s*(readonly\s+)?_zod\??\s*:'' --include=''*.ts'' --include=''*.tsx'' --include=''*.mts'' --include=''*.cts'' --include=''*.js'' . 2>/dev/null | grep -v node_modules | awk -F: ''{print $1}'' | sort | uniq -c; grep -rnE ''^\s*(readonly\s+)?_zod\??\s*:'' --include=''*.ts'' . | grep -v ''Internals'' ; sed -n 220,232p packages/zod/src/v4/core/errors.ts; sed -n 1250,1258p packages/zod/src/v4/core/api.ts'
+      at: 2026-10-16T14:26:11.078758Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n '^func \|^type \|^// [A-Z]' tslocaltypes.go | head -100
+      at: 2026-10-16T14:26:21.426533Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 640,1050p tslocaltypes.go
+      at: 2026-10-16T14:26:23.302901Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n 'narrowByChainType\|tsReceiverChainAt\|tsResolveReceiverChain' *.go | grep -v _test
+      at: 2026-10-16T14:26:27.460119Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 4150,4300p edges.go
+      at: 2026-10-16T14:26:32.012044Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && grep -rnE '\.parse\s*=' --include='*.ts' packages | grep -v node_modules | wc -l; grep -rnE '_zod\.parse\s*\(' --include='*.ts' packages | wc -l; grep -rnE '\.parse\b' --include='*.ts' packages | grep -v '_zod\.parse' | grep -E 'zod|internals|\._zod' | head; grep -rn 'parse' packages/zod/src/v4/core/schemas.ts | grep -vE '_zod\.parse' | head -20; ls /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/ | head
+      at: 2026-10-16T14:27:04.782469Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2 && ls; grep -l 'ZodTypeInternals' * 2>/dev/null | head
+      at: 2026-10-16T14:27:09.478104Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2 && python3 -c "
+        import json;d=json.load(open('out18/wide__zod__ZodTypeInternals_parse.json')) if __import__('os').path.exists('out18/wide__zod__ZodTypeInternals_parse.json') else json.load(open('out/wide__zod__ZodTypeInternals_parse.json'))
+        print(list(d.keys()) if isinstance(d,dict) else type(d))
+        for k,v in d.items():
+          s=json.dumps(v); print(k, s[:600])
+        "; ls out18 | head; head -50 check.py
+      at: 2026-10-16T14:27:13.827401Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n '^func \|^// [A-Za-z]' memberclassify.go memberimpact.go | head -80; sed -n 1,60p memberclassify.go
+      at: 2026-10-16T14:27:17.992341Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 154,240p memberclassify.go; grep -n 'memberAnchorLocked\|isCallableKind' *.go | grep -v _test | head -20
+      at: 2026-10-16T14:27:21.481414Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 260,420p changeimpact.go
+      at: 2026-10-16T14:27:25.963597Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n -i 'assign' changeimpact.go | head -30; grep -rn -i 'ReasonAssign\|ReasonWrite\|EdgeWrites\|"writes"' --include=*.go .. | grep -v _test | head
+      at: 2026-10-16T14:27:29.367157Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal && grep -rn -i 'assign' graph/changeimpact.go | head -30; grep -rn 'ReasonAssign\|EdgeWrites\|"writes"' --include='*.go' . | grep -v _test | head
+      at: 2026-10-16T14:27:32.108364Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal && grep -rn 'EdgeReads\|EdgeWrites' --include='*.go' graph | grep -v _test | head -30; sed -n 320,350p native/js_ts.go
+      at: 2026-10-16T14:27:37.87079Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 110,140p changeimpact.go; sed -n 585,610p changeimpact.go; sed -n 1280,1300p changeimpact.go
+      at: 2026-10-16T14:27:40.270268Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n 'addEdge := func\|addEdge = func\|func.*addEdge' edges.go | head; grep -n 'Lines' edges.go | head -30
+      at: 2026-10-16T14:27:47.25053Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 2440,2560p edges.go; sed -n 5760,5830p edges.go
+      at: 2026-10-16T14:27:49.535095Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; ls $Z/.grove; sqlite3 $Z/.grove/*.db '.tables' 2>/dev/null | head; grep -n '_zod\.parse' $Z/packages/zod/src/v4/core/schemas.ts | head -5
+      at: 2026-10-16T14:27:55.640906Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db '.schema symbols' | head -30; sqlite3 $Z/.grove/grove.db "select name, kind, parent_symbol, span_start, span_end from symbols where file_path='packages/zod/src/v4/core/schemas.ts' and span_start<=300 and span_end>=290" 2>&1 | head
+      at: 2026-10-16T14:28:00.133801Z
+      classified: other
+    - cmd: |-
+        Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db "select name, kind, json_array_length(call_sites) from symbols where file_path='packages/zod/src/v4/core/schemas.ts' and name in ('<top-level>','\$ZodType','handleCanaryResult')"; sqlite3 $Z/.grove/grove.db "select call_sites from symbols where file_path='packages/zod/src/v4/core/schemas.ts' and name='<top-level>'" | python3 -c "
+        import json,sys; d=json.load(sys.stdin); print(len(d)); print([c for c in d if 'parse' in json.dumps(c)][:8]); print(d[:2])"; sqlite3 $Z/.grove/grove.db "select call_sites from symbols where file_path='packages/zod/src/v4/core/schemas.ts' and name='handleCanaryResult'"
+      at: 2026-10-16T14:28:06.927365Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal && grep -n 'type AttrSite' -A 15 core/*.go; Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db "select attr_sites from symbols where file_path='packages/zod/src/v4/core/schemas.ts' and name='<top-level>'" | head -c 600
+      at: 2026-10-16T14:28:16.096814Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn 'AttrSites ' --include='*.go' internal/core | head -3; grep -rn 'type CallSite struct' -A 20 $(go env GOMODCACHE)/github.com/provasign/astkit*/ 2>/dev/null | head -40; grep astkit go.mod; cat /Users/tapabratapal/Projects/provasign/go.work
+      at: 2026-10-16T14:28:19.485617Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && grep -rn 'EdgeCalls\|EdgeWrites\|"calls"' --include='*.go' . | grep -v _test | head; Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z; grep -rnE '^\s+parse\??\s*[(:]' --include='*.ts' packages/zod/src/v4 | grep -v test | head
+      at: 2026-10-16T14:28:48.752789Z
+      classified: other
+    - cmd: 'Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z; grep -rnhE ''^\s*(readonly\s+)?_zod\??\s*:'' --include=''*.ts'' packages | sed -E ''s/^\s*//'' | sort | uniq -c | sort -rn | head -20; grep -n ''_zod: T;'' -B8 packages/zod/src/v4/mini/schemas.ts | grep -E ''interface|<T'' ; grep -n ''interface \$ZodCheckInternals\|interface \$ZodCheck<'' -A3 packages/zod/src/v4/core/checks.ts | head; grep -rn ''_zod: Internals'' -B6 packages/zod/src/v4/classic/schemas.ts | head -20'
+      at: 2026-10-16T14:28:55.212506Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 12,146p tslocaltypes.go; sed -n 1049,1130p tslocaltypes.go
+      at: 2026-10-16T14:28:59.469662Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db "select kind, parent_symbol, file_path, span_start, signature from symbols where name='_zod'" | head -20; sqlite3 $Z/.grove/grove.db "select count(*), kind from symbols where name='_zod' group by kind"; sqlite3 $Z/.grove/grove.db "select kind, name, signature from symbols where name in ('SomeType','\$ZodTypeInternals','_\$ZodTypeInternals', '\$ZodType')"
+      at: 2026-10-16T14:29:13.464174Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db "select parent_symbol, file_path, span_start, replace(signature,char(10),' ') from symbols where name='_zod' and file_path not like '%classic/schemas.ts' and signature not like '%Internals%'"; sqlite3 $Z/.grove/grove.db "select file_path, span_start from symbols where name='_zod'" | sort > /tmp/a_unused 2>/dev/null; sqlite3 $Z/.grove/grove.db "select distinct parent_symbol from symbols where name='_zod'" | wc -l
+      at: 2026-10-16T14:29:19.821923Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && awk ''NR>=2960 && NR<=4120 && /len\(cands\) == 0|cands :?= |cands = /{print NR": "$0}'' edges.go; grep -n ''fullChain :\?='' edges.go | head; grep -n ''qualifier, calleeName :\?=\|qualifier :\?= '' edges.go | head'
+      at: 2026-10-16T14:29:49.905396Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 2960,3060p edges.go; grep -n 'traceCalls *=' *.go
+      at: 2026-10-16T14:29:53.661889Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal && grep -n 'Kind[A-Za-z]* *SymbolKind = ' core/types.go; grep -n 'func namedSymbols\|func classBody\|func maskCode\|func (idx \*edgeIndex) jsImportAlias\|func typeSymbolExists\|func graphCallableSymbol\|func filterByParent\|func splitParams\|func tsChosenTypeDecl' graph/*.go
+      at: 2026-10-16T14:29:59.496915Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 250,275p edges.go; sed -n 2395,2410p edges.go; sed -n 1173,1196p tslocaltypes.go; sed -n 60,110p edges.go; sed -n 1,40p jsimports.go
+      at: 2026-10-16T14:30:02.27401Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 187,330p tslocaltypes.go; grep -n 'TypeParameters' ../core/types.go
+      at: 2026-10-16T14:30:12.530011Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db "select replace(signature,char(10),' ') from symbols where name='_zod'" | sed -E 's/<.*//' | sed -E 's/core\.//' | sort | uniq -c | sort -rn | awk '{print $1, $2, $3}' | grep -v 'Internals$' ; sqlite3 $Z/.grove/grove.db "select kind,name,file_path from symbols where name='_zod' and kind!='field'"; sqlite3 $Z/.grove/grove.db "select kind, file_path, span_start, substr(replace(raw_text,char(10),' '),1,150) from symbols where kind='type' and raw_text like '%_zod%' limit 20"
+      at: 2026-10-16T14:30:26.911883Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal && grep -n 'Reason[A-Za-z]* *EdgeReason = ' core/types.go; grep -n 'nativeRef' graph/*.go
+      at: 2026-10-16T14:30:54.316828Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 725,745p graph.go; sed -n 1255,1275p graph.go; grep -rn 'EdgeWrites\|EdgeReads' ../../ --include='*.go' 2>/dev/null | grep -v '_test\|internal/native\|internal/graph' | head
+      at: 2026-10-16T14:30:59.69745Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 700,727p graph.go
+      at: 2026-10-16T14:31:03.151371Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn 'ReasonFuncField\|"func-field"' --include='*.go' . | grep -v '^./internal/graph/edges.go' | head; sed -n 290,325p internal/core/types.go
+      at: 2026-10-16T14:32:02.608431Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -ln 'connection.driver\|ctx.seen' *_test.go; grep -n 'func Test.*Chain' *_test.go | head
+      at: 2026-10-16T14:32:09.529002Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 1,80p generic_extends_test.go; grep -n 'ctx.seen' -B5 -A40 tsreceivers_test.go | head -80
+      at: 2026-10-16T14:32:12.399184Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n 'type edgeIndex struct' edges.go; grep -n 'func maskedSymbolLines' -A 25 localtypes.go; sed -n 364,396p tslocaltypes.go
+      at: 2026-10-16T14:32:16.168217Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 21,30p edges.go; grep -n 'maskedLines sync.Map' edges.go; grep -n 'func tsLocalTypes' -A 12 tslocaltypes.go | head -20
+      at: 2026-10-16T14:32:20.266276Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 75,90p edges.go
+      at: 2026-10-16T14:32:24.634846Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db "select id, annotations, modifiers, span_start, span_end from symbols where name='parse' and parent_symbol='_\$ZodTypeInternals'"; sqlite3 $Z/.grove/grove.db "select raw_text from symbols where name='_zod' and parent_symbol='\$ZodError'"; sqlite3 $Z/.grove/grove.db ".schema graph_edges"; sqlite3 $Z/.grove/grove.db "select kind,name from symbols where name in ('_zod') and kind != 'field'"
+      at: 2026-10-16T14:33:07.942514Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n '"declaration"' *.go | grep -v _test | head -20
+      at: 2026-10-16T14:33:12.44145Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 2395,2440p edges.go; grep -rn 'declaration' ../../internal/graph/declonly_jsts_test.go | head -20
+      at: 2026-10-16T14:33:15.291493Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 1,30p declonly_jsts_test.go; grep -n 'func declarationOnlySymbol' -B 15 -A 30 *.go | head -70
+      at: 2026-10-16T14:33:22.452805Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 1850,1880p edges.go; grep -rn 'graphCallableSymbol(' *.go | grep -v _test | head -20
+      at: 2026-10-16T14:33:26.487222Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 2325,2345p edges.go; grep -rn 'declaration-only\|declOnly\|interface method.*caller\|callers of an interface' changeimpact.go | head
+      at: 2026-10-16T14:33:29.498834Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && sed -n 60,140p score.go; ls testdata | head -30
+      at: 2026-10-16T14:33:35.622738Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n 'func dirOf\|func (idx \*edgeIndex) jsLocalVisible\|func sortSymbols\|func implementorsFor\|func (s \*interfaceSatisfaction) implementorsFor' *.go
+      at: 2026-10-16T14:33:47.835768Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'\np='tslocaltypes.go'\ns=open(p).read()\nold='''func inheritanceClauseTypes(sig, keyword string, stopKeywords ...string) []string {\n\tstart := inheritanceKeyword(sig, keyword)\n\tif start < 0 {\n\t\treturn nil\n\t}'''\nnew='''func inheritanceClauseTypes(sig, keyword string, stopKeywords ...string) []string {\n\tclause, ok := inheritanceClauseText(sig, keyword, stopKeywords...)\n\tif !ok {\n\t\treturn nil\n\t}\n\treturn nominalTypeList(clause, false)\n}\n\n// inheritanceClauseText is the raw text of sig's keyword clause (after the\n// keyword, up to a top-level stop keyword or '{'); ok is false when sig has\n// no such clause.\nfunc inheritanceClauseText(sig, keyword string, stopKeywords ...string) (string, bool) {\n\tstart := inheritanceKeyword(sig, keyword)\n\tif start < 0 {\n\t\treturn \"\", false\n\t}'''\nassert old in s\ns=s.replace(old,new,1)\nold2='''\treturn nominalTypeList(rest[:end], false)\n}\n\nfunc inheritanceKeyword('''\nnew2='''\treturn rest[:end], true\n}\n\nfunc inheritanceKeyword('''\nassert old2 in s\ns=s.replace(old2,new2,1)\nopen(p,'w').write(s)\nEOF\ngo build ./... "
+      at: 2026-10-16T14:33:54.506724Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 455,490p localtypes.go
+      at: 2026-10-16T14:35:43.778347Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        import re
+        p='tspropertytypes.go'
+        s=open(p).read()
+        start=s.index('// splitTopLevel splits s at commas outside brackets.')
+        end=s.index('// topLevelIndex is the index')
+        s=s[:start]+s[end:]
+        s=s.replace('splitTopLevel(rest[1:end])','splitTopLevel(rest[1:end], \',\')')
+        s=s.replace('splitTopLevel(c)...','splitTopLevel(c, \',\')...')
+        s=s.replace('if _, ok := idx.jsImportAlias(symbol.FilePath, head); ok {','if _, _, ok := idx.jsImportAlias(symbol.FilePath, head); ok {')
+        open(p,'w').write(s)
+        EOF
+        go build ./... && go vet ./internal/graph/ 2>&1 | head
+      at: 2026-10-16T14:35:49.690632Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='tslocaltypes.go'
+        s=open(p).read()
+        old='''	typ := tsResolveReceiverChain(idx, localTypes, fullChain, symbol.FilePath, symbol.Language)
+        	if typ == "" {
+        		return cands, nil, false
+        	}'''
+        new='''	typ := tsResolveReceiverChain(idx, localTypes, fullChain, symbol.FilePath, symbol.Language)
+        	if typ == "" {
+        		if tsFamilyLang(symbol.Language) {
+        			// `inst._zod.parse(...)` with inst untyped: the property's
+        			// project-wide declarations may still pin the member
+        			// (tspropertytypes.go).
+        			if targets := tsUntypedPropertyChainTargets(idx, symbol, localTypes, fullChain, calleeName); len(targets) > 0 {
+        				return targets, nil, true
+        			}
+        		}
+        		return cands, nil, false
+        	}'''
+        assert old in s
+        s=s.replace(old,new,1)
+        open(p,'w').write(s)
+        p='edges.go'
+        s=open(p).read()
+        old='''	edges := resolveSymbolCallEdges(idx, symbol, sat)
+        '''
+        new='''	edges := resolveSymbolCallEdges(idx, symbol, sat)
+        	if tsFamilyLang(symbol.Language) {
+        		// Assignments to a method member (`inst._zod.parse = ...`).
+        		edges = append(edges, tsMemberWriteEdges(idx, &symbol)...)
+        	}
+        '''
+        assert old in s
+        s=s.replace(old,new,1)
+        open(p,'w').write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/grove && go build ./... && go vet ./internal/graph/
+      at: 2026-10-16T14:35:59.978441Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal && python3 - <<'EOF'
+        p='core/types.go'
+        s=open(p).read()
+        old='''	ReasonImplicitDunder EdgeReason = "implicit-dunder" // language-implicit protocol method (e.g. Python __setattr__ on "x.y = v") with no call site in source
+        '''
+        new=old+'''	// ReasonMemberWrite: an assignment to a method member through a resolved
+        	// receiver (`inst._zod.parse = ...`), recorded as a writes edge to the
+        	// member's declaration: a rename or signature change breaks it.
+        	ReasonMemberWrite EdgeReason = "member-write"
+        '''
+        s=s.replace(old,new,1)
+        open(p,'w').write(s)
+        p='graph/tspropertytypes.go'
+        s=open(p).read()
+        s=s.replace('Source: core.EvidenceSourceHeuristic, Reason: core.ReasonASTNarrowed, Lines: pos})','Source: core.EvidenceSourceHeuristic, Reason: core.ReasonMemberWrite, Lines: pos})')
+        open(p,'w').write(s)
+        p='graph/changeimpact.go'
+        s=open(p).read()
+        a='''	nativeRef := e.Source == core.EvidenceSourceNative && (e.Type == core.EdgeReads || e.Type == core.EdgeWrites)
+        	if e.Type != core.EdgeCalls && !nativeRef || e.Lines == "" {'''
+        b='''	nativeRef := e.Source == core.EvidenceSourceNative && (e.Type == core.EdgeReads || e.Type == core.EdgeWrites) ||
+        		e.Reason == core.ReasonMemberWrite
+        	if e.Type != core.EdgeCalls && !nativeRef || e.Lines == "" {'''
+        assert a in s; s=s.replace(a,b,1)
+        a='''			nativeRef := edge.Source == core.EvidenceSourceNative &&
+        				(edge.Type == core.EdgeReads || edge.Type == core.EdgeWrites)'''
+        b='''			nativeRef := edge.Source == core.EvidenceSourceNative &&
+        				(edge.Type == core.EdgeReads || edge.Type == core.EdgeWrites) ||
+        				edge.Reason == core.ReasonMemberWrite // inst._zod.parse = ...'''
+        assert a in s; s=s.replace(a,b,1)
+        a='''			nativeRef := edge.Source == core.EvidenceSourceNative && (edge.Type == core.EdgeReads || edge.Type == core.EdgeWrites)
+        			accept :='''
+        b='''			nativeRef := edge.Source == core.EvidenceSourceNative && (edge.Type == core.EdgeReads || edge.Type == core.EdgeWrites) ||
+        				edge.Reason == core.ReasonMemberWrite
+        			accept :='''
+        assert a in s; s=s.replace(a,b,1)
+        open(p,'w').write(s)
+        EOF
+        cd .. && go build ./... && sed -n 125,145p internal/graph/changeimpact.go
+      at: 2026-10-16T14:36:14.601225Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n 'resolveCallEdges\|EdgeCalls' incremental.go | head -20
+      at: 2026-10-16T14:36:18.463898Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 190,260p incremental.go; grep -n 'func resolverMarker' -A 20 *.go
+      at: 2026-10-16T14:36:20.851885Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 260,330p incremental.go; grep -n 'prevCalls' incremental.go
+      at: 2026-10-16T14:36:25.747676Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 120,190p incremental.go
+      at: 2026-10-16T14:36:29.933027Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='incremental.go'
+        s=open(p).read()
+        a='''		if e.Type != core.EdgeCalls && !resolverMarker(idx, e) {
+        			continue
+        		}'''
+        b='''		if e.Type != core.EdgeCalls && !resolverMarker(idx, e) && e.Reason != core.ReasonMemberWrite {
+        			continue // member writes come from the call pass (tsMemberWriteEdges)
+        		}'''
+        assert a in s; s=s.replace(a,b,1); open(p,'w').write(s)
+        EOF
+        cd .. && cd .. && go build ./... && cd /Users/tapabratapal/Projects/provasign/prism && go build -o /tmp/prism-grove-chain ./cmd/prism && Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse && rm -rf $Z/.grove && (cd $Z && time /tmp/prism-grove-chain index . >/dev/null 2>&1; /tmp/prism-grove-chain change-impact '_$ZodTypeInternals.parse' . > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_after.txt 2>&1); python3 -c "
+        import json;d=json.load(open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_after.txt'))
+        print(d['totalSites'], d.get('editSiteCount'), len(d['callers']))
+        for s in d['relaySites'][:80]: print(s)
+        "
+      at: 2026-10-16T14:36:45.998385Z
+      classified: build
+    - cmd: go list -m all 2>/dev/null | grep grove; Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db "select count(*) from graph_edges where reason='member-write'"; sqlite3 $Z/.grove/grove.db "select from_node, edge_type, reason from graph_edges where to_node like '%_\$ZodTypeInternals.parse%'" | head
+      at: 2026-10-16T14:36:52.107772Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='tspropertytypes.go'
+        s=open(p).read()
+        s=s.replace('''	decls, ok := tsPropertyDecls(idx, prop)
+        	if !ok || len(decls) == 0 {
+        		return nil
+        	}''','''	decls, ok := tsPropertyDecls(idx, prop)
+        	dbg := os.Getenv("GROVE_DBG_PROP") == prop
+        	if dbg {
+        		fmt.Fprintf(os.Stderr, "DBG prop %s member %s decls=%d ok=%v\\n", prop, member, len(decls), ok)
+        	}
+        	if !ok || len(decls) == 0 {
+        		return nil
+        	}''')
+        s=s.replace('''		chosen := tsResolveDeclaredType(idx, d, typ, 0)
+        		if chosen == nil {
+        			return nil
+        		}
+        		found, complete := tsNearestMembers(idx, chosen, member)''','''		chosen := tsResolveDeclaredType(idx, d, typ, 0)
+        		if chosen == nil {
+        			if dbg {
+        				fmt.Fprintf(os.Stderr, "DBG unresolved %s %q\\n", d.file, typ)
+        			}
+        			return nil
+        		}
+        		found, complete := tsNearestMembers(idx, chosen, member)
+        		if dbg {
+        			fmt.Fprintf(os.Stderr, "DBG %s %q -> %s found=%d complete=%v\\n", d.file, typ, chosen.Name, len(found), complete)
+        		}''')
+        s=s.replace('''import (
+        	"regexp"''','''import (
+        	"fmt"
+        	"os"
+        	"regexp"''')
+        open(p,'w').write(s)
+        EOF
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/Projects/provasign/grove/internal/graph/tspropertytypes.go'
+        s=open(p).read()
+        s=s.replace('''func tsPropertyDecls(idx *edgeIndex, prop string) ([]tsPropDecl, bool) {''','''func tsPropertyDecls(idx *edgeIndex, prop string) ([]tsPropDecl, bool) {
+        	dbg := os.Getenv("GROVE_DBG_PROP") == prop''')
+        s=s.replace('''		if s.Kind != core.KindField || s.ParentSymbol == "" {
+        			return nil, false
+        		}''','''		if s.Kind != core.KindField || s.ParentSymbol == "" {
+        			if dbg {
+        				fmt.Fprintf(os.Stderr, "DBG nonfield %s %s %s\\n", s.Kind, s.FilePath, s.ParentSymbol)
+        			}
+        			return nil, false
+        		}''')
+        s=s.replace('''		if loc == nil || text[loc[2]:loc[3]] != prop {
+        			return nil, false // `prop = value`: no declared type
+        		}''','''		if loc == nil || text[loc[2]:loc[3]] != prop {
+        			if dbg {
+        				fmt.Fprintf(os.Stderr, "DBG untyped %s %q\\n", s.FilePath, text)
+        			}
+        			return nil, false // `prop = value`: no declared type
+        		}''')
+        open(p,'w').write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/prism && go build -o /tmp/prism-grove-chain ./cmd/prism && Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse && rm -rf $Z/.grove && cd $Z && GROVE_DBG_PROP=_zod /tmp/prism-grove-chain index . 2>&1 | grep DBG | sort | uniq -c | sort -rn | head -30
+      at: 2026-10-16T14:37:08.744704Z
+      classified: build
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && GROVE_DBG_PROP=_zod /tmp/prism-grove-chain index . 2>&1 | grep -E 'DBG (prop|unres|nonf|untyped)|complete=false' | sort | uniq -c | sort -rn | head -30; grep -n 'ZodJSONSchemaInternals' packages/zod/src/v4/classic/schemas.ts | head -3
+      at: 2026-10-16T14:37:13.513775Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && rm -rf .grove && GROVE_DBG_PROP=_zod /tmp/prism-grove-chain index . 2>&1 | grep -E 'DBG (prop|unres|nonf|untyped)|complete=false' | sort | uniq -c | sort -rn | head -30
+      at: 2026-10-16T14:37:18.739682Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && sed -n 2870,2900p packages/zod/src/v4/classic/schemas.ts
+      at: 2026-10-16T14:37:26.388679Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && grep -n 'interface ZodUnion<' -A4 packages/zod/src/v4/classic/schemas.ts; grep -n 'interface _ZodType<\|interface ZodType<' -A8 packages/zod/src/v4/classic/schemas.ts | head -30
+      at: 2026-10-16T14:37:35.659586Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='tspropertytypes.go'
+        s=open(p).read()
+        # alias following in tsResolveDeclaredType
+        a='''	chosen := tsChosenTypeDecl(idx, leaf, dirOf(d.file))
+        	if chosen == nil || !tsFamilyLang(chosen.Language) {
+        		return nil
+        	}
+        	return chosen
+        }'''
+        b='''	chosen := tsChosenTypeDecl(idx, leaf, dirOf(d.file))
+        	if chosen == nil {
+        		// `type X = Y<A>`: follow a plain alias.
+        		if alias, rhs := tsTypeAliasRHS(idx, leaf, dirOf(d.file)); alias != nil {
+        			return tsResolveDeclaredType(idx, tsPropDecl{file: alias.FilePath, owner: alias}, rhs, depth+1)
+        		}
+        		return nil
+        	}
+        	if !tsFamilyLang(chosen.Language) {
+        		return nil
+        	}
+        	return chosen
+        }
+
+        // tsTypeAliasRHS finds the TS type alias named name (same directory as
+        // preferDir first) and returns it with its right-hand side.
+        func tsTypeAliasRHS(idx *edgeIndex, name, preferDir string) (*core.SymbolRecord, string) {
+        	var chosen *core.SymbolRecord
+        	for _, c := range namedSymbols(idx, name) {
+        		if c.Kind != core.KindType || !tsFamilyLang(c.Language) || c.RawText == "" {
+        			continue
+        		}
+        		if chosen == nil || dirOf(c.FilePath) == preferDir && dirOf(chosen.FilePath) != preferDir {
+        			chosen = c
+        		}
+        	}
+        	if chosen == nil {
+        		return nil, ""
+        	}
+        	masked := maskCode(chosen.Language, chosen.RawText)
+        	eq := topLevelIndex(stripLeadingGenericParams(masked), '=')
+        	if eq < 0 {
+        		return nil, ""
+        	}
+        	rhs := strings.TrimSpace(stripLeadingGenericParams(masked)[eq+1:])
+        	return chosen, strings.TrimSpace(strings.TrimSuffix(rhs, ";"))
+        }
+
+        // tsIsPropIndexedAlias reports whether base names a project alias of the
+        // form `T["prop"]` with T a project type: the type of some declaration of
+        // prop, which the property rule already weighs on its own.
+        func tsIsPropIndexedAlias(idx *edgeIndex, base, prop, file string) bool {
+        	ref, ok := tsPlainTypeRef(base)
+        	if !ok || prop == "" {
+        		return false
+        	}
+        	leaf := ref[strings.LastIndexByte(ref, '.')+1:]
+        	alias, rhs := tsTypeAliasRHS(idx, leaf, dirOf(file))
+        	if alias == nil {
+        		return false
+        	}
+        	m := tsIndexedAccessRe.FindStringSubmatch(rhs)
+        	if m == nil || m[2] != prop {
+        		return false
+        	}
+        	head, ok := tsPlainTypeRef(m[1])
+        	if !ok {
+        		return false
+        	}
+        	headLeaf := head[strings.LastIndexByte(head, '.')+1:]
+        	if tsResolveDeclaredType(idx, tsPropDecl{file: alias.FilePath, owner: alias}, m[1], 0) != nil {
+        		return true
+        	}
+        	a, _ := tsTypeAliasRHS(idx, headLeaf, dirOf(alias.FilePath))
+        	return a != nil && !idx.tsBaseFromPackage(alias.FilePath, head[:strings.IndexByte(head+".", '.')])
+        }
+
+        var tsIndexedAccessRe = regexp.MustCompile(`^(.+?)\\s*\\[\\s*["']([A-Za-z_$][\\w$]*)["']\\s*\\]$`)'''
+        assert a in s; s=s.replace(a,b,1)
+        # pass prop through nearest members
+        s=s.replace('func tsNearestMembers(idx *edgeIndex, typ *core.SymbolRecord, member string) (found []*core.SymbolRecord, complete bool) {',
+         'func tsNearestMembers(idx *edgeIndex, typ *core.SymbolRecord, member, prop string) (found []*core.SymbolRecord, complete bool) {')
+        s=s.replace('			for _, base := range tsDeclBases(idx, t) {','			for _, base := range tsDeclBases(idx, t, prop) {')
+        s=s.replace('found, complete := tsNearestMembers(idx, chosen, member)','found, complete := tsNearestMembers(idx, chosen, member, prop)')
+        s=s.replace('found, _ := tsNearestMembers(idx, chosen, member)','found, _ := tsNearestMembers(idx, chosen, member, "")')
+        s=s.replace('''func tsDeclBases(idx *edgeIndex, t *core.SymbolRecord) []*core.SymbolRecord {''','''func tsDeclBases(idx *edgeIndex, t *core.SymbolRecord, prop string) []*core.SymbolRecord {''')
+        s=s.replace('''		base := tsResolveDeclaredType(idx, tsPropDecl{file: t.FilePath}, ref, 0)
+        		out = append(out, base)''','''		base := tsResolveDeclaredType(idx, tsPropDecl{file: t.FilePath}, ref, 0)
+        		if base == nil && tsIsPropIndexedAlias(idx, ref, prop, t.FilePath) {
+        			continue // `T["prop"]`: weighed as that declaration itself
+        		}
+        		out = append(out, base)''')
+        s=s.replace('''// tsDeclBases resolves t's extends/implements clauses to indexed types; a
+        // nil entry stands for a base outside the index.''','''// tsDeclBases resolves t's extends/implements clauses to indexed types; a
+        // nil entry stands for a base outside the index. A base aliasing
+        // `T["prop"]` (prop being the property under analysis) is left out: it is
+        // the type of another declaration of prop, already weighed.''')
+        open(p,'w').write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/grove && go build ./... && go vet ./internal/graph && cd /Users/tapabratapal/Projects/provasign/prism && go build -o /tmp/prism-grove-chain ./cmd/prism && Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && rm -rf .grove && GROVE_DBG_PROP=_zod /tmp/prism-grove-chain index . 2>&1 | grep -E 'DBG (prop|unres|nonf|untyped)|complete=false' | sort | uniq -c | sort -rn | head -30
+      at: 2026-10-16T14:38:15.137771Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='tspropertytypes.go'
+        s=open(p).read()
+        a='''	masked := maskCode(chosen.Language, chosen.RawText)
+        	eq := topLevelIndex(stripLeadingGenericParams(masked), '=')
+        	if eq < 0 {
+        		return nil, ""
+        	}
+        	rhs := strings.TrimSpace(stripLeadingGenericParams(masked)[eq+1:])
+        	return chosen, strings.TrimSpace(strings.TrimSuffix(rhs, ";"))'''
+        b='''	// Positions come from the masked text (a string literal holds no
+        	// syntax); the slice is the raw text, where `T["prop"]` keeps its key.
+        	raw := stripLeadingGenericParams(chosen.RawText)
+        	masked := maskCode(chosen.Language, raw)
+        	eq := topLevelIndex(masked, '=')
+        	if eq < 0 || len(masked) != len(raw) {
+        		return nil, ""
+        	}
+        	rhs := strings.TrimSpace(raw[eq+1:])
+        	return chosen, strings.TrimSpace(strings.TrimSuffix(rhs, ";"))'''
+        assert a in s; s=s.replace(a,b,1); open(p,'w').write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/prism && go build -o /tmp/prism-grove-chain ./cmd/prism && Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && rm -rf .grove && GROVE_DBG_PROP=_zod /tmp/prism-grove-chain index . 2>&1 | grep -E 'DBG (prop|unres|nonf|untyped)|complete=false|found=0' | sort | uniq -c | sort -rn | head -30
+      at: 2026-10-16T14:38:29.262314Z
+      classified: build
+    - cmd: |-
+        Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && /tmp/prism-grove-chain change-impact '_$ZodTypeInternals.parse' . > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_after.txt 2>&1; python3 -c "
+        import json;d=json.load(open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_after.txt'))
+        print(d['totalSites'], d.get('editSiteCount'), len(d['callers']))
+        for s in d['relaySites'][:100]: print(s)
+        "; sqlite3 .grove/grove.db "select edge_type, reason, count(*), sum(length(lines)-length(replace(lines,',',''))+1) from graph_edges where to_node like '%_\$ZodTypeInternals.parse@%' group by 1,2"
+      at: 2026-10-16T14:38:37.158257Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json;d=json.load(open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_after.txt'))
+        print(d.keys())
+        for s in d['editSites']: print(s)
+        for c in d['callers']: print(json.dumps(c)[:400])
+        print(d.get('callerCoverage'), d.get('completeness'))
+        "
+      at: 2026-10-16T14:38:42.489197Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 588,680p changeimpact.go; Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; sqlite3 $Z/.grove/grove.db "select from_node, edge_type, lines from graph_edges where to_node like '%_\$ZodTypeInternals.parse@%' and edge_type in ('writes','calls')"
+      at: 2026-10-16T14:38:51.286936Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && sed -n 140,200p changeimpact.go
+      at: 2026-10-16T14:38:56.579401Z
+      classified: other
+    - cmd: grep -rn 'ResolvedCallerLines' --include='*.go' . | grep -v _test | head
+      at: 2026-10-16T14:39:00.885992Z
+      classified: other
+    - cmd: sed -n 280,420p internal/mcp/impactoverloads.go
+      at: 2026-10-16T14:39:03.422871Z
+      classified: other
+    - cmd: 'Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && sed -n 695,702p packages/zod/src/v4/classic/tests/cyclic-data.test.ts; grep -rnE ''\.parse\s*=[^=]'' --include=''*.ts'' packages | grep -v node_modules | awk -F: ''{print $1}'' | sort | uniq -c; grep -rnE ''\.parse\s*=[^=]'' --include=''*.ts'' packages | grep -v ''_zod\.parse'''
+      at: 2026-10-16T14:39:17.25987Z
+      classified: other
+    - cmd: 'Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && grep -nE ''\.parse\s*=[^=]'' packages/zod/src/v4/core/schemas.ts | cut -d: -f1 > /tmp/claude_w.txt 2>/dev/null || true; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; grep -nE ''\.parse\s*=[^=]'' packages/zod/src/v4/core/schemas.ts | cut -d: -f1 > $S/w.txt; echo "403,1281,1368,1421,1489,1532,1575,1613,1642,1669,1705,1748,1808,2144,2317,2437,2520,2675,2751,2955,3181,3385,3497,3584,3646,3741,3783,3858,3905,3953,3998,4064,4113,4203,4281,4319,4371,4431,4551,4671,4823,4906,4954,4995,5089" | tr '','' ''\n'' > $S/g.txt; comm -23 <(sort $S/w.txt) <(sort $S/g.txt) | while read l; do sed -n "${l}p" packages/zod/src/v4/core/schemas.ts; echo "  ^ line $l"; done; grep -rnE ''_zod\.parse\b'' --include=''*.ts'' packages | grep -vE ''_zod\.parse\s*(\(|=[^=])'' '
+      at: 2026-10-16T14:39:29.847517Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n ''tsMemberWriteRe\|func tsMemberWriteEdges'' -n tspropertytypes.go; grep -n ''^// tsMemberWriteRe'' -A 80 tspropertytypes.go | grep -n ''return edges'' '
+      at: 2026-10-16T14:39:48.74966Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='tspropertytypes.go'
+        s=open(p).read()
+        start=s.index('// tsMemberWriteRe finds')
+        end=s.index('// tsHasMethodNamed reports')
+        new='''// tsDottedChainRe finds dotted member chains (`inst._zod.parse`).
+        var tsDottedChainRe = regexp.MustCompile(`[A-Za-z_$][\\w$]*(?:[ \\t]*\\.[ \\t]*[A-Za-z_$][\\w$]*)+`)
+
+        // tsMemberRefEdges records non-call references to a method member through a
+        // receiver chain as reads/writes edges to the member's declaration:
+        // `inst._zod.parse = (payload, ctx) => {...}` (write) and
+        // `const base = inst._zod.parse` (read). A rename or signature change of the
+        // member breaks them exactly as it breaks a call. The receiver resolves like
+        // a call's (field-typed chain, else the property rule). Each line belongs to
+        // the innermost callable symbol containing it, so nested symbols do not
+        // double-report.
+        func tsMemberRefEdges(idx *edgeIndex, symbol *core.SymbolRecord) []core.Edge {
+        	if !tsFamilyLang(symbol.Language) || (symbol.Kind != core.KindFunction && symbol.Kind != core.KindMethod && symbol.Kind != core.KindConstructor) {
+        		return nil
+        	}
+        	lines := maskedSymbolLines(idx, symbol)
+        	var nested []core.LineRange
+        	for _, o := range idx.byFile[symbol.FilePath] {
+        		if o.ID == symbol.ID || (o.Kind != core.KindFunction && o.Kind != core.KindMethod && o.Kind != core.KindConstructor) {
+        			continue
+        		}
+        		if o.Span.Start >= symbol.Span.Start && o.Span.End <= symbol.Span.End &&
+        			(o.Span.Start > symbol.Span.Start || o.Span.End < symbol.Span.End) {
+        			nested = append(nested, o.Span)
+        		}
+        	}
+        	var localTypes map[string]string
+        	var edges []core.Edge
+        	at := map[string]int{}
+        	add := func(t *core.SymbolRecord, typ core.EdgeType, pos string) {
+        		key := string(typ) + "\\x00" + t.ID
+        		if j, ok := at[key]; ok {
+        			edges[j].Lines += "," + pos
+        			return
+        		}
+        		at[key] = len(edges)
+        		edges = append(edges, core.Edge{From: symbol.ID, To: t.ID, Type: typ,
+        			Confidence: 0.8, Source: core.EvidenceSourceHeuristic, Reason: core.ReasonMemberRef, Lines: pos})
+        	}
+        	for i, line := range lines {
+        		if !strings.Contains(line, ".") {
+        			continue
+        		}
+        		abs := symbol.Span.Start + i
+        		inner := false
+        		for _, r := range nested {
+        			if abs >= r.Start && abs <= r.End {
+        				inner = true
+        				break
+        			}
+        		}
+        		if inner {
+        			continue
+        		}
+        		for _, m := range tsDottedChainRe.FindAllStringIndex(line, -1) {
+        			if m[0] > 0 && (line[m[0]-1] == '.' || line[m[0]-1] == '?') {
+        				continue // the tail of a longer expression (`f().a.b`, `a?.b.c`)
+        			}
+        			text := line[m[0]:m[1]]
+        			// Segment boundaries inside the chain.
+        			var segs []string
+        			var ends []int // end offset (in line) of each segment
+        			off := m[0]
+        			for _, raw := range strings.Split(text, ".") {
+        				lead := len(raw) - len(strings.TrimLeft(raw, " \\t"))
+        				seg := strings.TrimSpace(raw)
+        				segs = append(segs, seg)
+        				ends = append(ends, off+lead+len(seg))
+        				off += len(raw) + 1
+        			}
+        			for k := 1; k < len(segs); k++ {
+        				name := segs[k]
+        				if !tsHasMethodNamed(idx, name) {
+        					continue
+        				}
+        				rest := strings.TrimLeft(line[ends[k]:], " \\t")
+        				typ := core.EdgeReads
+        				switch {
+        				case k == len(segs)-1 && (strings.HasPrefix(rest, "(") || strings.HasPrefix(rest, "<") || strings.HasPrefix(rest, "`")):
+        					continue // a call: the call-site pass owns it
+        				case k == len(segs)-1 && strings.HasPrefix(rest, "=") && !strings.HasPrefix(rest, "==") && !strings.HasPrefix(rest, "=>"):
+        					typ = core.EdgeWrites
+        				case k == len(segs)-1 && rest == "" && i+1 < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i+1]), "("):
+        					continue // a call wrapped onto the next line
+        				}
+        				if localTypes == nil {
+        					localTypes = tsLocalTypes(idx, symbol)
+        				}
+        				chain := strings.Join(segs[:k], ".")
+        				col := ends[k] - len(name) + 1
+        				if i == 0 && symbol.Span.Start > 0 {
+        					// The first raw line starts mid-line; the column is
+        					// only reliable from the second line on.
+        					col = 0
+        				}
+        				pos := strconv.Itoa(abs)
+        				if col > 0 {
+        					pos += ":" + strconv.Itoa(col)
+        				}
+        				for _, t := range tsChainMemberTargets(idx, symbol, localTypes, chain, name) {
+        					if t.ID != symbol.ID {
+        						add(t, typ, pos)
+        					}
+        				}
+        			}
+        		}
+        	}
+        	return edges
+        }
+
+        '''
+        s=s[:start]+new+s[end:]
+        open(p,'w').write(s)
+        EOF
+        sed -i '' 's/tsMemberWriteEdges(idx, &symbol)/tsMemberRefEdges(idx, \&symbol)/; s|// Assignments to a method member (`inst._zod.parse = ...`).|// Non-call references to a method member (`inst._zod.parse = ...`).|' edges.go
+        grep -rl 'ReasonMemberWrite' .. | xargs sed -i '' 's/ReasonMemberWrite/ReasonMemberRef/g'
+        sed -i '' 's|// ReasonMemberRef: an assignment to a method member through a resolved|// ReasonMemberRef: a non-call reference to a method member through a resolved|; s|// receiver (`inst._zod.parse = ...`), recorded as a writes edge to the|// receiver (`inst._zod.parse = ...`, `base := inst._zod.parse`), recorded as a\n\t// writes/reads edge to the|; s|ReasonMemberRef EdgeReason = "member-write"|ReasonMemberRef EdgeReason = "member-ref"|' ../core/types.go
+        grep -n 'member' ../core/types.go | tail -5; grep -n 'MemberRef' *.go; cd ../.. && gofmt -l ./internal; go build ./... && go vet ./internal/graph
+      at: 2026-10-16T14:40:12.026182Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gofmt -w internal/graph/tspropertytypes.go && sed -i '' 's|continue // member writes come from the call pass (tsMemberWriteEdges)|continue // member refs come from the call pass (tsMemberRefEdges)|' internal/graph/incremental.go && sed -n 318,327p internal/core/types.go && go build ./... && cd /Users/tapabratapal/Projects/provasign/prism && go build -o /tmp/prism-grove-chain ./cmd/prism && Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && rm -rf .grove && /tmp/prism-grove-chain index . >/dev/null 2>&1; sqlite3 .grove/grove.db "select from_node, edge_type, lines from graph_edges where to_node like '%_\$ZodTypeInternals.parse@%' and edge_type in ('writes','calls','reads')" | sed 's/@[0-9a-f]*//' | cut -c1-200; sqlite3 .grove/grove.db "select edge_type, count(*), sum(length(lines)-length(replace(lines,',',''))+1) from graph_edges where reason='member-ref' group by 1"
+      at: 2026-10-16T14:40:24.761515Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/core/types.go'
+        s=open(p).read()
+        s=s.replace('''	// ReasonMemberRef: a non-call reference to a method member through a resolved
+        	// receiver (`inst._zod.parse = ...`, `base := inst._zod.parse`), recorded as a
+        	// writes/reads edge to the
+        	// member's declaration: a rename or signature change breaks it.''','''	// ReasonMemberRef: a non-call reference to a method member through a
+        	// resolved receiver (`inst._zod.parse = ...`, `const base =
+        	// inst._zod.parse`), recorded as a writes/reads edge to the member's
+        	// declaration: a rename or signature change breaks it.''')
+        open(p,'w').write(s)
+        EOF
+        Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z; sqlite3 .grove/grove.db "select to_node, edge_type, from_node, lines from graph_edges where reason='member-ref'" | sed -E 's/@[0-9a-f]+//g' | python3 -c "
+        import sys,collections
+        for l in sys.stdin:
+          to,t,fr,lines=l.strip().split('|')
+          f=fr.split('::')[0]
+          for p in lines.split(',')[:3]:
+            ln=int(p.split(':')[0])
+            src=open(f).read().split('\n')[ln-1].strip()
+            print(to.split('::')[1][:40].ljust(40), t, f.split('/')[-1]+':'+str(ln), src[:90])
+        " | sort | awk '{print}' | head -120
+      at: 2026-10-16T14:40:33.928605Z
+      classified: other
+    - cmd: |-
+        git status --short | head && python3 - <<'EOF'
+        p='internal/mcp/impactoverloads.go'
+        s=open(p).read()
+        a='''		if len(ps) == 0 && len(misfit) == 0 && len(other) == 0 {
+        			// No call site carries the name (a class body's
+        			// property(get_data, set_data) reference): the resolver's own
+        			// positions are the sites.
+        			ps = append(ps, r.ResolvedCallerLines[c.ID]...)
+        		}'''
+        b='''		if len(ps) == 0 && len(misfit) == 0 && len(other) == 0 {
+        			// No call site carries the name (a class body's
+        			// property(get_data, set_data) reference): the resolver's own
+        			// positions are the sites.
+        			ps = append(ps, r.ResolvedCallerLines[c.ID]...)
+        		} else {
+        			// Resolver positions on lines with no call site are non-call
+        			// references grove tied to the change set (`inst._zod.parse =
+        			// ...`, `const base = inst._zod.parse`): sites as well.
+        			callLine := map[int]bool{}
+        			for p := range seen {
+        				l, _ := splitPosition(p)
+        				callLine[l] = true
+        			}
+        			for _, p := range r.ResolvedCallerLines[c.ID] {
+        				if l, _ := splitPosition(p); !callLine[l] {
+        					ps = append(ps, p)
+        				}
+        			}
+        		}'''
+        assert a in s; s=s.replace(a,b,1); open(p,'w').write(s)
+        EOF
+        grep -n 'func splitPosition\|func positionLess' internal/mcp/*.go | head
+      at: 2026-10-16T14:40:48.631824Z
+      classified: other
+    - cmd: sed -n 255,280p internal/mcp/impactoverloads.go
+      at: 2026-10-16T14:40:51.268822Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/impactoverloads.go'
+        s=open(p).read()
+        s=s.replace('''			for p := range seen {
+        				l, _ := splitPosition(p)
+        				callLine[l] = true
+        			}
+        			for _, p := range r.ResolvedCallerLines[c.ID] {
+        				if l, _ := splitPosition(p); !callLine[l] {
+        					ps = append(ps, p)
+        				}
+        			}''','''			lineOf := func(p string) string { l, _, _ := strings.Cut(p, ":"); return l }
+        			callLine := map[string]bool{}
+        			for p := range seen {
+        				callLine[lineOf(p)] = true
+        			}
+        			for _, p := range r.ResolvedCallerLines[c.ID] {
+        				if !callLine[lineOf(p)] {
+        					ps = append(ps, p)
+        				}
+        			}''')
+        s=s.replace('''			callLine := map[int]bool{}
+        			lineOf''','''			lineOf''')
+        open(p,'w').write(s)
+        EOF
+        gofmt -w internal/mcp/impactoverloads.go && go build -o /tmp/prism-grove-chain ./cmd/prism && Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && /tmp/prism-grove-chain change-impact '_$ZodTypeInternals.parse' . > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_after.txt 2>&1; python3 -c "
+        import json;d=json.load(open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/ci_after.txt'))
+        print('total',d['totalSites'], 'edit', d.get('editSiteCount'), 'callers',len(d['callers']), d['completeness'])
+        for s in d['editSites']: print(s[:110])
+        for c in d['callers']: print(c['filePath'], c.get('calls','')[:150])
+        "
+      at: 2026-10-16T14:41:04.448585Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        import re
+        p='tspropertytypes.go'
+        s=open(p).read()
+        s=re.sub(r'\n\tdbg := os\.Getenv\("GROVE_DBG_PROP"\) == prop\n\tif dbg \{\n.*?\n\t\}\n', '\n', s, flags=re.S)
+        s=re.sub(r'\n\tdbg := os\.Getenv\("GROVE_DBG_PROP"\) == prop', '', s)
+        s=re.sub(r'\n\t*if dbg \{\n[^\n]*\n\t*\}', '', s)
+        s=s.replace('\t"fmt"\n\t"os"\n','')
+        open(p,'w').write(s)
+        EOF
+        grep -n 'dbg\|DBG\|fmt\.\|os\.' tspropertytypes.go; cd ../.. && gofmt -l internal; go build ./... && go vet ./internal/graph && sed -n 60,80p internal/graph/tspropertytypes.go
+      at: 2026-10-16T14:41:13.118833Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git stash list | head -2; git diff --stat; (go test ./... > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/gotest1.out 2>&1; echo EXIT $? >> /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/gotest1.out)
+      at: 2026-10-16T14:41:20.354706Z
+      classified: test
+    - cmd: E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; ls $E | head -40; ls $E/out 2>/dev/null | head; cat /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json | head -60
+      at: 2026-10-16T14:41:20.445572Z
+      classified: other
+    - cmd: E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; ls -lt $E/*.out | head -5; grep -E '^(socket.io|express|p-queue)' $(ls -t $E/*.out | head -1)
+      at: 2026-10-16T14:41:25.213912Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; grep -vE '^ok|no test files' $S/gotest1.out | head -30; cd /Users/tapabratapal/Projects/provasign/grove && go test ./internal/graph -run 'TSPropertyRule' -count=1 2>&1 | tail -30
+      at: 2026-10-16T14:42:09.850905Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/tspropertytypes_test.go'
+        s=open(p).read()
+        s=s.replace('''	for _, to := range []string{"s::Internals.parse", "s::AlienInternals.parse", "s::Parser.parse"} {
+        		if got := edgesOf(syms, "s::top", to); len(got) > 0 {''','''	// (The name-based fallback that ran before this rule existed still
+        	// applies to the call; only the rule's own targets are asserted.)
+        	for _, to := range []string{"s::Internals.parse", "s::AlienInternals.parse"} {
+        		if got := edgesOf(syms, "s::top", to); len(got) > 0 {''')
+        open(p,'w').write(s)
+        EOF
+        go test ./internal/graph -run 'TSPropertyRule' -count=1 -v 2>&1 | tail -12
+      at: 2026-10-16T14:42:17.7962Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cp internal/graph/tspropertytypes.go /tmp/claude_tpt.bak 2>/dev/null || cp internal/graph/tspropertytypes.go /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/tpt.bak; python3 - <<'EOF'
+        p='/Users/tapabratapal/Projects/provasign/grove/internal/graph/tspropertytypes.go'
+        s=open(p).read()
+        s=s.replace('''	key := prop + "\\x00" + member''','''	if true {
+        		return nil
+        	}
+        	key := prop + "\\x00" + member''',1)
+        open(p,'w').write(s)
+        EOF
+        go test ./internal/graph -run 'TSPropertyRule' -count=1 2>&1 | grep -c FAIL:; cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/tpt.bak internal/graph/tspropertytypes.go 2>/dev/null || cp /tmp/claude_tpt.bak internal/graph/tspropertytypes.go; go test ./internal/graph -run 'TSPropertyRule' -count=1 2>&1 | tail -1; git diff --stat
+      at: 2026-10-16T14:42:26.98438Z
+      classified: test
+    - cmd: rm -f /tmp/claude_tpt.bak; E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; zsh $E/all.sh $E /Users/tapabratapal/Projects/provasign/grove > $E/run-prop1.out 2>&1
+      at: 2026-10-16T14:42:31.891631Z
+      classified: other
+    - cmd: Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd /Users/tapabratapal/Projects/provasign/prism && go build -o /tmp/prism-grove-chain ./cmd/prism; cd $Z; for b in base ""; do rm -rf .grove; /usr/bin/time -p /tmp/prism-grove-chain${b:+-$b} index . 2>&1 | grep real; done
+      at: 2026-10-16T14:42:47.607169Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='tspropertytypes.go'
+        s=open(p).read()
+        a='''func tsPropertyDecls(idx *edgeIndex, prop string) ([]tsPropDecl, bool) {'''
+        b='''func tsPropertyDecls(idx *edgeIndex, prop string) ([]tsPropDecl, bool) {
+        	type cached struct {
+        		decls []tsPropDecl
+        		ok    bool
+        	}
+        	key := "decls\\x00" + prop
+        	if v, ok := idx.tsPropMembers.Load(key); ok {
+        		c := v.(cached)
+        		return c.decls, c.ok
+        	}
+        	decls, ok := computeTSPropertyDecls(idx, prop)
+        	idx.tsPropMembers.Store(key, cached{decls, ok})
+        	return decls, ok
+        }
+
+        func computeTSPropertyDecls(idx *edgeIndex, prop string) ([]tsPropDecl, bool) {'''
+        assert a in s; s=s.replace(a,b,1)
+        a='''			if memberRe.MatchString(maskCode(t.Language, classBodyText(t))) {'''
+        b='''			if memberRe.MatchString(tsMaskedBody(idx, t)) {'''
+        assert a in s; s=s.replace(a,b,1)
+        a='''// classBodyText is a type declaration's text from its first '{' on (the
+        // heritage clause's generic arguments are not members).
+        func classBodyText(t *core.SymbolRecord) string {
+        	sig := stripLeadingGenericParams(t.RawText)
+        	if i := strings.IndexByte(sig, '{'); i >= 0 {
+        		return sig[i:]
+        	}
+        	return ""
+        }'''
+        b='''// tsMaskedBody is a type declaration's masked text from its first '{' on
+        // (the heritage clause's generic arguments are not members), memoized.
+        func tsMaskedBody(idx *edgeIndex, t *core.SymbolRecord) string {
+        	key := "tsbody\\x00" + t.ID
+        	if v, ok := idx.tsPropMembers.Load(key); ok {
+        		return v.(string)
+        	}
+        	body := ""
+        	sig := stripLeadingGenericParams(t.RawText)
+        	if i := strings.IndexByte(sig, '{'); i >= 0 {
+        		body = maskCode(t.Language, sig[i:])
+        	}
+        	idx.tsPropMembers.Store(key, body)
+        	return body
+        }'''
+        assert a in s; s=s.replace(a,b,1)
+        s=s.replace('''	// tsPropMembers memoizes''','''	// tsPropMembers memoizes''')
+        open(p,'w').write(s)
+        EOF
+        sed -i '' 's|	// tsPropMembers memoizes tsPropertyMemberTargets per "prop\\x00member"|	// tsPropMembers memoizes tspropertytypes.go lookups: member targets per\n\t// "prop\\x00member", declarations per "decls\\x00prop", masked type bodies\n\t// per "tsbody\\x00id"|' edges.go
+        sed -n 82,92p edges.go; cd ../.. && gofmt -l internal; go build ./... && go test ./internal/graph -run TSPropertyRule -count=1 | tail -1
+      at: 2026-10-16T14:43:05.842969Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='tspropertytypes.go'
+        s=open(p).read()
+        s=s.replace('key := prop + "\\x00" + member','key := "m\\x00" + prop + "\\x00" + member')
+        s=s.replace('key := "decls\\x00" + prop','key := "d\\x00" + prop')
+        s=s.replace('key := "tsbody\\x00" + t.ID','key := "b\\x00" + t.ID')
+        open(p,'w').write(s)
+        p='edges.go'
+        s=open(p).read()
+        s=s.replace('''	// tsPropMembers memoizes tspropertytypes.go lookups: member targets per
+        	// "prop\\x00member", declarations per "decls\\x00prop", masked type bodies
+        	// per "tsbody\\x00id"
+        	// (tspropertytypes.go): the answer depends only on the index.''','''	// tsPropMembers memoizes tspropertytypes.go lookups, each a function of
+        	// the index alone: member targets ("m\\x00prop\\x00member"), property
+        	// declarations ("d\\x00prop"), masked type bodies ("b\\x00id").''')
+        open(p,'w').write(s)
+        EOF
+        grep -n 'x00' tspropertytypes.go edges.go | grep -i 'key\|tsProp\|declarations\|m\\\\' | head; cd ../.. && go build ./... && go test ./internal/graph -run TSPropertyRule -count=1 | tail -1
+      at: 2026-10-16T14:43:16.842525Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && python3 - <<'EOF'
+        p='tspropertytypes.go'
+        s=open(p).read()
+        a='''		anyField = true
+        		text := s.RawText'''
+        b='''		anyField = true
+        		owner := tsFieldOwner(idx, s)
+        		if owner == nil {
+        			// An object literal's member (`const api = { prop: Foo }`): a
+        			// value, not a declared type.
+        			return nil, false
+        		}
+        		text := s.RawText'''
+        assert a in s; s=s.replace(a,b,1)
+        s=s.replace('out = append(out, tsPropDecl{file: s.FilePath, owner: tsFieldOwner(idx, s), typ: typ})','out = append(out, tsPropDecl{file: s.FilePath, owner: owner, typ: typ})')
+        a='''		if o.Span.Start <= s.Span.Start && (o.Span.End == 0 || s.Span.Start <= o.Span.End) {
+        			return o
+        		}
+        		if fallback == nil {
+        			fallback = o
+        		}
+        	}
+        	return fallback'''
+        assert a in s
+        open(p,'w').write(s)
+        EOF
+        sed -n 236,262p tspropertytypes.go
+      at: 2026-10-16T14:43:32.475197Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval/run-prop1.out
+      at: 2026-10-16T14:43:36.234546Z
+      classified: other
+    - cmd: |-
+        E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; ls $E/out/socket.io; python3 - <<'EOF'
+        import json,glob,os
+        E='/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval/out/socket.io'
+        for f in glob.glob(E+'/*'):
+            print(f, os.path.getsize(f))
+        EOF
+      at: 2026-10-16T14:43:40.972992Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval/out/socket.io/scorecard.md
+      at: 2026-10-16T14:43:44.347458Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && grep -n 'func maxExamplesN' -A6 *.go; ls /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval/ | grep grove-eval
+      at: 2026-10-16T14:43:49.703667Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove && grep -n replace eval/go.mod; git worktree add -q $S/grove-base HEAD 2>&1 | tail -1; cd $S/grove-base/eval && GOWORK=off go build -o $S/eval/grove-eval-base ./cmd/grove-eval && echo built
+      at: 2026-10-16T14:43:58.658304Z
+      classified: build
+    - cmd: E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; G=/Users/tapabratapal/Projects/provasign/grove; cd $E && cd $G/eval && go build -o $E/grove-eval ./cmd/grove-eval && cd $E && for b in base new; do bin=./grove-eval; [ $b = base ] && bin=./grove-eval-base; rm -rf socket.io/.grove; GROVE_EVAL_MAX_EXAMPLES=1000 $bin score --repo socket.io --truth $G/eval/testdata/socket.io@3ad4e1f2/calls-truth.jsonl.gz --out-dir out/sio-$b --baseline $G/eval/baseline.json 2>&1 | grep gate; done; diff <(sed -n '/False positives (Grove/,/False negatives/p' out/sio-base/scorecard.md | sort) <(sed -n '/False positives (Grove/,/False negatives/p' out/sio-new/scorecard.md | sort)
+      at: 2026-10-16T14:44:08.274427Z
+      classified: build
+    - cmd: 'E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; cd $E/socket.io/packages && grep -n ''writeToEngine'' socket.io-adapter/lib/in-memory-adapter.ts; grep -rn ''client: \|client?: \|client!: '' --include=*.ts . | grep -v node_modules | grep -v test | head -20; sed -n 225,235p socket.io/lib/client.ts'
+      at: 2026-10-16T14:44:12.414044Z
+      classified: other
+    - cmd: E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; cd $E/socket.io/packages && grep -rnE '^\s*(public |private |protected |readonly )*client[?!]?\s*:' --include='*.ts' . | grep -v node_modules | head; sed -n 165,180p socket.io-adapter/lib/in-memory-adapter.ts; grep -n 'import' socket.io-adapter/lib/in-memory-adapter.ts | head
+      at: 2026-10-16T14:44:16.825765Z
+      classified: other
+    - cmd: 'E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; cd $E/socket.io/packages/socket.io-adapter && grep -n ''apply(\|SocketId\|type Socket\|interface\|: any'' lib/in-memory-adapter.ts | head -30; cat package.json | grep -A5 ''"dependencies"\|devDep'''
+      at: 2026-10-16T14:44:23.375834Z
+      classified: other
+    - cmd: E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; ls $E/socket.io/.grove/; sqlite3 $E/socket.io/.grove/grove.db "select name, modifiers, annotations from symbols where name in ('writeToEngine','_onPacket','close') and file_path like '%socket.io/lib/client.ts'" 2>&1 | head
+      at: 2026-10-16T14:44:39.625931Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/graph && grep -n 'func hasModifier' *.go && python3 - <<'EOF'
+        p='tspropertytypes.go'
+        s=open(p).read()
+        a='''	return tsPropertyMemberTargets(idx, parts[len(parts)-1], member)
+        }'''
+        b='''	targets := tsPropertyMemberTargets(idx, parts[len(parts)-1], member)
+        	for _, t := range targets {
+        		if (hasModifier(t, "private") || hasModifier(t, "protected") || strings.HasPrefix(t.Name, "#")) &&
+        			t.ParentSymbol != symbol.ParentSymbol {
+        			// Outside its class a private member is reachable only through
+        			// an `any` receiver (socket.io's adapter calling
+        			// `socket.client.writeToEngine` on an untyped callback
+        			// parameter): the declared type is not what the receiver has.
+        			return nil
+        		}
+        	}
+        	return targets
+        }'''
+        assert a in s; s=s.replace(a,b,1); open(p,'w').write(s)
+        EOF
+        cd ../.. && go build ./... && go test ./internal/graph -run TSPropertyRule -count=1 | tail -1 && E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; G=/Users/tapabratapal/Projects/provasign/grove; cd $G/eval && go build -o $E/grove-eval ./cmd/grove-eval && cd $E && rm -rf socket.io/.grove; GROVE_EVAL_MAX_EXAMPLES=1000 ./grove-eval score --repo socket.io --truth $G/eval/testdata/socket.io@3ad4e1f2/calls-truth.jsonl.gz --out-dir out/sio-new --baseline $G/eval/baseline.json 2>&1 | grep gate
+      at: 2026-10-16T14:44:53.125728Z
+      classified: test
+    - cmd: |-
+        E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; for r in socket.io express p-queue; do echo "== $r"; rm -rf "${E:?}"/"${r:?}"/.grove; (cd $E && ./grove-eval score --repo $r --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/$r@$(ls /Users/tapabratapal/Projects/provasign/grove/eval/testdata | grep "^$r@" | cut -d@ -f2)/calls-truth.jsonl.gz --out-dir out/$r-new --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json 2>&1 | grep gate); sqlite3 $E/$r/.grove/grove.db "select to_node, edge_type, from_node, lines from graph_edges where reason='member-ref'" | sed -E 's/@[0-9a-f]+//g' | (cd $E/$r && python3 -c "
+        import sys
+        n=0
+        for l in sys.stdin:
+          to,t,fr,lines=l.strip().split('|')
+          f=fr.split('::')[0]
+          for p in lines.split(','):
+            n+=1
+            if n>25: continue
+            ln=int(p.split(':')[0])
+            src=open(f).read().split('\n')[ln-1].strip()
+            print(to.split('::')[1][:35].ljust(35), t, f.split('/')[-1]+':'+str(ln), src[:80])
+        print('total', n)
+        "); done
+      at: 2026-10-16T14:45:08.544598Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal eval; go vet ./internal/graph ./internal/core && go test ./... 2>&1 | grep -vE '^ok|no test files'; echo EXIT ${pipestatus[1]:-$?}
+      at: 2026-10-16T14:45:50.691966Z
+      classified: lint
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && go test ./... > /dev/null 2>&1; echo "go test exit: $?"; E=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/eval; zsh $E/all.sh $E /Users/tapabratapal/Projects/provasign/grove > $E/run-prop2.out 2>&1; cat $E/run-prop2.out'
+      at: 2026-10-16T14:46:43.452595Z
+      classified: test
+    - cmd: |-
+        go build -o /tmp/prism-grove-chain ./cmd/prism && Z=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/p2/wt/wide__zod__ZodTypeInternals_parse; cd $Z && for b in base "" base ""; do rm -rf "${Z:?}"/.grove; /usr/bin/time -p /tmp/prism-grove-chain${b:+-$b} index . 2>&1 | grep real | sed "s/^/${b:-new} /"; done; /tmp/prism-grove-chain change-impact '_$ZodTypeInternals.parse' . 2>/dev/null | python3 -c "
+        import json,sys;d=json.load(sys.stdin); print('editSiteCount',d['editSiteCount'],'callers',len(d['callers']),'totalSites',d['totalSites'])"; git -C $Z status --short
+      at: 2026-10-16T14:46:55.896657Z
+      classified: build
+    - cmd: go test ./internal/mcp/ 2>&1 | tail -5; git diff --stat
+      at: 2026-10-16T14:47:58.251552Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git worktree remove --force /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad/grove-base && git add internal/core/types.go internal/graph/changeimpact.go internal/graph/edges.go internal/graph/incremental.go internal/graph/tslocaltypes.go internal/graph/tspropertytypes.go internal/graph/tspropertytypes_test.go && git commit -q -F - <<'EOF'
+        ts: type an untyped receiver's property by its project-wide declarations
+
+        `inst._zod.parse(...)` inside a `$constructor<$ZodType>("$ZodType", (inst,
+        def) => ...)` callback: inst is typed only through a generic, so the
+        receiver chain died at its first hop and change_impact on
+        _$ZodTypeInternals.parse found 0 of 61 sites (zod, 2026-10-16).
+
+        Property rule (tspropertytypes.go), applied when a chain's prefix has no
+        type: collect every declaration of the property (class/interface fields,
+        plus property mentions in interface and type-alias bodies). Each declared
+        type must resolve to an indexed class or interface (generic parameter ->
+        constraint, else default; plain aliases followed); an untyped, external,
+        union or primitive declaration, or any non-field symbol of that name,
+        stops the rule. Declared types that cannot have the member (fully indexed
+        ancestry without it, or an inline object type not mentioning it) drop
+        out; every remaining type must reach the same nearest declaration of the
+        member, or nothing is decided. A private/protected target outside its
+        class is skipped: such access only type-checks through `any` (socket.io
+        adapter `socket.client.writeToEngine`, which cost 2 oracle FPs).
+
+        Non-call references to a method member through a resolved receiver
+        (`inst._zod.parse = ...`, `const base = inst._zod.parse`) become
+        reads/writes edges with reason member-ref; method change_impact accepts
+        them as sites like native refs, and the incremental build carries them
+        as call-pass output.
+
+        zod change-impact _$ZodTypeInternals.parse: 1 -> 61 edit sites (5 calls,
+        52 writes, 5 reads, plus the declaration). Oracles: all 21 within
+        baseline; socket.io/express/p-queue at exactly baseline P/R.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX
+        EOF
+        git log --oneline -1; git status --short
+      at: 2026-10-16T14:48:09.646586Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; git diff; cd ../grove; git show --stat 252e558d | tail -12
+      at: 2026-10-16T14:48:35.822493Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; git add internal/mcp/impactoverloads.go && git commit -q -m "change_impact: resolver positions on non-call lines are sites
+
+        Grove now ties member writes and value reads to the change set
+        (inst._zod.parse = ..., const base = inst._zod.parse). A caller that also
+        had calls kept only call-line positions, so those were dropped.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX"; B=~/prism-ab-bins/prism-p8; go build -o $B ./cmd/prism; go version -m $B | grep grove
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad
+        sed "s#^B=[^;]*;#B=$B;#; s/fz17-/fz18-/g; s/FUZZ17/FUZZ18/" $S/p2/fuzzall17.sh > $S/p2/fuzzall18.sh
+        sed "s#prism-p7#prism-p8#g; s#ci-corpus-r17#ci-corpus-r18#; s#ci_r17#ci_r18#; s#run-p7#run-p8#; s#fuzzall17#fuzzall18#; s#fuzz17.out#fuzz18.out#; s#out-p7#out-p8#g; s#gotest17#gotest18#; s#gate17.done#gate18.done#; s#GOWORK=off go test#go test#" $S/gate17.sh > $S/gate18.sh; grep -c p8 $S/gate18.sh; rm -f $S/gate18.done; nohup zsh $S/gate18.sh >/dev/null 2>&1 & echo started
+      at: 2026-10-16T14:48:50.534777Z
+      classified: test
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b6vfkvpfr.output
+      at: 2026-10-16T14:48:54.889492Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; grep -n "partition-rep\|glob\|def " $S/repmon.py | head
+      at: 2026-10-16T14:49:02.895765Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; sed "s/partition-rep%d-2026-10-18/label-rep%d-2026-10-16/" $S/repmon.py > $S/labelmon.py; python3 $S/labelmon.py
+      at: 2026-10-16T14:49:07.825421Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results; for d in label-rep1-2026-10-16 label-rep2-2026-10-16; do sid=$(python3 -c "import json;print([c for c in json.load(open('$d/results.json')) if 'Highlighter' in c['task']][0]['prism']['session_id'])"); f=$(ls ~/.claude/projects/*/$sid.jsonl); echo "== $d"; python3 - "$f" <<'EOF'
+        import json,sys
+        for l in open(sys.argv[1]):
+            d=json.loads(l); m=d.get('message',{})
+            if not isinstance(m,dict) or not isinstance(m.get('content'),list): continue
+            for b in m['content']:
+                if b.get('type')=='tool_use': print('USE', json.dumps(b['input'])[:260])
+                elif b.get('type')=='tool_result':
+                    t=b.get('content'); t=t if isinstance(t,str) else json.dumps(t)
+                    if 'Every line naming' in t:
+                        i=t.find('Every line naming'); print('PART', t[i:i+900].replace('\\n','\n'))
+        EOF
+        done
+      at: 2026-10-16T14:49:14.875544Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; python3 - <<'EOF'
+        p='internal/mcp/editsites.go'
+        s=open(p).read()
+        old='''	partial, _ := out["completeness"].(string)
+        	other := h.impactOtherMentions(ctx, r, leaf, keys, unsure, partial == "partial")'''
+        new='''	// Dynamic-language answers are always partial (callers are inferred);
+        	// the "some of these may be uses" label there sent agents to grep the
+        	// listed lines (rich highlight, 2 of 2 runs, 2026-10-16), so it is kept
+        	// for answers partial for another reason (zod _zod.parse, TypeScript).
+        	completeness, _ := out["completeness"].(string)
+        	partial := completeness == "partial" && out["coverageNote"] != dynamicCallerNote
+        	other := h.impactOtherMentions(ctx, r, leaf, keys, unsure, partial)'''
+        assert old in s; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        sed -i '' 's/4 in editSites above, 0 code line(s) not tied to this change, 0 string literal(s), 1 comment\/doc line(s). In test files: 0, 0, 0 and 0 of those./4 in editSites above, 0 code line(s) naming something else, 0 string literal(s), 1 comment\/doc line(s). In test files: 0, 0, 0 and 0 of those./' internal/mcp/editsites_test.go; go test ./internal/mcp 2>&1 | tail -4
+      at: 2026-10-16T14:52:29.017406Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; git add internal/mcp && git commit -q -m "change_impact partition: keep the partial label off dynamic-language answers
+
+        Python and JavaScript answers are always partial (callers are inferred).
+        The \"some of these may be uses\" label sent agents to grep the listed lines
+        (rich highlight, both runs); it now applies only to answers partial for
+        another reason.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX"; git log --oneline -1
+        pkill -f gate18.sh; pkill -f fuzzall18.sh; pkill -f "fuzz.py.*prism-p8"; pkill -f "ci_invariants.py.*prism-p8"; pkill -f "replay_dbg.py.*prism-p8"; pkill -f "eval/all.sh"; pkill -f grove-eval; sleep 3
+        B=~/prism-ab-bins/prism-p9; go build -o $B ./cmd/prism; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad
+        sed "s#prism-p8#prism-p9#g; s#fz18-#fz19-#g; s#FUZZ18#FUZZ19#" $S/p2/fuzzall18.sh > $S/p2/fuzzall19.sh
+        sed "s#prism-p8#prism-p9#g; s#ci-corpus-r18#ci-corpus-r19#; s#ci_r18#ci_r19#; s#run-p8#run-p9#; s#fuzzall18#fuzzall19#; s#fuzz18.out#fuzz19.out#; s#out-p8#out-p9#g; s#gotest18#gotest19#; s#gate18.done#gate19.done#" $S/gate18.sh > $S/gate19.sh; rm -f $S/gate19.done; nohup zsh $S/gate19.sh >/dev/null 2>&1 & echo started
+      at: 2026-10-16T14:52:50.086067Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; until [ -f $S/gate19.done ]; do sleep 60; done; cat $S/gotest19.out; tail -2 $S/ci_r19.out; echo "oracles within: $(grep -c 'within baseline' $S/eval/run-p9.out)"; grep -v "within baseline\|DONE" $S/eval/run-p9.out; tail -17 $S/p2/fuzz19.out; cd $S/p2; sed -i '' 's/out-p7/out-p9/' cmp15.py; python3 cmp15.py; python3 -c "
+        import json
+        for x in json.load(open('out-p9/wide__zod__ZodTypeInternals_parse.json')):
+          if x['op']=='change_impact': o=x['out']; print(o[:400]); i=o.find('Every line naming'); print(o[i:i+400])"
+      at: 2026-10-16T14:52:55.949765Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; sed -n 1,60p internal/graph/tspropertytypes.go; git show 252e558d -- internal/graph/incremental.go internal/graph/changeimpact.go | head -60
+      at: 2026-10-16T14:53:01.291453Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; until [ -f $S/gate19.done ]; do sleep 30; done; echo done
+      at: 2026-10-16T15:03:06.723043Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/ba5h8kjbg.output
+      at: 2026-10-16T15:03:59.839998Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; echo "gotest:"; cat $S/gotest19.out; tail -1 $S/ci_r19.out; cd $S/p2; python3 - <<'EOF'
+        import json,difflib
+        t='apache__dubbo__pr16325'
+        A=json.load(open(f'out-r15-base/{t}.json'));B=json.load(open(f'out-p9/{t}.json'))
+        for a,b in zip(A,B):
+          if a['out']!=b['out']:
+            print(a['op'],a['args'],a['secs'],b['secs'])
+            print('\n'.join(x[:200] for x in list(difflib.unified_diff(a['out'].split('\n'),b['out'].split('\n'),lineterm='',n=0))[:14]))
+        EOF
+      at: 2026-10-16T15:04:06.608761Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "workspace grep-rc=$? (1=all ok)"; (cd ../grove && go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "grove grep-rc=$?")
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/b078ae73-7c6b-4498-a9f7-eeada0292d5a/scratchpad; cd $S/p2; rm -rf out-dub; ONLY=apache__dubbo__pr16325 REPLAY_OUT=out-dub python3 replay_dbg.py ~/prism-ab-bins/prism-p9 >/dev/null; python3 -c "
+        import json
+        for x in json.load(open('out-dub/apache__dubbo__pr16325.json')):
+          if x['args'].get('files_only'): print(x['secs'], 'COMPLETE' in x['out'])"
+      at: 2026-10-16T15:04:20.059414Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; git fetch -q origin; git status -sb | head -1; git log --oneline origin/main..main; git tag --sort=-v:refname | head -2; gh pr list --state merged --limit 1 --json number,title,body -q '.[0].title+"\n"+.[0].body' | head -12
+      at: 2026-10-16T15:04:27.696925Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; git show 78e0916c --stat | head -5; git log -3 --format=%h -- . | head -3; rg -n "v40|2026-10-18\.1" -g '*.go' | grep -v _test | head
+      at: 2026-10-16T15:04:32.564894Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; cat internal/graph/resolverversion.go; rg -n "language-graph-v40" -g '*' . | grep -v "^./internal/graph/resolverversion.go" | head
+      at: 2026-10-16T15:04:35.53465Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; rg -l "language-graph-v40" . | head; git log -1 --format=%h%n%s -S"language-graph-v40"
+      at: 2026-10-16T15:04:41.221872Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove; git show d89664f9 --stat | grep -i "baseline\|version"; sed -i '' 's/2026-10-18-language-graph-v40/2026-10-16-language-graph-v41/' internal/graph/resolverversion.go; go test ./internal/graph/ 2>&1 | tail -2; git commit -qam "graph: resolver v41 (TS property-typed receivers, member-ref edges)
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX"; git log --oneline -2
+      at: 2026-10-16T15:04:46.611989Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; git show --stat HEAD | tail -4; git status --short | head
+      at: 2026-10-16T15:04:50.461932Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove; git reset -q --soft HEAD~1 && git reset -q HEAD .mcp.json && git commit -q -m "graph: resolver v41 (TS property-typed receivers, member-ref edges)
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX"; git show --stat HEAD | tail -2; git status --short; go test -count=1 ./internal/graph/ 2>&1 | tail -1
+      at: 2026-10-16T15:04:56.424196Z
+      classified: test
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove; GOWORK=off go test ./... 2>&1 | grep -v \"^ok\\|no test files\"; echo \"grep-rc=$?\"; git push -q origin HEAD:refs/heads/release/v0.63.22 2>&1 | grep -v \"^remote:\" ; gh pr create --base main --head release/v0.63.22 --title \"release v0.63.22\" --body \"$(cat <<'EOF'\nTypeScript receivers typed through a property's declarations, and member references as change-impact sites.\n\n- **Property-typed receivers:** for `X.prop.member` with `X` untyped (zod: `inst` is a callback parameter typed only through a generic), `X.prop` takes the type its project-wide declarations agree on. Each declaration's type must resolve to an indexed class or interface (generic parameter → constraint, else default; aliases followed). Anything unresolvable stops the rule. Types that cannot have the member drop out. The rest must reach one declaration of it, else nothing is decided. Private/protected members are never bound from outside their class.\n- **Member references:** `x.member = ...` and value reads of a method member through a resolved receiver become reads/writes edges (`member-ref`), counted as change-impact sites and kept by incremental builds.\n- zod `_$ZodTypeInternals.parse`: 1 → 61 sites (gold 61: 5 calls, 52 writes, 5 reads, the declaration).\n- Resolver v41.\n\nGate: go test green (workspace off); all 21 oracles within baseline, socket.io / express / p-queue at exactly baseline P/R; ci_invariants on a fresh corpus with the decoy invariant held; edit fuzz identical to v0.63.21 (commons-lang's 2 are the documented javac broken-file case); replay of 96 recorded sessions changes only zod parse.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\n)\""
+      at: 2026-10-16T15:05:41.413762Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; sleep 20; gh pr checks 39 --watch --interval 30 >/dev/null 2>&1; gh pr checks 39 2>&1 | awk -F'\t' '{print $1, $2}'
+      at: 2026-10-16T15:09:40.943288Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove; gh pr merge 39 --merge -d >/dev/null 2>&1; git fetch -q origin; git stash -q; git checkout -q main; git reset -q --hard origin/main; git stash pop -q; git status --short; git log --oneline -1; git tag -a v0.63.22 -m v0.63.22 && git push -q origin v0.63.22 && echo tagged
+        cd ../prism; GOWORK=off GOPROXY=direct go get github.com/provasign/grove@v0.63.22 2>&1 | tail -2; GOWORK=off go mod tidy; git diff --stat; GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "grep-rc=$?"
+      at: 2026-10-16T15:10:53.656238Z
+      classified: test
+notes:
+    - text: continuation of session b078ae73-7c6b-4498-a9f7-eeada0292d5a — events captured after its evidence was finalized
+      at: 2026-10-16T11:34:38.576506Z
+redactions: 0
