@@ -158,3 +158,41 @@ func TestOtherMentionsPartialLabel(t *testing.T) {
 		t.Errorf("closed label wrong:\n%s", got)
 	}
 }
+
+// A caller's call line that editSites prints with its text is not printed
+// again as caller evidence (bench29: every change_impact answer had both).
+func TestCallerEvidenceNotRepeatedFromEditSites(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"pkg/core.py": "class Group:\n    def get_command(self, ctx, name):\n        return None\n\n\ndef resolve(g: Group):\n    return g.get_command(None, 'x')\n",
+	})
+	raw, err := h.Invoke("prism_change_impact", map[string]any{"query": "Group.get_command"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, ok := renderChangeImpactAsText(raw.(map[string]any))
+	if !ok {
+		t.Fatal("not rendered as text")
+	}
+	if n := strings.Count(rendered, "return g.get_command(None, 'x')"); n != 1 {
+		t.Errorf("call line printed %d times, want once (in editSites):\n%s", n, rendered)
+	}
+	if !strings.Contains(rendered, "caller call line(s) are in editSites above") {
+		t.Errorf("missing the not-repeated note:\n%s", rendered)
+	}
+}
+
+func TestBlockCommentOpenSkipsStrings(t *testing.T) {
+	for line, want := range map[string]int{
+		`subApp.use("/admin/**", fn)`: -1,
+		`.get('/**:slug', h)`:         -1,
+		"x = `/*`":                    -1,
+		`// see /* here`:              -1,
+		`/* real`:                     0,
+		`a(); /* real`:                5,
+		`s = "a\"/*"; /* c`:           13,
+	} {
+		if got := blockCommentOpen(line); got != want {
+			t.Errorf("blockCommentOpen(%q) = %d, want %d", line, got, want)
+		}
+	}
+}

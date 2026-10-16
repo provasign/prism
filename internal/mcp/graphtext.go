@@ -211,6 +211,10 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 			"not appear; if this class's runtime BEHAVIOR changed (not just its shape), also " +
 			"prism_search for instanceof checks against types it might resemble\n")
 	}
+	// Call lines editSites already prints with their text are not repeated
+	// as caller evidence (bench29: the same lines twice in every answer).
+	shownInEdits := editSiteTextKeys(out)
+	repeated := 0
 	for _, sec := range []struct{ key, label string }{
 		{"declarations", "declarations"},
 		{"supers", "supers"},
@@ -276,12 +280,19 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 				if !ok || len(evidence) != 2 || evidence["line"] == nil || evidence["text"] == nil {
 					return "", false
 				}
+				if sec.key == "callers" && shownInEdits[fmt.Sprintf("%v:%v", m["filePath"], evidence["line"])] {
+					repeated++
+					continue
+				}
 				fmt.Fprintf(&b, "%s%v: %v\n", evidenceIndent, evidence["line"], evidence["text"])
 			}
 			if note, _ := m["evidenceNote"].(string); note != "" {
 				fmt.Fprintf(&b, "%s// %s\n", evidenceIndent, note)
 			}
 		}
+	}
+	if repeated > 0 {
+		fmt.Fprintf(&b, "// %d caller call line(s) are in editSites above and not repeated here.\n", repeated)
 	}
 	if n, _ := out["declaringTypesNote"].(string); n != "" {
 		fmt.Fprintf(&b, "// %s\n", n)

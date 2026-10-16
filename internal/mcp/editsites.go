@@ -247,6 +247,36 @@ func formatEditSitesText(out map[string]any) string {
 	return b.String()
 }
 
+// editSiteTextKeys returns "path:line" of each editSites row printed with
+// its text (the full form; the per-file form carries no text).
+func editSiteTextKeys(out map[string]any) map[string]bool {
+	rows := anySlice(out["editSites"])
+	if n, _ := out["editSiteCount"].(int); len(rows) == 0 || n > len(rows) {
+		return nil
+	}
+	keys := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		s, _ := r.(string)
+		path, rest, ok := strings.Cut(s, ":")
+		for ok && path != "" {
+			// path may hold ':' (Windows drive): advance until rest starts "<line>:<col>: ".
+			line, tail, ok2 := strings.Cut(rest, ":")
+			if _, err := strconv.Atoi(line); err == nil && ok2 {
+				if col, _, ok3 := strings.Cut(tail, ": "); ok3 {
+					if _, err := strconv.Atoi(col); err == nil {
+						keys[path+":"+line] = true
+						break
+					}
+				}
+			}
+			var more string
+			more, rest, ok = strings.Cut(rest, ":")
+			path += ":" + more
+		}
+	}
+	return keys
+}
+
 // parsePosition reads "12:5" (line:col) or "12" (line only).
 func parsePosition(p string) (int, int) {
 	p = strings.TrimSpace(p)
