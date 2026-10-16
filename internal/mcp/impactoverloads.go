@@ -375,6 +375,20 @@ func callerCallPositions(r *grove.ChangeImpactResult, methodTarget bool) map[str
 			// property(get_data, set_data) reference): the resolver's own
 			// positions are the sites.
 			ps = append(ps, r.ResolvedCallerLines[c.ID]...)
+		} else {
+			// Resolver positions on lines with no call site are non-call
+			// references grove tied to the change set (`inst._zod.parse =
+			// ...`, `const base = inst._zod.parse`): sites as well.
+			lineOf := func(p string) string { l, _, _ := strings.Cut(p, ":"); return l }
+			callLine := map[string]bool{}
+			for p := range seen {
+				callLine[lineOf(p)] = true
+			}
+			for _, p := range r.ResolvedCallerLines[c.ID] {
+				if !callLine[lineOf(p)] {
+					ps = append(ps, p)
+				}
+			}
 		}
 		if len(ps) > 0 || len(misfit) > 0 || len(other) > 0 {
 			for _, l := range [][]string{ps, misfit, other} {
