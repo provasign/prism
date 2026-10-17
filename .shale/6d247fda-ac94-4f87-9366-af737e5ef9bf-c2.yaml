@@ -1,0 +1,1101 @@
+shale_version: "0"
+id: 6d247fda-ac94-4f87-9366-af737e5ef9bf-c2
+created_at: 2026-10-17T15:22:40.277454Z
+finalized_at: 2026-10-17T17:48:02.622304Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git push origin main 2>&1 | tail -2; cd ../research && git push origin main 2>&1 | tail -2; git -C /Users/tapabratapal/Projects/provasign/prism log --oneline origin/main -1
+      at: 2026-10-17T15:22:40.277454Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("MEMORY.md"); s = p.read_text()
+        line = "- [Cost plan 2026-10-17](project_cost_plan_2026_10_17.md) — 14-item Codex plan cut to 5; harness persistence/arm order + MCP scope DONE and pushed; only the paid 5m-TTL run is open (needs go-ahead)\n"
+        p.write_text(s.replace("# Memory Index\n\n", "# Memory Index\n\n" + line, 1))
+        EOF
+        head -4 MEMORY.md
+      at: 2026-10-17T15:23:00.312302Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "def _agent_env" -A 12 runners/run_e2e.py | grep -n "environ\|env =" ; grep -n "def _cloud_cmd" -A 30 runners/run_e2e.py | grep -n "PRISM_INIT_BIN\|--model\|env\|mcp" | head; grep -n "PRISM_INIT_BIN\|PRISM_BIN_FOR_ARM" runners/ab_endtoend_arms.py | head -5; grep -n "def warm_cache" -A 26 runners/run_e2e.py | grep -n "WARM_TTL_S\|environ\|stamp" | head; ls ~/prism-ab-bins/ | grep -i "0.87.3\|cand30"; ~/prism-ab-bins/prism-v0.87.30 version 2>/dev/null || ~/prism-ab-bins/prism-v0.87.30 --version; python3 -c "import json;print(len(json.load(open('results/seeded32-manifest.json'))))"; docker info >/dev/null 2>&1 && echo DOCKER-UP || echo DOCKER-DOWN; claude --version
+      at: 2026-10-17T15:29:32.322293Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > runners/run_ttl.py <<'EOF'
+        #!/usr/bin/env python3
+        """Prompt-cache TTL experiment: every manifest task x {native, prism} x {1h, 5m}.
+
+        Claude Code writes the prompt cache at the 1-hour rate ($4/M on Sonnet 5.5)
+        unless CLAUDE_CODE_PROMPT_CACHE_TTL=5m ($2.50/M). Cache writes were ~71% of
+        a wide cell's cost (2026-10-17 audit), so the TTL is a deployment lever for
+        BOTH arms. This runner measures it instead of repricing old traces: the 5m
+        cache can expire between requests and change the hit rate.
+
+        Cells of one task run back to back in a seeded order; each cell is written
+        as soon as it finishes (resumable per cell). Per task it prints, per arm,
+        1h vs 5m cost and the TTL counters the API reported, so a setting that did
+        not take effect is visible on the first task. Stop rule (2026-10-10):
+        resolve loss (1h solved, 5m not, same arm), any cell error, or 5m/1h cost
+        > 1.25 after 10 complete tasks -- the run halts and says why.
+        """
+        import sys as _sys, os as _os
+        _H = _os.path.dirname(_os.path.abspath(__file__))
+        for _d in (_os.path.dirname(_H), _H, _os.path.join(_os.path.dirname(_H), "aggregate"),
+                   _os.path.join(_os.path.dirname(_H), "build"), _os.path.join(_os.path.dirname(_H), "scoring")):
+            if _d not in _sys.path:
+                _sys.path.insert(0, _d)
+
+        import argparse
+        import json
+        import os
+        import random
+        import re
+        import time
+        from pathlib import Path
+
+        import run_e2e
+
+        TTL_ENV = ("CLAUDE_CODE_PROMPT_CACHE_TTL", "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL")
+        UNIT_S = {"second": 1, "minute": 60, "hour": 3600}
+
+
+        def run_with_retry(task, arm, model, log):
+            while True:
+                try:
+                    return run_e2e.run_cell(task, arm, model)
+                except run_e2e.RateLimited as e:
+                    msg = str(e)
+                    sleep_s = 300 if isinstance(e, (run_e2e.NetworkDown, run_e2e.AuthExpired)) else 1800
+                    m = re.search(r"(\d+)\s*(second|minute|hour)s?", msg, re.I)
+                    if m:
+                        sleep_s = int(m.group(1)) * UNIT_S[m.group(2).lower()]
+                    log(f"RATE LIMIT on {task['instance_id']}/{arm}: sleeping {sleep_s}s ({msg[:120]!r})")
+                    time.sleep(sleep_s)
+                except Exception as e:  # noqa: BLE001
+                    return {"resolved": None, "error": f"{type(e).__name__}: {str(e)[:300]}"}
+
+
+        def cell_summary(rec):
+            usage = rec.get("usage") or {}
+            ttl = (usage.get("transcript") or {}).get("cache_ttl") or usage.get("cache_ttl") or {}
+            return {"resolved": rec.get("resolved"), "cost_usd": rec.get("cost_usd"), "turns": rec.get("turns"),
+                    "api_calls": rec.get("api_calls"), "wall_s": rec.get("wall_s"),
+                    "tokens": rec.get("tokens_request"), "tokens_out": rec.get("tokens_out"),
+                    "cache_write": rec.get("tokens_cache_write"), "cache_read": rec.get("tokens_cache_read"),
+                    "cache_5m": ttl.get("cache_5m"), "cache_1h": ttl.get("cache_1h"),
+                    "session_id": rec.get("session_id"), "model": rec.get("model"),
+                    "tool_trace": rec.get("tool_trace"), "usage": usage, "transcript": rec.get("transcript"),
+                    "error": rec.get("error") or rec.get("agent_error")}
+
+
+        def main():
+            ap = argparse.ArgumentParser()
+            ap.add_argument("--manifest", required=True)
+            ap.add_argument("--out-dir", required=True)
+            ap.add_argument("--model", default="claude-sonnet-5-5")
+            ap.add_argument("--native-arm", default="native")
+            ap.add_argument("--prism-arm", default="prism_init")
+            ap.add_argument("--ttls", default="1h,5m")
+            ap.add_argument("--order-seed", default="ttl-2026-10-17")
+            ap.add_argument("--limit", type=int, default=0, help="run only the first N tasks (probe)")
+            a = ap.parse_args()
+
+            out = Path(a.out_dir); out.mkdir(parents=True, exist_ok=True)
+            results_path, log_path = out / "results.json", out / "run.log"
+            arms, ttls = [a.native_arm, a.prism_arm], a.ttls.split(",")
+
+            def log(msg):
+                line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
+                print(line, flush=True)
+                with log_path.open("a") as f:
+                    f.write(line + "\n")
+
+            manifest = json.loads(Path(a.manifest).read_text())
+            tasks = [json.loads((Path("tasks/e2e") / f"{i}.json").read_text()) for i in manifest]
+            tasks.sort([REDACTED:env-secret] t: len(t.get("patch") or ""))
+            if a.limit:
+                tasks = tasks[:a.limit]
+            results = json.loads(results_path.read_text()) if results_path.exists() else {}
+            log(f"start: {len(tasks)} tasks x {arms} x {ttls}, model={a.model}, "
+                f"claude={run_e2e.usage_account.claude_version()}, seed={a.order_seed}")
+
+            complete = 0
+            for task in tasks:
+                iid = task["instance_id"]
+                row = results.setdefault(iid, {"lang": task.get("lang"), "cells": {}})
+                cells = [(arm, ttl) for arm in arms for ttl in ttls]
+                random.Random(f"{a.order_seed}-{iid}").shuffle(cells)
+                row["order"] = [f"{arm}/{ttl}" for arm, ttl in cells]
+                for arm, ttl in cells:
+                    key = f"{arm}/{ttl}"
+                    if key in row["cells"]:
+                        continue
+                    for name in TTL_ENV:
+                        os.environ[name] = ttl
+                    log(f"-- {iid} {key}")
+                    rec = run_with_retry(task, arm, a.model, log)
+                    rec["transcript"] = run_e2e._preserve_transcript(
+                        rec.get("session_id"), out / "transcripts" / f"{iid}.{a.model}.{arm}.{ttl}.jsonl")
+                    row["cells"][key] = {**cell_summary(rec), "ttl": ttl, "arm": arm}
+                    results_path.write_text(json.dumps(results, indent=2))
+                    c = row["cells"][key]
+                    log(f"   {key}: resolved={c['resolved']} cost=${c['cost_usd']} api_calls={c['api_calls']} "
+                        f"cache_5m={c['cache_5m']} cache_1h={c['cache_1h']}"
+                        + (f" ERROR {c['error'][:160]}" if c["error"] else ""))
+                    if c["error"]:
+                        log(f"STOP: cell error on {iid} {key}")
+                        return
+                complete += 1
+                # Per-pair report: within each arm, 1h vs 5m.
+                for arm in arms:
+                    h, m = row["cells"].get(f"{arm}/1h"), row["cells"].get(f"{arm}/5m")
+                    if not (h and m):
+                        continue
+                    ratio = (m["cost_usd"] / h["cost_usd"]) if h["cost_usd"] and m["cost_usd"] else None
+                    log(f"   PAIR {iid} {arm}: 1h ${h['cost_usd']} resolved={h['resolved']} | "
+                        f"5m ${m['cost_usd']} resolved={m['resolved']} | 5m/1h={ratio and round(ratio, 3)}")
+                    if h["resolved"] and not m["resolved"]:
+                        log(f"STOP: resolve loss on {iid} {arm} (1h solved, 5m did not)")
+                        return
+                    if m["cache_5m"] is not None and m["cache_1h"] and m["cache_5m"] == 0:
+                        log(f"STOP: 5m cell wrote only 1h cache entries on {iid} {arm}: the TTL setting did not take effect")
+                        return
+                if complete >= 10:
+                    tot = {}
+                    for r in results.values():
+                        for arm in arms:
+                            h, m = r["cells"].get(f"{arm}/1h"), r["cells"].get(f"{arm}/5m")
+                            if h and m and h["cost_usd"] and m["cost_usd"]:
+                                t = tot.setdefault(arm, [0.0, 0.0]); t[0] += h["cost_usd"]; t[1] += m["cost_usd"]
+                    for arm, (h_usd, m_usd) in tot.items():
+                        if m_usd / h_usd > 1.25:
+                            log(f"STOP: {arm} 5m/1h cost {m_usd / h_usd:.3f} > 1.25 after {complete} tasks")
+                            return
+            log("DONE")
+
+
+        if __name__ == "__main__":
+            main()
+        EOF
+        python3 -m py_compile runners/run_ttl.py && echo OK && python3 -c "import json;m=json.load(open('results/seeded32-manifest.json'));import os;t=[json.load(open(f'tasks/e2e/{i}.json')) for i in m];t.sort([REDACTED:env-secret] x:len(x.get('patch') or ''));print([x['instance_id'] for x in t[:3]])"
+      at: 2026-10-17T15:30:24.751684Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && export PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-cand30 && python3 -u runners/run_ttl.py --manifest results/seeded32-manifest.json --out-dir results/ttl32-2026-10-17 --limit 1 2>&1 | tail -30
+      at: 2026-10-17T15:30:28.870919Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/runners/run_ttl.py && git commit -q -m "harness: run_ttl.py, prompt-cache TTL experiment (task x arm x {1h,5m}) with per-pair report and stop rule
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git log --oneline -1
+      at: 2026-10-17T15:30:43.392912Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bwcnp6ovj.output; echo; cat /Users/tapabratapal/Projects/provasign/research/harness/results/ttl32-2026-10-17/run.log 2>/dev/null
+      at: 2026-10-17T15:30:49.854014Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bwcnp6ovj.output
+      at: 2026-10-17T15:33:00.641913Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && export PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-cand30 && nohup python3 -u runners/run_ttl.py --manifest results/seeded32-manifest.json --out-dir results/ttl32-2026-10-17 > results/ttl32-2026-10-17.log 2>&1 &
+        sleep 2; pgrep -f run_ttl.py | head -1; tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/ttl32-2026-10-17.log
+      at: 2026-10-17T15:33:14.185119Z
+      classified: other
+    - cmd: pkill -f run_ttl.py; sleep 1; pgrep -f run_ttl.py || echo STOPPED; tail -3 /Users/tapabratapal/Projects/provasign/research/harness/results/ttl32-2026-10-17/run.log
+      at: 2026-10-17T15:42:20.276691Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("runners/run_ttl.py"); s = p.read_text()
+        old = '''    ap.add_argument("--limit", type=int, default=0, help="run only the first N tasks (probe)")
+            a = ap.parse_args()
+        '''
+        new = '''    ap.add_argument("--limit", type=int, default=0, help="run only the first N tasks (probe)")
+            ap.add_argument("--baseline", default="",
+                            help="run_overnight results.json of a 1h run on the same tasks; per task, each arm's "
+                                 "5m cost is reported against that run's cost (2026-10-17: Topo asked for 5m "
+                                 "cells only, compared with the recorded 1h benches)")
+            a = ap.parse_args()
+            baseline = {}
+            if a.baseline:
+                for r in json.loads(Path(a.baseline).read_text()):
+                    baseline[r["task"]] = {a.native_arm: r["native"], a.prism_arm: r["prism"]}
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''        # Per-pair report: within each arm, 1h vs 5m.
+                for arm in arms:
+                    h, m = row["cells"].get(f"{arm}/1h"), row["cells"].get(f"{arm}/5m")
+        '''
+        new = '''        # Per-pair report: within each arm, 1h vs 5m (1h from this run or the baseline run).
+                for arm in arms:
+                    h, m = row["cells"].get(f"{arm}/1h"), row["cells"].get(f"{arm}/5m")
+                    if h is None and iid in baseline:
+                        b = baseline[iid][arm]
+                        h = {"cost_usd": b.get("cost_usd"), "resolved": b.get("resolved"), "cache_5m": None, "cache_1h": None}
+                        row.setdefault("baseline_1h", {})[arm] = {"cost_usd": b.get("cost_usd"), "resolved": b.get("resolved"),
+                                                                   "source": a.baseline}
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        p.write_text(s)
+        EOF
+        python3 -m py_compile runners/run_ttl.py && export PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-cand30 && nohup python3 -u runners/run_ttl.py --manifest results/seeded32-manifest.json --out-dir results/ttl32-2026-10-17 --ttls 5m --baseline results/bench30-wide-rep2-2026-10-16/results.json > results/ttl32-5m-2026-10-17.log 2>&1 &
+        sleep 3; tail -4 /Users/tapabratapal/Projects/provasign/research/harness/results/ttl32-2026-10-17/run.log
+      at: 2026-10-17T15:42:43.690121Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        r = json.load(open("results/ttl32-2026-10-17/results.json"))
+        for iid, row in list(r.items())[:4]:
+            print(iid, row.get("order"))
+            for key, c in row["cells"].items():
+                pr = ((c.get("usage") or {}).get("transcript") or {}).get("per_request") or []
+                first = pr[0] if pr else {}
+                print(f"  {key:16} first request: uncached={first.get('input_uncached')} write={first.get('cache_creation')} read={first.get('cache_read')} | total write={c['cache_write']} read={c['cache_read']} api={c['api_calls']}")
+        EOF
+      at: 2026-10-17T15:43:42.486183Z
+      classified: other
+    - cmd: pkill -f run_ttl.py; sleep 1; pgrep -f run_ttl.py || echo STOPPED
+      at: 2026-10-17T15:44:29.273069Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, os
+        from pathlib import Path
+        def first_read(sid):
+            for f in Path.home().glob(f".claude/projects/*/{sid}.jsonl"):
+                for line in f.open():
+                    try: j = json.loads(line)
+                    except Exception: continue
+                    m = j.get("message") or {}
+                    if j.get("type") == "assistant" and isinstance(m, dict) and m.get("usage"):
+                        return m["usage"].get("cache_read_input_tokens")
+            return None
+        for run in ["bench30-wide-rep1-2026-10-16", "bench30-wide-rep2-2026-10-16", "bench30-issue42-2026-10-16"]:
+            rows = json.load(open(f"results/{run}/results.json"))
+            cold = {"native": [], "prism": []}; missing = 0
+            for r in rows:
+                for arm in ("native", "prism"):
+                    fr = first_read(r[arm].get("session_id"))
+                    if fr is None: missing += 1
+                    elif fr == 0: cold[arm].append(r["task"])
+            print(run, f"cells={2*len(rows)} no-transcript={missing}",
+                  f"cold native={len(cold['native'])} {cold['native'][:4]}", f"cold prism={len(cold['prism'])} {cold['prism'][:4]}")
+        EOF
+      at: 2026-10-17T15:45:11.141064Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '/^def _cloud_cmd/,/^def /p' runners/run_e2e.py | head -60; grep -n "strict-mcp-config\|mcp-config" runners/run_session.py | head -3; claude --help 2>&1 | grep -A2 "mcp-config"
+      at: 2026-10-17T15:47:06.392063Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls hooks/ | head; grep -n "def _upstream_guard_settings" -A 6 runners/run_e2e.py | head -12; grep -n "PRISM_INIT_ARMS =" runners/*.py | head -2
+      at: 2026-10-17T15:47:34.243611Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > hooks/cold_mcp.py <<'EOF'
+        #!/usr/bin/env python3
+        """Cache-busting MCP server: one no-op tool whose name carries a per-cell
+        nonce (COLD_NONCE). Listed in every arm's tool set, it makes each cell's
+        prompt prefix unique, so no benchmark cell can read the prompt cache another
+        cell wrote (2026-10-17: cells shared ~12.8k cached prefix tokens across arms).
+        Newline-delimited JSON-RPC over stdio, the framing Claude Code uses."""
+        import json
+        import os
+        import sys
+
+        NONCE = os.environ.get("COLD_NONCE", "0")
+        TOOL = {"name": f"cold_{NONCE}", "description": "Unused. Never call this tool.",
+                "inputSchema": {"type": "object", "properties": {}}}
+
+
+        def reply(msg_id, result):
+            sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": msg_id, "result": result}) + "\n")
+            sys.stdout.flush()
+
+
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                req = json.loads(line)
+            except ValueError:
+                continue
+            method, msg_id = req.get("method"), req.get("id")
+            if msg_id is None:
+                continue  # notification
+            if method == "initialize":
+                reply(msg_id, {"protocolVersion": req.get("params", {}).get("protocolVersion", "2025-03-26"),
+                               "serverInfo": {"name": "cold", "version": NONCE},
+                               "capabilities": {"tools": {}},
+                               "instructions": f"cold-start marker {NONCE}; nothing to use here."})
+            elif method == "tools/list":
+                reply(msg_id, {"tools": [TOOL]})
+            elif method == "tools/call":
+                reply(msg_id, {"content": [{"type": "text", "text": "noop"}]})
+            else:
+                reply(msg_id, {})
+        EOF
+        python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("runners/run_e2e.py"); s = p.read_text()
+        old = '''    if arm in PRISM_INIT_ARMS:
+                cmd += ["--mcp-config", str(wt / ".mcp.json")]
+            elif spec["mcp"]:
+                cmd += ["--mcp-config", spec["mcp"]]
+            return cmd
+        '''
+        new = '''    if arm in PRISM_INIT_ARMS:
+                cmd += ["--mcp-config", str(wt / ".mcp.json")]
+            elif spec["mcp"]:
+                cmd += ["--mcp-config", spec["mcp"]]
+            if os.environ.get("E2E_COLD") == "1":
+                # Every cell cold (2026-10-17): a nonce-named no-op tool in BOTH arms
+                # makes the prompt prefix unique per cell, so no cell reads the cache
+                # another cell wrote. The startup write is then measured per cell and
+                # reported apart from the task cost (rec["startup"]).
+                nonce = uuid.uuid4().hex[:12]
+                cold = {"mcpServers": {"cold": {"command": "python3", "args": [str(HOOKS_SRC / "cold_mcp.py")],
+                                                "env": {"COLD_NONCE": nonce}}}}
+                cmd += ["--mcp-config", json.dumps(cold)]
+            return cmd
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        s = s.replace("import tempfile\nimport time\n", "import tempfile\nimport time\nimport uuid\n", 1)
+        old = '''        tu = usage_account.transcript_usage(rec["session_id"])
+                rec["usage"]["transcript"] = {k: tu[k] for k in (
+                    "transcript", "messages", "requests", "tokens", "cache_ttl", "per_request",
+                    "cache_hit_rate", "warnings", "_unavailable") if k in tu}
+        '''
+        new = '''        tu = usage_account.transcript_usage(rec["session_id"])
+                rec["usage"]["transcript"] = {k: tu[k] for k in (
+                    "transcript", "messages", "requests", "tokens", "cache_ttl", "per_request",
+                    "cache_hit_rate", "warnings", "_unavailable") if k in tu}
+                rec["startup"] = usage_account.startup_split(tu.get("per_request") or [], rec.get("model"),
+                                                             rec.get("cost_usd"), cold=os.environ.get("E2E_COLD") == "1")
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        p.write_text(s)
+
+        p = Path("aggregate/usage_account.py"); s = p.read_text()
+        s += '''
+
+        # Sonnet 5.5 list rates per token, fitted 2026-10-16 against CLI cost_usd
+        # (median error 0.0%): uncached in, 5m write, 1h write, cache read, output.
+        SONNET55_RATES = {"input_uncached": 2e-6, "cache_5m": 2.5e-6, "cache_1h": 4e-6,
+                          "cache_read": 1e-7, "output": 1e-5}
+
+
+        def startup_split(per_request: list, model: str | None, cost_usd, cold: bool) -> dict:
+            """The session's first request is the startup write: the system prompt,
+            tool definitions, and steering, written to the cache once. Reported apart
+            from the task cost so arms compare on the work and the startup overhead
+            is its own per-arm number (2026-10-17). `cold` says every cell was made
+            cache-cold by design; `was_cold` says what the API reported."""
+            if not per_request:
+                return {"status": "no per-request usage"}
+            first = per_request[0]
+            was_cold = first.get("cache_read") == 0
+            out = {"cold_by_design": cold, "was_cold": was_cold,
+                   "first_request": {k: first.get(k) for k in ("input_uncached", "cache_creation",
+                                                                "cache_5m", "cache_1h", "cache_read", "output")}}
+            if not (model or "").startswith("claude-sonnet-5-5"):
+                out["status"] = "no rate table for model"
+                return out
+            r = SONNET55_RATES
+            write = first.get("cache_5m"), first.get("cache_1h")
+            if None in write or first.get("input_uncached") is None:
+                out["status"] = "first request usage incomplete"
+                return out
+            startup = write[0] * r["cache_5m"] + write[1] * r["cache_1h"] + first["input_uncached"] * r["input_uncached"]
+            out["startup_usd"] = round(startup, 6)
+            if isinstance(cost_usd, (int, float)):
+                out["task_usd"] = round(cost_usd - startup, 6)
+            out["status"] = "ok"
+            return out
+        '''
+        p.write_text(s)
+
+        p = Path("runners/run_ttl.py"); s = p.read_text()
+        old = '''    return {"resolved": rec.get("resolved"), "cost_usd": rec.get("cost_usd"), "turns": rec.get("turns"),'''
+        new = '''    return {"resolved": rec.get("resolved"), "cost_usd": rec.get("cost_usd"), "turns": rec.get("turns"),
+                    "startup": rec.get("startup"),'''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''            c = row["cells"][key]
+                    log(f"   {key}: resolved={c['resolved']} cost=${c['cost_usd']} api_calls={c['api_calls']} "
+                        f"cache_5m={c['cache_5m']} cache_1h={c['cache_1h']}"
+                        + (f" ERROR {c['error'][:160]}" if c["error"] else ""))
+                    if c["error"]:
+                        log(f"STOP: cell error on {iid} {key}")
+                        return
+        '''
+        new = '''            c = row["cells"][key]
+                    st = c.get("startup") or {}
+                    log(f"   {key}: resolved={c['resolved']} cost=${c['cost_usd']} startup=${st.get('startup_usd')} "
+                        f"task=${st.get('task_usd')} cold={st.get('was_cold')} api_calls={c['api_calls']} "
+                        f"cache_5m={c['cache_5m']} cache_1h={c['cache_1h']}"
+                        + (f" ERROR {c['error'][:160]}" if c["error"] else ""))
+                    if c["error"]:
+                        log(f"STOP: cell error on {iid} {key}")
+                        return
+                    if os.environ.get("E2E_COLD") == "1" and st.get("was_cold") is False:
+                        log(f"STOP: {iid} {key} was not cache-cold (first request read {st['first_request']['cache_read']} tokens)")
+                        return
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        p.write_text(s)
+        EOF
+        python3 -m py_compile runners/run_e2e.py runners/run_ttl.py aggregate/usage_account.py hooks/cold_mcp.py && echo COMPILED
+        # offline: the nonce server answers initialize + tools/list
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26"}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | COLD_NONCE=abc python3 hooks/cold_mcp.py
+        python3 -m unittest tests.test_usage_account tests.test_run_cell_persistence 2>&1 | tail -2
+      at: 2026-10-17T15:48:18.596996Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && export PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-cand30 E2E_COLD=1 && python3 -u runners/run_ttl.py --manifest results/seeded32-manifest.json --out-dir results/ttl32-cold-2026-10-17 --ttls 5m --limit 1 2>&1 | grep -v "^$" | tail -12
+      at: 2026-10-17T15:48:24.612593Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bptpwph5h.output; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        r = json.load(open("results/ttl32-cold-2026-10-17/results.json"))
+        for iid, row in r.items():
+            print(iid, row["order"])
+            for key, c in row["cells"].items():
+                pr = c["usage"]["transcript"]["per_request"]
+                print(f"  {key:14} first req: write={pr[0]['cache_creation']} read={pr[0]['cache_read']} | second req read={pr[1]['cache_read'] if len(pr)>1 else None} | tools used={c['tool_trace']}")
+        EOF
+      at: 2026-10-17T15:49:04.902521Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && rm hooks/cold_mcp.py && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("runners/run_e2e.py"); s = p.read_text()
+        old_start = s.index('    if os.environ.get("E2E_COLD") == "1":\n        # Every cell cold')
+        old_end = s.index('    return cmd\n', old_start)
+        s = s[:old_start] + s[old_end:]
+        s = s.replace("import time\nimport uuid\n", "import time\n", 1)
+        p.write_text(s)
+
+        p = Path("runners/run_ttl.py"); s = p.read_text()
+        old = '''    a = ap.parse_args()
+            baseline = {}'''
+        new = '''    ap.add_argument("--cold-gap", type=int, default=0,
+                            help="seconds every cell must start after the previous cell ended, so the API has "
+                                 "expired the prompt cache (5m TTL: 360). Nothing is added to any prompt; each "
+                                 "cell's first request is checked to have read 0 cached tokens, else the run stops. "
+                                 "Deferred MCP tools cannot bust the static prefix (tried 2026-10-17).")
+            a = ap.parse_args()
+            if a.cold_gap:
+                os.environ["E2E_COLD"] = "1"
+            baseline = {}'''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''            for name in TTL_ENV:
+                        os.environ[name] = ttl
+                    log(f"-- {iid} {key}")
+                    rec = run_with_retry(task, arm, a.model, log)
+        '''
+        new = '''            for name in TTL_ENV:
+                        os.environ[name] = ttl
+                    if a.cold_gap:
+                        wait = results.get("_last_cell_end", 0) + a.cold_gap - time.time()
+                        if wait > 0:
+                            log(f"   cold gap: sleeping {int(wait)}s so the previous cell's cache expires")
+                            time.sleep(wait)
+                    log(f"-- {iid} {key}")
+                    rec = run_with_retry(task, arm, a.model, log)
+                    results["_last_cell_end"] = time.time()
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        # results dict now holds a scalar key; skip it where rows are iterated
+        s = s.replace('''            for r in results.values():
+                        for arm in arms:''', '''            for r in (v for k, v in results.items() if not k.startswith("_")):
+                        for arm in arms:''')
+        p.write_text(s)
+        EOF
+        python3 -m py_compile runners/run_e2e.py runners/run_ttl.py && grep -n "E2E_COLD" runners/run_e2e.py runners/run_ttl.py && python3 -m unittest tests.test_run_cell_persistence 2>&1 | tail -1 && rm -rf results/ttl32-cold-2026-10-17 && export PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-cand30 && nohup python3 -u runners/run_ttl.py --manifest results/seeded32-manifest.json --out-dir results/ttl32-cold-2026-10-17 --ttls 5m --cold-gap 360 --limit 1 --baseline results/bench30-wide-rep2-2026-10-16/results.json > results/ttl32-cold-probe.log 2>&1 &
+        sleep 2; tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/ttl32-cold-2026-10-17/run.log
+      at: 2026-10-17T15:50:04.14496Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("runners/run_ttl.py"); s = p.read_text()
+        old = '''    if a.cold_gap:
+                os.environ["E2E_COLD"] = "1"
+            baseline = {}'''
+        new = '''    if a.cold_gap:
+                os.environ["E2E_COLD"] = "1"
+            baseline = {}'''
+        assert s.count(old) == 1
+        old2 = '''    results = json.loads(results_path.read_text()) if results_path.exists() else {}
+        '''
+        new2 = '''    results = json.loads(results_path.read_text()) if results_path.exists() else {}
+            if a.cold_gap and "_last_cell_end" not in results:
+                # A fresh run cannot know when the account's last request was made
+                # (another run, a probe); the first cell waits a full gap.
+                results["_last_cell_end"] = time.time()
+        '''
+        assert s.count(old2) == 1; s = s.replace(old2, new2)
+        p.write_text(s)
+        EOF
+        python3 -m py_compile runners/run_ttl.py && echo OK
+      at: 2026-10-17T15:50:23.06421Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f run_ttl.py >/dev/null && echo STILL-RUNNING || (rm -rf results/ttl32-cold-2026-10-17 && export PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-cand30 && nohup python3 -u runners/run_ttl.py --manifest results/seeded32-manifest.json --out-dir results/ttl32-cold-2026-10-17 --ttls 5m --cold-gap 360 --limit 1 --baseline results/bench30-wide-rep2-2026-10-16/results.json > results/ttl32-cold-probe.log 2>&1 & sleep 2; tail -2 results/ttl32-cold-2026-10-17/run.log)
+      at: 2026-10-17T15:50:43.586358Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        for run in ["bench30-wide-rep1-2026-10-16", "bench30-wide-rep2-2026-10-16", "bench30-issue42-2026-10-16", "bench29-issue42-2026-10-16"]:
+            rows = json.load(open(f"results/{run}/results.json"))
+            for arm in ("native", "prism"):
+                ws = sorted(((r[arm].get("wall_s") or 0), r["task"]) for r in rows)
+                med = ws[len(ws)//2][0]
+                print(f"{run:34} {arm:7} n={len(ws)} median={med:6.0f}s max={ws[-1][0]:6.0f}s ({ws[-1][1]})  >10min={sum(1 for w,_ in ws if w>600)}")
+        EOF
+        grep -n "timeout=1800\|timeout=2400" runners/run_e2e.py runners/run_session.py | head -3
+      at: 2026-10-17T15:50:57.131656Z
+      classified: other
+    - cmd: grep -o '`[A-Z_]*PROMPT_CACHING[A-Z_]*`[^|]*|[^|]*' "/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tool-results/toolu_01P754v47J6VFksnh9Aunrsf.txt" | cut -c1-400; echo ----; tail -4 /Users/tapabratapal/Projects/provasign/research/harness/results/ttl32-cold-2026-10-17/run.log
+      at: 2026-10-17T15:55:44.156317Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("aggregate/usage_account.py"); s = p.read_text()
+        s += '''
+
+        def reprice(per_request: list, ttl: str, model: str | None = "claude-sonnet-5-5") -> dict:
+            """Dollar cost of a session under prompt caching, reconstructed from
+            per-request token counts (caching changes billing, not the prompt).
+            Claude Code caches the whole prompt at every request, so request n+1
+            reads request n's prompt and writes only what was added since. Holds
+            while every inter-request gap is under the TTL and no compaction
+            occurred; validated against cached cells (see validate_reprice). Also
+            usable on caching-off runs (DISABLE_PROMPT_CACHING=1), where every
+            request bills everything as uncached input and the CLI cost is not
+            what a user pays."""
+            if not (model or "").startswith("claude-sonnet-5-5"):
+                return {"status": "no rate table for model"}
+            r = SONNET55_RATES
+            w = r["cache_5m"] if ttl == "5m" else r["cache_1h"]
+            usd = 0.0
+            prev_total = 0
+            rows = []
+            for req in per_request:
+                parts = [req.get(k) for k in ("input_uncached", "cache_creation", "cache_read", "output")]
+                if any(v is None for v in parts):
+                    return {"status": "per-request usage incomplete"}
+                total = parts[0] + parts[1] + parts[2]
+                read = min(prev_total, total)
+                write = max(0, total - read)
+                usd += write * w + read * r["cache_read"] + parts[3] * r["output"]
+                rows.append({"total": total, "write": write, "read": read, "output": parts[3]})
+                prev_total = total
+            return {"status": "ok", "ttl": ttl, "usd": round(usd, 6), "requests": len(rows),
+                    "startup_usd": round(rows[0]["write"] * w, 6) if rows else None}
+        '''
+        p.write_text(s)
+
+        p = Path("runners/run_ttl.py"); s = p.read_text()
+        old = '''    a = ap.parse_args()
+            if a.cold_gap:'''
+        new = '''    ap.add_argument("--no-cache", action="store_true",
+                            help="DISABLE_PROMPT_CACHING=1 for every cell: no cache exists, so no cell can share "
+                                 "state with another; CLI cost is then NOT what a user pays, and each cell carries "
+                                 "a repriced 5m/1h cost reconstructed from per-request tokens (usage_account.reprice)")
+            a = ap.parse_args()
+            if a.no_cache:
+                os.environ["DISABLE_PROMPT_CACHING"] = "1"
+                a.ttls = "nocache"
+            if a.cold_gap:'''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''            for name in TTL_ENV:
+                        os.environ[name] = ttl
+        '''
+        new = '''            for name in TTL_ENV:
+                        if ttl != "nocache":
+                            os.environ[name] = ttl
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''            row["cells"][key] = {**cell_summary(rec), "ttl": ttl, "arm": arm}
+        '''
+        new = '''            row["cells"][key] = {**cell_summary(rec), "ttl": ttl, "arm": arm}
+                    if a.no_cache:
+                        pr = ((rec.get("usage") or {}).get("transcript") or {}).get("per_request") or []
+                        row["cells"][key]["repriced"] = {t: run_e2e.usage_account.reprice(pr, t, rec.get("model"))
+                                                         for t in ("5m", "1h")}
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''            if os.environ.get("E2E_COLD") == "1" and st.get("was_cold") is False:'''
+        new = '''            if a.no_cache:
+                        rp = c["repriced"]
+                        if (c["cache_write"] or 0) or (c["cache_read"] or 0):
+                            log(f"STOP: {iid} {key} still used the prompt cache (write={c['cache_write']} read={c['cache_read']})")
+                            return
+                        log(f"   {key}: repriced 5m=${rp['5m'].get('usd')} (startup ${rp['5m'].get('startup_usd')}) "
+                            f"1h=${rp['1h'].get('usd')} (startup ${rp['1h'].get('startup_usd')}) uncached-bill=${c['cost_usd']}")
+                    if os.environ.get("E2E_COLD") == "1" and st.get("was_cold") is False:'''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        # per-pair report for no-cache: native vs prism repriced
+        old = '''        if complete >= 10:'''
+        new = '''        if a.no_cache:
+                    n, p = row["cells"].get(f"{arms[0]}/nocache"), row["cells"].get(f"{arms[1]}/nocache")
+                    if n and p:
+                        for t in ("5m", "1h"):
+                            nu, pu = n["repriced"][t].get("usd"), p["repriced"][t].get("usd")
+                            log(f"   PAIR {iid} repriced@{t}: native ${nu} resolved={n['resolved']} | "
+                                f"prism ${pu} resolved={p['resolved']} | prism/native={round(pu / nu, 3) if nu and pu else None}")
+                if complete >= 10:'''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        p.write_text(s)
+        EOF
+        python3 -m py_compile runners/run_ttl.py aggregate/usage_account.py && echo COMPILED
+        # Validate the repricing model against real cached cells (bench30 wide rep2, 1h TTL): predicted vs CLI cost.
+        python3 - <<'EOF'
+        import json, sys
+        sys.path[:0] = ["aggregate"]
+        import usage_account as ua
+        rows = json.load(open("results/bench30-wide-rep2-2026-10-16/results.json"))
+        errs = []
+        for r in rows:
+            for arm in ("native", "prism"):
+                sid, cost = r[arm].get("session_id"), r[arm].get("cost_usd")
+                tu = ua.transcript_usage(sid)
+                if "_unavailable" in tu or not cost: continue
+                rp = ua.reprice(tu["per_request"], "1h")
+                if rp["status"] != "ok": continue
+                errs.append((rp["usd"] / cost - 1, r["task"], arm, cost, rp["usd"]))
+        errs.sort()
+        import statistics
+        print(f"cells={len(errs)} median err={statistics.median(e[0] for e in errs):+.3%} "
+              f"p10={errs[len(errs)//10][0]:+.3%} p90={errs[-len(errs)//10][0]:+.3%} min={errs[0][0]:+.2%} max={errs[-1][0]:+.2%}")
+        for e in errs[:2] + errs[-2:]: print("  ", e)
+        EOF
+        # Launch the 5-pair caching-off run once the gap probe's second cell has started (so it cannot touch the probe's evidence).
+        export PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-cand30
+        nohup bash -c 'until grep -q "\-\- .* native/5m" results/ttl32-cold-2026-10-17/run.log; do sleep 10; done; python3 -u runners/run_ttl.py --manifest results/seeded32-manifest.json --out-dir results/nocache5-2026-10-17 --no-cache --limit 5' > results/nocache5-2026-10-17.log 2>&1 &
+        echo WAITER-STARTED
+      at: 2026-10-17T15:56:38.050288Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys, statistics
+        sys.path[:0] = ["aggregate"]
+        import usage_account as ua
+        def reprice_from(pr, ttl, warm_prefix=0):
+            r = ua.SONNET55_RATES; w = r["cache_5m"] if ttl == "5m" else r["cache_1h"]
+            usd, prev = 0.0, warm_prefix
+            for q in pr:
+                total = q["input_uncached"] + q["cache_creation"] + q["cache_read"]
+                read = min(prev, total); write = max(0, total - read)
+                usd += write * w + read * r["cache_read"] + q["output"] * r["output"] + 0  # uncached ~2 tokens ignored
+                prev = total
+            return usd
+        print("COLD cells (ttl32-2026-10-17): predicted vs CLI cost")
+        r = json.load(open("results/ttl32-2026-10-17/results.json"))
+        for iid, row in r.items():
+            if iid.startswith("_"): continue
+            for key, c in row["cells"].items():
+                pr = c["usage"]["transcript"]["per_request"]
+                if pr[0]["cache_read"] != 0: continue
+                pred = reprice_from(pr, c["ttl"])
+                print(f"  {iid[:32]:32} {key:14} cli=${c['cost_usd']:.4f} pred=${pred:.4f} err={pred/c['cost_usd']-1:+.2%}")
+        print("WARM cells (bench30 rep2, 1h): predicted with the observed first-request read as the warm prefix")
+        rows = json.load(open("results/bench30-wide-rep2-2026-10-16/results.json"))
+        errs = []
+        for row in rows:
+            for arm in ("native", "prism"):
+                tu = ua.transcript_usage(row[arm]["session_id"]); pr = tu.get("per_request") or []
+                if not pr or not row[arm].get("cost_usd"): continue
+                pred = reprice_from(pr, "1h", warm_prefix=pr[0]["cache_read"])
+                errs.append(pred / row[arm]["cost_usd"] - 1)
+        errs.sort()
+        print(f"  cells={len(errs)} median={statistics.median(errs):+.3%} p10={errs[len(errs)//10]:+.3%} p90={errs[-len(errs)//10]:+.3%}")
+        EOF
+        tail -3 results/ttl32-cold-2026-10-17/run.log
+      at: 2026-10-17T15:56:56.176049Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && tail -1 results/nocache5-2026-10-17/run.log; python3 - <<'EOF'
+        import json
+        r = json.load(open("results/nocache5-2026-10-17/results.json"))
+        tot = {"native": [0,0,0,0], "prism_init": [0,0,0,0]}
+        for iid, row in r.items():
+            if iid.startswith("_"): continue
+            for key, c in row["cells"].items():
+                arm = c["arm"]; rp = c["repriced"]
+                s5, t5 = rp["5m"]["startup_usd"], rp["5m"]["usd"] - rp["5m"]["startup_usd"]
+                s1, t1 = rp["1h"]["startup_usd"], rp["1h"]["usd"] - rp["1h"]["startup_usd"]
+                for i, v in enumerate((s5, t5, s1, t1)): tot[arm][i] += v
+                print(f"{iid[:34]:34} {arm:10} api={c['api_calls']} out={c['tokens_out']} in={c['tokens']} tools={c['tool_trace']}")
+        for arm, (s5, t5, s1, t1) in tot.items():
+            print(f"TOTAL {arm:10} 5m: startup ${s5:.3f} task ${t5:.3f} total ${s5+t5:.3f} | 1h: startup ${s1:.3f} task ${t1:.3f} total ${s1+t1:.3f}")
+        n, p = tot["native"], tot["prism_init"]
+        print(f"prism/native task-only 5m {p[1]/n[1]:.3f}  total 5m {(p[0]+p[1])/(n[0]+n[1]):.3f}  total 1h {(p[2]+p[3])/(n[2]+n[3]):.3f}  startup prism-native per cell 5m ${(p[0]-n[0])/5:.4f}")
+        EOF
+      at: 2026-10-17T16:11:58.412523Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/runners/run_ttl.py harness/runners/run_e2e.py harness/aggregate/usage_account.py && git commit -q -m "harness: isolated cells (timed cold gap or caching off), startup/task cost split, exact cache repricing
+
+        Cells shared the static prompt prefix through the API cache (~12.8k tokens,
+        any arm, within the TTL). run_ttl --cold-gap waits out the TTL before every
+        cell and stops if a first request read cached tokens; --no-cache sets
+        DISABLE_PROMPT_CACHING and reprices each cell from per-request tokens
+        (matches the CLI bill within 0.02% on 67 cells). startup_split reports the
+        first request's cache write apart from the task cost. A nonce MCP tool
+        cannot bust the prefix: deferred tools land after its cache breakpoint.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git push -q origin main && git log --oneline -1
+      at: 2026-10-17T16:12:09.904002Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("MEMORY.md"); s = p.read_text()
+        line = "- [Cell isolation rule 2026-10-17](project_cell_isolation_2026_10_17.md) — Topo: every cell isolated, cold startup reported apart; cells shared the static prefix via API cache; run_ttl --cold-gap / --no-cache + exact repricing; 5 pairs: task cost prism 0.944x, startup +$0.008/cell\n"
+        p.write_text(s.replace("# Memory Index\n\n", "# Memory Index\n\n" + line, 1))
+        EOF
+        echo ok
+      at: 2026-10-17T16:12:33.032552Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cp -r results/nocache5-2026-10-17 results/nocache32-2026-10-17 && export PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-cand30 && nohup python3 -u runners/run_ttl.py --manifest results/seeded32-manifest.json --out-dir results/nocache32-2026-10-17 --no-cache > results/nocache32-2026-10-17.log 2>&1 &
+        sleep 3; tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/nocache32-2026-10-17/run.log
+      at: 2026-10-17T16:16:26.585697Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        r = json.load(open("results/nocache32-2026-10-17/results.json"))
+        rows = [(k, v) for k, v in r.items() if not k.startswith("_") and len(v["cells"]) == 2]
+        for n in (8, len(rows)):
+            t = {"native": [0, 0, 0.0, 0.0, 0.0], "prism_init": [0, 0, 0.0, 0.0, 0.0]}
+            for k, v in rows[:n]:
+                for c in v["cells"].values():
+                    a = t[c["arm"]]
+                    a[0] += bool(c["resolved"]); a[1] += c["api_calls"] or 0; a[2] += c["cost_usd"] or 0
+                    a[3] += c["repriced"]["5m"]["usd"]; a[4] += c["repriced"]["1h"]["usd"]
+            print(f"first {n} pairs:")
+            for arm, (s, api, raw, m5, h1) in t.items():
+                print(f"  {arm:10} solved={s}/{n} requests={api} uncached-bill=${raw:.4f} repriced5m=${m5:.4f} repriced1h=${h1:.4f}")
+        EOF
+      at: 2026-10-17T16:22:51.621588Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        r = json.load(open("results/nocache32-2026-10-17/results.json"))
+        rows = [(k, v) for k, v in r.items() if not k.startswith("_") and len(v["cells"]) == 2]
+        print(f"{'task':40} {'native task':>11} {'prism task':>11} {'p/n':>6}   startup n / p")
+        tot = {"native": [0.0, 0.0], "prism_init": [0.0, 0.0]}
+        wins = 0
+        for k, v in rows:
+            c = {x["arm"]: x for x in v["cells"].values()}
+            tk = {a: c[a]["repriced"]["5m"]["usd"] - c[a]["repriced"]["5m"]["startup_usd"] for a in c}
+            st = {a: c[a]["repriced"]["5m"]["startup_usd"] for a in c}
+            for a in c: tot[a][0] += tk[a]; tot[a][1] += st[a]
+            wins += tk["prism_init"] < tk["native"]
+            print(f"{k[:40]:40} {tk['native']:11.4f} {tk['prism_init']:11.4f} {tk['prism_init']/tk['native']:6.3f}   {st['native']:.4f} / {st['prism_init']:.4f}")
+        n, p = tot["native"], tot["prism_init"]
+        print(f"\n{len(rows)} pairs @5m: TASK native ${n[0]:.4f} prism ${p[0]:.4f} prism/native {p[0]/n[0]:.3f}, prism cheaper {wins}/{len(rows)}")
+        print(f"            STARTUP native ${n[1]:.4f} prism ${p[1]:.4f} (per cell ${n[1]/len(rows):.4f} / ${p[1]/len(rows):.4f})")
+        EOF
+      at: 2026-10-17T16:23:39.600249Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/scratchpad/taskonly.py <<'EOF'
+        import json, sys
+        r = json.load(open("/Users/tapabratapal/Projects/provasign/research/harness/results/nocache32-2026-10-17/results.json"))
+        rows = [(k, v) for k, v in r.items() if not k.startswith("_") and len(v["cells"]) == 2]
+        k, v = rows[-1]
+        c = {x["arm"]: x for x in v["cells"].values()}
+        tk = {a: c[a]["repriced"]["5m"]["usd"] - c[a]["repriced"]["5m"]["startup_usd"] for a in c}
+        tn, tp, wins = 0.0, 0.0, 0
+        for _, vv in rows:
+            cc = {x["arm"]: x for x in vv["cells"].values()}
+            a = cc["native"]["repriced"]["5m"]["usd"] - cc["native"]["repriced"]["5m"]["startup_usd"]
+            b = cc["prism_init"]["repriced"]["5m"]["usd"] - cc["prism_init"]["repriced"]["5m"]["startup_usd"]
+            tn += a; tp += b; wins += b < a
+        print(f"PAIR {len(rows)}/32 {k}: task native ${tk['native']:.4f} prism ${tk['prism_init']:.4f} p/n={tk['prism_init']/tk['native']:.2f} "
+              f"solved n={c['native']['resolved']} p={c['prism_init']['resolved']} | cumulative task p/n={tp/tn:.3f} prism cheaper {wins}/{len(rows)}")
+        EOF
+        echo written
+      at: 2026-10-17T16:27:21.496398Z
+      classified: other
+    - cmd: tail -3 /Users/tapabratapal/Projects/provasign/research/harness/results/nocache32-2026-10-17/run.log; pgrep -f run_ttl.py >/dev/null && echo RUNNING || echo FINISHED
+      at: 2026-10-17T17:27:34.217616Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && tail -1 results/nocache32-2026-10-17/run.log && python3 - <<'EOF'
+        import json, statistics
+        r = json.load(open("results/nocache32-2026-10-17/results.json"))
+        rows = [(k, v) for k, v in r.items() if not k.startswith("_") and len(v["cells"]) == 2]
+        T = {"native": {"task5": 0, "st5": 0, "task1": 0, "st1": 0, "raw": 0, "api": 0, "out": 0, "inp": 0, "solved": 0, "prism_calls": 0},
+             "prism_init": {"task5": 0, "st5": 0, "task1": 0, "st1": 0, "raw": 0, "api": 0, "out": 0, "inp": 0, "solved": 0, "prism_calls": 0}}
+        ratios = []
+        for k, v in rows:
+            c = {x["arm"]: x for x in v["cells"].values()}
+            for a, x in c.items():
+                t = T[a]; rp = x["repriced"]
+                t["task5"] += rp["5m"]["usd"] - rp["5m"]["startup_usd"]; t["st5"] += rp["5m"]["startup_usd"]
+                t["task1"] += rp["1h"]["usd"] - rp["1h"]["startup_usd"]; t["st1"] += rp["1h"]["startup_usd"]
+                t["raw"] += x["cost_usd"]; t["api"] += x["api_calls"]; t["out"] += x["tokens_out"]; t["inp"] += x["tokens"]
+                t["solved"] += bool(x["resolved"]); t["prism_calls"] += (x["tool_trace"] or {}).get("mcp__prism__prism", 0)
+            ratios.append((c["prism_init"]["repriced"]["5m"]["usd"] - c["prism_init"]["repriced"]["5m"]["startup_usd"]) /
+                          (c["native"]["repriced"]["5m"]["usd"] - c["native"]["repriced"]["5m"]["startup_usd"]))
+        n, p = T["native"], T["prism_init"]
+        print(f"pairs={len(rows)} solved native {n['solved']} prism {p['solved']}")
+        print(f"TASK  @5m native ${n['task5']:.3f} prism ${p['task5']:.3f} ratio {p['task5']/n['task5']:.3f} | @1h ${n['task1']:.3f} ${p['task1']:.3f} ratio {p['task1']/n['task1']:.3f}")
+        print(f"STARTUP @5m native ${n['st5']:.3f} prism ${p['st5']:.3f} per cell ${n['st5']/32:.4f} / ${p['st5']/32:.4f} | @1h per cell ${n['st1']/32:.4f} / ${p['st1']/32:.4f}")
+        print(f"TOTAL @5m ratio {(p['task5']+p['st5'])/(n['task5']+n['st5']):.3f} | @1h ratio {(p['task1']+p['st1'])/(n['task1']+n['st1']):.3f}")
+        print(f"requests native {n['api']} prism {p['api']} | output tok {n['out']} / {p['out']} | input tok {n['inp']} / {p['inp']} | prism calls {p['prism_calls']} | raw uncached bill ${n['raw']+p['raw']:.2f}")
+        ratios.sort()
+        print(f"per-pair task ratio: median {statistics.median(ratios):.3f} min {ratios[0]:.2f} max {ratios[-1]:.2f} prism cheaper {sum(x<1 for x in ratios)}/32")
+        EOF
+      at: 2026-10-17T17:40:14.668304Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_cell_isolation_2026_10_17.md <<'EOF'
+
+        FULL RESULT 32 pairs caching off (results/nocache32-2026-10-17, Sonnet 5.5, prism-cand30=v0.87.30, DONE 13:40):
+        64/64 solved. TASK-ONLY (startup excluded, Topo's required headline): prism/native 0.889 @5m ($1.78 vs $2.00),
+        0.912 @1h; median per-pair 0.88, prism cheaper 19/32. STARTUP per cell: native $0.061 / prism $0.068 @5m
+        ($0.097 / $0.109 @1h). Totals incl. startup: 1.006 @5m, 1.033 @1h. Requests 172 vs 216, output tokens 60k vs 75k,
+        48 prism calls. Raw uncached bill $26.68. Codex independently recomputed the 8-pair stats and matched exactly.
+        EOF
+        sed -i '' 's|^- \[Cell isolation rule 2026-10-17\](project_cell_isolation_2026_10_17.md) — .*|- [Cell isolation rule 2026-10-17](project_cell_isolation_2026_10_17.md) — Topo: every cell isolated, startup reported apart; run_ttl --no-cache + exact repricing; 32 pairs: 64/64 solved, task-only prism 0.889x @5m, startup +$0.008/cell, total 1.006x|' MEMORY.md && grep -c "Cell isolation" MEMORY.md
+      at: 2026-10-17T17:40:24.012956Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, random
+        r = json.load(open("results/nocache32-2026-10-17/results.json"))
+        pairs = []
+        for k, v in r.items():
+            if k.startswith("_"): continue
+            c = {x["arm"]: x for x in v["cells"].values()}
+            pairs.append(tuple(c[a]["repriced"]["5m"]["usd"] - c[a]["repriced"]["5m"]["startup_usd"] for a in ("native", "prism_init")))
+        rng = random.Random(1); boots = []
+        for _ in range(20000):
+            s = [pairs[rng.randrange(32)] for _ in range(32)]
+            boots.append(sum(p for _, p in s) / sum(n for n, _ in s))
+        boots.sort()
+        print(f"task ratio 0.889, bootstrap 95% CI [{boots[500]:.3f}, {boots[19499]:.3f}], P(ratio>=1)={sum(b>=1 for b in boots)/20000:.3f}")
+        EOF
+      at: 2026-10-17T17:43:13.067455Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        m=json.load(open('results/issue42-manifest.json')); print('issue42 tasks', len(m))
+        bad=[i for i in m if json.load(open(f'tasks/e2e/{i}.json')).get('invalid_reason')]; print('invalid_reason', bad)
+        langs={}
+        for i in m: l=json.load(open(f'tasks/e2e/{i}.json')).get('lang'); langs[l]=langs.get(l,0)+1
+        print(langs)"; ls README.md docs 2>/dev/null; grep -n "run_overnight\|cost" README.md | head -12; ~/prism-ab-bins/prism-cand30 version 2>&1 | head -1
+      at: 2026-10-17T17:46:30.686348Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("runners/run_ttl.py"); s = p.read_text()
+        def rep(a, b):
+            global s
+            assert s.count(a) == 1, a[:50]; s = s.replace(a, b)
+
+        rep('''"""Prompt-cache TTL experiment: every manifest task x {native, prism} x {1h, 5m}.
+        ''', '''"""Standard cost runner (2026-10-17): every cell isolated, cost split into startup and task.
+
+        Default use, the standard method for every native-vs-prism cost claim:
+
+            python3 -u runners/run_ttl.py --manifest <manifest> --out-dir <dir> --no-cache
+
+        --no-cache sets DISABLE_PROMPT_CACHING=1 for every cell, so no cell can read
+        the prompt cache another cell wrote (cells otherwise share ~12.8k cached
+        prefix tokens across arms within the TTL). Each cell's dollar cost is then
+        reconstructed from its per-request tokens at the 5m and 1h cache rates
+        (usage_account.reprice, within 0.02% of the CLI bill on 67 cached cells) and
+        split into STARTUP (the first request's cache write: system prompt, tools,
+        steering) and TASK (everything after). The headline comparison is task-only;
+        startup is reported beside it per arm and is not a benchmark target.
+
+        Stop rule (2026-10-10, applied to task-only cost): resolve loss (native solved,
+        prism did not), any cell error, or prism/native task cost > 1.25 after 10
+        complete pairs. Tasks with invalid_reason are skipped out loud. SUMMARY.md is
+        written at the end with missing-measurement counts.
+
+        Earlier purpose, still available: the TTL experiment (--ttls 1h,5m, or
+        --cold-gap to wait out the TTL between cells instead of disabling caching).
+        ''')
+        rep('''    manifest = json.loads(Path(a.manifest).read_text())
+            tasks = [json.loads((Path("tasks/e2e") / f"{i}.json").read_text()) for i in manifest]
+            tasks.sort([REDACTED:env-secret] t: len(t.get("patch") or ""))
+        ''', '''    manifest = json.loads(Path(a.manifest).read_text())
+            tasks = [json.loads((Path("tasks/e2e") / f"{i}.json").read_text()) for i in manifest]
+            for t in [t for t in tasks if t.get("invalid_reason")]:
+                log(f"(skipped invalid) {t['instance_id']}: {t['invalid_reason'][:140]}")
+            tasks = [t for t in tasks if not t.get("invalid_reason")]
+            tasks.sort([REDACTED:env-secret] t: len(t.get("patch") or ""))
+        ''')
+        rep('''    log(f"start: {len(tasks)} tasks x {arms} x {ttls}, model={a.model}, "
+                f"claude={run_e2e.usage_account.claude_version()}, seed={a.order_seed}")
+        ''', '''    results.setdefault("_meta", {}).update(run_meta(a, arms, ttls, len(tasks)))
+            log(f"start: {len(tasks)} tasks x {arms} x {ttls}, model={a.model}, "
+                f"claude={run_e2e.usage_account.claude_version()}, seed={a.order_seed}, "
+                f"prism={results['_meta'].get('prism_bin')} mode={results['_meta']['cache_mode']}")
+        ''')
+        rep('''def cell_summary(rec):''', '''def run_meta(a, arms, ttls, n_tasks) -> dict:
+            """What this run was: pinned so the results file explains itself."""
+            import hashlib
+            bin_path = os.environ.get("PRISM_INIT_BIN") or "prism (PATH)"
+            sha = None
+            if os.path.isfile(bin_path):
+                sha = hashlib.sha256(Path(bin_path).read_bytes()).hexdigest()[:16]
+            return {"manifest": a.manifest, "tasks": n_tasks, "arms": arms, "ttls": ttls, "model": a.model,
+                    "claude_version": run_e2e.usage_account.claude_version(), "prism_bin": bin_path, "prism_sha256": sha,
+                    "order_seed": a.order_seed,
+                    "cache_mode": "no-cache (DISABLE_PROMPT_CACHING=1, repriced)" if a.no_cache
+                                  else (f"cold-gap {a.cold_gap}s" if a.cold_gap else "warm (cells share the cached prefix)"),
+                    "started": time.strftime("%Y-%m-%d %H:%M:%S")}
+
+
+        def task_usd(cell, ttl="5m"):
+            rp = (cell.get("repriced") or {}).get(ttl) or {}
+            if rp.get("usd") is None or rp.get("startup_usd") is None:
+                return None
+            return rp["usd"] - rp["startup_usd"]
+
+
+        def write_summary(out: Path, results: dict, arms: list) -> str:
+            rows = [(k, v) for k, v in results.items() if not k.startswith("_")]
+            native, prism = arms
+            lines = [f"# {out.name}", "", f"meta: {json.dumps(results.get('_meta'), indent=None)}", ""]
+            complete, missing, unscored = [], [], []
+            for k, v in rows:
+                c = {x["arm"]: x for x in v["cells"].values()}
+                for arm in arms:
+                    x = c.get(arm)
+                    if x is None or task_usd(x) is None:
+                        missing.append((k, arm))
+                    if x is not None and x.get("resolved") is None:
+                        unscored.append((k, arm))
+                if all(arm in c and task_usd(c[arm]) is not None for arm in arms):
+                    complete.append((k, c))
+            tot = {arm: {"task5": 0.0, "st5": 0.0, "task1": 0.0, "st1": 0.0, "solved": 0, "api": 0} for arm in arms}
+            wins = 0
+            lines += ["| task | native task@5m | prism task@5m | p/n | native solved | prism solved |", "|---|---:|---:|---:|---|---|"]
+            for k, c in complete:
+                for arm in arms:
+                    t, x = tot[arm], c[arm]
+                    t["task5"] += task_usd(x); t["st5"] += x["repriced"]["5m"]["startup_usd"]
+                    t["task1"] += task_usd(x, "1h"); t["st1"] += x["repriced"]["1h"]["startup_usd"]
+                    t["solved"] += bool(x.get("resolved")); t["api"] += x.get("api_calls") or 0
+                n, p = task_usd(c[native]), task_usd(c[prism])
+                wins += p < n
+                lines.append(f"| {k} | {n:.4f} | {p:.4f} | {p / n:.2f} | {c[native].get('resolved')} | {c[prism].get('resolved')} |")
+            n, p = tot[native], tot[prism]
+            lines += ["", f"complete pairs: {len(complete)} of {len(rows)}; prism cheaper on task cost in {wins}/{len(complete)}",
+                      f"solved: native {n['solved']}/{len(complete)}, prism {p['solved']}/{len(complete)}; model requests native {n['api']}, prism {p['api']}"]
+            if n["task5"]:
+                lines += [f"TASK cost @5m: native ${n['task5']:.3f}, prism ${p['task5']:.3f}, prism/native {p['task5'] / n['task5']:.3f}",
+                          f"TASK cost @1h: native ${n['task1']:.3f}, prism ${p['task1']:.3f}, prism/native {p['task1'] / n['task1']:.3f}",
+                          f"STARTUP per cell @5m: native ${n['st5'] / len(complete):.4f}, prism ${p['st5'] / len(complete):.4f} "
+                          f"(@1h ${n['st1'] / len(complete):.4f} / ${p['st1'] / len(complete):.4f}); reported apart, not a target"]
+            lines += [f"cells with unknown cost: {len(missing)} {missing}", f"cells with unknown result (scorer failed): {len(unscored)} {unscored}", ""]
+            text = "\\n".join(lines)
+            (out / "SUMMARY.md").write_text(text)
+            return text
+
+
+        def cell_summary(rec):''')
+        # stop rules in no-cache mode: resolve loss + task-cost ratio after 10 pairs
+        rep('''        if a.no_cache:
+                    n, p = row["cells"].get(f"{arms[0]}/nocache"), row["cells"].get(f"{arms[1]}/nocache")
+                    if n and p:
+                        for t in ("5m", "1h"):
+                            nu, pu = n["repriced"][t].get("usd"), p["repriced"][t].get("usd")
+                            log(f"   PAIR {iid} repriced@{t}: native ${nu} resolved={n['resolved']} | "
+                                f"prism ${pu} resolved={p['resolved']} | prism/native={round(pu / nu, 3) if nu and pu else None}")
+        ''', '''        if a.no_cache:
+                    n, p = row["cells"].get(f"{arms[0]}/nocache"), row["cells"].get(f"{arms[1]}/nocache")
+                    if n and p:
+                        nt, pt = task_usd(n), task_usd(p)
+                        log(f"   PAIR {iid} task@5m: native ${nt and round(nt, 4)} resolved={n['resolved']} | "
+                            f"prism ${pt and round(pt, 4)} resolved={p['resolved']} | prism/native={round(pt / nt, 3) if nt and pt else None} "
+                            f"| startup ${n['repriced']['5m'].get('startup_usd')} / ${p['repriced']['5m'].get('startup_usd')}")
+                        if n["resolved"] and not p["resolved"]:
+                            write_summary(out, results, arms)
+                            log(f"STOP: resolve loss on {iid} (native solved, prism did not)")
+                            return
+                        done = [(k, {x["arm"]: x for x in v["cells"].values()}) for k, v in results.items() if not k.startswith("_")]
+                        done = [(k, c) for k, c in done if all(arm in c and task_usd(c[arm]) is not None for arm in arms)]
+                        if len(done) >= 10:
+                            tn = sum(task_usd(c[arms[0]]) for _, c in done); tp = sum(task_usd(c[arms[1]]) for _, c in done)
+                            if tn and tp / tn > 1.25:
+                                write_summary(out, results, arms)
+                                log(f"STOP: prism/native task cost {tp / tn:.3f} > 1.25 after {len(done)} pairs")
+                                return
+        ''')
+        rep('''    log("DONE")
+        ''', '''    if a.no_cache:
+                log(write_summary(out, results, arms))
+            log("DONE")
+        ''')
+        p.write_text(s)
+
+        p = Path("runners/run_overnight.py"); s = p.read_text()
+        s = s.replace('''"""Unattended overnight run: all manifest tasks x (baseline, prism_init resident).
+        ''', '''"""Unattended overnight run: all manifest tasks x (baseline, prism_init resident).
+
+        NOT the cost runner any more (2026-10-17): its cells share the cached prompt
+        prefix across arms, so its cost figures are warm-regime task costs with the
+        startup write silently excluded. For any cost claim use runners/run_ttl.py
+        --no-cache (isolated cells, startup/task split). Resolve counts here stay valid.
+        ''', 1)
+        p.write_text(s)
+
+        p = Path("README.md"); s = p.read_text()
+        s = s.replace("# Rebuild the cross-run comparison table", '''# STANDARD COST METHOD (2026-10-17): isolated cells, startup/task split.
+        #   python3 -u runners/run_ttl.py --manifest <m> --out-dir <d> --no-cache
+        # Caching is disabled per cell (no shared prefix between any two cells); cost is
+        # reconstructed per request at the 5m/1h cache rates and split into STARTUP
+        # (first-request write; reported per arm, not a target) and TASK (the headline
+        # native-vs-prism comparison). SUMMARY.md per run. run_overnight.py cost
+        # figures are warm-regime and not comparable.
+        # Rebuild the cross-run comparison table''', 1)
+        p.write_text(s)
+        EOF
+        python3 -m py_compile runners/run_ttl.py runners/run_overnight.py && echo COMPILED
+        # offline smoke: fake cells, one stop-free pass, summary written
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/scratchpad; mkdir -p $S/ttl; cat > $S/ttl/smoke.py <<EOF
+        import sys, json
+        sys.path[:0] = ["runners", "aggregate", "build", "scoring", "."]
+        sys.argv = ["run_ttl.py", "--manifest", "$S/ovn/manifest.json", "--out-dir", "$S/ttl/out", "--no-cache"]
+        import run_e2e
+        def fake_cell(task, arm, model):
+            pr = [{"message_id": "m1", "request_id": "r1", "input_uncached": 20000, "cache_creation": 0, "cache_read": 0, "output": 100, "cache_5m": 0, "cache_1h": 0},
+                  {"message_id": "m2", "request_id": "r2", "input_uncached": 25000 if arm == "native" else 24000, "cache_creation": 0, "cache_read": 0, "output": 300, "cache_5m": 0, "cache_1h": 0}]
+            return {"resolved": True, "turns": 3, "cost_usd": 0.1, "session_id": None, "api_calls": 2, "tokens_request": 45000, "tokens_out": 400,
+                    "tokens_cache_write": 0, "tokens_cache_read": 0, "tool_trace": {}, "model": model,
+                    "usage": {"transcript": {"per_request": pr}}, "startup": {"was_cold": True}}
+        run_e2e.run_cell = fake_cell
+        import run_ttl; run_ttl.main()
+        print(open("$S/ttl/out/SUMMARY.md").read())
+        print(json.load(open("$S/ttl/out/results.json"))["_meta"]["cache_mode"])
+        EOF
+        rm -rf $S/ttl/out; python3 $S/ttl/smoke.py 2>&1 | grep -v "^\[" | tail -14
+      at: 2026-10-17T17:47:33.165368Z
+      classified: other
+notes:
+    - text: continuation of session 6d247fda-ac94-4f87-9366-af737e5ef9bf — events captured after its evidence was finalized
+      at: 2026-10-17T15:22:40.277454Z
+redactions: 4
