@@ -1,0 +1,569 @@
+shale_version: "0"
+id: 6d247fda-ac94-4f87-9366-af737e5ef9bf
+created_at: 2026-10-17T14:21:02.693147Z
+finalized_at: 2026-10-17T15:22:37.428833Z
+agent:
+    tool: claude-code
+    model: claude-fable-5-1
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: 'cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat project_payload_trim_2026_09_30.md feedback_check_memory_before_proposing.md project_token_reduction_arc.md feedback_prism_no_edits_or_commands.md project_token_cost_decomposition.md project_graph_access_experiment_2026_09_29.md reference_sonnet55_token_prices.md project_cost_accounting_verified.md project_long_sessions_2026_10_12.md project_routing_program.md project_php_pass_2026_10_18.md project_bug_list_2026_10_14.md project_overnight_2026_10_11.md feedback_prism_2_0_rejected.md feedback_bench_stop_threshold.md; echo ======; grep -ril -e "5m" -e "ttl" -e "cache write" -e "cache_write" . '
+      at: 2026-10-17T14:45:00.163379Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && for f in project_payload_trim_2026_09_30.md feedback_check_memory_before_proposing.md project_token_reduction_arc.md feedback_prism_no_edits_or_commands.md project_token_cost_decomposition.md project_graph_access_experiment_2026_09_29.md reference_sonnet55_token_prices.md project_cost_accounting_verified.md project_long_sessions_2026_10_12.md; do echo "### $f"; sed -n '/^---$/,/^---$/!p' $f | head -40; done
+      at: 2026-10-17T14:45:04.644993Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && for f in project_routing_program.md project_php_pass_2026_10_18.md project_bug_list_2026_10_14.md project_overnight_2026_10_11.md feedback_prism_2_0_rejected.md feedback_bench_stop_threshold.md project_intent_sized_responses_2026_10_02.md; do echo "### $f"; sed -n '/^---$/,/^---$/!p' $f | head -30; done; echo ====GREP; grep -il -e "5m" -e "TTL" *.md
+      at: 2026-10-17T14:45:12.245245Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research && ls -la harness/aggregate/usage_account.py harness/runners/run_overnight.py harness/lib/pricing.py harness/results/bench29-issue42-2026-10-16/results.json harness/results/bench30-wide-rep2-2026-10-16/results.json /private/tmp/prism-cost-audit-2026-10-17.json 2>&1 | sed ''s/^/LS: /''; grep -n -i -e "arms" -e "except" -e "_score" harness/runners/run_overnight.py 2>/dev/null | head -40 | sed ''s/^/OVN: /''; grep -n -i -e "gpt" -e "sonnet" -e "cache" harness/lib/pricing.py 2>/dev/null | head -20 | sed ''s/^/PRC: /''; git -C . log --oneline -3 -- harness/aggregate/usage_account.py harness/lib/pricing.py | sed ''s/^/GIT: /''; git status --short | head | sed ''s/^/ST: /'''
+      at: 2026-10-17T14:45:26.724627Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n 60,115p harness/runners/run_overnight.py
+      at: 2026-10-17T14:45:41.506509Z
+      classified: other
+    - cmd: git diff; echo "---- test file"; cat internal/mcp/compact_read_force_test.go; echo "---- research files"; ls -la ../research/harness/results/prism-cost-audit-2026-10-17.json ../research/harness/results/bench29.sh ../research/harness/results/bench30.sh 2>&1; echo "---- research status"; git -C ../research status --short | grep -v results/e2e | head; echo "---- overnight 136-170"; sed -n 136,170p ../research/harness/runners/run_overnight.py; echo "---- guards"; grep -n "NoResidency" internal/mcp/searchmulti_test.go | head -3; ls internal/mcp/impactbudget.go; echo "---- go test mcp"; go test ./internal/mcp/ 2>&1 | tail -5
+      at: 2026-10-17T15:14:34.537953Z
+      classified: test
+    - cmd: |-
+        gofmt -l internal/mcp/ && go vet ./internal/mcp/ && git add internal/mcp/server.go internal/mcp/tools.go internal/mcp/compact_read_force_test.go && git commit -q -m "compact read: forward force, allow it with ranges, cached pointer offers recovery
+
+        The compact gateway dropped force on expansion and rejected ranges+force,
+        so a cached range pointer could not be recovered once the source left the
+        agent's context. The pointer text no longer assumes the source is visible.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git log --oneline -1
+      at: 2026-10-17T15:16:00.617885Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n 1,60p harness/runners/run_overnight.py; echo ----; sed -n 115,136p harness/runners/run_overnight.py; sed -n 170,260p harness/runners/run_overnight.py; echo ---- e2e; grep -n -e "def run_cell" -e "def _score" -e "interleav" -e "warm" -e "cache_creation\|cache_read\|usage" -e "tokens_request\|tokens_out" -e "_run_agent\|def run_agent" harness/runners/run_e2e.py | head -60; echo ---- tests; ls harness/tests 2>/dev/null | head; ls harness/runners/ | head -30
+      at: 2026-10-17T15:16:07.829147Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && echo "---- bench29.sh"; cat harness/results/bench29.sh; echo "---- bench30.sh"; cat harness/results/bench30.sh; echo "---- run_e2e 740-800"; sed -n 740,800p harness/runners/run_e2e.py; echo "---- run_e2e 1025-1075"; sed -n 1025,1075p harness/runners/run_e2e.py; echo "---- usage_account"; cat harness/aggregate/usage_account.py; echo "---- bench.py runner refs"; grep -n -e "run_cell\|run_overnight\|run_e2e\|_score" harness/bench.py 2>/dev/null | head -20; ls harness/*.py | head
+      at: 2026-10-17T15:16:15.03149Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && echo "---- _score"; sed -n 95,132p runners/run_e2e.py; echo "---- _api_calls"; grep -n "def _api_calls" -A 25 runners/run_e2e.py | head -40; echo "---- ephemeral in results"; grep -c ephemeral results/bench30-wide-rep2-2026-10-16/results.json; grep -o ''"cache_creation": {[^}]*}'' results/bench30-wide-rep2-2026-10-16/results.json | head -2; echo "---- transcript usage shape"; sid=$(python3 -c "import json;r=json.load(open(''results/bench30-wide-rep2-2026-10-16/results.json''));print(r[0][''prism''][''session_id''])"); f=$(ls ~/.claude/projects/*/$sid.jsonl 2>/dev/null | head -1); echo $f; grep -m1 ''"type":"assistant"'' "$f" | python3 -c "import json,sys;j=json.loads(sys.stdin.read());print(json.dumps(j[''message''].get(''usage'')), j.get(''requestId''), j[''message''].get(''id''))"; echo "---- tests using usage_account/run_overnight"; grep -l -e usage_account -e run_overnight -e "run_cell" tests/*.py; echo "---- run_session uses"; grep -n "run_cell\|_score\|run_e2e\." runners/run_session.py | head; echo "---- scorer exceptions"; grep -n "class ScorerRanNoTests\|raise ScorerRanNoTests" -r . --include=*.py | head -5'
+      at: 2026-10-17T15:16:38.345522Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && echo "---- run_e2e main order"; sed -n 1076,1140p runners/run_e2e.py; echo "---- test_usage_account"; cat tests/test_usage_account.py; echo "---- gate test head"; sed -n 1,30p tests/test_gate_measurement.py; echo "---- lib"; ls lib; echo "---- pytest"; python3 -m pytest tests/test_usage_account.py -q 2>&1 | tail -3
+      at: 2026-10-17T15:17:01.017547Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && echo "---- run_e2e imports"; sed -n 40,70p runners/run_e2e.py; echo "---- run_e2e main tail"; sed -n 1140,1175p runners/run_e2e.py; echo "---- run_session 135,195"; sed -n 135,195p runners/run_session.py; echo "---- import check"; python3 -c "
+        import sys; sys.path[:0]=['runners','aggregate','build','scoring','.']
+        import run_e2e; print('ok', hasattr(run_e2e,'ScorerRanNoTests'))"
+      at: 2026-10-17T15:17:24.826352Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("aggregate/usage_account.py"); s = p.read_text()
+
+        s = s.replace('''def input_total(tokens: dict) -> int | None:''', '''TTL_FIELDS = {"cache_5m": "ephemeral_5m_input_tokens", "cache_1h": "ephemeral_1h_input_tokens"}
+
+
+        def cache_ttl_split(usage: dict) -> dict:
+            """Cache writes by TTL from `usage.cache_creation` (the API bills 5m and
+            1h writes at different rates). Absent or invalid counters stay None."""
+            usage = usage if isinstance(usage, dict) else {}
+            detail = usage.get("cache_creation")
+            detail = detail if isinstance(detail, dict) else {}
+            result = {}
+            for name, source in TTL_FIELDS.items():
+                value = detail.get(source)
+                result[name] = value if type(value) is int and value >= 0 else None
+            return result
+
+
+        def input_total(tokens: dict) -> int | None:''')
+
+        s = s.replace('''        "tokens": tokens,
+                "input_total": input_total(tokens),
+                "usage_complete": all(v is not None for v in tokens.values()) and valid_cost,''', '''        "tokens": tokens,
+                "cache_ttl": cache_ttl_split(u),
+                "input_total": input_total(tokens),
+                "usage_complete": all(v is not None for v in tokens.values()) and valid_cost,''')
+
+        s = s.replace('''            previous = messages.setdefault(mid, {})
+                    # Streaming fragments may carry only some counters.
+                    previous.update({k: v for k, v in u.items() if k in TOKEN_FIELDS.values()})''', '''            previous = messages.setdefault(mid, {})
+                    # Streaming fragments may carry only some counters.
+                    previous.update({k: v for k, v in u.items() if k in TOKEN_FIELDS.values()})
+                    if isinstance(u.get("cache_creation"), dict):
+                        previous["cache_creation"] = u["cache_creation"]
+                    if j.get("requestId"):
+                        previous["_request_id"] = j["requestId"]''')
+
+        s = s.replace('''    normalized = [normalized_tokens(u) for u in messages.values()]
+            tok = {}
+            for key in TOKEN_FIELDS:
+                values = [u[key] for u in normalized]
+                tok[key] = sum(values) if values and all(v is not None for v in values) else None''', '''    normalized = [normalized_tokens(u) for u in messages.values()]
+            tok = {}
+            for key in TOKEN_FIELDS:
+                values = [u[key] for u in normalized]
+                tok[key] = sum(values) if values and all(v is not None for v in values) else None
+            # Per-request rows (one per assistant message id, in transcript order) so
+            # cache-write cost can be attributed to the request that paid it, and the
+            # TTL split the API reports per request. Step output may be a streaming
+            # placeholder; the final aggregate below is authoritative for output.
+            per_request = []
+            for mid, u in messages.items():
+                per_request.append({"message_id": mid, "request_id": u.get("_request_id"),
+                                    **normalized_tokens(u), **cache_ttl_split(u)})
+            cache_ttl = {}
+            for key in TTL_FIELDS:
+                values = [r[key] for r in per_request]
+                cache_ttl[key] = sum(values) if values and all(v is not None for v in values) else None''')
+
+        s = s.replace('''        "tokens": tok,
+                "step_output_observed": observed_output,''', '''        "tokens": tok,
+                "cache_ttl": cache_ttl,
+                "per_request": per_request,
+                "step_output_observed": observed_output,''')
+        p.write_text(s)
+
+        p = Path("runners/run_e2e.py"); s = p.read_text()
+        s = s.replace('''        rec["api_calls"] = _api_calls(rec["session_id"])
+        ''', '''        rec["api_calls"] = _api_calls(rec["session_id"])
+                # Per-request usage with the cache-write TTL split, persisted now:
+                # Claude Code deletes the transcript after 30 days, and the cost
+                # question (2026-10-17) is which request paid for which cache write.
+                tu = usage_account.transcript_usage(rec["session_id"])
+                rec["usage"]["transcript"] = {k: tu[k] for k in (
+                    "transcript", "messages", "requests", "tokens", "cache_ttl", "per_request",
+                    "cache_hit_rate", "warnings", "_unavailable") if k in tu}
+        ''')
+        s = s.replace('''    finally:
+                _remove_worktree(wt)
+            sc = _score(task, diff)
+            return {"task": task["instance_id"], "arm": arm, "model": model,
+                    "kind": task.get("kind"), "resolved": sc.get("resolved"),
+                    "diff_lines": diff.count("\\n"), **meta, "setup": setup, "score": sc}
+        ''', '''    finally:
+                _remove_worktree(wt)
+            # The agent's spend is known by now; a scorer failure (no tests ran,
+            # Docker down) must not discard it. resolved stays unknown, not False.
+            try:
+                sc = _score(task, diff)
+            except Exception as e:  # noqa: BLE001
+                sc = {"resolved": None, "scorer_error": f"{type(e).__name__}: {str(e)[:300]}"}
+            rec = {"task": task["instance_id"], "arm": arm, "model": model,
+                   "kind": task.get("kind"), "resolved": sc.get("resolved"),
+                   "diff_lines": diff.count("\\n"), **meta, "setup": setup, "score": sc}
+            if sc.get("scorer_error"):
+                rec["error"] = sc["scorer_error"]
+            return rec
+
+
+        def arm_order(seed: str, instance_id: str, arms: list[str]) -> list[str]:
+            """Arm order for one task: a seeded shuffle so neither arm always runs
+            first (cache state, API latency and time of day drift within a pair),
+            reproducible from the seed so a resumed run keeps the same order."""
+            order = list(arms)
+            random.Random(f"{seed}-{instance_id}").shuffle(order)
+            return order
+        ''')
+        # main(): a scorer failure must not be cached as a finished cell
+        s = s.replace('''        (OUT / "PAUSED.json").unlink(missing_ok=True)
+                rec["trial"] = trial''', '''        (OUT / "PAUSED.json").unlink(missing_ok=True)
+                if rec.get("score", {}).get("scorer_error"):
+                    # Keep the spend on disk but not under the cached cell name, so a
+                    # rerun scores the task again instead of skipping it.
+                    f = f.with_suffix(".scorer-failed.json")
+                rec["trial"] = trial''')
+        p.write_text(s)
+        EOF
+        grep -n "^import random\|^import" runners/run_e2e.py | head -20
+      at: 2026-10-17T15:17:51.084529Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("runners/run_overnight.py"); s = p.read_text()
+        def rep(a, b):
+            global s
+            assert s.count(a) == 1, a[:60]
+            s = s.replace(a, b)
+
+        rep('''_ap.add_argument("--allow-model-alias", action="store_true",
+                         help="accept an alias --model (results then compare across whatever it resolved to)")
+        ''', '''_ap.add_argument("--allow-model-alias", action="store_true",
+                         help="accept an alias --model (results then compare across whatever it resolved to)")
+        _ap.add_argument("--order-seed", default="2026-10-17",
+                         help="seed for the per-task arm order (which arm runs first); recorded per row")
+        ''')
+        rep('''NATIVE_ARM = _args.native_arm
+        PRISM_ARM = _args.prism_arm
+        ''', '''NATIVE_ARM = _args.native_arm
+        PRISM_ARM = _args.prism_arm
+        ORDER_SEED = _args.order_seed
+        ''')
+        rep('''def evidence(rec: dict, label: str) -> str:''', '''def arm_row(rec: dict) -> dict:
+            """Everything the summary keeps per arm. `usage` carries the CLI's raw
+            usage, the cache-write TTL split and per-request rows (run_e2e), so cost
+            can be re-attributed later without the transcript."""
+            return {"resolved": rec.get("resolved"), "turns": rec.get("turns"),
+                    "tokens": total_tokens(rec), "wall_s": rec.get("wall_s"),
+                    "cost_usd": rec.get("cost_usd"), "tool_trace": rec.get("tool_trace"),
+                    "api_calls": rec.get("api_calls"), "session_id": rec.get("session_id"),
+                    "model": rec.get("model"), "runtimes": rec.get("runtimes"),
+                    "usage": rec.get("usage"), "transcript": rec.get("transcript"),
+                    "error": rec.get("error") or rec.get("agent_error")}
+
+
+        def evidence(rec: dict, label: str) -> str:''')
+        rep('''        native = run_with_retry(task, NATIVE_ARM, MODEL)
+                prism = run_with_retry(task, PRISM_ARM, MODEL)
+        ''', '''        order = run_e2e.arm_order(ORDER_SEED, iid, [NATIVE_ARM, PRISM_ARM])
+                ran = {}
+                for arm in order:
+                    ran[arm] = run_with_retry(task, arm, MODEL)
+                    ran[arm]["transcript"] = run_e2e._preserve_transcript(
+                        ran[arm].get("session_id"), OUT_DIR / "transcripts" / f"{iid}.{MODEL}.{arm}.jsonl")
+                native, prism = ran[NATIVE_ARM], ran[PRISM_ARM]
+        ''')
+        rep('''        row = {
+                    "task": iid, "lang": lang,
+                    "native": {"resolved": native.get("resolved"), "turns": native.get("turns"),
+                              "tokens": n_tok, "wall_s": native.get("wall_s"),
+                              "cost_usd": native.get("cost_usd"), "tool_trace": native.get("tool_trace"),
+                              "session_id": native.get("session_id"), "model": native.get("model"),
+                              "runtimes": native.get("runtimes"),
+                              "error": native.get("error") or native.get("agent_error")},
+                    "prism": {"resolved": prism.get("resolved"), "turns": prism.get("turns"),
+                             "tokens": p_tok, "wall_s": prism.get("wall_s"),
+                             "cost_usd": prism.get("cost_usd"), "tool_trace": prism.get("tool_trace"),
+                             "prism_calls": p_calls, "session_id": prism.get("session_id"), "model": prism.get("model"),
+                             "runtimes": prism.get("runtimes"),
+                             "error": prism.get("error") or prism.get("agent_error")},
+                }
+        ''', '''        row = {"task": iid, "lang": lang, "order": order, "order_seed": ORDER_SEED,
+                       "native": arm_row(native), "prism": {**arm_row(prism), "prism_calls": p_calls}}
+        ''')
+        rep('''    n_tot = sum(r["native"]["tokens"] for r in results if r["native"]["tokens"])
+            p_tot = sum(r["prism"]["tokens"] for r in results if r["prism"]["tokens"])
+        ''', '''    n_tot = sum(r["native"]["tokens"] for r in results if r["native"]["tokens"])
+            p_tot = sum(r["prism"]["tokens"] for r in results if r["prism"]["tokens"])
+            # Dollars over complete pairs only: a cell with unknown cost is missing,
+            # not free, and counting its partner alone skews the ratio (2026-10-17:
+            # one missing prism cell moved issue42 from 0.975x to 0.935x).
+            known = lambda r, a: isinstance(r[a].get("cost_usd"), (int, float))
+            pairs = [r for r in results if known(r, "native") and known(r, "prism")]
+            n_usd = sum(r["native"]["cost_usd"] for r in pairs)
+            p_usd = sum(r["prism"]["cost_usd"] for r in pairs)
+            missing = [(r["task"], a) for r in results for a in ("native", "prism") if not known(r, a)]
+            unscored = [(r["task"], a) for r in results for a in ("native", "prism") if r[a].get("resolved") is None]
+        ''')
+        rep('''        f.write(f"- flagged cells: {len(flagged_rows)} "
+                        f"({len(non_adoption_flags)} non-adoption, {len(real_flags)} real prism signal)\\n")
+        ''', '''        f.write(f"- cost over {len(pairs)} complete pairs: native ${n_usd:.4f}, prism ${p_usd:.4f}"
+                        + (f" ({p_usd/n_usd:.3f}x native)\\n" if n_usd else "\\n"))
+                f.write(f"- cells with unknown cost: {len(missing)} {missing}\\n")
+                f.write(f"- cells with unknown result (scorer failed): {len(unscored)} {unscored}\\n")
+                f.write(f"- flagged cells: {len(flagged_rows)} "
+                        f"({len(non_adoption_flags)} non-adoption, {len(real_flags)} real prism signal)\\n")
+        ''')
+        p.write_text(s)
+        EOF
+        grep -n "transcripts" runners/run_overnight.py; grep -n "_preserve_transcript" runners/run_e2e.py | head -3; sed -n '/^def _preserve_transcript/,/^def /p' runners/run_e2e.py | head -30
+      at: 2026-10-17T15:18:16.153214Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("tests/test_usage_account.py"); s = p.read_text()
+        s = s.replace('''
+
+        if __name__ == "__main__":
+            unittest.main()''', '''
+            def test_cache_write_ttl_split_is_kept_per_request_and_in_total(self):
+                with patch.object(usage, "claude_version", return_value="test"):
+                    record = usage.cli_usage({"usage": {
+                        "input_tokens": 1, "cache_creation_input_tokens": 30, "cache_read_input_tokens": 0,
+                        "output_tokens": 2, "cache_creation": {"ephemeral_5m_input_tokens": 10,
+                                                                "ephemeral_1h_input_tokens": 20},
+                    }, "total_cost_usd": .01})
+                    self.assertEqual(record["cache_ttl"], {"cache_5m": 10, "cache_1h": 20})
+                    self.assertEqual(usage.cli_usage({"usage": {}})["cache_ttl"], {"cache_5m": None, "cache_1h": None})
+
+                def message(mid, rid, write_1h):
+                    return {"type": "assistant", "requestId": rid, "message": {"id": mid, "usage": {
+                        "input_tokens": 1, "cache_creation_input_tokens": write_1h,
+                        "cache_read_input_tokens": 5, "output_tokens": 3,
+                        "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": write_1h},
+                    }}}
+                with tempfile.TemporaryDirectory() as directory:
+                    p = Path(directory)/"session.jsonl"
+                    events = [message("m1", "r1", 100), message("m1", "r1", 100), message("m2", "r2", 7)]
+                    p.write_text("\\n".join(json.dumps(e) for e in events))
+                    got = usage.analyze_transcript(p)
+                self.assertEqual(got["cache_ttl"], {"cache_5m": 0, "cache_1h": 107})
+                self.assertEqual([r["message_id"] for r in got["per_request"]], ["m1", "m2"])
+                self.assertEqual(got["per_request"][1], {
+                    "message_id": "m2", "request_id": "r2", "input_uncached": 1, "cache_creation": 7,
+                    "cache_read": 5, "output": 3, "cache_5m": 0, "cache_1h": 7})
+                # A transcript without the TTL detail stays unknown, never zero.
+                with tempfile.TemporaryDirectory() as directory:
+                    p = Path(directory)/"session.jsonl"
+                    e = message("m1", "r1", 4); del e["message"]["usage"]["cache_creation"]
+                    p.write_text(json.dumps(e))
+                    got = usage.analyze_transcript(p)
+                self.assertEqual(got["cache_ttl"], {"cache_5m": None, "cache_1h": None})
+
+
+        if __name__ == "__main__":
+            unittest.main()''')
+        p.write_text(s)
+
+        Path("tests/test_run_cell_persistence.py").write_text('''
+        import sys as _sys, os as _os
+        _H = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+        for _d in (_H, _os.path.join(_H, "runners"), _os.path.join(_H, "aggregate"),
+                   _os.path.join(_H, "build"), _os.path.join(_H, "scoring")):
+            if _d not in _sys.path:
+                _sys.path.insert(0, _d)
+
+        import unittest
+        from pathlib import Path
+        from unittest.mock import patch
+
+        import run_e2e
+
+
+        TASK = {"instance_id": "org__repo__pr1", "lang": "go", "repo": "org/repo", "problem_statement": "x"}
+
+
+        class RunCellPersistenceTests(unittest.TestCase):
+            def test_scorer_failure_keeps_agent_spend_and_leaves_result_unknown(self):
+                meta = {"turns": 9, "cost_usd": 1.25, "session_id": "sid", "api_calls": 5,
+                        "usage": {"tokens": {"output": 10}, "cache_ttl": {"cache_5m": 0, "cache_1h": 100}}}
+                with patch.object(run_e2e, "_worktree", return_value=("repo", Path("/nonexistent/wt"))), \\
+                     patch.object(run_e2e, "_prepare_build_env", return_value={}), \\
+                     patch.object(run_e2e, "_index_graph"), \\
+                     patch.object(run_e2e, "_is_python", return_value=False), \\
+                     patch.object(run_e2e, "_run_cloud", return_value=dict(meta)), \\
+                     patch.object(run_e2e, "_agent_diff", return_value="diff\\n"), \\
+                     patch.object(run_e2e, "_save_diff"), \\
+                     patch.object(run_e2e, "_remove_worktree"), \\
+                     patch.object(run_e2e, "_score", side_effect=run_e2e.ScorerRanNoTests("no tests ran")):
+                    rec = run_e2e.run_cell(TASK, "native", "claude-sonnet-5-5")
+                self.assertIsNone(rec["resolved"])
+                self.assertEqual(rec["cost_usd"], 1.25)
+                self.assertEqual(rec["usage"]["cache_ttl"]["cache_1h"], 100)
+                self.assertEqual(rec["api_calls"], 5)
+                self.assertIn("ScorerRanNoTests", rec["error"])
+                self.assertIn("ScorerRanNoTests", rec["score"]["scorer_error"])
+
+            def test_arm_order_is_seeded_and_not_always_the_same(self):
+                arms = ["native", "prism_init"]
+                ids = [f"org__repo__pr{i}" for i in range(40)]
+                orders = [run_e2e.arm_order("s", i, arms) for i in ids]
+                self.assertEqual(orders, [run_e2e.arm_order("s", i, arms) for i in ids])
+                self.assertTrue(all(sorted(o) == sorted(arms) for o in orders))
+                firsts = {o[0] for o in orders}
+                self.assertEqual(firsts, set(arms))
+                self.assertNotEqual(orders, [run_e2e.arm_order("t", i, arms) for i in ids])
+
+
+        if __name__ == "__main__":
+            unittest.main()
+        ''')
+        EOF
+        python3 -m py_compile runners/run_overnight.py runners/run_e2e.py aggregate/usage_account.py && echo COMPILED && python3 -m unittest tests.test_usage_account tests.test_run_cell_persistence tests.test_gate_measurement tests.test_lib_pricing 2>&1 | tail -4
+      at: 2026-10-17T15:18:45.368442Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/scratchpad && mkdir -p $S/ovn && tid=$(ls tasks/e2e | grep -m1 '^go-chi__chi' | sed 's/.json$//') && echo "[\"$tid\"]" > $S/ovn/manifest.json && cat > $S/ovn/smoke.py <<EOF
+        import sys, json
+        sys.path[:0] = ["runners", "aggregate", "build", "scoring", "."]
+        sys.argv = ["run_overnight.py", "--manifest", "$S/ovn/manifest.json", "--out-dir", "$S/ovn/out",
+                    "--native-arm", "native", "--prism-arm", "prism_init", "--model", "claude-sonnet-5-5"]
+        import run_e2e
+        calls = []
+        def fake_cell(task, arm, model):
+            calls.append(arm)
+            rec = {"turns": 3, "cost_usd": 0.5 if arm == "native" else 0.4, "session_id": None, "api_calls": 2,
+                   "tokens_request": 100, "tokens_out": 10, "tool_trace": {"mcp__prism__prism": 1},
+                   "usage": {"cache_ttl": {"cache_5m": 0, "cache_1h": 50}}, "model": model}
+            if arm == "prism_init":
+                rec.update(resolved=None, error="ScorerRanNoTests: x", cost_usd=None)
+            else:
+                rec["resolved"] = True
+            return rec
+        run_e2e.run_cell = fake_cell
+        import run_overnight
+        run_overnight.main()
+        rows = json.load(open("$S/ovn/out/results.json"))
+        print("ORDER", calls, rows[0]["order"], rows[0]["order_seed"])
+        print("PRISM ROW", {k: rows[0]["prism"][k] for k in ("resolved", "cost_usd", "usage", "error", "api_calls")})
+        print(open("$S/ovn/out/REPORT.md").read().split("# SUMMARY")[1])
+        EOF
+        rm -rf $S/ovn/out; python3 $S/ovn/smoke.py 2>&1 | tail -15
+      at: 2026-10-17T15:19:04.865988Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/scratchpad && python3 $S/ovn/smoke.py 2>&1 | grep -e "^ORDER" -e "^PRISM ROW"
+      at: 2026-10-17T15:19:08.403821Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/aggregate/usage_account.py harness/runners/run_e2e.py harness/runners/run_overnight.py harness/tests/test_usage_account.py harness/tests/test_run_cell_persistence.py harness/results/prism-cost-audit-2026-10-17.json && git commit -q -m "harness: keep spend on scorer failure, per-request usage with cache TTL split, seeded arm order
+
+        run_cell no longer loses the agent's usage when the scorer raises: resolved
+        stays None and the error is recorded. usage_account keeps the 5m/1h cache
+        write split and one row per request. run_overnight shuffles arm order per
+        task from a recorded seed, preserves transcripts, and sums cost over
+        complete pairs only, listing cells with unknown cost or result.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git log --oneline -1
+      at: 2026-10-17T15:19:17.563035Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("internal/mcp/server.go"); s = p.read_text()
+        old = '''		if warning := legacyProjectWarning(s.handler.Root); warning != "" {
+        			instructions += " " + warning
+        		}
+        '''
+        new = '''		instructions += " " + scopeInstruction(s.handler.Root)
+        		if warning := legacyProjectWarning(s.handler.Root); warning != "" {
+        			instructions += " " + warning
+        		}
+        '''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''const enclosingBodiesHeader ='''
+        new = '''// scopeInstruction tells the client once, at initialize, which tree this
+        // server answers for: agents working across repositories otherwise send
+        // paths from a sibling checkout and get a rejection per call (2026-10-17).
+        func scopeInstruction(root string) string {
+        	return "Scope: this server answers for files under " + root + " only (its index covers that tree). " +
+        		"For another repository, run the prism CLI from that repository or use its own prism MCP server."
+        }
+
+        const enclosingBodiesHeader ='''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        p.write_text(s)
+
+        p = Path("internal/mcp/tools.go"); s = p.read_text()
+        old = '''		return "", "", fmt.Errorf("path %q is outside workspace root", p)'''
+        new = '''		return "", "", fmt.Errorf("path %q is outside workspace root %s; for another repository run the prism CLI there or use its own prism MCP server", p, rootAbs)'''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''				"these path= entries resolve outside the project root and were NOT searched: %v",
+        				r.RejectedPaths)'''
+        new = '''				"these path= entries resolve outside the project root %s and were NOT searched: %v (for another repository run the prism CLI there or use its own prism MCP server)",
+        				h.Root, r.RejectedPaths)'''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        old = '''fmt.Sprintf("Paths outside the root were NOT searched: %v", r.RejectedPaths))'''
+        new = '''fmt.Sprintf("Paths outside the root %s were NOT searched: %v (for another repository run the prism CLI there or use its own prism MCP server)", h.Root, r.RejectedPaths))'''
+        assert s.count(old) == 1; s = s.replace(old, new)
+        p.write_text(s)
+
+        # test: initialize names the root
+        p = Path("internal/mcp/server_project_test.go"); s = p.read_text()
+        s += '''
+        func TestInitializeStatesProjectScope(t *testing.T) {
+        	h := newTestHandler(t)
+        	for _, compact := range []bool{false, true} {
+        		srv := NewServer(h)
+        		if compact {
+        			srv = NewCompactServer(h)
+        		}
+        		res, rpcErr := srv.dispatch("initialize", json.RawMessage(`{}`))
+        		if rpcErr != nil {
+        			t.Fatal(rpcErr.Message)
+        		}
+        		instructions := res.(map[string]any)["instructions"].(string)
+        		if !strings.Contains(instructions, "files under "+h.Root+" only") ||
+        			!strings.Contains(instructions, "run the prism CLI from that repository") {
+        			t.Fatalf("compact=%v: initialize instructions do not state the project scope: %q", compact, instructions)
+        		}
+        		if len(instructions) > 2000 {
+        			t.Fatalf("compact=%v: instructions exceed 2000 bytes: %d", compact, len(instructions))
+        		}
+        	}
+        }
+        '''
+        p.write_text(s)
+        EOF
+        grep -n "rootAbs" internal/mcp/tools.go | sed -n 1,3p; grep -n "func (h \*Handler) searchOne\|^func.*searchOne" internal/mcp/tools.go | head -2; sed -n 2370,2376p internal/mcp/tools.go | grep -n "func" ; head -20 internal/mcp/server_project_test.go | grep -n "import\|\"" ; grep -n "func NewServer\|func NewCompactServer" internal/mcp/*.go | head; gofmt -l internal/mcp/server.go internal/mcp/tools.go internal/mcp/server_project_test.go; go build ./... && go test ./internal/mcp/ 2>&1 | tail -15
+      at: 2026-10-17T15:20:00.9971Z
+      classified: test
+    - cmd: |-
+        sed -i '' 's/^import (\n\t"os"/&/' internal/mcp/server_project_test.go && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("internal/mcp/server_project_test.go"); s = p.read_text()
+        s = s.replace('import (\n\t"os"', 'import (\n\t"encoding/json"\n\t"os"', 1); p.write_text(s)
+        EOF
+        gofmt -l internal/mcp/server_project_test.go; go vet ./internal/mcp/ && go test ./internal/mcp/ 2>&1 | tail -15
+      at: 2026-10-17T15:20:53.687304Z
+      classified: lint
+    - cmd: |-
+        sed -n 244,249p internal/mcp/compact_test.go && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("internal/mcp/compact_test.go"); s = p.read_text()
+        old = '''	if instructions != compactServerInstructions || strings.Contains(instructions, "prism_search") {'''
+        new = '''	if !strings.HasPrefix(instructions, compactServerInstructions+" Scope: ") || strings.Contains(instructions, "prism_search") {'''
+        assert s.count(old) == 1; p.write_text(s.replace(old, new))
+        EOF
+        go test ./internal/mcp/ 2>&1 | grep -e "^--- FAIL" -e "^ok" -e "^FAIL"
+      at: 2026-10-17T15:21:49.802572Z
+      classified: test
+    - cmd: go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -20; echo "GOTEST-EXIT ${pipestatus[1]}"
+      at: 2026-10-17T15:21:54.932701Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        from pathlib import Path
+        import re
+        p = Path("docs/cost-reduction-implementation-plan-2026-10-17.md"); s = p.read_text()
+        mem = "/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/"
+        # reference-style definitions -> drop the lines; inline [label][ref] -> plain label
+        s = re.sub(r"^\[(\w+)\]: " + re.escape(mem) + r"\S+\n", "", s, flags=re.M)
+        s = re.sub(r"\[([^\]]+)\]\[\w+\]", r"\1", s)
+        s = re.sub(r"\[([^\]]+)\]\(" + re.escape(mem) + r"[^)]+\)", r"\1", s)
+        s = s.replace("Experiment links below refer to local project memory. They are records of earlier work, not independently reproduced experiments in this revision.",
+                      "The prior-work rows cite the project's session notes by date; they are records of earlier work, not independently reproduced experiments in this revision.")
+        s = s.replace("## Evidence notes\n\n", "## Evidence notes\n\n")
+        p.write_text(s)
+        print([l for l in s.splitlines() if ".claude/projects" in l])
+        EOF
+        grep -n "memory\|\.claude" docs/cost-reduction-implementation-plan-2026-10-17.md | head; sed -n '/^## Evidence notes/,$p' docs/cost-reduction-implementation-plan-2026-10-17.md
+      at: 2026-10-17T15:22:02.796119Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        from pathlib import Path
+        import re
+        p = Path("docs/cost-reduction-implementation-plan-2026-10-17.md"); s = p.read_text()
+        # trailing citation labels left by the link strip at the end of table cells
+        labels = r"(Record|History|Constraint|Intent study|batching study|Body study|historical token study|September audit|later audit|attribution|later study|history)"
+        s = re.sub(r"\.? ?" + labels + r"(, " + labels + r")*(, \[[^\]]+\]\([^)]+\))? \|$", ". |", s, flags=re.M)
+        s = re.sub(r"\. \[Current guard\]\(([^)]+)\), \|", r". Guard: \1 |", s)
+        s = s.replace(" One cumulative campaign note has an October 18 filename but contains October 16–17 entries; the run scripts and JSON were used to verify the campaign identity and totals directly.", " The run scripts and JSON were used to verify the campaign identity and totals directly.")
+        s = re.sub(r"\n\nAdditional constraints: .*\n?$", "\n", s)
+        p.write_text(s)
+        EOF
+        sed -n '/^## Tried before/,/^## Five/p' docs/cost-reduction-implementation-plan-2026-10-17.md | cut -c1-80,'$(( $(sed -n 76p docs/cost-reduction-implementation-plan-2026-10-17.md | wc -c) ))' | head -0; sed -n '/^## Tried before/,/^## Five/p' docs/cost-reduction-implementation-plan-2026-10-17.md | awk '{print substr($0, length($0)-70)}'; tail -5 docs/cost-reduction-implementation-plan-2026-10-17.md
+      at: 2026-10-17T15:22:16.231706Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/b142ll99e.output | tail -3; sed -i '' -e 's|\[Current guard\](../internal/mcp/searchmulti_test.go),\. |\|[Current guard](../internal/mcp/searchmulti_test.go). |' -e 's|Body study, \[budget code\](../internal/mcp/impactbudget.go),\. |\|[budget code](../internal/mcp/impactbudget.go). |' docs/cost-reduction-implementation-plan-2026-10-17.md && grep -c "),\. |" docs/cost-reduction-implementation-plan-2026-10-17.md; git add docs/cost-reduction-implementation-plan-2026-10-17.md internal/mcp/server.go internal/mcp/tools.go internal/mcp/server_project_test.go internal/mcp/compact_test.go && git commit -q -m "mcp: state the project root at initialize and in outside-root errors; cost plan doc
+
+        Agents working across repositories sent sibling-checkout paths and got a
+        bare rejection per call. Initialize now names the served root and the
+        recovery route (prism CLI from that repository, or its own MCP server);
+        read and search rejections carry the same guidance.
+
+        docs: cost-reduction plan 2026-10-17 (revised; memory-directory links stripped).
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git log --oneline -3 && git status --short
+      at: 2026-10-17T15:22:27.321372Z
+      classified: other
+notes: []
+redactions: 0
