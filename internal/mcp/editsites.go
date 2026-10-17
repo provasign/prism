@@ -87,9 +87,63 @@ func (c *editCollector) add(path string, line, col int, name string) {
 // addDecl records a declaration's name line.
 func (c *editCollector) addDecl(d grove.SymbolRecord) {
 	path := normalizePath(d.FilePath)
-	if l := declNameLine(c.lines(path), d.Span.Start, d.Name); l > 0 {
-		c.add(path, l, 0, d.Name)
+	src := c.lines(path)
+	l := declNameLine(src, d.Span.Start, d.Name)
+	if l <= 0 {
+		return
 	}
+	c.add(path, l, 0, d.Name)
+	if !tsFamilyLanguage(d.Language) {
+		return
+	}
+	// TypeScript overload signatures are one symbol: `push(message: string):
+	// Promise<void>;` lines up to the implementation each carry the name.
+	re := tsOverloadLineRe(d.Name)
+	if !re.MatchString(src[l-1]) || !tsSignatureLineEnds(src[l-1]) {
+		return
+	}
+	for n := l + 1; n <= len(src) && n < l+60 && (d.Span.End <= 0 || n <= d.Span.End); n++ {
+		if !re.MatchString(src[n-1]) {
+			if strings.HasSuffix(strings.TrimSpace(src[n-1]), "{") {
+				return // a multi-line implementation's body opens
+			}
+			continue // a doc comment, or a multi-line signature's next line
+		}
+		c.add(path, n, 0, d.Name)
+		if !tsSignatureLineEnds(src[n-1]) {
+			return // the implementation
+		}
+	}
+}
+
+func tsFamilyLanguage(lang string) bool {
+	switch lang {
+	case "typescript", "tsx", "javascript":
+		return true
+	}
+	return false
+}
+
+// tsOverloadLineRe matches a line declaring name as a method or function
+// (modifiers, then name, then `(` or `<`).
+func tsOverloadLineRe(name string) *regexp.Regexp {
+	wordResMu.Lock()
+	defer wordResMu.Unlock()
+	key := "\x00ov" + name
+	if re, ok := wordRes[key]; ok {
+		return re
+	}
+	re := regexp.MustCompile(`^\s*(?:(?:export|declare|default|public|private|protected|static|async|abstract|override|function|get|set)\s+)*\*?\s*` +
+		regexp.QuoteMeta(name) + `\s*[<(]`)
+	wordRes[key] = re
+	return re
+}
+
+// tsSignatureLineEnds reports whether a declaration line is an overload
+// signature (ends in `;`) or one continuing onto the next line.
+func tsSignatureLineEnds(line string) bool {
+	t := strings.TrimSpace(line)
+	return strings.HasSuffix(t, ";") || strings.HasSuffix(t, "(") || strings.HasSuffix(t, ",")
 }
 
 // finish renders the rows: path:line:col: text up to editSitesMax, else one
@@ -174,6 +228,10 @@ func (h *Handler) impactEditSites(r *grove.ChangeImpactResult, callers, members 
 			addPositions(normalizePath(cl.FilePath), p.positions, callee)
 		}
 	}
+	// `export { _gte as gte } from "../core/index.js"` names it too.
+	for _, a := range r.ReExports {
+		c.add(normalizePath(a.FilePath), a.Line, 0, callee)
+	}
 	return c
 }
 
@@ -245,6 +303,36 @@ func formatEditSitesText(out map[string]any) string {
 		fmt.Fprintf(&b, "%v\n", l)
 	}
 	return b.String()
+}
+
+// editSiteTextKeys returns "path:line" of each editSites row printed with
+// its text (the full form; the per-file form carries no text).
+func editSiteTextKeys(out map[string]any) map[string]bool {
+	rows := anySlice(out["editSites"])
+	if n, _ := out["editSiteCount"].(int); len(rows) == 0 || n > len(rows) {
+		return nil
+	}
+	keys := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		s, _ := r.(string)
+		path, rest, ok := strings.Cut(s, ":")
+		for ok && path != "" {
+			// path may hold ':' (Windows drive): advance until rest starts "<line>:<col>: ".
+			line, tail, ok2 := strings.Cut(rest, ":")
+			if _, err := strconv.Atoi(line); err == nil && ok2 {
+				if col, _, ok3 := strings.Cut(tail, ": "); ok3 {
+					if _, err := strconv.Atoi(col); err == nil {
+						keys[path+":"+line] = true
+						break
+					}
+				}
+			}
+			var more string
+			more, rest, ok = strings.Cut(rest, ":")
+			path += ":" + more
+		}
+	}
+	return keys
 }
 
 // parsePosition reads "12:5" (line:col) or "12" (line only).

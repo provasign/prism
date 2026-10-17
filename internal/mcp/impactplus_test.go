@@ -215,15 +215,15 @@ public class Writer {
 	text := invokeCompactText(t, h, "change_impact", map[string]any{"name": "ConvertingSerializer.isUnwrappingSerializer"})
 	for _, want := range []string{
 		"ConvertingSerializer.isUnwrappingSerializer is not declared on ConvertingSerializer; it is inherited from ValueSerializer.isUnwrappingSerializer (src/main/java/p/ValueSerializer.java:4) via ConvertingSerializer -> StdSerializer -> ValueSerializer",
-		"src/main/java/p/UnwrappingSerializer.java:4:isUnwrappingSerializer [method]",
-		"src/main/java/p/Writer.java:4:check [method]",
+		"UnwrappingSerializer.isUnwrappingSerializer  src/main/java/p/UnwrappingSerializer.java:4",
+		"Writer.check  src/main/java/p/Writer.java:4",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("inherited impact lacks %q:\n%s", want, text)
 		}
 	}
 	// A header note, not a trailer: it changes how the whole result reads.
-	if strings.Index(text, "is not declared on") > strings.Index(text, "relaySites") {
+	if strings.Index(text, "is not declared on") > strings.Index(text, "editSites") {
 		t.Fatalf("inherited note must precede the inventory:\n%s", text)
 	}
 }
@@ -262,9 +262,8 @@ public class Gen {
 	if rel < 0 || !strings.Contains(text[rel:], "Gen.writeEmbeddedObject [co-caller] also calls Gen.Ctx.put (reached from writeBinary via writePOJO:6)") {
 		t.Fatalf("related group missing writeEmbeddedObject:\n%s", text)
 	}
-	relay := text[strings.Index(text, "relaySites"):rel]
-	if strings.Contains(relay, "writeEmbeddedObject") {
-		t.Fatalf("related site leaked into relaySites:\n%s", text)
+	if strings.Contains(text[:rel], "writeEmbeddedObject") {
+		t.Fatalf("related site leaked into the change's sites:\n%s", text)
 	}
 }
 
@@ -279,9 +278,9 @@ func TestChangeImpactRelaysTSReExports(t *testing.T) {
 	text := invokeCompactText(t, h, "change_impact", map[string]any{"name": "_gte"})
 	for _, want := range []string{
 		"change-impact: 4 site(s)",
-		"src/mini/checks.ts:2:gte [re-export]",
-		"src/mini/checks.ts:3:minimum [re-export]",
-		"src/core/api.ts:5:_nonnegative [function]",
+		"src/mini/checks.ts:2:3: _gte as gte,",
+		"src/mini/checks.ts:3:3: _gte as minimum,",
+		"_nonnegative  src/core/api.ts:5",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("impact lacks %q:\n%s", want, text)

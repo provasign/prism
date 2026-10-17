@@ -158,3 +158,72 @@ func TestOtherMentionsPartialLabel(t *testing.T) {
 		t.Errorf("closed label wrong:\n%s", got)
 	}
 }
+
+// A caller's call line that editSites prints with its text is not printed
+// again as caller evidence (bench29: every change_impact answer had both).
+func TestCallerEvidenceNotRepeatedFromEditSites(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"pkg/core.py": "class Group:\n    def get_command(self, ctx, name):\n        return None\n\n\ndef resolve(g: Group):\n    return g.get_command(None, 'x')\n",
+	})
+	raw, err := h.Invoke("prism_change_impact", map[string]any{"query": "Group.get_command"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, ok := renderChangeImpactAsText(raw.(map[string]any))
+	if !ok {
+		t.Fatal("not rendered as text")
+	}
+	if n := strings.Count(rendered, "return g.get_command(None, 'x')"); n != 1 {
+		t.Errorf("call line printed %d times, want once (in editSites):\n%s", n, rendered)
+	}
+	if !strings.Contains(rendered, "caller call line(s) are in editSites above") {
+		t.Errorf("missing the not-repeated note:\n%s", rendered)
+	}
+}
+
+func TestBlockCommentOpenSkipsStrings(t *testing.T) {
+	for line, want := range map[string]int{
+		`subApp.use("/admin/**", fn)`: -1,
+		`.get('/**:slug', h)`:         -1,
+		"x = `/*`":                    -1,
+		`// see /* here`:              -1,
+		`/* real`:                     0,
+		`a(); /* real`:                5,
+		`s = "a\"/*"; /* c`:           13,
+	} {
+		if got := blockCommentOpen(line); got != want {
+			t.Errorf("blockCommentOpen(%q) = %d, want %d", line, got, want)
+		}
+	}
+}
+
+// TypeScript overload signatures belong to the implementation's symbol; each
+// carries the name a rename edits (h3 EventStream.push, 2026-10-16). A
+// recursive call in the body is not a signature.
+func TestEditCollectorTSOverloads(t *testing.T) {
+	dir := t.TempDir()
+	src := "class S {\n" +
+		"  /** doc */\n" +
+		"  async push(message: string): Promise<void>;\n" +
+		"  async push(\n" +
+		"    message: string[],\n" +
+		"  ): Promise<void>;\n" +
+		"  async push(message: string | string[]) {\n" +
+		"    push(message);\n" +
+		"  }\n" +
+		"}\n"
+	if err := os.WriteFile(filepath.Join(dir, "s.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := newEditCollector(dir)
+	c.addDecl(grove.SymbolRecord{Name: "push", FilePath: "s.ts", Language: "typescript", Span: grove.SpanInfo{Start: 2, End: 9}})
+	rows, _ := c.finish()
+	want := []string{
+		"s.ts:3:9: async push(message: string): Promise<void>;",
+		"s.ts:4:9: async push(",
+		"s.ts:7:9: async push(message: string | string[]) {",
+	}
+	if strings.Join(rows, "\n") != strings.Join(want, "\n") {
+		t.Errorf("rows:\n%s\nwant:\n%s", strings.Join(rows, "\n"), strings.Join(want, "\n"))
+	}
+}

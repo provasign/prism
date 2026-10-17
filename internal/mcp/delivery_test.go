@@ -229,6 +229,37 @@ func TestBatchReadKeepsLaterWindowsAndMissingFile(t *testing.T) {
 	}
 }
 
+// A long window beside short ones gets the budget they leave: an even
+// split cut serving.py:960-1100 to 960-997 next to two short windows and the
+// agent spent a turn on the continuation (bench29, 2026-10-16).
+func TestBatchReadGivesLeftoverBudgetToLongWindow(t *testing.T) {
+	h := newTestHandler(t)
+	var body strings.Builder
+	for i := 0; i < 200; i++ {
+		fmt.Fprintf(&body, "    x%03d = compute(%s)\n", i, strings.Repeat("y", 60))
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "serving.py"), []byte(body.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ranges := []any{
+		map[string]any{"file": "serving.py", "from": 10, "to": 150},
+		map[string]any{"file": "serving.py", "from": 170, "to": 175},
+		map[string]any{"file": "serving.py", "from": 190, "to": 195},
+	}
+	out, err := h.readRanges(t.Context(), map[string]any{"ranges": ranges})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if m["note"] != nil || m["continuation"] != nil {
+		t.Fatalf("long window clamped although the short ones left budget: note=%v continuation=%v", m["note"], m["continuation"])
+	}
+	got := m["ranges"].([]map[string]any)
+	if len(got) != 3 || !strings.Contains(fmt.Sprint(got[0]["content"]), "x149") {
+		t.Fatalf("long window lost lines: %#v", got[0])
+	}
+}
+
 func TestSymbolWindowsClampsToFileBounds(t *testing.T) {
 	wins := symbolWindows([]ranking.BudgetedSymbol{bs(1, 30, ranking.DisclosureFull)}, 20)
 	if len(wins) != 1 || wins[0].start != 1 || wins[0].end != 20 {

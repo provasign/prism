@@ -290,12 +290,36 @@ func blockCommentLines(path, ext string) map[int]bool {
 			}
 			continue
 		}
-		if j := strings.Index(l, "/*"); j >= 0 && !strings.Contains(l[j:], "*/") {
+		if j := blockCommentOpen(l); j >= 0 && !strings.Contains(l[j:], "*/") {
 			in = true
 			out[i+1] = true
 		}
 	}
 	return out
+}
+
+// blockCommentOpen is the index of a "/*" that opens a comment on line, or
+// -1: a "/*" inside a string ("/admin/**", h3 routes) or after "//" does not.
+func blockCommentOpen(line string) int {
+	var quote byte
+	for i := 0; i+1 < len(line); i++ {
+		c := line[i]
+		switch {
+		case quote != 0:
+			if c == '\\' {
+				i++
+			} else if c == quote {
+				quote = 0
+			}
+		case c == '"' || c == '\'' || c == '`':
+			quote = c
+		case c == '/' && line[i+1] == '/':
+			return -1
+		case c == '/' && line[i+1] == '*':
+			return i
+		}
+	}
+	return -1
 }
 
 // wordPattern is a regex for leaf as a whole word; \b is only placed next to

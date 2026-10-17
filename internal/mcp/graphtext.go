@@ -159,7 +159,17 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if boundary, _ := out["scopeBoundary"].(string); boundary != "" {
 		fmt.Fprintf(&b, "// %s\n", boundary)
 	}
-	b.WriteString(FormatImpactRelaySitesText(out))
+	// With editSites, the relay inventory, the generic evidence notes and
+	// the declarations' signatures repeat what the edit rows already show
+	// (bench29: ~20% of a change_impact answer).
+	hasEdits := len(anySlice(out["editSites"])) > 0
+	if hasEdits {
+		if note, _ := out["relayNote"].(string); note != "" && note != impactRelayNote {
+			fmt.Fprintf(&b, "// %s\n", note)
+		}
+	} else {
+		b.WriteString(FormatImpactRelaySitesText(out))
+	}
 	b.WriteString(formatEditSitesText(out))
 	b.WriteString(FormatImpactExtrasText(out))
 	for _, key := range []string{"familyCompleteness", "callerCoverage"} {
@@ -198,10 +208,10 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if note, _ := out["methodFamilyNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
-	if hr, _ := out["hasHeuristicRefs"].(bool); hr {
+	if hr, _ := out["hasHeuristicRefs"].(bool); hr && !hasEdits {
 		b.WriteString("// " + heuristicRefsNote + "\n")
 	}
-	if note, _ := out["evidenceNote"].(string); note != "" {
+	if note, _ := out["evidenceNote"].(string); note != "" && !(hasEdits && note == indexedEvidenceNote) {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if c, _ := out["completeness"].(string); c == "type-level" {
@@ -211,6 +221,10 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 			"not appear; if this class's runtime BEHAVIOR changed (not just its shape), also " +
 			"prism_search for instanceof checks against types it might resemble\n")
 	}
+	// Call lines editSites already prints with their text are not repeated
+	// as caller evidence (bench29: the same lines twice in every answer).
+	shownInEdits := editSiteTextKeys(out)
+	repeated := 0
 	for _, sec := range []struct{ key, label string }{
 		{"declarations", "declarations"},
 		{"supers", "supers"},
@@ -268,7 +282,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 				fmt.Fprintf(&b, "  [%s]", at)
 			}
 			b.WriteString("\n")
-			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" {
+			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" && !(hasEdits && (sec.key == "declarations" || sec.key == "family")) {
 				fmt.Fprintf(&b, "%s%s\n", evidenceIndent, compactImpactLine(sig))
 			}
 			for _, raw := range anySlice(m["evidence"]) {
@@ -276,12 +290,19 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 				if !ok || len(evidence) != 2 || evidence["line"] == nil || evidence["text"] == nil {
 					return "", false
 				}
+				if sec.key == "callers" && shownInEdits[fmt.Sprintf("%v:%v", m["filePath"], evidence["line"])] {
+					repeated++
+					continue
+				}
 				fmt.Fprintf(&b, "%s%v: %v\n", evidenceIndent, evidence["line"], evidence["text"])
 			}
 			if note, _ := m["evidenceNote"].(string); note != "" {
 				fmt.Fprintf(&b, "%s// %s\n", evidenceIndent, note)
 			}
 		}
+	}
+	if repeated > 0 {
+		fmt.Fprintf(&b, "// %d caller call line(s) are in editSites above and not repeated here.\n", repeated)
 	}
 	if n, _ := out["declaringTypesNote"].(string); n != "" {
 		fmt.Fprintf(&b, "// %s\n", n)

@@ -71,7 +71,7 @@ func TestChangeImpactCompilerPositionsDropOtherSameNamedCalls(t *testing.T) {
 	if strings.Contains(evidenceOnly(got), "v.Value") || strings.Contains(got, "omitted by evidence limit") {
 		t.Fatalf("V.Value calls must not appear as W.Value evidence or omitted lines:\n%s", got)
 	}
-	if !strings.Contains(got, "6: c := w.Value(3)") {
+	if !strings.Contains(got, "use.go:6:9: c := w.Value(3)") { // in editSites; not repeated as caller evidence
 		t.Fatalf("evidence should show the compiler's call lines:\n%s", got)
 	}
 }

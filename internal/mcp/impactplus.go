@@ -490,7 +490,7 @@ func FormatImpactExtrasText(out map[string]any) string {
 		}
 	}
 	if rex := anySlice(out["reExports"]); len(rex) > 0 {
-		fmt.Fprintf(&b, "reExports (%d; export specifiers that re-export or alias it — included in relaySites):\n", len(rex))
+		fmt.Fprintf(&b, "reExports (%d; export specifiers that re-export or alias it):\n", len(rex))
 		for _, raw := range rex {
 			m, _ := raw.(map[string]any)
 			if m == nil {
