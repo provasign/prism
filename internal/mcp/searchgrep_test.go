@@ -48,7 +48,7 @@ func TestGrepShapeKeepsEveryMatchedLineAndDropsTheDecoration(t *testing.T) {
 	if strings.Join(matchedLines(got), "\n") != strings.Join(matchedLines(grepShapeSample), "\n") {
 		t.Fatalf("a matched line changed:\n%s", got)
 	}
-	for _, gone := range []string{"// root:", "First source anchors", "match lists restricted", "symbols (2):", "method A.findThing", "locator result", "  843-", "  207-"} {
+	for _, gone := range []string{"// root:", "First source anchors", "match lists restricted", "symbols (2):", "method A.findThing", "  843-", "  207-"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("grep shape kept %q:\n%s", gone, got)
 		}
@@ -71,16 +71,16 @@ func TestGrepShapeOptInsBringTheContentBack(t *testing.T) {
 		}
 	}
 	body := "\n// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:\n**`src/A.java`**\n```java\n845→body\n```\n"
-	broad := grepShapeSample + body
+	broad := strings.Replace(grepShapeSample, "4 exact matches", "25 exact matches", 1) + body
 	if got := grepShapeSearchText(broad, nil); strings.Contains(got, "Exact source") || strings.Contains(got, "845→") {
-		t.Errorf("a 4-match answer must not carry a body by default:\n%s", got)
+		t.Errorf("a 25-match answer must not carry a body by default:\n%s", got)
 	}
 	if got := grepShapeSearchText(broad, map[string]any{"include_bodies": true}); !strings.Contains(got, "845→body") {
 		t.Errorf("include_bodies=true must keep the body:\n%s", got)
 	}
-	narrow := strings.Replace(broad, "4 exact matches", "2 exact matches", 1)
+	narrow := strings.Replace(broad, "25 exact matches", "6 exact matches", 1)
 	if got := grepShapeSearchText(narrow, nil); !strings.Contains(got, "845→body") {
-		t.Errorf("a 2-match answer keeps its body:\n%s", got)
+		t.Errorf("a 6-match answer keeps its body:\n%s", got)
 	}
 }
 
@@ -112,7 +112,7 @@ func TestGrepShapeEndToEndSameMatchesFewerBytes(t *testing.T) {
 		srv := compactFixture(t, files)
 		return callCompact(t, srv, "search", map[string]any{"terms": []string{"get_thing"}, "scope": "text"})
 	}
-	base, grep := run(""), run("grep")
+	base, grep := run("legacy"), run("")
 	if strings.Join(matchedLines(base), "\n") != strings.Join(matchedLines(grep), "\n") {
 		t.Fatalf("matched lines differ between modes:\nbase:\n%s\ngrep:\n%s", base, grep)
 	}
@@ -121,5 +121,20 @@ func TestGrepShapeEndToEndSameMatchesFewerBytes(t *testing.T) {
 	}
 	if len(grep) >= len(base) {
 		t.Errorf("grep shape is not smaller: %d vs %d bytes\nbase:\n%s\ngrep:\n%s", len(grep), len(base), base, grep)
+	}
+}
+
+func TestGrepShapeKeepsWhatAnExplicitScopeAndUniqueBodiesAsked(t *testing.T) {
+	if got := grepShapeSearchText(grepShapeSample, map[string]any{"scope": "both"}); !strings.Contains(got, "symbols (2):") || !strings.Contains(got, "method A.findThing") {
+		t.Errorf("scope=both asked for the symbols block, it must stay:\n%s", got)
+	}
+	unique := grepShapeSample + "\n// Exact source for the unique exact-name match in the first batched term; other hits remain locators (already read; do not fetch it again):\n**`src/A.java`**\n```java\n845→body\n```\n"
+	if got := grepShapeSearchText(unique, nil); !strings.Contains(got, "845→body") {
+		t.Errorf("a unique-symbol body is the answer and must stay:\n%s", got)
+	}
+	plainEcho := "// match lists restricted to path=[\"src\"]; other files were not searched\n10:   x\n"
+	more := "// match lists restricted to path=[\"src\"]; text search was not run\n"
+	if got := grepShapeSearchText(plainEcho+more, nil); strings.Contains(got, "other files were not searched") || !strings.Contains(got, "text search was not run") {
+		t.Errorf("only the plain echo goes, a richer scope note stays:\n%s", got)
 	}
 }

@@ -11,6 +11,10 @@ import (
 )
 
 func TestSearchCLIExplicitZeroContextAndMergedDefault(t *testing.T) {
+	// The merged two-line default context belongs to the legacy answer shape;
+	// the grep shape (the default since 2026-10-17) has none until context=N
+	// is asked for. TestSearchCLIGrepShapeDefaultReturnsMatchesOnly.
+	t.Setenv("PRISM_SEARCH_SHAPE", "legacy")
 	dir := t.TempDir()
 	dir, err := filepath.EvalSymlinks(dir)
 	if err != nil {
@@ -40,6 +44,34 @@ func TestSearchCLIExplicitZeroContextAndMergedDefault(t *testing.T) {
 		if strings.Count(contextual, text) != 1 {
 			t.Fatalf("expected exactly one %q in merged context: %s", text, contextual)
 		}
+	}
+}
+
+func TestSearchCLIGrepShapeDefaultReturnsMatchesOnly(t *testing.T) {
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sample.txt"), []byte("CONTEXT_BEFORE\nMATCH one\nMATCH two\nCONTEXT_AFTER\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if rc := cmdIndex([]string{dir}); rc != 0 {
+		t.Fatalf("index exited %d", rc)
+	}
+	run := func(extra ...string) string {
+		args := append([]string{"MATCH", "--dir", dir, "--scope", "text", "--format", "text", "--no-bodies"}, extra...)
+		return captureStdout(func() {
+			if rc := cmdSearch(args); rc != 0 {
+				t.Fatalf("search exited %d", rc)
+			}
+		})
+	}
+	got := run()
+	if !strings.Contains(got, "MATCH one") || !strings.Contains(got, "MATCH two") || strings.Contains(got, "CONTEXT_BEFORE") || strings.Contains(got, "CONTEXT_AFTER") {
+		t.Fatalf("default grep shape must return the matched lines only: %s", got)
+	}
+	if got := run("--context", "1"); !strings.Contains(got, "CONTEXT_BEFORE") || !strings.Contains(got, "CONTEXT_AFTER") {
+		t.Fatalf("--context 1 must bring the windows back: %s", got)
 	}
 }
 

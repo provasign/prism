@@ -766,6 +766,12 @@ func TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope(t *testing.T) {
 }
 
 func TestCompactSearchDefaultsToTwoContextLines(t *testing.T) {
+	// The legacy shape keeps its two default context lines; the grep shape
+	// (the default since 2026-10-17) returns the matched line and leaves
+	// windows to context=N. TestCompactSearchGrepShapeDefaultHasNoContext.
+	old := searchShapeMode
+	searchShapeMode = "legacy"
+	defer func() { searchShapeMode = old }()
 	h := newTestHandler(t)
 	if err := os.WriteFile(filepath.Join(h.Root, "sample.txt"), []byte("before-two\nbefore-one\nUniqueNeedle\nafter-one\nafter-two\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -780,6 +786,27 @@ func TestCompactSearchDefaultsToTwoContextLines(t *testing.T) {
 		if !strings.Contains(content, want) {
 			t.Errorf("default context omits %q:\n%s", want, content)
 		}
+	}
+}
+
+func TestCompactSearchGrepShapeDefaultHasNoContext(t *testing.T) {
+	h := newTestHandler(t)
+	if err := os.WriteFile(filepath.Join(h.Root, "sample.txt"), []byte("before-two\nbefore-one\nUniqueNeedle\nafter-one\nafter-two\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	call := func(extra string) string {
+		params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"UniqueNeedle","scope":"text"` + extra + `}}}`)
+		result, rpcErr := NewCompactServer(h).dispatch("tools/call", params)
+		if rpcErr != nil {
+			t.Fatal(rpcErr.Message)
+		}
+		return result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	}
+	if got := call(""); !strings.Contains(got, "UniqueNeedle") || strings.Contains(got, "before-one") || strings.Contains(got, "after-one") {
+		t.Errorf("default grep shape must return the matched line only:\n%s", got)
+	}
+	if got := call(`,"context":2`); !strings.Contains(got, "before-two") || !strings.Contains(got, "after-two") {
+		t.Errorf("context=2 must bring the windows back:\n%s", got)
 	}
 }
 
