@@ -68,7 +68,8 @@ func TestImpactEvidencePreservesSitesAndSource(t *testing.T) {
 	if !ok {
 		t.Fatalf("impact unexpectedly fell back to JSON: %v", out)
 	}
-	for _, want := range []string{"Get()", "store.go:5:11: return s.Get()", "[test]", "|evidence"} {
+	// With editSites the generic evidence note is not repeated.
+	for _, want := range []string{"Get()", "store.go:5:11: return s.Get()", "[test]"} {
 		if want == "|evidence" {
 			if !strings.Contains(text, "not independent receiver-resolution proof") && !strings.Contains(text, "shown as evidence for each caller") {
 				t.Errorf("missing evidence note:\n%s", text)

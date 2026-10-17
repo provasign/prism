@@ -159,7 +159,17 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if boundary, _ := out["scopeBoundary"].(string); boundary != "" {
 		fmt.Fprintf(&b, "// %s\n", boundary)
 	}
-	b.WriteString(FormatImpactRelaySitesText(out))
+	// With editSites, the relay inventory, the generic evidence notes and
+	// the declarations' signatures repeat what the edit rows already show
+	// (bench29: ~20% of a change_impact answer).
+	hasEdits := len(anySlice(out["editSites"])) > 0
+	if hasEdits {
+		if note, _ := out["relayNote"].(string); note != "" && note != impactRelayNote {
+			fmt.Fprintf(&b, "// %s\n", note)
+		}
+	} else {
+		b.WriteString(FormatImpactRelaySitesText(out))
+	}
 	b.WriteString(formatEditSitesText(out))
 	b.WriteString(FormatImpactExtrasText(out))
 	for _, key := range []string{"familyCompleteness", "callerCoverage"} {
@@ -198,10 +208,10 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if note, _ := out["methodFamilyNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
-	if hr, _ := out["hasHeuristicRefs"].(bool); hr {
+	if hr, _ := out["hasHeuristicRefs"].(bool); hr && !hasEdits {
 		b.WriteString("// " + heuristicRefsNote + "\n")
 	}
-	if note, _ := out["evidenceNote"].(string); note != "" {
+	if note, _ := out["evidenceNote"].(string); note != "" && !(hasEdits && note == indexedEvidenceNote) {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if c, _ := out["completeness"].(string); c == "type-level" {
@@ -272,7 +282,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 				fmt.Fprintf(&b, "  [%s]", at)
 			}
 			b.WriteString("\n")
-			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" {
+			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" && !(hasEdits && (sec.key == "declarations" || sec.key == "family")) {
 				fmt.Fprintf(&b, "%s%s\n", evidenceIndent, compactImpactLine(sig))
 			}
 			for _, raw := range anySlice(m["evidence"]) {

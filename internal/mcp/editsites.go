@@ -228,6 +228,10 @@ func (h *Handler) impactEditSites(r *grove.ChangeImpactResult, callers, members 
 			addPositions(normalizePath(cl.FilePath), p.positions, callee)
 		}
 	}
+	// `export { _gte as gte } from "../core/index.js"` names it too.
+	for _, a := range r.ReExports {
+		c.add(normalizePath(a.FilePath), a.Line, 0, callee)
+	}
 	return c
 }
 
