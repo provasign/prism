@@ -3204,7 +3204,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return nil, errors.New("query is required")
 	}
 	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
-	inferenceNote, inheritedNote, familyPickNote := "", "", ""
+	inferenceNote, inheritedNote, familyPickNote, modulePathNote := "", "", "", ""
 	if err != nil && strings.Contains(err.Error(), "declares no method") {
 		// The override being added does not exist yet: answer with the
 		// inherited declaration's change set instead of a dead end.
@@ -3227,9 +3227,17 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			count, _ := strconv.Atoi(wide[1])
 			isWide = count >= wideMemberAmbiguityThreshold
 		}
-		externalMissing := strings.Contains(err.Error(), "no type named") && strings.Contains(query, ".")
+		if strings.Contains(err.Error(), "no type named") && strings.Contains(query, ".") {
+			// werkzeug.utils.redirect: a module path, not Type.method.
+			if mr, note, ok := h.modulePathImpact(ctx, query); ok {
+				r, err, modulePathNote = mr, nil, note
+			}
+		}
+		externalMissing := err != nil && strings.Contains(err.Error(), "no type named") && strings.Contains(query, ".")
 		signature := stringArg(args, "signature", "")
 		switch {
+		case err == nil:
+			// resolved above
 		case externalMissing:
 			if inferred, note, inferErr := h.inferExternalMethodImpact(ctx, query, signature); inferErr == nil {
 				r, err, inferenceNote = inferred, nil, note
@@ -3448,6 +3456,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 	if inferenceNote != "" {
 		out["methodFamilyNote"] = inferenceNote
+	}
+	if modulePathNote != "" {
+		out["resolvedNote"] = modulePathNote
 	}
 	if wideImpact {
 		out["evidenceNote"] = "Large indexed result delivered as compact file:line identities; repeated signatures and call expressions are omitted. Every returned site is shown, but graph coverage and receiver uncertainty remain as reported."
