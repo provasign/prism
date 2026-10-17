@@ -277,8 +277,10 @@ func validateCompactArguments(op string, args map[string]any) error {
 		}
 	case "read":
 		if _, batch := args["ranges"]; batch {
-			if len(args) != 1 {
-				return fmt.Errorf("prism: read ranges cannot be mixed with file, from, or to")
+			for _, field := range []string{"file", "from", "to"} {
+				if _, present := args[field]; present {
+					return fmt.Errorf("prism: read ranges cannot be mixed with file, from, or to")
+				}
 			}
 		} else {
 			if err := require("file"); err != nil {
@@ -382,6 +384,9 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 			legacy["signature"] = v
 		}
 	case "read":
+		if v, ok := args["force"]; ok {
+			legacy["force"] = v
+		}
 		if v, ok := args["ranges"]; ok {
 			legacy["ranges"] = v
 		} else {

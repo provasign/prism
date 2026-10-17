@@ -1328,7 +1328,7 @@ func (h *Handler) readRange(sessionPath, content, hash string, offset, limit int
 		return map[string]any{
 			"file": sessionPath, "delivery": "range", "startLine": offset,
 			"endLine": end, "totalLines": total,
-			"content": fmt.Sprintf("// [prism:cached] %s lines %d-%d — use the source already in context\n",
+			"content": fmt.Sprintf("// [prism:cached] %s lines %d-%d — previously delivered; if unavailable, repeat read with force:true\n",
 				sessionPath, offset, end),
 		}, nil
 	}
