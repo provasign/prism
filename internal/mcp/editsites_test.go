@@ -196,3 +196,34 @@ func TestBlockCommentOpenSkipsStrings(t *testing.T) {
 		}
 	}
 }
+
+// TypeScript overload signatures belong to the implementation's symbol; each
+// carries the name a rename edits (h3 EventStream.push, 2026-10-16). A
+// recursive call in the body is not a signature.
+func TestEditCollectorTSOverloads(t *testing.T) {
+	dir := t.TempDir()
+	src := "class S {\n" +
+		"  /** doc */\n" +
+		"  async push(message: string): Promise<void>;\n" +
+		"  async push(\n" +
+		"    message: string[],\n" +
+		"  ): Promise<void>;\n" +
+		"  async push(message: string | string[]) {\n" +
+		"    push(message);\n" +
+		"  }\n" +
+		"}\n"
+	if err := os.WriteFile(filepath.Join(dir, "s.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := newEditCollector(dir)
+	c.addDecl(grove.SymbolRecord{Name: "push", FilePath: "s.ts", Language: "typescript", Span: grove.SpanInfo{Start: 2, End: 9}})
+	rows, _ := c.finish()
+	want := []string{
+		"s.ts:3:9: async push(message: string): Promise<void>;",
+		"s.ts:4:9: async push(",
+		"s.ts:7:9: async push(message: string | string[]) {",
+	}
+	if strings.Join(rows, "\n") != strings.Join(want, "\n") {
+		t.Errorf("rows:\n%s\nwant:\n%s", strings.Join(rows, "\n"), strings.Join(want, "\n"))
+	}
+}

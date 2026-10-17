@@ -1493,6 +1493,12 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 		from, limit         int
 		warning             string
 		missing             bool
+		// budgeted windows share the line and byte budgets below.
+		budgeted    bool
+		lines       []string
+		index       int
+		path        string
+		requestedTo int
 	}
 	windows := make([]window, 0, len(raw))
 	var notes []string
@@ -1522,7 +1528,7 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 			lines = lines[:len(lines)-1]
 		}
 		from, requestedTo := intArg(r, "from", 0), intArg(r, "to", 0)
-		w := window{file: sessionPath, content: content, hash: compression.Hash(content), from: from}
+		w := window{file: sessionPath, content: content, hash: compression.Hash(content), from: from, index: i, path: path}
 		if from > len(lines) {
 			w.limit = 1 // readRange will report the past-EOF warning
 			windows = append(windows, w)
@@ -1543,33 +1549,66 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 				continue
 			}
 		}
-		shareLines := remainingLines / (len(raw) - i)
-		shareBytes := remainingBytes / (len(raw) - i)
-		w.limit = minInt(requestedLines, minInt(compactReadLimit, shareLines))
-		w.limit = minInt(w.limit, len(lines)-from+1)
-		for j := 0; j < w.limit; j++ {
-			cost := len(lines[from-1+j]) + 16
-			if cost > shareBytes {
-				w.limit = j
+		w.limit = minInt(requestedLines, minInt(compactReadLimit, len(lines)-from+1))
+		w.lines = lines
+		w.requestedTo = requestedTo
+		w.budgeted = true
+		windows = append(windows, w)
+	}
+	// The line and byte budgets go to the small windows in full first; what
+	// they leave is shared by the rest (a 140-line window beside two short
+	// ones was cut to 38 lines by an even split, costing a turn).
+	var pending []int
+	for j, w := range windows {
+		if w.budgeted {
+			pending = append(pending, j)
+		}
+	}
+	cost := func(w *window, n int) int {
+		c := 0
+		for k := 0; k < n; k++ {
+			c += len(w.lines[w.from-1+k]) + 16
+		}
+		return c
+	}
+	sort.SliceStable(pending, func(a, b int) bool {
+		wa, wb := &windows[pending[a]], &windows[pending[b]]
+		return cost(wa, wa.limit) < cost(wb, wb.limit)
+	})
+	for n, j := range pending {
+		w := &windows[j]
+		shareLines := remainingLines / (len(pending) - n)
+		shareBytes := remainingBytes / (len(pending) - n)
+		w.limit = minInt(w.limit, shareLines)
+		for k := 0; k < w.limit; k++ {
+			c := len(w.lines[w.from-1+k]) + 16
+			if c > shareBytes {
+				w.limit = k
 				break
 			}
-			shareBytes -= cost
-			remainingBytes -= cost
+			shareBytes -= c
+			remainingBytes -= c
 		}
+		remainingLines -= w.limit
+	}
+	for j := range windows {
+		w := &windows[j]
+		if !w.budgeted {
+			continue
+		}
+		i, path := w.index, w.path
+		requestedLines := w.requestedTo - w.from + 1
+		availableLines := minInt(requestedLines, len(w.lines)-w.from+1)
 		if w.limit == 0 {
-			w.warning = fmt.Sprintf("range %d (%s:%d-%d) omitted by the compact read budget", i+1, path, from, requestedTo)
+			w.warning = fmt.Sprintf("range %d (%s:%d-%d) omitted by the compact read budget", i+1, path, w.from, w.requestedTo)
 			notes = append(notes, w.warning)
-		} else {
-			remainingLines -= w.limit
-			if w.limit < requestedLines {
-				notes = append(notes, fmt.Sprintf("range %d (%s:%d-%d) clamped to %d-%d",
-					i+1, path, from, requestedTo, from, from+w.limit-1))
-			}
+		} else if w.limit < requestedLines {
+			notes = append(notes, fmt.Sprintf("range %d (%s:%d-%d) clamped to %d-%d",
+				i+1, path, w.from, w.requestedTo, w.from, w.from+w.limit-1))
 		}
 		if w.limit < availableLines {
-			continuations = append(continuations, map[string]any{"file": path, "from": from + w.limit, "to": from + availableLines - 1})
+			continuations = append(continuations, map[string]any{"file": path, "from": w.from + w.limit, "to": w.from + availableLines - 1})
 		}
-		windows = append(windows, w)
 	}
 	results := make([]map[string]any, 0, len(windows))
 	for _, w := range windows {
