@@ -757,12 +757,15 @@ func legacyMCPTool(name string) bool {
 // RenderCompactSearchText is the canonical compact search renderer shared by
 // MCP and CLI. Bodies were attached by the search itself (attachSearchBodies);
 // this only renders. The ctx and args parameters are kept for the callers.
-func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any, _ map[string]any) (string, bool) {
+func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any, args map[string]any) (string, bool) {
 	text, rendered := renderSearchAsText(out)
 	if !rendered {
 		return "", false
 	}
 	text = rewriteCompactGuidance(text)
+	if grepShapeEnabled() {
+		text = grepShapeSearchText(text, args)
+	}
 	if bodies, _ := out["inlineBodies"].(string); bodies != "" {
 		// A flat result whose body IS the small complete result needs no
 		// "locator result" pointer: the source is right there.
