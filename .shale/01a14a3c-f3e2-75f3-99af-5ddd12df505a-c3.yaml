@@ -1,0 +1,150 @@
+shale_version: "0"
+id: 01a14a3c-f3e2-75f3-99af-5ddd12df505a-c3
+created_at: 2026-10-17T17:49:40.069591Z
+finalized_at: 2026-10-17T18:04:52.745479Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        python3 -B - <<'PY'
+        import pathlib,json
+        p=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-sol61-seeded32-2026-10-17-v2/cells/wide__click__Command_invoke/prism_init/events.jsonl')
+        if p.exists():
+         for l in p.read_text().splitlines()[-2:]:
+          d=json.loads(l);i=d.get('item',{});print(d.get('type'),i.get('type'),str(i.get('text') or i.get('command') or d.get('usage'))[:600])
+        PY
+      at: 2026-10-17T17:49:40.069591Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import pathlib,json,time
+        p=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-sol61-seeded32-2026-10-17-v2/cells/wide__click__Command_invoke/prism_init/events.jsonl')
+        print('Seconds since event:',round(time.time()-p.stat().st_mtime))
+        for l in p.read_text().splitlines():
+         d=json.loads(l);i=d.get('item',{})
+         if i.get('type')=='command_execution' and d.get('type')=='item.started':print(i.get('id'),i.get('command','')[:700])
+        PY
+      at: 2026-10-17T17:50:40.966721Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import pathlib,json,time
+        p=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-sol61-seeded32-2026-10-17-v2/cells/wide__click__Command_invoke/prism_init/events.jsonl')
+        print('Seconds since event:',round(time.time()-p.stat().st_mtime))
+        for l in p.read_text().splitlines()[-3:]:
+         d=json.loads(l);i=d.get('item',{});print(d.get('type'),i.get('type'),str(i.get('text')or i.get('command')or d.get('usage'))[:1000])
+        PY
+      at: 2026-10-17T17:52:37.667894Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command
+      at: 2026-10-17T17:54:43.676114Z
+      classified: other
+    - cmd: prism read run.py --from 1 --to 115
+      at: 2026-10-17T18:02:06.562327Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py --from 179 --to 229
+      at: 2026-10-17T18:02:06.643032Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-sol61-seeded32-2026-10-17-v2')
+        d=json.loads((p/'results.json').read_text()); rows=[v for v in d.values() if isinstance(v,dict) and 'cells'in v]; print('tasks',len(rows),'cells',sum(len(v['cells']) for v in rows),'complete',d.get('_complete'))
+        for row in rows[:3]:
+         for a,r in row['cells'].items():print(r.get('task'),a,r.get('session_id'),r.get('requests',[{}])[0])
+        PY
+      at: 2026-10-17T18:02:06.723379Z
+      classified: other
+    - cmd: prism lookup _agent_env _python_venv --format text
+      at: 2026-10-17T18:02:17.40052Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import pathlib,json
+        p=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-sol61-seeded32-2026-10-17-v2')
+        for f in p.glob('cells/*/*/events.jsonl'):
+         for l in f.read_text().splitlines():
+          d=json.loads(l);i=d.get('item',{});s=i.get('command','')
+          if d.get('type')=='item.completed' and s and any(x in s for x in ['gvg-corpus','provasign/research','/private/tmp','/.codex','/.cache','Library/Caches']):
+           print(f.parent.parent.name,f.parent.name,s[:700])
+        PY
+      at: 2026-10-17T18:02:17.492566Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import pathlib,json
+        p=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-sol61-seeded32-2026-10-17-v2')
+        threads=[]; roots=[]; first=[]
+        for f in p.glob('cells/*/*/command.json'):
+         a=json.loads(f.read_text());roots.append(a[a.index('-C')+1])
+         u=f.with_name('usage.json')
+         if u.exists():
+          r=json.loads(u.read_text())
+          if r.get('session_id'):threads.append(r['session_id'])
+          if r.get('requests'):first.append(r['requests'][0]['cached_input_tokens'])
+        print(json.dumps(dict(cell_commands=len(roots),unique_checkouts=len(set(roots)),sessions=len(threads),unique_sessions=len(set(threads)),first_request_cache_reads=first)))
+        p=pathlib.Path('/private/tmp/prism-codex-replication-2026-10-17/report.py')
+        s=p.read_text();needle='## Interpretation and limits\n'
+        insert='''## Isolation audit
+
+        **This is a shared-host benchmark, not a fully isolated replication.** Each cell has a separate checkout and Codex conversation, but those do not isolate the host filesystem or provider cache.
+
+        - Fresh local clones at the task base commit, with refs and origin removed; fresh agent session IDs and separate Prism indexes.
+        - Shared host Python environments by repo/base, package caches, and host filesystem access. The transcript shows actual imports from the user's uv cache.
+        - Both Werkzeug redirect arms used `/private/tmp/werkzeug-keyword-only-dist`; that output directory was not private to a cell.
+        - The first six audited cells each read 9,600 cached tokens on their first model request. They were not cold-cache starts. This does not mean they inherited conversation contents, but it affects observed cost.
+        - Workspace-write restricts writes; it does not make other runs, corpus clones, result artifacts, or user caches invisible. No claim of gold-answer leakage is established by this audit.
+        - Common-price replay is a cost simulation. It cannot repair filesystem isolation or make the observed run equivalent to Claude's cache-disabled protocol.
+        - Fully isolated follow-up requires per-cell filesystem/container boundaries, private writable dependency/cache/build directories populated from immutable seeds, inaccessible corpus/results, and a verified cache policy. Do not pool such a follow-up with this shared-host run.
+
+        ## Interpretation and limits
+        '''
+        if '## Isolation audit' not in s:s=s.replace(needle,insert)
+        p.write_text(s);compile(s,str(p),'exec');print('Isolation qualification added to report generator')
+        PY
+      at: 2026-10-17T18:02:40.663527Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-codex-replication-2026-10-17/report.py
+      at: 2026-10-17T18:02:40.738076Z
+      classified: other
+    - cmd: prism read report.py --from 14 --to 65
+      at: 2026-10-17T18:03:22.192518Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        p=Path('/private/tmp/prism-codex-replication-2026-10-17/report.py');s=p.read_text()
+        s=s.replace("[('common_5m_replay','Common 5m replay'),('observed_api_estimate','Observed usage, API-price estimate')]", "[('common_5m_replay','Common 5m replay')]")
+        s=s.replace('## Paired results\n', '## Primary comparison: common 5m replay\n\nUse the Claude study’s common 5m repricing model for the cost verdict, with startup input and ongoing cost separated. Codex ran with default caching enabled: its observed-cost estimates are warm-regime diagnostics and are excluded from this comparison.\n')
+        needle="text+='\\nPricing references:"
+        insert="""rows=[]
+        for field,label in [('total_usd','Total'),('startup_input_usd','Startup input'),('ongoing_usd','Excluding startup input')]:
+         add(label,*[sum(v[a]['observed_api_estimate'][field] for v in pairs.values()) for a in ('native','prism_init')])
+        text+='\\n## Diagnostic only: observed warm-cache cost\\n\\nThese API-price estimates reflect Codex default caching. Do not use them for the Prism cost verdict or compare them with Claude’s no-cache/repriced results. They are retained for usage auditing and attempted-run spend accounting only.\\n\\n| Metric | Native Codex | Codex + Prism | Prism/native |\\n| --- | ---: | ---: | ---: |\\n'+'\\n'.join(rows)+'\\n'
+        """
+        if '## Diagnostic only: observed warm-cache cost' not in s:s=s.replace(needle,insert+needle)
+        p.write_text(s);compile(s,str(p),'exec');print('Primary and diagnostic comparisons separated')
+        PY
+      at: 2026-10-17T18:03:31.788738Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-codex-replication-2026-10-17/report.py
+      at: 2026-10-17T18:03:31.86848Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py --from 1068 --to 1094
+      at: 2026-10-17T18:04:16.892586Z
+      classified: other
+    - cmd: prism search stop_reason 1.25 requests --scope text --path harness/runners/run_ttl.py --limit 15
+      at: 2026-10-17T18:04:17.15593Z
+      classified: other
+    - cmd: prism read harness/lib/pricing.py --from 1 --to 80
+      at: 2026-10-17T18:04:21.881921Z
+      classified: other
+notes:
+    - text: continuation of session 01a14a3c-f3e2-75f3-99af-5ddd12df505a — events captured after its evidence was finalized
+      at: 2026-10-17T17:49:40.069591Z
+redactions: 0
