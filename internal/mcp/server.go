@@ -141,6 +141,14 @@ const compactServerInstructions = "Use Prism for each repository-discovery step;
 	"never combine distinct terms in one space-delimited string. Where a native Read must precede Edit, use one tight Read " +
 	"at the edit site. Do not re-read unchanged source a Prism result already included."
 
+// scopeInstruction tells the client once, at initialize, which tree this
+// server answers for: agents working across repositories otherwise send
+// paths from a sibling checkout and get a rejection per call (2026-10-17).
+func scopeInstruction(root string) string {
+	return "Scope: this server answers for files under " + root + " only (its index covers that tree). " +
+		"For another repository, run the prism CLI from that repository or use its own prism MCP server."
+}
+
 const enclosingBodiesHeader = "// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:"
 
 // compactPickedLabel heads the small-result pick's body section.
@@ -596,6 +604,7 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if s.compact {
 			instructions = compactServerInstructions
 		}
+		instructions += " " + scopeInstruction(s.handler.Root)
 		if warning := legacyProjectWarning(s.handler.Root); warning != "" {
 			instructions += " " + warning
 		}

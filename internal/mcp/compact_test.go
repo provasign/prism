@@ -244,7 +244,7 @@ func TestCompactServerAdvertisesAndDispatchesGateway(t *testing.T) {
 		t.Fatal(rpcErr.Message)
 	}
 	instructions := initialized.(map[string]any)["instructions"].(string)
-	if instructions != compactServerInstructions || strings.Contains(instructions, "prism_search") {
+	if !strings.HasPrefix(instructions, compactServerInstructions+" Scope: ") || strings.Contains(instructions, "prism_search") {
 		t.Fatalf("compact initialize instructions are not compact: %q", instructions)
 	}
 	if !strings.Contains(instructions, "optional for a local body-only edit") || strings.Contains(instructions, "Before editing a symbol") {

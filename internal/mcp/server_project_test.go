@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,5 +76,27 @@ func TestInitializeIncludesLegacyProjectWarning(t *testing.T) {
 	instructions := res.(map[string]any)["instructions"].(string)
 	if !strings.Contains(instructions, legacyProjectMigrationWarning) || !strings.Contains(instructions, "prism init") {
 		t.Fatalf("initialize instructions missing migration warning: %q", instructions)
+	}
+}
+
+func TestInitializeStatesProjectScope(t *testing.T) {
+	h := newTestHandler(t)
+	for _, compact := range []bool{false, true} {
+		srv := NewServer(h)
+		if compact {
+			srv = NewCompactServer(h)
+		}
+		res, rpcErr := srv.dispatch("initialize", json.RawMessage(`{}`))
+		if rpcErr != nil {
+			t.Fatal(rpcErr.Message)
+		}
+		instructions := res.(map[string]any)["instructions"].(string)
+		if !strings.Contains(instructions, "files under "+h.Root+" only") ||
+			!strings.Contains(instructions, "run the prism CLI from that repository") {
+			t.Fatalf("compact=%v: initialize instructions do not state the project scope: %q", compact, instructions)
+		}
+		if len(instructions) > 2000 {
+			t.Fatalf("compact=%v: instructions exceed 2000 bytes: %d", compact, len(instructions))
+		}
 	}
 }

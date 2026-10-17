@@ -2213,8 +2213,8 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			// Never let a dropped scope pass as a completed search.
 			out["rejectedPaths"] = r.RejectedPaths
 			out["warning"] = fmt.Sprintf(
-				"these path= entries resolve outside the project root and were NOT searched: %v",
-				r.RejectedPaths)
+				"these path= entries resolve outside the project root %s and were NOT searched: %v (for another repository run the prism CLI there or use its own prism MCP server)",
+				h.Root, r.RejectedPaths)
 		}
 		if r.TimedOut {
 			out["timedOut"] = true
@@ -2391,7 +2391,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		}
 		if len(r.RejectedPaths) > 0 {
 			out["rejectedPaths"] = r.RejectedPaths
-			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf("Paths outside the root were NOT searched: %v", r.RejectedPaths))
+			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf("Paths outside the root %s were NOT searched: %v (for another repository run the prism CLI there or use its own prism MCP server)", h.Root, r.RejectedPaths))
 		}
 	}
 	if sc.filesOnly {
@@ -4274,7 +4274,7 @@ func safePathWithinRoot(root, p string) (abs string, sessionPath string, err err
 	}
 	rel = filepath.Clean(rel)
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", "", fmt.Errorf("path %q is outside workspace root", p)
+		return "", "", fmt.Errorf("path %q is outside workspace root %s; for another repository run the prism CLI there or use its own prism MCP server", p, rootAbs)
 	}
 
 	return candidate, normalizePath(rel), nil
