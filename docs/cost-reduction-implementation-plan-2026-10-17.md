@@ -92,35 +92,17 @@ The table records prior work so these levers are not presented as new. Historica
 
 **Correctness follow-up from this session:** a cached pointer can outlive the source in the agent's active context. Live calls reproduced two compact-gateway defects: `force:true` was discarded for single reads and rejected with batched ranges. The local repair forwards `force`, permits it with ranges, and gives cached range pointers an explicit recovery hint. Gateway regression tests cover repeated forced reads. This is a correctness repair, separate from the deferred dedup cost project; it does not add automatic host-compaction detection. Zero compactions in earlier benchmarks does not rule out this failure in other sessions.
 
-### 1. P0 — Controlled five-minute TTL experiment
+### 1. DONE — Isolated cells and the startup/task split (the standard method)
 
-**This is the only P0 and a deployment experiment, not a new Prism retrieval feature.**
+**Found while running the TTL experiment (2026-10-17):** every benchmark cell shared the Claude Code static prefix (~12.8k tokens native, ~14.6k prism) through the API prompt cache, across arms, within the TTL. All past cost figures are therefore warm-regime task costs with the startup write silently excluded; resolve counts are unaffected. Every cell must be isolated and the cold startup cost reported apart from the native-vs-prism comparison.
 
-All cache writes in the audited traces used the one-hour rate. No observed within-session response gap exceeded roughly 71 seconds. Repricing the same wide-rep2 trace with identical hit/write counts gives:
+**Standard method from now on** (`research/harness/runners/run_ttl.py --no-cache`): `DISABLE_PROMPT_CACHING=1` per cell so no cell can read another's cache; cost reconstructed per request at the 5m and 1h cache rates (matches the CLI bill within 0.02% on 67 cached cells); split into **startup** (first-request cache write) and **task** (everything after). The headline comparison is task-only. Startup is reported per arm beside it and is **not a target**. A nonce MCP tool cannot bust the prefix (deferred tools land after its cache breakpoint); timed gaps (`--cold-gap`) work but cost 6 minutes per cell.
 
-| Arm | Recorded one-hour cost | Five-minute counterfactual | Reduction |
-|---|---:|---:|---:|
-| Native | $3.9498 | $2.9709 | 24.8% |
-| Prism | $3.9405 | $2.8933 | 26.6% |
+**Result, seeded32 wide bed, Sonnet 5.5, v0.87.30, 32 pairs, 64/64 solved:** task cost prism/native **0.889** at the 5m rate ($1.78 vs $2.00; 95% bootstrap CI 0.79–1.00), 0.912 at 1h; prism cheaper in 19/32; 172 vs 216 model requests. Startup per session: native $0.061, prism $0.068 at 5m. Records: `research/harness/results/nocache32-2026-10-17/SUMMARY.md`.
 
-These are counterfactuals, not measured savings. Reuse between tasks and longer pauses can change hit rates. The benefit applies to native too and cannot be claimed as Prism's intrinsic advantage. Reweighting categories can numerically change the comparative ratio; it does not establish a new product verdict.
+The TTL counterfactual itself is settled by arithmetic (the 5m rate reprices the same traces for both arms) and is a Claude Code deployment setting outside this plan.
 
-Implementation in the **host/harness**:
-
-1. Verify the exact executable used by the runner. The local `claude --version` check during this revision returned **2.1.302**.
-2. Require Claude Code **2.1.242 or later**. The accepted values are `5m` and `1h`:
-   ```sh
-   CLAUDE_CODE_PROMPT_CACHE_TTL=5m
-   CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL=5m
-   ```
-   The second setting covers any existing host-created auxiliary work; it does not launch subagents. `FORCE_PROMPT_CACHING_5M=1` overrides both TTL settings. Record effective settings and check returned TTL counters. [Official environment-variable reference](https://code.claude.com/docs/en/env-vars)
-3. Apply identical TTL policies to native and Prism. Compare five-minute versus one-hour execution with the same selected model, task population, and cache-start policy.
-4. Complete the offline persistence and ordering work below before measuring. Verify the correctness prerequisite and obtain explicit approval for the paid experiment, including its probe.
-5. Report measured dollars and solves, cache misses, inter-request gaps, and any warm-up/retry spend. Separate API/list-price estimates from subscription expenditure.
-
-**Acceptance:** lower measured operational cost with no resolve loss or cell errors. Do not roll out based solely on the 26.6% repricing estimate.
-
-### 2. P1 — Persist per-request usage in results.json before scoring
+### 2. DONE — Persist per-request usage in results.json before scoring
 
 Reuse the existing accounting and October 16 attribution method. The gap is durable request-level data and failure preservation, not evidence that all token accounting is wrong.
 
@@ -130,7 +112,7 @@ Write the agent result before invoking the scorer. In [run_overnight.py](../../r
 
 **Acceptance:** offline fixtures reproduce existing aggregate totals and TTL splits; an injected scorer failure leaves usage intact. No paid run is needed to validate persistence behavior.
 
-### 3. P1 — Fix arm ordering in the overnight path
+### 3. DONE — Fix arm ordering (and retire the overnight runner for cost)
 
 The reviewed [overnight runner](../../research/harness/runners/run_overnight.py) runs native first and Prism second at lines 141–142. The main e2e path already has interleaving/warm-up support; reuse that approach rather than rebuilding it.
 
@@ -138,7 +120,7 @@ Use a saved seed to balance/randomize native and Prism order, and preserve that 
 
 **Acceptance:** offline schedule checks show balanced reproducible ordering; summaries use the same complete pair set for each comparative metric, explicitly report missing values, and retain all known failed-attempt expenditure in operational totals.
 
-### 4. P1 — Apply the three-arm quality-and-cost gate
+### 4. P1 — Apply the three-arm quality-and-cost gate (stop rule now in run_ttl.py, on task-only cost)
 
 For a future substantive Prism candidate, compare **native, current Prism, and candidate Prism** on the same selected model and deployment settings. A TTL-only experiment does not need a fictitious third Prism build: compare the two hosts under both TTL conditions.
 
@@ -186,9 +168,9 @@ Substitute the actual root. Outside-root errors should name that root and explai
 
 ## Sequence and conclusion
 
-**Offline usage persistence and arm-order preparation → verify bug closure → explicit paid-run approval → TTL experiment under the stop rule.**
+**Done: usage persistence, arm order, isolated cells, startup/task split, wide-bed result. Next: the issue bed under the same method, on explicit approval.**
 
-There is currently no verified, untried Prism implementation change in this review that justifies promising additional cost savings without quality loss. The immediate measurable opportunity is host TTL configuration. Existing evidence argues against reopening startup trimming, generic deduplication, or larger composite answers without a genuinely new hypothesis.
+There is currently no verified, untried Prism implementation change in this review that justifies promising additional cost savings without quality loss. Existing evidence argues against reopening startup trimming, generic deduplication, or larger composite answers without a genuinely new hypothesis.
 
 This revision changes the plan and preserves its audit artifact. It does not implement harness changes, alter the selected model, change Prism's tool surface, or launch paid benchmarks.
 
