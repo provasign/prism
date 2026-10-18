@@ -169,6 +169,10 @@ The all-host goal needs two layers: deterministic answer contracts across hosts/
 | Multiple repositories | Retain explicit root disclosure and per-project connections/CLI use; item 1 diagnoses the effective root. | One indexed repository is not automatically readable through another root's server. |
 | Every supported agent | Shared semantic policy, adapter fixtures, recorded effective configuration, host-owned execution. | Universal cost improvement cannot be inferred from two agents. |
 
+## Status
+
+Items 1 and 2 are implemented on `main`, not yet released. Item 1: one impact policy (`mcp.ImpactRequiredFor`, `mcp.ImpactOptionalFor`) builds the installed steering block and both MCP instruction strings; refresh replaces only the Prism-owned block and keeps user text. Item 2: the three Chi defects were reproduced on the task's base commit and fixed (wider-anchor direction and identity check, supers as related contracts, test-only claim withheld when production callers reach the API through a listed super); callers and editSites are unchanged, and a chi-like fixture with a contradiction checker fails on the unfixed source. Items 3 to 5 are not started. No paid run was made.
+
 ## Order of work
 
 1. Implement and validate items 1 and 2 first. These are the strongest findings and need no paid run to establish the defects.
