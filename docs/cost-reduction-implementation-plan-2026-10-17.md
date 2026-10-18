@@ -3,6 +3,8 @@
 Date: 2026-10-17  
 Status: revised after checking the review against result files, code, experiment notes, and Claude Code documentation.
 
+**Later October 17 review:** the issue bed is now complete and the corrected Codex mixed run is stopped. See the [cross-agent improvement plan](prism-cross-agent-improvement-plan-2026-10-17.md) for updated results, newly identified instruction/answer contradictions, and the current implementation priorities. The findings below retain their original experiment scope.
+
 ## Scope and constraints
 
 **Prism answers questions only: it never edits source files, emits commands for the agent to execute, or runs builds/tests; schema changes require a paid call-shape check.** The user selects the model. This plan does not introduce model switching or cheaper subagents. Host configuration and benchmark execution belong to the coding host or research harness.

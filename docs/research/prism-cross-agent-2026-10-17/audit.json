@@ -1,0 +1,1472 @@
+{
+  "sources": {
+    "claude_wide": {
+      "path": "research/harness/results/nocache32-2026-10-17/results.json",
+      "sha256": "48aa8a64d769cafa69816b553bc9a0571e1b892fc6a928668a7f2f0432a8b104",
+      "meta": {
+        "manifest": "results/seeded32-manifest.json",
+        "tasks": 32,
+        "arms": [
+          "native",
+          "prism_init"
+        ],
+        "ttls": [
+          "nocache"
+        ],
+        "model": "claude-sonnet-5-5",
+        "claude_version": "2.1.302 (Claude Code)",
+        "prism_bin": "~/prism-ab-bins/prism-cand30 (= v0.87.30)",
+        "order_seed": "ttl-2026-10-17",
+        "cache_mode": "no-cache (DISABLE_PROMPT_CACHING=1, repriced)",
+        "started": "2026-10-17 12:03 (5 pairs) / 12:16 (rest)"
+      }
+    },
+    "claude_issue": {
+      "path": "research/harness/results/nocache-issue42-2026-10-17/results.json",
+      "sha256": "a0769d3395c574e6d00ca442334c485a9943c7be2d12bf1e2baacea75794400e",
+      "meta": {
+        "manifest": "results/issue42-manifest.json",
+        "tasks": 41,
+        "arms": [
+          "native",
+          "prism_init"
+        ],
+        "ttls": [
+          "nocache"
+        ],
+        "model": "claude-sonnet-5-5",
+        "claude_version": "2.1.302 (Claude Code)",
+        "prism_bin": "/Users/tapabratapal/prism-ab-bins/prism-main-6aa4400",
+        "prism_sha256": "a1ad26325bb668f6",
+        "order_seed": "ttl-2026-10-17",
+        "cache_mode": "no-cache (DISABLE_PROMPT_CACHING=1, repriced)",
+        "started": "2026-10-17 14:29:19"
+      }
+    },
+    "codex": {
+      "path": "research/harness/results/codex-mixed16-warm-2026-10-17-stopped/results.json",
+      "sha256": "aa4ce011a9a6f6edef7342d901a07f5c290057844d0d914859bf4b9a2edc7738",
+      "meta": null
+    }
+  },
+  "summaries": {
+    "claude_wide": {
+      "native": {
+        "cells": 32,
+        "resolved": 32,
+        "requests": 216,
+        "input_tokens": 6764974,
+        "output_tokens": 74628,
+        "task_5m_usd": 1.99949,
+        "startup_5m_usd": 1.942211
+      },
+      "prism_init": {
+        "cells": 32,
+        "resolved": 32,
+        "requests": 172,
+        "input_tokens": 5899055,
+        "output_tokens": 60363,
+        "task_5m_usd": 1.777579,
+        "startup_5m_usd": 2.187821
+      },
+      "prism_ops_attempted": {
+        "change_impact": 34,
+        "read": 5,
+        "search": 9
+      }
+    },
+    "claude_issue": {
+      "native": {
+        "cells": 41,
+        "resolved": 23,
+        "requests": 248,
+        "input_tokens": 7279134,
+        "output_tokens": 84943,
+        "task_5m_usd": 2.032577,
+        "startup_5m_usd": 2.497195
+      },
+      "prism_init": {
+        "cells": 41,
+        "resolved": 23,
+        "requests": 243,
+        "input_tokens": 8290145,
+        "output_tokens": 86724,
+        "task_5m_usd": 2.250999,
+        "startup_5m_usd": 2.819309
+      },
+      "prism_ops_attempted": {
+        "read": 39,
+        "search": 47,
+        "lookup": 11,
+        "grep": 1
+      }
+    },
+    "claude_issue_both_solved_diagnostic": {
+      "native": {
+        "cells": 22,
+        "resolved": 22,
+        "requests": 98,
+        "input_tokens": 2548046,
+        "output_tokens": 27877,
+        "task_5m_usd": 0.645311,
+        "startup_5m_usd": 1.327623
+      },
+      "prism_init": {
+        "cells": 22,
+        "resolved": 22,
+        "requests": 100,
+        "input_tokens": 2966522,
+        "output_tokens": 24156,
+        "task_5m_usd": 0.6681170000000001,
+        "startup_5m_usd": 1.500473
+      }
+    },
+    "codex_all": {
+      "native": {
+        "cells": 13,
+        "resolved": 11,
+        "requests": 209,
+        "tool_calls": 195,
+        "input_tokens": 6580207,
+        "output_tokens": 33731,
+        "ongoing_usd": 1.6826543999999999,
+        "startup_input_usd": 0.077508,
+        "ongoing_components_usd": {
+          "output_usd": 0.33731,
+          "cached_input_usd": 0.6052864000000004,
+          "fresh_input_usd": 0.740058
+        },
+        "prism_ops": {}
+      },
+      "prism_init": {
+        "cells": 13,
+        "resolved": 11,
+        "requests": 211,
+        "tool_calls": 265,
+        "input_tokens": 6785664,
+        "output_tokens": 38785,
+        "ongoing_usd": 1.9419688,
+        "startup_input_usd": 0.1006524,
+        "ongoing_components_usd": {
+          "output_usd": 0.38784999999999975,
+          "cached_input_usd": 0.6151168000000001,
+          "fresh_input_usd": 0.939002
+        },
+        "prism_ops": {
+          "lookup": 11,
+          "change_impact": 15,
+          "search": 27,
+          "read": 33,
+          "query": 2
+        }
+      }
+    },
+    "codex_wide": {
+      "native": {
+        "cells": 6,
+        "resolved": 6,
+        "requests": 101,
+        "tool_calls": 101,
+        "input_tokens": 3516603,
+        "output_tokens": 15270,
+        "ongoing_usd": 0.861816,
+        "startup_input_usd": 0.028858,
+        "ongoing_components_usd": {
+          "output_usd": 0.1527,
+          "cached_input_usd": 0.32556800000000014,
+          "fresh_input_usd": 0.3835480000000002
+        },
+        "prism_ops": {}
+      },
+      "prism_init": {
+        "cells": 6,
+        "resolved": 6,
+        "requests": 111,
+        "tool_calls": 135,
+        "input_tokens": 3564522,
+        "output_tokens": 18810,
+        "ongoing_usd": 0.9863164000000001,
+        "startup_input_usd": 0.0438644,
+        "ongoing_components_usd": {
+          "output_usd": 0.18810000000000004,
+          "cached_input_usd": 0.3255423999999999,
+          "fresh_input_usd": 0.472674
+        },
+        "prism_ops": {
+          "change_impact": 7,
+          "search": 14,
+          "read": 14,
+          "lookup": 1
+        }
+      }
+    },
+    "claude_matched_wide": {
+      "native": {
+        "cells": 6,
+        "resolved": 6,
+        "requests": 44,
+        "input_tokens": 1419182,
+        "output_tokens": 15445,
+        "task_5m_usd": 0.428709,
+        "startup_5m_usd": 0.359884
+      },
+      "prism_init": {
+        "cells": 6,
+        "resolved": 6,
+        "requests": 29,
+        "input_tokens": 961880,
+        "output_tokens": 9990,
+        "task_5m_usd": 0.301007,
+        "startup_5m_usd": 0.405573
+      }
+    },
+    "codex_bug": {
+      "native": {
+        "cells": 7,
+        "resolved": 5,
+        "requests": 108,
+        "tool_calls": 94,
+        "input_tokens": 3063604,
+        "output_tokens": 18461,
+        "ongoing_usd": 0.8208384,
+        "startup_input_usd": 0.04865,
+        "ongoing_components_usd": {
+          "output_usd": 0.18461000000000002,
+          "cached_input_usd": 0.27971840000000003,
+          "fresh_input_usd": 0.3565099999999998
+        },
+        "prism_ops": {}
+      },
+      "prism_init": {
+        "cells": 7,
+        "resolved": 5,
+        "requests": 100,
+        "tool_calls": 130,
+        "input_tokens": 3221142,
+        "output_tokens": 19975,
+        "ongoing_usd": 0.9556524,
+        "startup_input_usd": 0.056788000000000005,
+        "ongoing_components_usd": {
+          "output_usd": 0.19975,
+          "cached_input_usd": 0.28957440000000007,
+          "fresh_input_usd": 0.46632799999999996
+        },
+        "prism_ops": {
+          "lookup": 10,
+          "change_impact": 8,
+          "search": 13,
+          "read": 19,
+          "query": 2
+        }
+      }
+    },
+    "claude_matched_bug": {
+      "native": {
+        "cells": 7,
+        "resolved": 4,
+        "requests": 50,
+        "input_tokens": 1446915,
+        "output_tokens": 15877,
+        "task_5m_usd": 0.393599,
+        "startup_5m_usd": 0.418772
+      },
+      "prism_init": {
+        "cells": 7,
+        "resolved": 5,
+        "requests": 63,
+        "input_tokens": 2324578,
+        "output_tokens": 26484,
+        "task_5m_usd": 0.643038,
+        "startup_5m_usd": 0.475748
+      }
+    }
+  },
+  "matched_tasks": [
+    {
+      "task": "google__gson__pr3067",
+      "claude": {
+        "native": {
+          "requests": 4,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/google__gson__pr3067.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "c7dc4b5b43dece950a15a3c6ec54e09a7523eb779cdf7e3e5070ec898bcef1a7",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 4,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/google__gson__pr3067.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "b64bb883ed61df64ee63ca4c5dadc3fbff539815aeb531ec73199a22e3c8ff7f",
+          "prism_calls": [
+            {
+              "id": "toolu_0117BYY9CmEPGkp6Pk3XHYET",
+              "arguments": {
+                "op": "search",
+                "args": {
+                  "terms": [
+                    "toASCIIString"
+                  ],
+                  "paths": [
+                    "gson/src/main"
+                  ]
+                }
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 10,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 9
+        },
+        "prism_init": {
+          "api_calls": 11,
+          "prism_calls": 4,
+          "prism_ops": [
+            "lookup",
+            "change_impact",
+            "search",
+            "read"
+          ],
+          "tool_calls": 11
+        }
+      }
+    },
+    {
+      "task": "wide__jackson-databind__SettableBeanProperty_set",
+      "claude": {
+        "native": {
+          "requests": 8,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__jackson-databind__SettableBeanProperty_set.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "ee766f20d9c377eafc0586f2c4b60bde176ea373ed1c7965ab7f5887d707d847",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 4,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__jackson-databind__SettableBeanProperty_set.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "36d7ade6066f820b8a2daf30721bceb33053a9d0d2cc8bdbc7d2e6ef1b93a750",
+          "prism_calls": [
+            {
+              "id": "toolu_013VZn7L1qmBjrRmB1QtFe7B",
+              "arguments": {
+                "op": "change_impact",
+                "args": {
+                  "name": "set",
+                  "symbol_file": "src/main/java/com/fasterxml/jackson/databind/deser/SettableBeanProperty.java"
+                }
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 22,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 21
+        },
+        "prism_init": {
+          "api_calls": 29,
+          "prism_calls": 5,
+          "prism_ops": [
+            "change_impact",
+            "search",
+            "read",
+            "search",
+            "search"
+          ],
+          "tool_calls": 30
+        }
+      }
+    },
+    {
+      "task": "gin-gonic__gin__pr4698",
+      "claude": {
+        "native": {
+          "requests": 6,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/gin-gonic__gin__pr4698.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "d32f05c6598670df19255230a3c8110bedb0d2b4c71a3f589a4a79d2b7b9b01d",
+          "prism_calls": [],
+          "tool_errors": [
+            {
+              "id": "toolu_019N59dQ1RzWj2rzxBZrAXed",
+              "content": "<tool_use_error>String to replace not found in file.\nString: \t\t\t\t\t} else {\n\t\t\t\t\t\thandle(c, rec)</tool_use_error>"
+            }
+          ]
+        },
+        "prism_init": {
+          "requests": 3,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/gin-gonic__gin__pr4698.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "87d39acf765a9aebf4652acfbddf0911bcec552fd09e6cbd740461077b55175d",
+          "prism_calls": [
+            {
+              "id": "toolu_01TZ6FpaMZsxjEf6GqFEBLTY",
+              "arguments": {
+                "args": {
+                  "file": "recovery.go",
+                  "from": 60,
+                  "to": 130
+                },
+                "op": "read"
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 9,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 6
+        },
+        "prism_init": {
+          "api_calls": 10,
+          "prism_calls": 5,
+          "prism_ops": [
+            "lookup",
+            "change_impact",
+            "read",
+            "search",
+            "read"
+          ],
+          "tool_calls": 12
+        }
+      }
+    },
+    {
+      "task": "wide__chi__Routes_Match",
+      "claude": {
+        "native": {
+          "requests": 4,
+          "path": "research/harness/results/nocache5-2026-10-17/transcripts/wide__chi__Routes_Match.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "4b23b47be1743543abe75d78f242f46f07b3c9a0f8a9446fca98badd729a7701",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 3,
+          "path": "research/harness/results/nocache5-2026-10-17/transcripts/wide__chi__Routes_Match.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "2299ef007f48f34f15d07e59f28c7ca4f6b2c07a1301f9e16cd17fb034ccb665",
+          "prism_calls": [
+            {
+              "id": "toolu_01EpCG6aQqJ7jBxxw199K8Dd",
+              "arguments": {
+                "op": "change_impact",
+                "args": {
+                  "name": "Match",
+                  "symbol_file": "chi.go"
+                }
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 10,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 11
+        },
+        "prism_init": {
+          "api_calls": 11,
+          "prism_calls": 9,
+          "prism_ops": [
+            "change_impact",
+            "change_impact",
+            "read",
+            "read",
+            "search",
+            "read",
+            "search",
+            "search",
+            "read"
+          ],
+          "tool_calls": 15
+        }
+      }
+    },
+    {
+      "task": "honojs__hono__pr5373",
+      "claude": {
+        "native": {
+          "requests": 4,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/honojs__hono__pr5373.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "9cfa89c18d227d42fc1fff82a8762f50bd9f9a8d57f281564b95205b9af26b3f",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 4,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/honojs__hono__pr5373.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "fdaa351b7f0e114a42a257866d1b266922f0966786f667013ae04f1be9bc8b84",
+          "prism_calls": [
+            {
+              "id": "toolu_014TXRT8BYs3v2wimxZWjJN3",
+              "arguments": {
+                "args": {
+                  "file": "src/router/linear-router/router.ts",
+                  "from": 60,
+                  "to": 140
+                },
+                "op": "read"
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 17,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 16
+        },
+        "prism_init": {
+          "api_calls": 14,
+          "prism_calls": 6,
+          "prism_ops": [
+            "lookup",
+            "change_impact",
+            "read",
+            "search",
+            "read",
+            "read"
+          ],
+          "tool_calls": 13
+        }
+      }
+    },
+    {
+      "task": "wide__hono__Router_match",
+      "claude": {
+        "native": {
+          "requests": 13,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__hono__Router_match.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "39fd8e71295f762fbfdcbdb7042f7819c0b9ca7d55d139a96a42779beb44028c",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 6,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__hono__Router_match.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "ff4a4009138d2179aa2ce8b6be82ba441d56e57db78b775c94ba14f902a3a15b",
+          "prism_calls": [
+            {
+              "id": "toolu_01MeD97q9ksH7Ai9vf25gxXC",
+              "arguments": {
+                "args": {
+                  "name": "match",
+                  "symbol_file": "src/router.ts"
+                },
+                "op": "change_impact"
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 30,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 30
+        },
+        "prism_init": {
+          "api_calls": 28,
+          "prism_calls": 7,
+          "prism_ops": [
+            "change_impact",
+            "read",
+            "read",
+            "read",
+            "read",
+            "search",
+            "read"
+          ],
+          "tool_calls": 37
+        }
+      }
+    },
+    {
+      "task": "urllib3__urllib3__pr3786",
+      "claude": {
+        "native": {
+          "requests": 9,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/urllib3__urllib3__pr3786.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "7b061887f598f770f687d2cea78161413051d384c23fe2c046744c2889256470",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 11,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/urllib3__urllib3__pr3786.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "fe5fae533fbb0ed404b6e8c50a452763053eaec6dd660bc80d52b934b0afbe4b",
+          "prism_calls": [
+            {
+              "id": "toolu_01F6c2RHHC6TfNiVtNqqTqqc",
+              "arguments": {
+                "args": {
+                  "terms": [
+                    "proxy_ssl_context",
+                    "use_forwarding_for_https"
+                  ],
+                  "glob": [
+                    "src/**/*.py"
+                  ],
+                  "include_bodies": false
+                },
+                "op": "search"
+              }
+            },
+            {
+              "id": "toolu_01NtqY8EpDkckYrYCYxiQRCB",
+              "arguments": {
+                "args": {
+                  "terms": [
+                    "proxy_config"
+                  ],
+                  "glob": [
+                    "src/urllib3/connection.py",
+                    "src/urllib3/connectionpool.py"
+                  ],
+                  "context": 6
+                },
+                "op": "search"
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 7,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 7
+        },
+        "prism_init": {
+          "api_calls": 10,
+          "prism_calls": 9,
+          "prism_ops": [
+            "lookup",
+            "change_impact",
+            "change_impact",
+            "lookup",
+            "search",
+            "search",
+            "read",
+            "read",
+            "lookup"
+          ],
+          "tool_calls": 19
+        }
+      }
+    },
+    {
+      "task": "wide__rich__ProgressColumn_render",
+      "claude": {
+        "native": {
+          "requests": 6,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__rich__ProgressColumn_render.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "3761415e69e38583d7f2184eb4fd055e6f97e7bc461f9f83f373956e8345e21a",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 6,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__rich__ProgressColumn_render.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "08c211e11c4c7323ff9b829d35a60c23e51a137a10a869fbf66a76360c5b7d3d",
+          "prism_calls": [
+            {
+              "id": "toolu_019i8e98VeCckk7qwbSnh4vk",
+              "arguments": {
+                "op": "change_impact",
+                "args": {
+                  "name": "render",
+                  "symbol_file": "rich/progress.py"
+                }
+              }
+            },
+            {
+              "id": "toolu_01G2pRkyEoVWqT391GieiSqs",
+              "arguments": {
+                "op": "change_impact",
+                "args": {
+                  "name": "ProgressColumn.render",
+                  "symbol_file": "rich/progress.py"
+                }
+              }
+            }
+          ],
+          "tool_errors": [
+            {
+              "id": "toolu_019i8e98VeCckk7qwbSnh4vk",
+              "content": "change-impact: \"render\" is ambiguous \u2014 17 candidates:\n  ProgressColumn.render  (rich/progress.py:545)\n  Console.render  (rich/console.py:1294)\n  Layout.render  (rich/layout.py:366)\n  RichHandler.render  (rich/logging.py:215)\n  render  (rich/markup.py:106)\n  Node.render  (rich/pretty.py:467)\n  Spinner.render  (rich/spinner.py:61)\n  Style.render  (rich/style.py:694)\n  Text.render  (rich/text.py:719)\n  render  (tests/render.py:18)\n  render  (tests/test_card.py:20)\n  render  (tests/test_columns.py:31)\n  render  (tests/test_columns_align.py:11)\n  render  (tests/test_inspect.py:58)\n  render  (tests/test_markdown.py:89)\n  render  (tests/test_markdown_no_hyperlinks.py:83)\n  render  (tests/test_panel.py:32)\nThese are 17 separate override families (render declarations each: ProgressColumn.render: 13, Console.render: 1, Layout.render: 1, RichHandler.render: 1, render: 1, Node.render: 1, Spinner.render: 1, Style.render: 1, Text.render: 1, render: 1, render: 1, render: 1, render: 1, render: 1, render: 1, render: 1, render: 1); no change sets were merged. Run change_impact once per family you are changing\n\nWIDE MEMBER (17 candidates): do NOT issue one change_impact call per candidate \u2014 that misses call sites through interfaces this engine cannot anchor a family query on (an interface with no local declaration, e.g. an external SDK contract). Instead run prism_search(query=[\"render(\", \".render(\"], scope=\"text\", exhaustive=true) for the complete declaration and call-site inventory by text, THEN change_impact only the specific receivers that inventory names as ambiguous"
+            }
+          ]
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 11,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 10
+        },
+        "prism_init": {
+          "api_calls": 9,
+          "prism_calls": 5,
+          "prism_ops": [
+            "change_impact",
+            "search",
+            "search",
+            "read",
+            "search"
+          ],
+          "tool_calls": 13
+        }
+      }
+    },
+    {
+      "task": "FasterXML__jackson-databind__pr6042",
+      "claude": {
+        "native": {
+          "requests": 14,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/FasterXML__jackson-databind__pr6042.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "1fd127c1e9d471dd016e782d4213ed0a102e473caad4817694344497cc318adc",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 21,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/FasterXML__jackson-databind__pr6042.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "ebd25eccc0001e297d26d971f5067f582bad87662d9284d1c5edac33623355af",
+          "prism_calls": [
+            {
+              "id": "toolu_014C24xzjPQX9X2hN6bq6hso",
+              "arguments": {
+                "op": "search",
+                "args": {
+                  "terms": [
+                    "handleNonArray",
+                    "_deserializeFromArray"
+                  ],
+                  "paths": [
+                    "src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "toolu_013L9bjh9BrvyHRzd9ChBpnx",
+              "arguments": {
+                "op": "read",
+                "args": {
+                  "file": "src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java",
+                  "from": 215,
+                  "to": 335
+                }
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 33,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 26
+        },
+        "prism_init": {
+          "api_calls": 27,
+          "prism_calls": 8,
+          "prism_ops": [
+            "search",
+            "lookup",
+            "read",
+            "lookup",
+            "search",
+            "change_impact",
+            "read",
+            "read"
+          ],
+          "tool_calls": 33
+        }
+      }
+    },
+    {
+      "task": "wide__jackson-databind__TypeDeserializer_forProperty",
+      "claude": {
+        "native": {
+          "requests": 7,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__jackson-databind__TypeDeserializer_forProperty.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "5a960f7ea1ba66b74b71ecfcc9ae4669dfa95c603658b3235c253b51dee74506",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 7,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__jackson-databind__TypeDeserializer_forProperty.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "77e3d1c3188adb52930d746b129d1458ee6a91d0fc7eaa30c4cb38b6faee3894",
+          "prism_calls": [
+            {
+              "id": "toolu_01VGon991SMuG3xqLHpfXQMb",
+              "arguments": {
+                "op": "change_impact",
+                "args": {
+                  "name": "forProperty",
+                  "symbol_file": "src/main/java/com/fasterxml/jackson/databind/jsontype/TypeDeserializer.java"
+                }
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 20,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 18
+        },
+        "prism_init": {
+          "api_calls": 25,
+          "prism_calls": 6,
+          "prism_ops": [
+            "change_impact",
+            "search",
+            "read",
+            "read",
+            "search",
+            "lookup"
+          ],
+          "tool_calls": 29
+        }
+      }
+    },
+    {
+      "task": "go-chi__chi__pr1029",
+      "claude": {
+        "native": {
+          "requests": 4,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/go-chi__chi__pr1029.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "7d536dab84de5f510cf2f27577b051b9f13021f809a436485f40b062fe528632",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 6,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/go-chi__chi__pr1029.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "6755c259c94ecc8c3e193cc41741f40dbde97d281f0ec0fbeb15f0c0b84cf687",
+          "prism_calls": [
+            {
+              "id": "toolu_01MoGqoDrygpbKz278cYNr7n",
+              "arguments": {
+                "args": {
+                  "terms": [
+                    "methodNotAllowed",
+                    "MethodNotAllowed"
+                  ],
+                  "glob": "tree.go"
+                },
+                "op": "search"
+              }
+            },
+            {
+              "id": "toolu_019ahKi3vqZAvZjT5jp2mEyV",
+              "arguments": {
+                "args": {
+                  "file": "tree.go",
+                  "from": 465,
+                  "to": 535
+                },
+                "op": "read"
+              }
+            },
+            {
+              "id": "toolu_01TWUWPKCc9oS8U6rqTfqVMW",
+              "arguments": {
+                "args": {
+                  "terms": [
+                    "methodsAllowed"
+                  ],
+                  "files_only": false
+                },
+                "op": "search"
+              }
+            },
+            {
+              "id": "toolu_01USUjGxReCMiMYSdnqjuXpD",
+              "arguments": {
+                "args": {
+                  "file": "mux.go",
+                  "from": 522,
+                  "to": 534
+                },
+                "op": "read"
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 10,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 8
+        },
+        "prism_init": {
+          "api_calls": 12,
+          "prism_calls": 8,
+          "prism_ops": [
+            "search",
+            "change_impact",
+            "read",
+            "lookup",
+            "search",
+            "read",
+            "query",
+            "read"
+          ],
+          "tool_calls": 13
+        }
+      }
+    },
+    {
+      "task": "wide__gin__ResponseWriter_Status",
+      "claude": {
+        "native": {
+          "requests": 6,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__gin__ResponseWriter_Status.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "30469350232f1e77b3c89e5b36fe646964bc97d561861b188500b70978d6b4e0",
+          "prism_calls": [],
+          "tool_errors": [
+            {
+              "id": "toolu_01Kc9T31ysvE8qcs7pWdFrd7",
+              "content": "Exit code 1\n(eval):1: no matches found: --include=*.go\nauth_test.go\nauth.go\nbenchmarks_test.go\nBENCHMARKS.md\nbinding\nCHANGELOG.md\nCODE_OF_CONDUCT.md\ncodec\ncodecov.yml\ncontext_appengine.go\ncontext_file_test.go\ncontext_test.go\ncontext.go\nCONTRIBUTING.md\ndebug_test.go\ndebug.go\ndeprecated_test.go\ndeprecated.go\ndoc.go\ndocs\nerrors_test.go\nerrors.go\nexamples\nfs_test.go\nfs.go\ngin_integration_test.go\ngin_test.go\ngin.go\nginS\ngithubapi_test.go\ngo.mod\ngo.sum\ninternal\nLICENSE\nlogger_test.go\nlogger.go\nMakefile\nmiddleware_test.go\nmode_test.go\nmode.go\npath_test.go\npath.go\nREADME.md\nrecovery_test.go\nrecovery.go\nrender\nresponse_writer_test.go\nresponse_writer.go\nroutergroup_test.go\nroutergroup.go\nroutes_test.go\ntest_helpers.go\ntestdata\ntree_test.go\ntree.go\nutils_test.go\nutils.go\nversion.go\nmodule github.com/gin-gonic/gin\n\ngo 1.25.0\n\nrequire ("
+            }
+          ]
+        },
+        "prism_init": {
+          "requests": 3,
+          "path": "research/harness/results/nocache32-2026-10-17/transcripts/wide__gin__ResponseWriter_Status.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "0e390eab95c75e65d62b039f81bab21a9f7266c1957c2555361a2aa8da66b11a",
+          "prism_calls": [
+            {
+              "id": "toolu_01CnKZRbM6ryzDAAa5Lo84TA",
+              "arguments": {
+                "op": "change_impact",
+                "args": {
+                  "name": "Status",
+                  "symbol_file": "response_writer.go"
+                }
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 8,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 11
+        },
+        "prism_init": {
+          "api_calls": 9,
+          "prism_calls": 4,
+          "prism_ops": [
+            "change_impact",
+            "read",
+            "search",
+            "search"
+          ],
+          "tool_calls": 11
+        }
+      }
+    },
+    {
+      "task": "colinhacks__zod__pr6500",
+      "claude": {
+        "native": {
+          "requests": 9,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/colinhacks__zod__pr6500.claude-sonnet-5-5.native.nocache.jsonl",
+          "sha256": "869bbd4cd3d66faf7ac167baa07e6618cf8052c4beff7220186fa76b24c3361c",
+          "prism_calls": [],
+          "tool_errors": []
+        },
+        "prism_init": {
+          "requests": 14,
+          "path": "research/harness/results/nocache-issue42-2026-10-17/transcripts/colinhacks__zod__pr6500.claude-sonnet-5-5.prism_init.nocache.jsonl",
+          "sha256": "8a58d955149ae23ce09d8ea4d7e9f8dfb4704f832a0b179b6dbb6daa95eff5ca",
+          "prism_calls": [
+            {
+              "id": "toolu_013TjXRU6nMnCSAWToHmcMm4",
+              "arguments": {
+                "op": "search",
+                "args": {
+                  "terms": [
+                    "ZodDefault",
+                    "defaultValue"
+                  ],
+                  "paths": [
+                    "packages/zod/src/v4/core"
+                  ],
+                  "max_results": 40,
+                  "include_bodies": false
+                }
+              }
+            },
+            {
+              "id": "toolu_019CCcJ4UXPvH8XJqox7Dnoo",
+              "arguments": {
+                "op": "read",
+                "args": {
+                  "file": "packages/zod/src/v4/core/schemas.ts",
+                  "from": 3923,
+                  "to": 3962
+                }
+              }
+            },
+            {
+              "id": "toolu_01H2WyuUUQxfzNQiTutAi7xp",
+              "arguments": {
+                "op": "search",
+                "args": {
+                  "terms": [
+                    "optin"
+                  ],
+                  "paths": [
+                    "packages/zod/src/v4/core/schemas.ts"
+                  ],
+                  "include_bodies": false
+                }
+              }
+            },
+            {
+              "id": "toolu_01T6E3QUnTELvBYf4EcVUx3G",
+              "arguments": {
+                "op": "read",
+                "args": {
+                  "file": "packages/zod/src/v4/core/schemas.ts",
+                  "from": 1895,
+                  "to": 1945
+                }
+              }
+            }
+          ],
+          "tool_errors": []
+        }
+      },
+      "codex": {
+        "native": {
+          "api_calls": 22,
+          "prism_calls": 0,
+          "prism_ops": [],
+          "tool_calls": 22
+        },
+        "prism_init": {
+          "api_calls": 16,
+          "prism_calls": 12,
+          "prism_ops": [
+            "search",
+            "read",
+            "read",
+            "query",
+            "lookup",
+            "read",
+            "search",
+            "change_impact",
+            "search",
+            "read",
+            "search",
+            "read"
+          ],
+          "tool_calls": 29
+        }
+      }
+    }
+  ],
+  "claude_tool_errors": [
+    {
+      "run": "claude_wide",
+      "task": "seed__rich__stylize_kwonly",
+      "arm": "prism_init",
+      "id": "toolu_013r9J3ffz8oqxYNVKFvZ5Bw",
+      "content": "<tool_use_error>Found 2 matches of the string to replace, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.\nString:         style: Union[str, Style],\n        start: int = 0,\n        end: Optional[int] = None,\n    ) -> None:\n        \"\"\"Apply a style to the text, or a portion of the text.</tool_use_error>"
+    },
+    {
+      "run": "claude_wide",
+      "task": "wide__gin__ResponseWriter_Status",
+      "arm": "native",
+      "id": "toolu_01Kc9T31ysvE8qcs7pWdFrd7",
+      "content": "Exit code 1\n(eval):1: no matches found: --include=*.go\nauth_test.go\nauth.go\nbenchmarks_test.go\nBENCHMARKS.md\nbinding\nCHANGELOG.md\nCODE_OF_CONDUCT.md\ncodec\ncodecov.yml\ncontext_appengine.go\ncontext_file_test.go\ncontext_test.go\ncontext.go\nCONTRIBUTING.md\ndebug_test.go\ndebug.go\ndeprecated_test.go\ndeprecated.go\ndoc.go\ndocs\nerrors_test.go\nerrors.go\nexamples\nfs_test.go\nfs.go\ngin_integration_test.go\ngin_test.go\ngin.go\nginS\ngithubapi_test.go\ngo.mod\ngo.sum\ninternal\nLICENSE\nlogger_test.go\nlogger.go\nMakefile\nmiddleware_test.go\nmode_test.go\nmode.go\npath_test.go\npath.go\nREADME.md\nrecovery_test.go\nrecovery.go\nrender\nresponse_writer_test.go\nresponse_writer.go\nroutergroup_test.go\nroutergroup.go\nroutes_test.go\ntest_helpers.go\ntestdata\ntree_test.go\ntree.go\nutils_test.go\nutils.go\nversion.go\nmodule github.com/gin-gonic/gin\n\ngo 1.25.0\n\nrequire ("
+    },
+    {
+      "run": "claude_wide",
+      "task": "wide__hono__SetHeadersOptions_append",
+      "arm": "native",
+      "id": "toolu_01K1XqovxNCEN6r6LpTRVAJ2",
+      "content": "Search failed \u2014 ripgrep rejected the pattern, glob, or file type without searching:\nrg: regex parse error:\n    (?:append\\s*:|\\{\\s*append\\b|options\\??\\.append|\\.append\\b(?!\\()|append,)\n                                                             ^^^\nerror: look-around, including look-ahead and look-behind, is not supported\n\nConsider enabling PCRE2 with the --pcre2 flag, which can handle backreferences\nand look-around."
+    },
+    {
+      "run": "claude_wide",
+      "task": "wide__echo__HTTPStatusCoder_StatusCode",
+      "arm": "native",
+      "id": "toolu_01GMgHbuDb7MVvt9PZXipPDW",
+      "content": "Exit code 1\n(eval):3: no matches found: --include=*.go\nfunc (he *HTTPError) HTTPStatus() int       // Implements HTTPStatusCoder\n- Added `HTTPStatusCoder` interface and `HTTPStatus()` method\n\n\ngithub.com/labstack/echo/v5\n# github.com/labstack/echo/v5\n./echo.go:461:17: sc.StatusCode undefined (type HTTPStatusCoder has no field or method StatusCode)\n./rfc9457.go:87:20: sc.StatusCode undefined (type HTTPStatusCoder has no field or method StatusCode)"
+    },
+    {
+      "run": "claude_wide",
+      "task": "wide__rich__ProgressColumn_render",
+      "arm": "prism_init",
+      "id": "toolu_019i8e98VeCckk7qwbSnh4vk",
+      "content": "change-impact: \"render\" is ambiguous \u2014 17 candidates:\n  ProgressColumn.render  (rich/progress.py:545)\n  Console.render  (rich/console.py:1294)\n  Layout.render  (rich/layout.py:366)\n  RichHandler.render  (rich/logging.py:215)\n  render  (rich/markup.py:106)\n  Node.render  (rich/pretty.py:467)\n  Spinner.render  (rich/spinner.py:61)\n  Style.render  (rich/style.py:694)\n  Text.render  (rich/text.py:719)\n  render  (tests/render.py:18)\n  render  (tests/test_card.py:20)\n  render  (tests/test_columns.py:31)\n  render  (tests/test_columns_align.py:11)\n  render  (tests/test_inspect.py:58)\n  render  (tests/test_markdown.py:89)\n  render  (tests/test_markdown_no_hyperlinks.py:83)\n  render  (tests/test_panel.py:32)\nThese are 17 separate override families (render declarations each: ProgressColumn.render: 13, Console.render: 1, Layout.render: 1, RichHandler.render: 1, render: 1, Node.render: 1, Spinner.render: 1, Style.render: 1, Text.render: 1, render: 1, render: 1, render: 1, render: 1, render: 1, render: 1, render: 1, render: 1); no change sets were merged. Run change_impact once per family you are changing\n\nWIDE MEMBER (17 candidates): do NOT issue one change_impact call per candidate \u2014 that misses call sites through interfaces this engine cannot anchor a family query on (an interface with no local declaration, e.g. an external SDK contract). Instead run prism_search(query=[\"render(\", \".render(\"], scope=\"text\", exhaustive=true) for the complete declaration and call-site inventory by text, THEN change_impact only the specific receivers that inventory names as ambiguous"
+    },
+    {
+      "run": "claude_wide",
+      "task": "wide__jackson-databind__ResolvableDeserializer_resolve",
+      "arm": "prism_init",
+      "id": "toolu_01P5JC78VV6S8Kgy33mjYYuA",
+      "content": "PreToolUse:Bash hook error: Not run: this system's sed is BSD (macOS) sed, which does not support GNU regex escapes (\\b \\< \\> \\w \\s, and without -E \\+ \\? \\|). It reads them as literal characters, so this pattern matches nothing and the command exits successfully without changing any file. BSD sed spells word boundaries [[:<:]] and [[:>:]]; -E enables + ? | without backslashes."
+    },
+    {
+      "run": "claude_wide",
+      "task": "wide__gin__Binding_Name",
+      "arm": "prism_init",
+      "id": "toolu_019rjJHaZDts814p2Dt74885",
+      "content": "change-impact: \"Name\" is ambiguous \u2014 2 candidates:\n  Binding.Name  (binding/binding.go:33)\n  BindingUri.Name  (binding/binding.go:47)\nre-run with one of these\nThese are different functions; pick one and call it by its full name:\n  {\"op\":\"change_impact\",\"args\":{\"name\":\"Binding.Name\",\"symbol_file\":\"binding/binding.go\"}}\n  {\"op\":\"change_impact\",\"args\":{\"name\":\"BindingUri.Name\",\"symbol_file\":\"binding/binding.go\"}}"
+    },
+    {
+      "run": "claude_wide",
+      "task": "wide__jackson-databind__ContextualDeserializer_createContextual",
+      "arm": "prism_init",
+      "id": "toolu_01F3EKXBdaeawh4qvu8SAmBS",
+      "content": "Exit code 1\n[INFO] Compiling 483 source files with javac [debug:lines,source,vars deprecation release 17] to target/classes\n[INFO] Compiling 814 source files with javac [debug:lines,source,vars deprecation release 17] to target/test-classes\n[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.114 s -- in com.fasterxml.jackson.databind.deser.jdk.MapKeyDeserializationTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in com.fasterxml.jackson.databind.type.PolymorphicList036Test\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in com.fasterxml.jackson.databind.node.POJONodeTest\n[INFO] Tests run: 29, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.037 s -- in com.fasterxml.jackson.databind.deser.jdk.JDKScalarsDeserTest\n[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in com.fasterxml.jackson.databind.ser.filter.JsonIncludeOverrideTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.deser.inject.JacksonInject4218Test\n[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.012 s -- in com.fasterxml.jackson.databind.ser.FieldSerializationTest\n[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.fasterxml.jackson.databind.contextual.ContextAttributeWithSerTest\n[INFO] Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in com.fasterxml.jackson.databind.node.ArrayNodeTest\n[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in com.fasterxml.jackson.databind.objectid.ObjectIdSubTypes4610Test\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in com.fasterxml.jackson.databind.jsontype.jdk.TypeRefinementForMapTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.fasterxml.jackson.databind.objectid.ObjectIdWithCreator1261Test\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0 s -- in com.fasterxml.jackson.databind.introspect.BeanDescriptionTest\n[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in com.fasterxml.jackson.databind.contextual.ContextAttributeWithDeserTest\n[INFO] Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.052 s -- in com.fasterxml.jackson.databind.exc.ExceptionDeserializationTest\n[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in com.fasterxml.jackson.databind.ser.GenericTypeSerializationTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in com.fasterxml.jackson.databind.deser.enums.EnumSetDeserializationWithDefaultTyping4849Test\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.ser.TestStatics\n[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in com.fasterxml.jackson.databind.ser.filter.JsonIncludeCustomTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.593 s -- in com.fasterxml.jackson.databind.misc.RaceCondition738Test\n[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.fasterxml.jackson.databind.ser.TestJsonSerialize2\n[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.fasterxml.jackson.databind.introspect.TestNamingStrategyCustom\n[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.fasterxml.jackson.databind.introspect.VisibilityForSerializationTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.fasterxml.jackson.databind.ser.TestJsonSerialize3\n[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in com.fasterxml.jackson.databind.deser.NullHandlingDeserTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.jsontype.jdk.BigDecimalForFloatDisabled3133Test\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in com.fasterxml.jackson.databind.deser.jdk.EmptyArrayBlockingQueueDeserTest\n[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.fasterxml.jackson.databind.cfg.DeserializationConfigTest\nls: -la: No such file or directory\ntarget/classes/com/fasterxml/jackson/databind/deser/ContextualDeserializer.class"
+    },
+    {
+      "run": "claude_wide",
+      "task": "wide__jackson-databind__JsonSerializer_isEmpty",
+      "arm": "prism_init",
+      "id": "toolu_012Rvmb7rrkKL4361e9SaWcj",
+      "content": "Exit code 1\n\tat org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:101)\n\tat org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:64)\n\tat org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:150)\n\tat org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:63)\n\tat org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:109)\n\tat org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:91)\n\tat org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)\n\tat org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$1(InterceptingLauncher.java:39)\n\tat org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)\n\tat org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:38)\n\tat org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)\n\tat org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)\n\tat org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)\n\tat org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)\n\tat org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)\n\tat org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)\n\tat org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)\n\tat org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)\n\tat org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)\n\tat org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)\nCaused by: java.lang.IllegalStateException: mock: deliberate failure for parseDouble\n\tat com.fasterxml.jackson.core.io.NumberInput.parseDouble(NumberInput.java:410)\n\tat com.fasterxml.jackson.databind.util.TokenBuffer$Parser.getNumberValue(TokenBuffer.java:1974)\n\tat com.fasterxml.jackson.databind.util.TokenBuffer$Parser.getNumberValue(TokenBuffer.java:1927)\n\tat com.fasterxml.jackson.databind.util.TokenBuffer$Parser.getDoubleValue(TokenBuffer.java:1868)\n\tat com.fasterxml.jackson.databind.deser.std.NumberDeserializers$DoubleDeserializer.deserialize(NumberDeserializers.java:699)\n\tat com.fasterxml.jackson.databind.deser.std.NumberDeserializers$DoubleDeserializer.deserialize(NumberDeserializers.java:683)\n\tat com.fasterxml.jackson.databind.deser.impl.FieldProperty.deserializeAndSet(FieldProperty.java:137)\n\tat com.fasterxml.jackson.databind.deser.BeanDeserializer.deserializeFromObject(BeanDeserializer.java:392)\n\t... 109 more\ncom.fasterxml.jackson.databind.PrimarySuite.txt\ncom.fasterxml.jackson.databind.typepollution.TypePollutionSuite.txt\nTEST-com.fasterxml.jackson.databind.PrimarySuite.xml\nhead: illegal line count -- 0"
+    },
+    {
+      "run": "claude_issue",
+      "task": "gin-gonic__gin__pr4698",
+      "arm": "native",
+      "id": "toolu_019N59dQ1RzWj2rzxBZrAXed",
+      "content": "<tool_use_error>String to replace not found in file.\nString: \t\t\t\t\t} else {\n\t\t\t\t\t\thandle(c, rec)</tool_use_error>"
+    },
+    {
+      "run": "claude_issue",
+      "task": "colinhacks__zod__pr6129",
+      "arm": "native",
+      "id": "toolu_01WCuSA2H2boMjfiQ25TcUbf",
+      "content": "Exit code 1\nsed: 1: \"checks.ts\n\": command c expects \\ followed by text"
+    },
+    {
+      "run": "claude_issue",
+      "task": "colinhacks__zod__pr6129",
+      "arm": "native",
+      "id": "toolu_012YA3v1fJW78PGSgHkyRakc",
+      "content": "<tool_use_error>Found 2 matches of the string to replace, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.\nString:         origin,\n        code: \"too_big\",</tool_use_error>"
+    },
+    {
+      "run": "claude_issue",
+      "task": "FasterXML__jackson-databind__pr6039",
+      "arm": "native",
+      "id": "toolu_01CNwkM2tfAg7aVbDDW9EtU5",
+      "content": "Path does not exist: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-eipxpl8t/src/main/java/tools/jackson/databind/deser/BeanDeserializerBase.java. Note: your current working directory is /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-eipxpl8t."
+    },
+    {
+      "run": "claude_issue",
+      "task": "honojs__hono__pr5164",
+      "arm": "prism_init",
+      "id": "toolu_011noerGz5mbGRVTVa9QGAJP",
+      "content": "<tool_use_error>String to replace not found in file.\nString:      if (\n      (name && name !== cookieName) ||\n      !validCookieNameRegEx.test(cookieName) ||\n      cookieName in parsedCookie\n    ) {</tool_use_error>"
+    },
+    {
+      "run": "claude_issue",
+      "task": "FasterXML__jackson-databind__pr6044",
+      "arm": "native",
+      "id": "toolu_01DoaAyGyVK7FfGD7HLEDvz6",
+      "content": "Exit code 1\nsed: 1: \"1i package tools.jackso ...\": command i expects \\ followed by text"
+    },
+    {
+      "run": "claude_issue",
+      "task": "google__gson__pr3098",
+      "arm": "prism_init",
+      "id": "toolu_01HMNKwLxFNPtu3uhUGfo2an",
+      "content": "prism: unknown op \"grep\" \u2014 use search, query, read, lookup, change_impact, or verify"
+    },
+    {
+      "run": "claude_issue",
+      "task": "FasterXML__jackson-databind__pr6076",
+      "arm": "native",
+      "id": "toolu_01CSuxzKJ5EiHHfcPV8CpaBE",
+      "content": "Path does not exist: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-xrztjub5/src/main/java/tools/jackson/databind/ser/jdk/JsonValueSerializer.java. Note: your current working directory is /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-xrztjub5."
+    },
+    {
+      "run": "claude_issue",
+      "task": "FasterXML__jackson-databind__pr6076",
+      "arm": "prism_init",
+      "id": "toolu_015MuMHzUQ8fG8LfQvtV4pdj",
+      "content": "<tool_use_error>InputValidationError: Read failed due to the following issues:\nAn unexpected parameter `from` was provided\nAn unexpected parameter `to` was provided</tool_use_error>"
+    },
+    {
+      "run": "claude_issue",
+      "task": "urllib3__urllib3__pr5093",
+      "arm": "native",
+      "id": "toolu_01PNxqxUQDaVijeosh33tsSc",
+      "content": "<tool_use_error>InputValidationError: Read failed due to the following issues:\nThe required parameter `file_path` is missing\nAn unexpected parameter `path` was provided</tool_use_error>"
+    }
+  ],
+  "codex_host_notices": [
+    {
+      "task": "google__gson__pr3067",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "google__gson__pr3067",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 4 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__jackson-databind__SettableBeanProperty_set",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__jackson-databind__SettableBeanProperty_set",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "gin-gonic__gin__pr4698",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "gin-gonic__gin__pr4698",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__chi__Routes_Match",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__chi__Routes_Match",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "honojs__hono__pr5373",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "honojs__hono__pr5373",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 4 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__hono__Router_match",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__hono__Router_match",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "urllib3__urllib3__pr3786",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "urllib3__urllib3__pr3786",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__rich__ProgressColumn_render",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__rich__ProgressColumn_render",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "FasterXML__jackson-databind__pr6042",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "FasterXML__jackson-databind__pr6042",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__jackson-databind__TypeDeserializer_forProperty",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__jackson-databind__TypeDeserializer_forProperty",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "go-chi__chi__pr1029",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "go-chi__chi__pr1029",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 4 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__gin__ResponseWriter_Status",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 13 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__gin__ResponseWriter_Status",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 4 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "colinhacks__zod__pr6500",
+      "arm": "native",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 15 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "colinhacks__zod__pr6500",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 15 additional skills were not included in the model-visible skills list."
+    },
+    {
+      "task": "wide__zod__ZodRegistry_get",
+      "arm": "prism_init",
+      "message": "Exceeded skills context budget. All skill descriptions were removed and 15 additional skills were not included in the model-visible skills list."
+    }
+  ],
+  "selected_tool_results": [
+    {
+      "task": "wide__chi__Routes_Match",
+      "arm": "prism_init",
+      "path": "research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__chi__Routes_Match/prism_init/events.jsonl",
+      "sha256": "dbb8c7ff1256356ce7f588e271e6c70914fa4995b9236c7511f75f876800124e",
+      "item": {
+        "id": "item_2",
+        "type": "mcp_tool_call",
+        "server": "prism",
+        "tool": "prism",
+        "arguments": {
+          "op": "change_impact",
+          "args": {
+            "name": "Routes.Match",
+            "symbol_file": "chi.go"
+          }
+        },
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "// Routes.Match \u2014 change-impact: 7 site(s)\ncompleteness: closed\ncompletenessScope: repository (compiler-backed go)\nsafeToClaimComplete: true\n// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.\neditSites (8; every occurrence this change touches, as path:line:col: text):\n  chi.go:131:2: Match(rctx *Context, method, path string) bool\n  middleware/get_head.go:29:20: if !rctx.Routes.Match(tctx, \"HEAD\", routePath) {\n  middleware/supress_notfound.go:19:25: match := rctx.Routes.Match(rctx, r.Method, r.URL.Path)\n  mux.go:373:16: func (mx *Mux) Match(rctx *Context, method, path string) bool {\n  mux_test.go:1927:7: if r.Match(tctx, \"GET\", \"/users/1\") == false {\n  mux_test.go:1932:7: if r.Match(tctx, \"HEAD\", \"/articles/10\") == true {\n  mux_test.go:1947:7: if r.Match(tctx, \"GET\", \"/\") != true {\n  mux_test.go:1958:7: if r.Match(tctx, \"GET\", \"/\") != false {\nEvery line naming Match in this repository (whole word, 21): 8 in editSites above, 4 code line(s) naming something else, 3 string literal(s), 6 comment/doc line(s). In test files: 4, 1, 1 and 0 of those.\nother declarations named Match (not in this change): Pattern.Match (middleware/route_headers.go:141)\ncode naming another Match (not in this change) (4):\n  middleware/route_headers.go:119: if m.Match(value) {\n  middleware/route_headers.go:123: } else if r.MatchOne.Match(value) {\n  middleware/route_headers.go:141: func (p Pattern) Match(v string) bool {  [declares Pattern.Match]\n  middleware/route_headers_test.go:207: if got := p.Match(tt.value); got != tt.expected {\nstring literals naming Match (a string may be a use the graph cannot see: generated code, getattr, reflection; decide per line) (3):\n  middleware/nocache.go:25: \"If-Match\",\n  middleware/nocache.go:26: \"If-None-Match\",\n  middleware/route_headers_test.go:208: t.Errorf(\"Pattern(%q).Match(%q) = %v, want %v\", tt.pattern, tt.value, got, tt.expected)\ncomments/docs naming Match (6):\n  CHANGELOG.md:250: - Add new `Match(rctx *Context, method, path string) bool` method to `Routes` interface\n  CHANGELOG.md:251: and `Mux`. Match searches the mux's routing tree for a handler that matches the method/path\n  README.md:245: // Match searches the routing tree for a handler that matches\n  README.md:248: Match(rctx *Context, method, path string) bool\n  chi.go:128: // Match searches the routing tree for a handler that matches\n  mux.go:367: // Match searches the routing tree for a handler that matches the method/path.\nfamilyCompleteness: closed\ncallerCoverage: indexed\n// Each caller lists where it calls the change set (line:col of the called name); the compiler resolved these.\n// Call expressions below are shown as evidence for each caller.\ndeclarations (1):\n  Routes.Match  chi.go:131\nfamily (1):\n  Mux.Match  mux.go:373\ncallers (5):\n  GetHead  middleware/get_head.go:10  [at 29:20]\n  SupressNotFound  middleware/supress_notfound.go:15  [at 19:25]\n  TestMuxMatch  mux_test.go:1899  [test]  [at 1927:7, 1932:7]\n  TestMuxMatch_HasBasePath  mux_test.go:1937  [test]  [at 1947:7]\n  TestMuxMatch_DoesNotHaveBasePath  mux_test.go:1952  [test]  [at 1958:7]\n// 6 caller call line(s) are in editSites above and not repeated here.\n// wider anchor: Mux.Match (9 sites, closed) \u2014 Mux.Match has a larger CLOSED change set (8 sites vs 6 for the queried anchor). If the contract being changed is the interface/base declaration rather than this one implementation, query Mux.Match instead to inspect its family.\n"
+            }
+          ],
+          "structured_content": null
+        },
+        "error": null,
+        "status": "completed"
+      }
+    },
+    {
+      "task": "wide__chi__Routes_Match",
+      "arm": "prism_init",
+      "path": "research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__chi__Routes_Match/prism_init/events.jsonl",
+      "sha256": "dbb8c7ff1256356ce7f588e271e6c70914fa4995b9236c7511f75f876800124e",
+      "item": {
+        "id": "item_3",
+        "type": "mcp_tool_call",
+        "server": "prism",
+        "tool": "prism",
+        "arguments": {
+          "op": "change_impact",
+          "args": {
+            "name": "Mux.Match",
+            "symbol_file": "mux.go"
+          }
+        },
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "// Mux.Match \u2014 change-impact: 9 site(s)\ncompleteness: closed\ncompletenessScope: repository (compiler-backed go)\nsafeToClaimComplete: true\n// complete for this repository (compiler-backed)\neditSites (7; every occurrence this change touches, as path:line:col: text):\n  middleware/get_head.go:29:20: if !rctx.Routes.Match(tctx, \"HEAD\", routePath) {\n  middleware/supress_notfound.go:19:25: match := rctx.Routes.Match(rctx, r.Method, r.URL.Path)\n  mux.go:373:16: func (mx *Mux) Match(rctx *Context, method, path string) bool {\n  mux_test.go:1927:7: if r.Match(tctx, \"GET\", \"/users/1\") == false {\n  mux_test.go:1932:7: if r.Match(tctx, \"HEAD\", \"/articles/10\") == true {\n  mux_test.go:1947:7: if r.Match(tctx, \"GET\", \"/\") != true {\n  mux_test.go:1958:7: if r.Match(tctx, \"GET\", \"/\") != false {\nEvery line naming Match in this repository (whole word, 21): 7 in editSites above, 5 code line(s) naming something else, 3 string literal(s), 6 comment/doc line(s). In test files: 4, 1, 1 and 0 of those.\nother declarations named Match (not in this change): Pattern.Match (middleware/route_headers.go:141), Routes.Match (chi.go:131)\ncode naming another Match (not in this change) (5):\n  chi.go:131: Match(rctx *Context, method, path string) bool  [declares Routes.Match]\n  middleware/route_headers.go:119: if m.Match(value) {\n  middleware/route_headers.go:123: } else if r.MatchOne.Match(value) {\n  middleware/route_headers.go:141: func (p Pattern) Match(v string) bool {  [declares Pattern.Match]\n  middleware/route_headers_test.go:207: if got := p.Match(tt.value); got != tt.expected {\nstring literals naming Match (a string may be a use the graph cannot see: generated code, getattr, reflection; decide per line) (3):\n  middleware/nocache.go:25: \"If-Match\",\n  middleware/nocache.go:26: \"If-None-Match\",\n  middleware/route_headers_test.go:208: t.Errorf(\"Pattern(%q).Match(%q) = %v, want %v\", tt.pattern, tt.value, got, tt.expected)\ncomments/docs naming Match (6):\n  CHANGELOG.md:250: - Add new `Match(rctx *Context, method, path string) bool` method to `Routes` interface\n  CHANGELOG.md:251: and `Mux`. Match searches the mux's routing tree for a handler that matches the method/path\n  README.md:245: // Match searches the routing tree for a handler that matches\n  README.md:248: Match(rctx *Context, method, path string) bool\n  chi.go:128: // Match searches the routing tree for a handler that matches\n  mux.go:367: // Match searches the routing tree for a handler that matches the method/path.\n// TEST-ONLY API (callers are all tests):\n//   Mux.Match line 373: 0 production callers (3 test callers). No production code calls it or a same-named overload\nrelated (1; NOT in the change set or relaySites \u2014 sites that may need the same edit, check each):\n  mux.go:295 Mux.Mount [co-caller] also calls Mux.nextRoutePath (reached from Match via Find:382)\nfamilyCompleteness: closed\ncallerCoverage: indexed\n// Each caller lists where it calls the change set (line:col of the called name); the compiler resolved these.\ndeclarations (1):\n  Mux.Match  mux.go:373\nsupers (2):\n  Router.Match  chi.go:68\n  Routes.Match  chi.go:131\n    Match(rctx *Context, method, path string) bool\ncallers (5):\n  GetHead  middleware/get_head.go:10  [at 29:20]\n  SupressNotFound  middleware/supress_notfound.go:15  [at 19:25]\n  TestMuxMatch  mux_test.go:1899  [test]  [at 1927:7, 1932:7]\n  TestMuxMatch_HasBasePath  mux_test.go:1937  [test]  [at 1947:7]\n  TestMuxMatch_DoesNotHaveBasePath  mux_test.go:1952  [test]  [at 1958:7]\ndeclaringTypes (1):\n  Router  chi.go:68\n    type Router interface {\n// 6 caller call line(s) are in editSites above and not repeated here.\n// these type declaration blocks contain member signatures that may need coordinated edits for a contract change (Go/TS interface members are not separate symbols); inspect each and include it as a potential site in your answer\n"
+            }
+          ],
+          "structured_content": null
+        },
+        "error": null,
+        "status": "completed"
+      }
+    },
+    {
+      "task": "wide__zod__ZodRegistry_get",
+      "arm": "prism_init",
+      "path": "research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__zod__ZodRegistry_get/prism_init/events.jsonl",
+      "sha256": "8a2a554ad654b2d61c42184be312e4c13f32c5028509c7c9f0940e170b053649",
+      "item": {
+        "id": "item_22",
+        "type": "mcp_tool_call",
+        "server": "prism",
+        "tool": "prism",
+        "arguments": {
+          "op": "search",
+          "args": {
+            "terms": [
+              ""
+            ],
+            "glob": "packages/treeshake/*.ts",
+            "files_only": true,
+            "max_results": 100,
+            "include_bodies": false
+          }
+        },
+        "result": null,
+        "error": {
+          "message": "tool call error: tool call failed for `prism/prism`\n\nCaused by:\n    Mcp error: -32602: prism: search args.terms needs one string or 1-10 strings"
+        },
+        "status": "failed"
+      }
+    }
+  ]
+}
