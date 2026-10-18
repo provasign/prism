@@ -1,0 +1,1256 @@
+shale_version: "0"
+id: f82ecf22-b802-493c-ae00-bf3b3439536c
+created_at: 2026-10-18T03:23:18.216051Z
+finalized_at: 2026-10-18T17:05:28.124085Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: ls -lt docs/research/ | head; for d in docs/research/cli-mcp-timing-large-2026-10-17 docs/research/cli-mcp-timing-2026-10-17 docs/research/cli-bugfix-text-2026-10-17; do echo "== $d"; ls -lt $d | head -8; done; ps aux | grep -E "run_|harness|claude -p" | grep -v grep | head
+      at: 2026-10-18T03:24:10.728192Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && cat results/cli-vs-mcp-manifest.json | head -c 800; echo; tail -n 25 results/cli-vs-mcp-2026-10-17/run.log
+      at: 2026-10-18T03:24:13.179534Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/docs/research && sed -n 1,200p cli-mcp-timing-2026-10-17/REPORT.md; grep -n -i -E "match|equal|identical|diff|compare" cli-mcp-timing-2026-10-17/bench.py | head -30
+      at: 2026-10-18T03:24:59.977005Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism && sed -n 1,80p docs/research/cli-bugfix-text-2026-10-17/PROTOCOL.md; cat docs/research/cli-bugfix-text-2026-10-17/prism-text-shim.py; git status --short | head; git log --oneline -3; ls internal/cli | head -40; prism --help 2>&1 | head -30; which prism; prism version 2>&1 | head -2
+      at: 2026-10-18T03:25:03.970297Z
+      classified: other
+    - cmd: prism search editSites --scope text --format text 2>&1 | head -60
+      at: 2026-10-18T03:25:08.439317Z
+      classified: other
+    - cmd: prism search "format text" "formatImpactText" "change-impact" --scope text --format text --limit 30 2>&1 | head -60
+      at: 2026-10-18T03:25:09.795903Z
+      classified: other
+    - cmd: grep -n -E "change-impact|changeImpact|ChangeImpact|FormatImpact|formatEditSites|renderChangeImpact" internal/cli/commands.go internal/cli/viewcmds.go | head -40; grep -rn "func.*ChangeImpact\|func FormatImpact\|func formatEditSitesText\|func renderChangeImpactLayout" internal --include=*.go | grep -v _test | head -20
+      at: 2026-10-18T03:25:12.637033Z
+      classified: other
+    - cmd: sed -n 2850,2935p internal/cli/commands.go; sed -n 3735,3770p internal/cli/commands.go; sed -n 3885,3910p internal/cli/commands.go; sed -n 100,150p internal/mcp/graphtext.go
+      at: 2026-10-18T03:25:14.96152Z
+      classified: other
+    - cmd: 'grep -rn "renderChangeImpactAsText\|func invokeTool\|func printOutput\|func Format[A-Za-z]*Text\|func RenderText\|func .*AsText" internal --include=''*.go'' | grep -v _test; '
+      at: 2026-10-18T03:25:18.719954Z
+      classified: other
+    - cmd: sed -n 640,760p internal/mcp/server.go; sed -n 3312,3345p internal/cli/commands.go; sed -n 3428,3520p internal/cli/commands.go
+      at: 2026-10-18T03:25:21.109899Z
+      classified: other
+    - cmd: grep -n "compact" internal/mcp/server.go | head -30; grep -n "\"mcp\"" internal/cli/commands.go | head; ls .grove 2>/dev/null | head -3
+      at: 2026-10-18T03:25:28.481283Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && go build -o $SP/prism-main ./cmd/prism 2>&1 | tail -3; ls cmd; $SP/prism-main mcp --help 2>&1 | head -5; prism lookup --help 2>&1 | head -12; prism read --help 2>&1 | head -8
+      at: 2026-10-18T03:25:36.484627Z
+      classified: build
+    - cmd: "SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad\ncat > $SP/parity.py <<'EOF'\nimport json, subprocess, sys, difflib, os\nBIN, ROOT = sys.argv[1], sys.argv[2]\np = subprocess.Popen([BIN, \"mcp\", \"--legacy\", ROOT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, cwd=ROOT)\ndef rpc(i, method, params=None):\n    p.stdin.write(json.dumps({\"jsonrpc\":\"2.0\",\"id\":i,\"method\":method,\"params\":params or {}})+\"\\n\"); p.stdin.flush()\n    return json.loads(p.stdout.readline())\nrpc(1, \"initialize\", {\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"parity\",\"version\":\"0\"}})\np.stdin.write(json.dumps({\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"})+\"\\n\"); p.stdin.flush()\nCASES = [\n (\"change_impact\", \"prism_change_impact\", {\"query\":\"printChangeImpactText\"}, [\"change-impact\",\"printChangeImpactText\"]),\n (\"change_impact_method\", \"prism_change_impact\", {\"query\":\"Handler.Invoke\"}, [\"change-impact\",\"Handler.Invoke\"]),\n (\"lookup\", \"prism_lookup\", {\"name\":\"mustAbs\"}, [\"lookup\",\"mustAbs\"]),\n (\"read\", \"prism_read\", {\"file\":\"internal/cli/portutil.go\",\"offset\":1,\"limit\":40}, [\"read\",\"internal/cli/portutil.go\",\"--from\",\"1\",\"--to\",\"40\"]),\n (\"search_symbol\", \"prism_search\", {\"terms\":[\"mustAbs\"]}, [\"search\",\"mustAbs\"]),\n (\"search_text\", \"prism_search\", {\"terms\":[\"editSites\"],\"scope\":\"text\",\"max_results\":10}, [\"search\",\"editSites\",\"--scope\",\"text\",\"--limit\",\"10\"]),\n (\"query\", \"prism_query\", {\"task\":\"how change-impact text is rendered\",\"terms\":[\"renderChangeImpactAsText\"]}, [\"query\",\"how change-impact text is rendered\",\"--terms\",\"renderChangeImpactAsText\"]),\n]\nonly = sys.argv[3:] \nfor i,(name,tool,args,cli) in enumerate(CASES, 10):\n    if only and name not in only: continue\n    r = rpc(i, \"tools/call\", {\"name\":tool,\"arguments\":args})\n    mcp = \"\".join(c[\"text\"] for c in r.get(\"result\",{}).get(\"content\",[])) if \"result\" in r else \"ERR \"+json.dumps(r)\n    c = subprocess.run([BIN,*cli,\"--format\",\"text\"], cwd=ROOT, capture_output=True, text=True)\n    cli_out = c.stdout or (\"ERR \"+c.stderr)\n    same = mcp.strip()==cli_out.strip()\n    print(f\"{name:22s} mcp={len(mcp):6d}B cli={len(cli_out):6d}B {'IDENTICAL' if same else 'DIFFERENT'}\")\n    if not same and os.environ.get(\"SHOW\"):\n        for l in list(difflib.unified_diff(mcp.splitlines(), cli_out.splitlines(), \"mcp\", \"cli\", lineterm=\"\", n=0))[:25]: print(\"   \", l[:200])\np.kill()\nEOF\ncd /Users/tapabratapal/Projects/provasign/prism && python3 -I $SP/parity.py $SP/prism-main $PWD"
+      at: 2026-10-18T03:25:46.500338Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && SHOW=1 python3 -I $SP/parity.py $SP/prism-main $PWD lookup read search_symbol search_text query change_impact 2>&1 | cut -c1-230
+      at: 2026-10-18T03:25:50.315131Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && prism query --help 2>&1 | head -5; grep -n "compactFields = \|compactFields\b" internal/mcp/server.go | head -3; sed -n 196,225p internal/mcp/server.go; $SP/prism-main mcp --compact . </dev/null 2>&1 | head -2
+      at: 2026-10-18T03:25:55.573227Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        python3 - <<EOF
+        import re
+        s=open("$SP/parity.py").read()
+        s=s.replace('"mcp", "--legacy", ROOT','"mcp", "--compact", ROOT')
+        start=s.index("CASES = ["); end=s.index("]\nonly")+2
+        new='''CASES = [
+         ("change_impact", "change_impact", {"name":["printChangeImpactText"]}, ["change-impact","printChangeImpactText"]),
+         ("change_impact_method", "change_impact", {"name":["Handler.Invoke"]}, ["change-impact","Handler.Invoke"]),
+         ("lookup", "lookup", {"name":["mustAbs"]}, ["lookup","mustAbs"]),
+         ("lookup_two", "lookup", {"name":["mustAbs","invokeTool"]}, ["lookup","mustAbs","invokeTool"]),
+         ("read", "read", {"file":"internal/cli/portutil.go","from":1,"to":40}, ["read","internal/cli/portutil.go","--from","1","--to","40"]),
+         ("search_symbol", "search", {"terms":["mustAbs"]}, ["search","mustAbs"]),
+         ("search_text", "search", {"terms":["editSites"],"scope":"text","max_results":10}, ["search","editSites","--scope","text","--limit","10"]),
+         ("query", "query", {"terms":["renderChangeImpactAsText"]}, ["query","--terms","renderChangeImpactAsText"]),
+         ("verify", "verify", {}, ["verify"]),
+        ]
+        '''
+        s=s[:start]+new+s[end:]
+        s=s.replace('r = rpc(i, "tools/call", {"name":tool,"arguments":args})','r = rpc(i, "tools/call", {"name":"prism","arguments":{"op":tool,"args":args}})')
+        open("$SP/parity.py","w").write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/prism && SHOW=1 python3 -I $SP/parity.py $SP/prism-main $PWD 2>&1 | cut -c1-200
+      at: 2026-10-18T03:26:04.293982Z
+      classified: other
+    - cmd: grep -n "func cmdLookup\|func cmdRead\|func cmdQuery\|func cmdSearch\|func invokeSearchWithCompactRendering\|func cmdVerify" internal/cli/*.go; sed -n 2525,2600p internal/cli/commands.go
+      at: 2026-10-18T03:26:09.312717Z
+      classified: other
+    - cmd: sed -n 2225,2272p internal/cli/commands.go; sed -n 2318,2361p internal/cli/commands.go; sed -n 2630,2700p internal/cli/commands.go; grep -n "func compactSingleReadNote" -A30 internal/mcp/*.go | head -50
+      at: 2026-10-18T03:26:22.668509Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/server.go'
+        s=open(p).read()
+        start=s.index("		var text string\n		var rendered bool\n		if m, ok := out.(map[string]any); ok {\n			switch actualName {")
+        end=s.index("		for i := len(pathNotes) - 1; i >= 0; i-- {")
+        old=s[start:end]
+        new='''		text, rendered := s.handler.RenderToolText(s.compact, actualName, actualArgs, out)
+        		if !rendered {
+        			// Compact JSON: results land in an agent's context window, and
+        			// indentation is pure token overhead.
+        			encoded, _ := json.Marshal(out)
+        			text = string(encoded)
+        		}
+        '''
+        s=s[:start]+new+s[end:]
+        # build the function from the old block
+        func='''
+        // RenderToolText is the one text renderer for a tool result. The MCP server
+        // and the CLI's --format text both call it, so an agent sees the same answer
+        // through either transport: same layout, same edit sites, same wording.
+        // rendered=false means the shape is not covered and the caller falls back to
+        // JSON. compact selects the compact gateway's tool wording ("op=read", not
+        // "prism_read").
+        func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any, out any) (string, bool) {
+        	var text string
+        	var rendered bool
+        	if m, ok := out.(map[string]any); ok {
+        		switch tool {
+        		case "prism_search":
+        			if compact {
+        				text, rendered = h.RenderCompactSearchText(context.Background(), m, args)
+        			} else {
+        				text, rendered = renderSearchAsText(m)
+        				if rendered {
+        					text = h.once.apply(text)
+        				}
+        			}
+        		case "prism_read":
+        			// +7-18% JSON escaping over whole source bodies, on the
+        			// highest-call-count tool (56% of prism calls in full38).
+        			text, rendered = renderReadAsText(m)
+        		case "prism_change_impact":
+        			// 3.1x measured: symbol-record lists are the most
+        			// repetitive JSON this server emits (graphtext.go).
+        			text, rendered = renderChangeImpactAsText(m)
+        			if rendered && compact {
+        				text = compactImpactText(text)
+        			}
+        		case "prism_lookup":
+        			// 4.8x measured: the JSON form shipped the body twice
+        			// plus index internals (graphtext.go).
+        			text, rendered = renderLookupAsText(m)
+        		case "prism_verify":
+        			text, rendered = renderVerifyAsText(m)
+        		case "prism_query":
+        			// source delivery only; the symbols-delivery struct is not
+        			// a map and correctly falls through to JSON.
+        			text, rendered = renderQuerySourceAsText(m)
+        		}
+        	}
+        	if rendered && compact {
+        		text = compactToolWording(text)
+        		if tool != "prism_search" {
+        			text = h.once.applyKnown(text)
+        		}
+        	}
+        	return text, rendered
+        }
+        '''
+        marker="func legacyMCPTool(name string) bool {"
+        s=s.replace(marker, func.lstrip("\n")+"\n"+marker,1)
+        open(p,'w').write(s)
+        print(old[-600:])
+        EOF
+        gofmt -l internal/mcp; go build ./internal/mcp && echo ok
+      at: 2026-10-18T03:26:33.545998Z
+      classified: build
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/commands.go'
+        s=open(p).read()
+        # helper after invokeTool
+        helper='''
+        // invokeToolText runs a tool and renders its answer with the same renderer
+        // the MCP server uses (compact gateway wording), so --format text matches
+        // what an agent receives over MCP. rendered=false: caller prints out itself.
+        func invokeToolText(dir, tool string, args map[string]any) (out any, text string, rendered bool, err error) {
+        	root := mustAbs(dir)
+        	cfg, client, err := newClient(root)
+        	if err != nil {
+        		return nil, "", false, err
+        	}
+        	defer client.Shutdown()
+        	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
+        		return nil, "", false, err
+        	}
+        	h := mcp.NewHandler(cfg, root, client)
+        	out, err = h.Invoke(tool, args)
+        	if err != nil {
+        		return nil, "", false, err
+        	}
+        	text, rendered = h.RenderToolText(true, tool, args, out)
+        	return out, text, rendered, nil
+        }
+
+        // printToolResult prints the shared text rendering for --format text and
+        // falls back to the generic printer for other formats or unrendered shapes.
+        func printToolResult(out any, text string, rendered bool, format outputFormat) {
+        	if format == formatText && rendered {
+        		fmt.Print(text)
+        		if !strings.HasSuffix(text, "\\n") {
+        			fmt.Println()
+        		}
+        		return
+        	}
+        	printOutput(out, format)
+        }
+        '''
+        s=s.replace("\nfunc mustAbs(p string) string {", helper+"\nfunc mustAbs(p string) string {",1)
+        def rep(old,new):
+            global s
+            assert s.count(old)==1,(old,s.count(old))
+            s=s.replace(old,new)
+        rep('''	out, err := invokeTool(dir, "prism_change_impact", callArgs)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
+        		return 1
+        	}
+        	printOutput(out, format)''','''	out, text, rendered, err := invokeToolText(dir, "prism_change_impact", callArgs)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
+        		return 1
+        	}
+        	printToolResult(out, text, rendered, format)''')
+        rep('''	out, err := invokeTool(dir, "prism_query", invokeArgs)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, "query:", err)
+        		return 1
+        	}
+        	printOutput(out, format)''','''	out, text, rendered, err := invokeToolText(dir, "prism_query", invokeArgs)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, "query:", err)
+        		return 1
+        	}
+        	printToolResult(out, text, rendered, format)''')
+        rep('''	out, err := invokeTool(dir, "prism_read", readArgs)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, "read:", err)
+        		return 1
+        	}
+        	printOutput(out, format)''','''	out, text, rendered, err := invokeToolText(dir, "prism_read", readArgs)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, "read:", err)
+        		return 1
+        	}
+        	printToolResult(out, text, rendered, format)''')
+        rep('''	out, err := invokeTool(dir, "prism_lookup", callArgs)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, "lookup:", err)
+        		return 1
+        	}
+        	// A batch answer is {results:[{name,result}]}, which the generic text
+        	// printer does not know; render it the way MCP does.
+        	if format == formatText && len(bare) > 1 {
+        		if text, ok := mcp.RenderLookupText(out); ok {
+        			fmt.Print(text)
+        			return 0
+        		}
+        	}
+        	printOutput(out, format)''','''	out, text, rendered, err := invokeToolText(dir, "prism_lookup", callArgs)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, "lookup:", err)
+        		return 1
+        	}
+        	// A batch answer is {results:[{name,result}]}, which the generic text
+        	// printer does not know; render it the way MCP does.
+        	if format == formatText && len(bare) > 1 {
+        		if batch, ok := mcp.RenderLookupText(out); ok {
+        			fmt.Print(batch)
+        			return 0
+        		}
+        	}
+        	printToolResult(out, text, rendered, format)''')
+        open(p,'w').write(s)
+        EOF
+        go build ./... && SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && go build -o $SP/prism-new ./cmd/prism && SHOW=1 python3 -I $SP/parity.py $SP/prism-new $PWD 2>&1 | cut -c1-200
+      at: 2026-10-18T03:26:50.313932Z
+      classified: build
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && sed -i 's/capture_output=True, text=True)/capture_output=True, text=True, errors="replace")/' $SP/parity.py && SHOW=1 python3 -I $SP/parity.py $SP/prism-new $PWD 2>&1 | cut -c1-220; $SP/prism-new change-impact Handler.Invoke --format text | python3 -c "
+        import sys;b=sys.stdin.buffer.read()
+        try: b.decode()
+        except Exception as e: print(e); i=e.start; print(b[i-80:i+20])"
+      at: 2026-10-18T03:26:55.598492Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; $SP/prism-new change-impact Handler.Invoke --format text | grep -a -n "─" | cut -c1-120 | head -3; grep -n '"…"\|\.\.\."' internal/mcp/editsites.go | head; grep -n "\[:.*\] *+ *\"…\"\|\[:max.*…" internal/mcp/*.go | grep -v _test | head
+      at: 2026-10-18T03:27:01.399053Z
+      classified: other
+    - cmd: sed -n 545,557p internal/mcp/searchbudget.go; sed -n 4248,4257p internal/mcp/tools.go; sed -n 170,176p internal/mcp/editsites.go; sed -n 100,106p internal/mcp/othermentions.go; sed -n 922,928p internal/mcp/textmerge.go; grep -n "func truncateUTF8\|func cutUTF8\|func truncateRunes\|utf8.RuneStart" internal/mcp/*.go | grep -v _test | head
+      at: 2026-10-18T03:27:05.287854Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re
+        def sub(p, old, new):
+            s=open(p).read(); assert s.count(old)==1,(p,old); open(p,'w').write(s.replace(old,new))
+        sub('internal/mcp/searchbudget.go','func trimLineTo(s string, n int) string {','''// cutUTF8 returns s[:n] moved back to a rune boundary, so a byte-limit cut
+        // never leaves half a character in the output.
+        func cutUTF8(s string, n int) string {
+        	if n >= len(s) {
+        		return s
+        	}
+        	for n > 0 && !utf8Start(s[n]) {
+        		n--
+        	}
+        	return s[:n]
+        }
+
+        func trimLineTo(s string, n int) string {''')
+        sub('internal/mcp/editsites.go','text = text[:160] + "…"','text = cutUTF8(text, 160) + "…"')
+        sub('internal/mcp/othermentions.go','text = text[:140] + "…"','text = cutUTF8(text, 140) + "…"')
+        sub('internal/mcp/textmerge.go','text = text[:exhaustiveLineTextMax] + "…"','text = cutUTF8(text, exhaustiveLineTextMax) + "…"')
+        sub('internal/mcp/tools.go','return s[:max] + "…"\n}','return cutUTF8(s, max) + "…"\n}')
+        EOF
+        grep -n "func utf8Start" -A3 internal/mcp/*.go | head -5; go build ./... && SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && go build -o $SP/prism-new ./cmd/prism && sed -i '' 's/capture_output=True, text=True)/capture_output=True, text=True, errors="replace")/' $SP/parity.py && SHOW=1 python3 -I $SP/parity.py $SP/prism-new $PWD 2>&1 | cut -c1-220; $SP/prism-new change-impact Handler.Invoke --format text | python3 -c "import sys;sys.stdin.buffer.read().decode();print('utf8 ok')"
+      at: 2026-10-18T03:27:20.014028Z
+      classified: build
+    - cmd: grep -n '"// lookup \|// lookup %\|"// "+.*lookup' internal/mcp/*.go | grep -v _test | head; grep -n "Exact source for top hits\|Exact source for bounded enclosing" internal/mcp/*.go | grep -v _test | head
+      at: 2026-10-18T03:27:25.491581Z
+      classified: other
+    - cmd: sed -n 1,80p internal/mcp/oncenotes.go; sed -n 140,200p internal/mcp/lookupbatch.go; grep -n "func renderLookupAsText" -A25 internal/mcp/graphtext.go | head -45
+      at: 2026-10-18T03:27:29.660559Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/commands.go'
+        s=open(p).read()
+        old='''	var names any = bare[0]
+        	if len(bare) > 1 {
+        		names = bare
+        	}'''
+        new='''	var names any = bare[0]
+        	// Text output goes through the batch form even for one name: that is the
+        	// shape (and the "// lookup <name>" header) an agent gets over MCP.
+        	if len(bare) > 1 || format == formatText {
+        		names = bare
+        	}'''
+        assert s.count(old)==1
+        s=s.replace(old,new)
+        old2='''	if format == formatText && len(bare) > 1 {
+        		if batch, ok := mcp.RenderLookupText(out); ok {
+        			fmt.Print(batch)
+        			return 0
+        		}
+        	}
+        '''
+        assert s.count(old2)==1
+        s=s.replace(old2,'')
+        open(p,'w').write(s)
+        EOF
+        grep -n "func RenderLookupText" -B3 -A12 internal/mcp/*.go | head -30; go build ./... && echo built
+      at: 2026-10-18T03:27:40.465395Z
+      classified: build
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && python3 - <<EOF
+        s=open("$SP/parity.py").read()
+        head=s[:s.index("p = subprocess.Popen")]
+        rest=s[s.index("CASES = ["):]
+        cases=rest[:rest.index("only = ")]
+        tail='''only = sys.argv[3:]
+        def session():
+            p = subprocess.Popen([BIN, "mcp", "--compact", ROOT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, errors="replace", cwd=ROOT)
+            def rpc(i, method, params=None):
+                p.stdin.write(json.dumps({"jsonrpc":"2.0","id":i,"method":method,"params":params or {}})+"\\n"); p.stdin.flush()
+                return json.loads(p.stdout.readline())
+            rpc(1, "initialize", {"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"parity","version":"0"}})
+            p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\\n"); p.stdin.flush()
+            return p, rpc
+        bad=0
+        for i,(name,tool,args,cli) in enumerate(CASES, 10):
+            if only and name not in only: continue
+            p, rpc = session()
+            r = rpc(i, "tools/call", {"name":"prism","arguments":{"op":tool,"args":args}})
+            p.kill()
+            mcp = "".join(c["text"] for c in r.get("result",{}).get("content",[])) if "result" in r else "ERR "+json.dumps(r)
+            c = subprocess.run([BIN,*cli,"--format","text"], cwd=ROOT, capture_output=True, text=True, errors="replace")
+            cli_out = c.stdout or ("ERR "+c.stderr)
+            same = mcp.strip()==cli_out.strip()
+            bad += not same
+            print(f"{name:22s} mcp={len(mcp):6d}B cli={len(cli_out):6d}B {'IDENTICAL' if same else 'DIFFERENT'}")
+            if not same and os.environ.get("SHOW"):
+                for l in list(difflib.unified_diff(mcp.splitlines(), cli_out.splitlines(), "mcp", "cli", lineterm="", n=0))[:25]: print("   ", l[:200])
+        sys.exit(bad)
+        '''
+        open("$SP/parity.py","w").write(head+cases+tail)
+        EOF
+        go build -o $SP/prism-new ./cmd/prism && SHOW=1 python3 -I $SP/parity.py $SP/prism-new $PWD 2>&1 | cut -c1-220
+      at: 2026-10-18T03:27:49.842349Z
+      classified: build
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && cat > $SP/parity.py <<'EOF'
+        import json, subprocess, sys, difflib, os
+        BIN, ROOT = sys.argv[1], sys.argv[2]
+        CASES = [
+         ("change_impact", "change_impact", {"name":["printChangeImpactText"]}, ["change-impact","printChangeImpactText"]),
+         ("change_impact_method", "change_impact", {"name":["Handler.Invoke"]}, ["change-impact","Handler.Invoke"]),
+         ("lookup", "lookup", {"name":["mustAbs"]}, ["lookup","mustAbs"]),
+         ("lookup_two", "lookup", {"name":["mustAbs","invokeTool"]}, ["lookup","mustAbs","invokeTool"]),
+         ("read", "read", {"file":"internal/cli/portutil.go","from":1,"to":40}, ["read","internal/cli/portutil.go","--from","1","--to","40"]),
+         ("search_symbol", "search", {"terms":["mustAbs"]}, ["search","mustAbs"]),
+         ("search_text", "search", {"terms":["editSites"],"scope":"text","max_results":10}, ["search","editSites","--scope","text","--limit","10"]),
+         ("query", "query", {"terms":["renderChangeImpactAsText"]}, ["query","--terms","renderChangeImpactAsText"]),
+         ("verify", "verify", {}, ["verify"]),
+        ]
+        only = sys.argv[3:]
+        def session():
+            p = subprocess.Popen([BIN, "mcp", "--compact", ROOT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, errors="replace", cwd=ROOT)
+            def rpc(i, method, params=None):
+                p.stdin.write(json.dumps({"jsonrpc":"2.0","id":i,"method":method,"params":params or {}})+"\n"); p.stdin.flush()
+                return json.loads(p.stdout.readline())
+            rpc(1, "initialize", {"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"parity","version":"0"}})
+            p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\n"); p.stdin.flush()
+            return p, rpc
+        bad = 0
+        for i,(name,tool,args,cli) in enumerate(CASES, 10):
+            if only and name not in only: continue
+            p, rpc = session()
+            r = rpc(i, "tools/call", {"name":"prism","arguments":{"op":tool,"args":args}})
+            p.kill()
+            mcp = "".join(c["text"] for c in r.get("result",{}).get("content",[])) if "result" in r else "ERR "+json.dumps(r)
+            c = subprocess.run([BIN,*cli,"--format","text"], cwd=ROOT, capture_output=True, text=True, errors="replace")
+            cli_out = c.stdout or ("ERR "+c.stderr)
+            same = mcp.strip()==cli_out.strip()
+            bad += not same
+            print(f"{name:22s} mcp={len(mcp):6d}B cli={len(cli_out):6d}B {'IDENTICAL' if same else 'DIFFERENT'}")
+            if not same and os.environ.get("SHOW"):
+                for l in list(difflib.unified_diff(mcp.splitlines(), cli_out.splitlines(), "mcp", "cli", lineterm="", n=0))[:25]: print("   ", l[:200])
+        sys.exit(bad)
+        EOF
+        SHOW=1 python3 -I $SP/parity.py $SP/prism-new $PWD 2>&1 | cut -c1-220
+      at: 2026-10-18T03:28:06.538297Z
+      classified: other
+    - cmd: go vet ./internal/cli ./internal/mcp 2>&1 | tail -5; go test ./... 2>&1 | tail -25
+      at: 2026-10-18T03:29:15.597436Z
+      classified: lint
+    - cmd: pkill -TERM -f "runners/run_ttl.py" ; sleep 2; pkill -TERM -f "tail -n 0 -F .*cli-vs-mcp-2026-10-17/run.log"; sleep 2; ps aux | grep -E "run_ttl|run_e2e|claude -p|cli-vs-mcp" | grep -v grep | cut -c1-200; docker ps --format '{{.ID}} {{.Image}} {{.Names}}' 2>/dev/null | head
+      at: 2026-10-18T03:29:23.419103Z
+      classified: other
+    - cmd: docker ps --format '{{.ID}} {{.Names}} {{.RunningFor}} {{.Command}}' | cut -c1-200; docker stop 10414724d4cb; docker ps -q | wc -l; tail -3 /Users/tapabratapal/Projects/provasign/research/harness/results/cli-vs-mcp-2026-10-17/run.log | cut -c1-160
+      at: 2026-10-18T03:29:29.940906Z
+      classified: other
+    - cmd: sed -n 1,40p internal/cli/impacttext_test.go; grep -n "func captureStdout" internal/cli/*_test.go; sed -n 16,47p internal/mcp/editsites_test.go
+      at: 2026-10-18T03:30:44.354653Z
+      classified: other
+    - cmd: |-
+        cat > internal/mcp/rendertoolext_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"strings"
+        	"testing"
+        	"unicode/utf8"
+        )
+
+        // The CLI's --format text and the MCP server share RenderToolText, so an
+        // answer must carry the same evidence (edit sites) through both.
+        func TestRenderToolTextKeepsEditSitesForCLIAndMCP(t *testing.T) {
+        	h := evidenceHandler(t, map[string]string{
+        		"pkg/core.py": "class Group:\n    def get_command(self, ctx, name):\n        return None\n\n\ndef resolve(g: Group):\n    return g.get_command(None, 'x')\n",
+        	})
+        	args := map[string]any{"query": "Group.get_command"}
+        	out, err := h.Invoke("prism_change_impact", args)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	for _, compact := range []bool{true, false} {
+        		text, ok := h.RenderToolText(compact, "prism_change_impact", args, out)
+        		if !ok || !strings.Contains(text, "editSites (") || !strings.Contains(text, "pkg/core.py:2:9:") {
+        			t.Errorf("compact=%v lost edit sites (rendered=%v):\n%s", compact, ok, text)
+        		}
+        	}
+        }
+
+        func TestCutUTF8NeverSplitsACharacter(t *testing.T) {
+        	s := strings.Repeat("─", 100)
+        	for n := 0; n <= len(s)+1; n++ {
+        		if got := cutUTF8(s, n); !utf8.ValidString(got) || len(got) > n && n < len(s) {
+        			t.Fatalf("cutUTF8(n=%d) = %q (valid=%v)", n, got, utf8.ValidString(got))
+        		}
+        	}
+        	if got := cutUTF8("abc", 10); got != "abc" {
+        		t.Fatalf("short string changed: %q", got)
+        	}
+        }
+        EOF
+        go test ./internal/mcp -run 'TestRenderToolText|TestCutUTF8' 2>&1 | tail -8; git stash -q -- internal/mcp/server.go internal/mcp/editsites.go 2>/dev/null; git stash pop -q 2>/dev/null; git status --short | grep -v research
+      at: 2026-10-18T03:30:53.361786Z
+      classified: test
+    - cmd: |-
+        go build ./... && go test ./internal/cli 2>&1 | tail -2 && git add internal/cli/commands.go internal/mcp/editsites.go internal/mcp/othermentions.go internal/mcp/searchbudget.go internal/mcp/server.go internal/mcp/textmerge.go internal/mcp/tools.go internal/mcp/rendertoolext_test.go && git commit -q -F - <<'EOF'
+        cli: --format text renders through the same function as MCP
+
+        change-impact text from the CLI left out the exact editSites list that MCP
+        returns, and lookup/read/query differed in headers and tool wording. Both
+        transports now call Handler.RenderToolText. Nine ops compared against a
+        fresh compact MCP session are byte-identical.
+
+        Also fix byte-count truncations that could split a multi-byte character
+        (editSites, otherMentions, exhaustive text, summarize); MCP's JSON encoding
+        had hidden the invalid UTF-8, the CLI printed it raw.
+
+        Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB
+        EOF
+        git log --oneline -1; git status --short | grep -v research
+      at: 2026-10-18T03:31:02.258169Z
+      classified: test
+    - cmd: sed -n '/^  prism init/,/^  prism cleanup/p' internal/cli/commands.go | head -30; grep -n "func cmdInit" internal/cli/*.go; grep -n "bufio\|isatty\|IsTerminal\|ModeCharDevice\|--yes\|--no-prompt\|promptChoice" internal/cli/commands.go | head -20
+      at: 2026-10-18T03:32:20.621606Z
+      classified: other
+    - cmd: sed -n 125,150p internal/cli/commands.go; sed -n 329,560p internal/cli/commands.go
+      at: 2026-10-18T03:32:22.966142Z
+      classified: other
+    - cmd: grep -n "func writeSteeringInstructions\|func initRegisterMCPTools\|func promptHarnesses\|func harnessYAMLLine\|func readRecordedHarnesses\|func steeringBlock\|func .*[Ss]teering.*(" internal/cli/*.go | grep -v _test; ls internal/cli/assets
+      at: 2026-10-18T03:32:29.189479Z
+      classified: other
+    - cmd: sed -n 1010,1260p internal/cli/commands.go
+      at: 2026-10-18T03:32:32.431127Z
+      classified: other
+    - cmd: sed -n 575,600p internal/cli/commands.go; sed -n 803,1010p internal/cli/commands.go
+      at: 2026-10-18T03:32:32.434161Z
+      classified: other
+    - cmd: grep -n "steeringInstructions" internal/cli/*.go | head; sed -n 25,70p docs/research/cli-bugfix-text-2026-10-17/run_cli_text.py; sed -n 620,700p internal/cli/commands.go; wc -l internal/cli/steeringdelivery_test.go
+      at: 2026-10-18T03:32:38.87718Z
+      classified: other
+    - cmd: grep -n "func ensureClaudeCodeApproval" -A60 internal/cli/commands.go | head -100; grep -n "func writePrismCodexConfig\|func removePrismCodex\|func removeJSONMapEntry\|func removeLegacyGlobalMCP" internal/cli/*.go
+      at: 2026-10-18T03:32:44.551417Z
+      classified: other
+    - cmd: prism change-impact mergePrismYAML --format text 2>&1 | head -30; prism change-impact writeSteeringInstructions --format text 2>&1 | grep -A12 editSites | head -20; prism change-impact promptHarnesses --format text 2>&1 | grep -A8 editSites | head -12; prism change-impact steeringBlock --format text 2>&1 | grep -A8 editSites | head -12
+      at: 2026-10-18T03:32:53.251814Z
+      classified: other
+    - cmd: |-
+        cat > internal/cli/surface.go <<'EOF'
+        package cli
+
+        import (
+        	"bufio"
+        	"fmt"
+        	"os"
+        	"path/filepath"
+        	"strconv"
+        	"strings"
+        )
+
+        // Prism reaches an agent over one of two interfaces. MCP registers the
+        // compact gateway in each harness's project config. CLI registers nothing:
+        // the agent runs `prism ...` through its shell, so no MCP tool schema sits in
+        // its context. Init asks, records the answer in prism.yaml, and re-init
+        // (--yes, --refresh) reuses it.
+        const (
+        	interfaceMCP = "mcp"
+        	interfaceCLI = "cli"
+        )
+
+        // stdinReader is shared by every init prompt: a second bufio.Reader on a
+        // piped stdin would lose whatever the first one had already buffered.
+        var stdinReader *bufio.Reader
+
+        func initStdin() *bufio.Reader {
+        	if stdinReader == nil {
+        		stdinReader = bufio.NewReader(os.Stdin)
+        	}
+        	return stdinReader
+        }
+
+        func parseInterface(v string) (string, error) {
+        	switch strings.ToLower(strings.TrimSpace(v)) {
+        	case "mcp":
+        		return interfaceMCP, nil
+        	case "cli":
+        		return interfaceCLI, nil
+        	}
+        	return "", fmt.Errorf("--interface must be mcp or cli, got %q", v)
+        }
+
+        // readRecordedInterface returns the interface prism.yaml records, or "" when
+        // none is recorded (files written before init asked).
+        func readRecordedInterface(path string) string {
+        	raw, err := os.ReadFile(path)
+        	if err != nil {
+        		return ""
+        	}
+        	for _, line := range strings.Split(string(raw), "\n") {
+        		trimmed := strings.TrimSpace(line)
+        		if line != trimmed || !strings.HasPrefix(trimmed, "interface:") {
+        			continue
+        		}
+        		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "interface:"))
+        		if unquoted, err := strconv.Unquote(value); err == nil {
+        			value = unquoted
+        		}
+        		if v, err := parseInterface(value); err == nil {
+        			return v
+        		}
+        	}
+        	return ""
+        }
+
+        // setPrismYAMLInterface rewrites or appends the top-level interface key and
+        // touches nothing else.
+        func setPrismYAMLInterface(yaml, iface string) string {
+        	line := "interface: " + strconv.Quote(iface)
+        	lines := strings.Split(yaml, "\n")
+        	for i, l := range lines {
+        		if l == strings.TrimSpace(l) && strings.HasPrefix(l, "interface:") {
+        			lines[i] = line
+        			return strings.Join(lines, "\n")
+        		}
+        	}
+        	return strings.TrimRight(yaml, "\n") + "\n" + line + "\n"
+        }
+
+        // promptInterface asks how agents should reach Prism. Enter takes the default.
+        func promptInterface(recorded string) (string, error) {
+        	def, defNum := interfaceMCP, "1"
+        	if recorded == interfaceCLI {
+        		def, defNum = interfaceCLI, "2"
+        	}
+        	fmt.Fprintln(os.Stderr, "\nHow should agents reach Prism?")
+        	fmt.Fprintln(os.Stderr, "  [1] MCP  register the Prism MCP server in each harness (tool schemas load into the agent's context)")
+        	fmt.Fprintln(os.Stderr, "  [2] CLI  no MCP server; agents run `prism ...` in their shell (nothing registered)")
+        	fmt.Fprintf(os.Stderr, "Select interface [default: %s]: ", defNum)
+        	line, err := initStdin().ReadString('\n')
+        	if err != nil && len(line) == 0 {
+        		return "", err
+        	}
+        	switch strings.ToLower(strings.TrimSpace(line)) {
+        	case "":
+        		return def, nil
+        	case "1", "mcp":
+        		return interfaceMCP, nil
+        	case "2", "cli":
+        		return interfaceCLI, nil
+        	}
+        	return "", fmt.Errorf("unknown interface %q; enter 1 (MCP) or 2 (CLI)", strings.TrimSpace(line))
+        }
+
+        // unregisterMCPTools removes Prism's own MCP entry from the selected
+        // harnesses' project configs, so choosing CLI after MCP leaves no server
+        // registered. Other servers in those files are untouched.
+        func unregisterMCPTools(projectDir string, harnesses []string) {
+        	type target struct {
+        		harness, name, rel string
+        		keys               []string
+        	}
+        	for _, t := range []target{
+        		{"claude", "Claude Code", ".mcp.json", []string{"mcpServers"}},
+        		{"cursor", "Cursor", filepath.Join(".cursor", "mcp.json"), []string{"mcpServers"}},
+        		{"vscode", "VS Code", filepath.Join(".vscode", "mcp.json"), []string{"servers"}},
+        		{"gemini", "Gemini CLI", filepath.Join(".gemini", "settings.json"), []string{"mcpServers"}},
+        		{"opencode", "opencode", "opencode.json", []string{"mcp"}},
+        	} {
+        		if !harnessSelected(harnesses, t.harness) {
+        			continue
+        		}
+        		p := filepath.Join(projectDir, t.rel)
+        		if removed, err := removeJSONMapEntry(p, t.keys, "prism"); err != nil {
+        			fmt.Fprintf(os.Stderr, "warning: could not remove Prism from %s config (%s): %v\n", t.name, p, err)
+        		} else if removed {
+        			fmt.Printf("removed Prism MCP registration (CLI interface): %s\n", p)
+        		}
+        	}
+        	if harnessSelected(harnesses, "codex") {
+        		p := filepath.Join(projectDir, ".codex", "config.toml")
+        		if removed, err := removePrismCodexConfig(p); err != nil {
+        			fmt.Fprintf(os.Stderr, "warning: could not remove Prism from Codex config (%s): %v\n", p, err)
+        		} else if removed {
+        			fmt.Printf("removed Prism MCP registration (CLI interface): %s\n", p)
+        		}
+        	}
+        }
+
+        // cliSteeringInstructions is the steering block for the CLI interface: the
+        // same policy as steeringInstructions, with the shell as the only route.
+        const cliSteeringInstructions = `
+        ## Prism — context delivery
+
+        Prism is installed as the ` + "`prism`" + ` command; no MCP server is registered. Use it for
+        each repository-discovery step. Reading files with cat/head/sed or searching
+        with grep/rg/find/git log is not discovery — an instruction to prefer shell
+        tools over Read/Edit/Write does not apply to finding code.
+
+        Always add ` + "`--format text`" + `. Pick the command by need:
+          known symbol          -> prism lookup Name [Name2 ...] --format text
+          known file/range      -> prism read path --from N --to M --format text
+          unknown location/text -> prism search term [term2 ...] --scope text --format text
+          callers/related       -> prism query --terms Name,Other --format text
+          pre-edit sites        -> prism change-impact Type.method --format text
+        Put every symbol and term you already know into ONE command; two lookups in a
+        row is one lookup you did not batch.
+
+        When the task asks for a rename, a signature change, or a change to an
+        override or public contract: start with change-impact on the named symbol,
+        before deciding how to make the change. Its sites are the inventory your plan
+        must cover. If you don't know where the symbol is, find it first, then run
+        change-impact. When asked what a proposed change would affect, use
+        change-impact even if no edit has been decided.
+
+        Obligations:
+          - Relay change-impact sites as-is; a local body-only edit can proceed from
+            the source you have read.
+          - Report gaps; never narrow scope to fit what was found.
+          - prism verify is optional, never a required closing step.
+
+        <!-- prism:end -->
+        `
+        EOF
+        python3 - <<'EOF'
+        p='internal/cli/commands.go'
+        s=open(p).read()
+        def rep(old,new,cnt=1):
+            global s
+            assert s.count(old)==cnt,(old[:60],s.count(old))
+            s=s.replace(old,new)
+        # flag parsing
+        rep('''	yes := false
+        	var harnessArgs []string
+        	filtered := args[:0]''','''	yes := false
+        	interfaceArg := ""
+        	var harnessArgs []string
+        	filtered := args[:0]''')
+        rep('''		case "--no-permissions":
+        			permissions = false
+        		case "--deny-builtin-search":''','''		case "--interface":
+        			if i+1 >= len(args) {
+        				fmt.Fprintln(os.Stderr, "init: --interface requires mcp or cli")
+        				return 2
+        			}
+        			iface, err := parseInterface(args[i+1])
+        			if err != nil {
+        				fmt.Fprintln(os.Stderr, "init:", err)
+        				return 2
+        			}
+        			interfaceArg = iface
+        			i++
+        		case "--no-permissions":
+        			permissions = false
+        		case "--deny-builtin-search":''')
+        # choose interface after harness selection
+        rep('''	// If mode not set by flag, prompt interactively (or default to "both" if
+        	// stdin is not a terminal, e.g. in CI or when piped).
+        ''','''	// Interface: the flag wins; then --refresh/--yes reuse what prism.yaml
+        	// records; an interactive init asks; anything else keeps MCP, the
+        	// behavior before init asked.
+        	recordedInterface := readRecordedInterface(prismYAML)
+        	iface := interfaceArg
+        	if iface == "" {
+        		switch {
+        		case refresh || yes:
+        			iface = recordedInterface
+        		case isInteractive():
+        			iface, err = promptInterface(recordedInterface)
+        			if err != nil {
+        				fmt.Fprintln(os.Stderr, "init:", err)
+        				return 2
+        			}
+        		}
+        	}
+        	if iface == "" {
+        		iface = interfaceMCP
+        	}
+
+        ''')
+        rep('''		yaml = mergePrismYAML(string(existing), cfg.Profile, harnesses)
+        	}
+        	if err := os.WriteFile(prismYAML''','''		yaml = mergePrismYAML(string(existing), cfg.Profile, harnesses)
+        	}
+        	yaml = setPrismYAMLInterface(yaml, iface)
+        	if err := os.WriteFile(prismYAML''')
+        rep('''	writeSteeringInstructions(abs, harnesses, refresh)
+        ''','''	writeSteeringInstructions(abs, harnesses, refresh, iface)
+        ''')
+        rep('''	registered := initRegisterMCPTools(abs, prismBin, harnesses, permissions, refresh, denyBuiltinSearch)
+        	if len(registered) == 0 {''','''	if iface == interfaceCLI {
+        		unregisterMCPTools(abs, harnesses)
+        		if harnessSelected(harnesses, "claude") && permissions {
+        			allowClaudeBashPrism(filepath.Join(abs, ".claude", "settings.json"))
+        		}
+        		fmt.Println("interface: cli — no MCP server registered; agents run `prism` in their shell")
+        		return 0
+        	}
+        	registered := initRegisterMCPTools(abs, prismBin, harnesses, permissions, refresh, denyBuiltinSearch)
+        	if len(registered) == 0 {''')
+        # steering writer
+        rep('func writeSteeringInstructions(projectDir string, harnesses []string, refresh bool) {','func writeSteeringInstructions(projectDir string, harnesses []string, refresh bool, iface string) {')
+        rep('	block := steeringBlock()\n','	block := steeringBlock()\n	if iface == interfaceCLI {\n		block = cliSteeringInstructions\n	}\n')
+        # shared reader
+        rep('	reader := bufio.NewReader(os.Stdin)\n	line, err := reader.ReadString','	reader := initStdin()\n	line, err := reader.ReadString')
+        rep('	fmt.Fprintf(os.Stderr, "Prism will configure project-local compact MCP and steering for: %s\\n", strings.Join(selected, ", "))','	fmt.Fprintf(os.Stderr, "Prism will configure project-local steering (and MCP, if you choose it next) for: %s\\n", strings.Join(selected, ", "))')
+        open(p,'w').write(s)
+        EOF
+        grep -n "writeSteeringInstructions(" internal/cli/*.go; go build ./... 2>&1 | head
+      at: 2026-10-18T03:33:18.786572Z
+      classified: build
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/commands.go'
+        s=open(p).read()
+        def rep(old,new):
+            global s
+            assert s.count(old)==1,old[:60]
+            s=s.replace(old,new)
+        rep('	writeSteeringInstructions(abs, harnesses, refresh, iface)\n','''	steering := steeringBlock()
+        	if iface == interfaceCLI {
+        		steering = cliSteeringInstructions
+        	}
+        	writeSteeringBlock(abs, harnesses, refresh, steering)
+        ''')
+        rep('func writeSteeringInstructions(projectDir string, harnesses []string, refresh bool, iface string) {','''func writeSteeringInstructions(projectDir string, harnesses []string, refresh bool) {
+        	writeSteeringBlock(projectDir, harnesses, refresh, steeringBlock())
+        }
+
+        // writeSteeringBlock is writeSteeringInstructions with the block chosen by
+        // the caller (MCP steering or CLI steering).
+        func writeSteeringBlock(projectDir string, harnesses []string, refresh bool, block string) {''')
+        rep('	block := steeringBlock()\n	if iface == interfaceCLI {\n		block = cliSteeringInstructions\n	}\n','')
+        rep('	"bufio"\n','')
+        open(p,'w').write(s)
+        EOF
+        cat >> internal/cli/surface.go <<'EOF'
+
+        // allowClaudeBashPrism lets Claude Code run `prism` without a prompt per
+        // call, the CLI counterpart of the mcp__prism auto-allow.
+        func allowClaudeBashPrism(path string) {
+        	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+        		return
+        	}
+        	var doc map[string]any
+        	if raw, err := os.ReadFile(path); err == nil {
+        		if json.Unmarshal(raw, &doc) != nil {
+        			return // not ours to rewrite
+        		}
+        	}
+        	if doc == nil {
+        		doc = map[string]any{}
+        	}
+        	perms, _ := doc["permissions"].(map[string]any)
+        	if perms == nil {
+        		perms = map[string]any{}
+        	}
+        	allow, _ := perms["allow"].([]any)
+        	const rule = "Bash(prism:*)"
+        	if containsString(allow, rule) {
+        		return
+        	}
+        	perms["allow"] = append(allow, rule)
+        	doc["permissions"] = perms
+        	out, err := json.MarshalIndent(doc, "", "  ")
+        	if err != nil {
+        		return
+        	}
+        	_ = os.WriteFile(path, append(out, '\n'), 0o644)
+        }
+        EOF
+        sed -i '' 's#^import (#import (\n\t"encoding/json"#' internal/cli/surface.go && gofmt -w internal/cli/surface.go && go build ./... && go vet ./internal/cli && echo ok
+      at: 2026-10-18T03:33:29.737367Z
+      classified: lint
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/commands.go'
+        s=open(p).read()
+        old='  --yes, -y           reuse harnesses recorded in prism.yaml without prompting\n'
+        new='''  --interface <mcp|cli>
+                              how agents reach Prism: mcp registers the MCP server, cli
+                              registers nothing and steers agents to the prism command
+                              (asked interactively; recorded in prism.yaml; default mcp)
+        '''+old
+        assert s.count(old)==1
+        open(p,'w').write(s.replace(old,new))
+        EOF
+        cat > internal/cli/surface_test.go <<'EOF'
+        package cli
+
+        import (
+        	"os"
+        	"path/filepath"
+        	"strings"
+        	"testing"
+        )
+
+        func TestParseInterface(t *testing.T) {
+        	for in, want := range map[string]string{"mcp": "mcp", "CLI": "cli", " cli ": "cli"} {
+        		if got, err := parseInterface(in); err != nil || got != want {
+        			t.Errorf("parseInterface(%q) = %q, %v", in, got, err)
+        		}
+        	}
+        	if _, err := parseInterface("both"); err == nil {
+        		t.Error("both must be rejected")
+        	}
+        }
+
+        func TestSetPrismYAMLInterfaceKeepsOtherLines(t *testing.T) {
+        	in := "version: 2\narch_deny: \"a -> b\"\n"
+        	out := setPrismYAMLInterface(in, "cli")
+        	if !strings.Contains(out, "arch_deny: \"a -> b\"") || !strings.Contains(out, `interface: "cli"`) {
+        		t.Fatalf("got %q", out)
+        	}
+        	again := setPrismYAMLInterface(out, "mcp")
+        	if strings.Count(again, "interface:") != 1 || !strings.Contains(again, `interface: "mcp"`) {
+        		t.Fatalf("rewrite duplicated or missed the key: %q", again)
+        	}
+        	p := filepath.Join(t.TempDir(), "prism.yaml")
+        	os.WriteFile(p, []byte(again), 0o644)
+        	if got := readRecordedInterface(p); got != "mcp" {
+        		t.Fatalf("recorded = %q", got)
+        	}
+        }
+
+        func TestInitCLIInterfaceRegistersNoMCP(t *testing.T) {
+        	dir := t.TempDir()
+        	// An earlier MCP init left a server entry; CLI init must remove only Prism's.
+        	os.WriteFile(filepath.Join(dir, ".mcp.json"), []byte(`{"mcpServers":{"prism":{"command":"prism","args":["mcp"]},"other":{"command":"x"}}}`), 0o644)
+        	if rc := cmdInit([]string{"--harness", "claude", "--interface", "cli", dir}); rc != 0 {
+        		t.Fatalf("rc=%d", rc)
+        	}
+        	mcpJSON, _ := os.ReadFile(filepath.Join(dir, ".mcp.json"))
+        	if strings.Contains(string(mcpJSON), `"prism"`) || !strings.Contains(string(mcpJSON), `"other"`) {
+        		t.Errorf(".mcp.json = %s", mcpJSON)
+        	}
+        	claude, _ := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+        	if !strings.Contains(string(claude), "no MCP server is registered") || strings.Contains(string(claude), "mcp__prism__prism") {
+        		t.Errorf("CLAUDE.md is not CLI steering:\n%s", claude)
+        	}
+        	settings, _ := os.ReadFile(filepath.Join(dir, ".claude", "settings.json"))
+        	if !strings.Contains(string(settings), "Bash(prism:*)") {
+        		t.Errorf("settings = %s", settings)
+        	}
+        	if got := readRecordedInterface(filepath.Join(dir, "prism.yaml")); got != "cli" {
+        		t.Errorf("recorded interface = %q", got)
+        	}
+        	// --refresh reuses the recorded choice instead of reverting to MCP.
+        	if rc := cmdInit([]string{"--harness", "claude", "--refresh", dir}); rc != 0 {
+        		t.Fatalf("refresh rc=%d", rc)
+        	}
+        	if _, err := os.Stat(filepath.Join(dir, ".mcp.json")); err == nil {
+        		b, _ := os.ReadFile(filepath.Join(dir, ".mcp.json"))
+        		if strings.Contains(string(b), `"prism"`) {
+        			t.Errorf("refresh re-registered MCP: %s", b)
+        		}
+        	}
+        }
+
+        func TestInitDefaultsToMCPWhenNotInteractive(t *testing.T) {
+        	dir := t.TempDir()
+        	if rc := cmdInit([]string{"--harness", "claude", dir}); rc != 0 {
+        		t.Fatalf("rc=%d", rc)
+        	}
+        	b, _ := os.ReadFile(filepath.Join(dir, ".mcp.json"))
+        	if !strings.Contains(string(b), `"prism"`) {
+        		t.Errorf("MCP not registered by default: %s", b)
+        	}
+        	if got := readRecordedInterface(filepath.Join(dir, "prism.yaml")); got != "mcp" {
+        		t.Errorf("recorded interface = %q", got)
+        	}
+        }
+        EOF
+        go test ./internal/cli 2>&1 | tail -20
+      at: 2026-10-18T03:33:48.789672Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/surface.go'
+        s=open(p).read()
+        old='''	if err != nil && len(line) == 0 {
+        		return "", err
+        	}
+        	switch strings.ToLower(strings.TrimSpace(line)) {'''
+        new='''	if err != nil && len(line) == 0 {
+        		// No input at all (stdin closed or /dev/null, which the terminal
+        		// check cannot tell apart): take the default instead of failing init.
+        		fmt.Fprintln(os.Stderr)
+        		return def, nil
+        	}
+        	switch strings.ToLower(strings.TrimSpace(line)) {'''
+        assert s.count(old)==1
+        open(p,'w').write(s.replace(old,new))
+        EOF
+        go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -15; echo done
+      at: 2026-10-18T03:34:46.137453Z
+      classified: test
+    - cmd: go test ./internal/cli 2>&1 | grep -E "^(--- FAIL|\s+\w+_test.go)" | head
+      at: 2026-10-18T03:34:57.223518Z
+      classified: test
+    - cmd: sed -n 100,160p internal/cli/init_scope_test.go
+      at: 2026-10-18T03:34:59.32396Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/surface.go'
+        s=open(p).read()
+        old=s[s.index("var stdinReader"):s.index("func parseInterface")]
+        new='''var (
+        	stdinReader *bufio.Reader
+        	stdinFile   *os.File
+        )
+
+        // initStdin returns the one buffered reader for os.Stdin; it is rebuilt if
+        // os.Stdin was replaced.
+        func initStdin() *bufio.Reader {
+        	if stdinReader == nil || stdinFile != os.Stdin {
+        		stdinReader, stdinFile = bufio.NewReader(os.Stdin), os.Stdin
+        	}
+        	return stdinReader
+        }
+
+        '''
+        open(p,'w').write(s.replace(old,new))
+        EOF
+        gofmt -l internal/cli; go test ./... 2>&1 | grep -v "no test files" | tail -14
+      at: 2026-10-18T03:35:12.155371Z
+      classified: test
+    - cmd: gofmt -d internal/cli/commands.go | head -20; git show HEAD:internal/cli/commands.go | gofmt -l 2>&1 | head -2
+      at: 2026-10-18T03:35:15.052122Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go && SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && go build -o $SP/prism-init ./cmd/prism && for choice in 2 ""; do d=$(mktemp -d $SP/proj.XXXX); printf 'print(1)\n' > $d/a.py; printf "1\ny\n$choice\n" | $SP/prism-init init $d 2>&1 | grep -E "interface|registered|Select|steering" ; echo "-- files:"; ls -A $d | tr '\n' ' '; grep interface $d/prism.yaml; echo; done
+      at: 2026-10-18T03:35:22.540144Z
+      classified: build
+    - cmd: 'SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && for choice in 2 ""; do d=$(mktemp -d $SP/proj.XXXX); printf ''print(1)\n'' > $d/a.py; (sleep 1; printf ''1\n''; sleep 1; printf ''y\n''; sleep 1; printf "$choice\n"; sleep 2) | script -q /dev/null $SP/prism-init init $d 2>&1 | tr -d ''\r'' | grep -E "interface|registered|Select|\[1\] MCP|\[2\] CLI" ; echo "-- files: $(ls -A $d | tr ''\n'' '' '')"; grep interface $d/prism.yaml; done'
+      at: 2026-10-18T03:35:37.519627Z
+      classified: other
+    - cmd: |-
+        go vet ./internal/cli && git add internal/cli/surface.go internal/cli/surface_test.go internal/cli/commands.go && git commit -q -F - <<'EOF'
+        init: ask whether agents reach Prism over MCP or the CLI
+
+        Interactive init now asks after harness selection. MCP (default) registers
+        the compact gateway as before. CLI registers nothing, removes Prism's own
+        MCP entry from the selected harnesses' project configs, writes CLI-only
+        steering, and allows Bash(prism:*) for Claude Code. The choice is recorded
+        as interface: in prism.yaml; --refresh and --yes reuse it, --interface
+        mcp|cli sets it without a prompt, and non-interactive init keeps MCP.
+        A closed stdin takes the default instead of failing.
+
+        Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB
+        EOF
+        git log --oneline -2
+      at: 2026-10-18T03:35:43.394568Z
+      classified: lint
+    - cmd: git status --short | head -20; git log --oneline -8; git fetch -q 2>&1 | tail -1; git log --oneline HEAD..origin/main 2>/dev/null | head
+      at: 2026-10-18T04:50:14.661887Z
+      classified: other
+    - cmd: git diff --stat; git diff -- README.md internal/cli/commands.go internal/cli/surface.go internal/cli/viewcmds.go internal/mcp/compactargs.go internal/mcp/graphtext.go | head -400
+      at: 2026-10-18T04:50:16.92154Z
+      classified: other
+    - cmd: go build ./... && go vet ./internal/... 2>&1 | tail -5; go test ./internal/cli ./internal/mcp 2>&1 | grep -v "^wrote\|^registered\|^removed" | tail -8; grep -rn "renderVerifyText(" internal --include=*.go | head -5; git diff -- internal/cli/coverage_test.go internal/cli/surface_test.go | grep '^[+-]' | head -60
+      at: 2026-10-18T04:51:17.997052Z
+      classified: lint
+    - cmd: git log --oneline -4; git status --short | grep -v research; SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; go build -o $SP/prism-head ./cmd/prism && SHOW=1 python3 -I $SP/parity.py $SP/prism-head $PWD 2>&1 | cut -c1-200
+      at: 2026-10-18T16:54:57.069669Z
+      classified: build
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; python3 - <<EOF
+        s=open("$SP/parity.py").read()
+        s=s.replace(' ("verify", "verify", {}, ["verify"]),\n',''' ("verify", "verify", {}, ["verify"]),
+         ("read_clamped", "read", {"file":"internal/cli/commands.go","from":1,"to":600}, ["read","internal/cli/commands.go","--from","1","--to","600"]),
+         ("read_whole", "read", {"file":"internal/cli/surface.go"}, ["read","internal/cli/surface.go"]),
+         ("verify_removed", "verify", {"removed_symbols":["renderVerifyText","mustAbs"]}, ["verify","--removed","renderVerifyText,mustAbs"]),
+         ("lookup_missing", "lookup", {"name":["noSuchSymbolXyz"]}, ["lookup","noSuchSymbolXyz"]),
+        ''')
+        open("$SP/parity2.py","w").write(s)
+        EOF
+        SHOW=1 python3 -I $SP/parity2.py $SP/prism-head $PWD read_clamped read_whole verify_removed lookup_missing 2>&1 | cut -c1-200
+      at: 2026-10-18T16:55:05.91127Z
+      classified: other
+    - cmd: grep -n "^type Handler struct" -A45 internal/mcp/tools.go | head -80; grep -rn "session\." internal/session/*.go | head -0; ls internal/session internal/httpapi; grep -n "func.*Session\|type Session" internal/session/*.go | grep -v _test | head
+      at: 2026-10-18T16:58:09.578397Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results 2>/dev/null && ls | head -30; ls cli-vs-mcp-2026-10-17 | head; find . -name "*.jsonl" -path "*transcript*" 2>/dev/null | head -3; find . -name "*.jsonl" 2>/dev/null | wc -l
+      at: 2026-10-18T16:59:03.198804Z
+      classified: other
+    - cmd: |-
+        grep -n "already delivered\|already in your context\|unchanged since\|already sent\|same as earlier" internal/mcp/*.go internal/session/*.go | grep -v _test | head -12; sed -n 80,140p internal/mcp/oncenotes.go; cd ../research/harness/results; python3 - <<'EOF'
+        import json
+        f="bench-v0879-java13-2026-10-12/transcripts/FasterXML__jackson-databind__pr6042.claude-sonnet-5-5.prism_init.jsonl"
+        n=0
+        for l in open(f):
+            d=json.loads(l)
+            s=json.dumps(d)[:300]
+            if 'prism' in s and n<3: print(s); n+=1
+        EOF
+      at: 2026-10-18T16:59:14.266527Z
+      classified: other
+    - cmd: sed -n 165,185p internal/mcp/delivery.go; grep -n "sessionPointer\|sha pointer\|\"pointer\"\|sameAsDelivered\|unchanged" internal/mcp/delivery.go | head -8
+      at: 2026-10-18T16:59:21.667529Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad/sessions.py <<'EOF'
+        import json, glob, re, sys, collections
+        files = glob.glob("*/transcripts/*.prism_init.jsonl") + glob.glob("*/transcripts/*.prism.jsonl")
+        pat = {
+         "prism:cached": re.compile(r"\[prism:cached\]"),
+         "cached-content": re.compile(r"content already delivered this session"),
+         "range-pointer": re.compile(r"already (?:delivered|in (?:your )?context)"),
+         "once-short": re.compile(r"^// (no matches|no symbol matches|locator result|by enclosing symbol:|bounded rollup by enclosing|indexed project graph only|complete for this repository \(compiler-backed\)|call expressions are name-matched|includes name-derived|no call expression shown|\d+ more files omitted|\d+ files match —)", re.M),
+        }
+        tot_sessions=0; tot_calls=0; tot_bytes=0
+        hits=collections.Counter(); sess_with=collections.Counter(); per_op=collections.Counter()
+        lens=[]
+        for f in files:
+            calls=0; b=0; seen=set(); idmap={}
+            try:
+                for l in open(f):
+                    d=json.loads(l)
+                    m=d.get("message") or {}
+                    c=m.get("content")
+                    if not isinstance(c,list): continue
+                    for blk in c:
+                        if blk.get("type")=="tool_use" and "prism" in blk.get("name",""):
+                            idmap[blk["id"]]=(blk.get("input") or {}).get("op","?")
+                        if blk.get("type")=="tool_result" and blk.get("tool_use_id") in idmap:
+                            t=blk.get("content")
+                            if isinstance(t,list): t="".join(x.get("text","") for x in t if isinstance(x,dict))
+                            t=t or ""
+                            calls+=1; b+=len(t); per_op[idmap[blk["tool_use_id"]]]+=len(t)
+                            for k,p in pat.items():
+                                n=len(p.findall(t))
+                                if n: hits[k]+=n; seen.add(k)
+            except Exception as e:
+                continue
+            if calls:
+                tot_sessions+=1; tot_calls+=calls; tot_bytes+=b; lens.append(calls)
+                for k in seen: sess_with[k]+=1
+        print("sessions",tot_sessions,"prism results",tot_calls,"bytes",tot_bytes, "median calls/session", sorted(lens)[len(lens)//2], "max", max(lens))
+        print("hits",dict(hits)); print("sessions with",dict(sess_with)); print("bytes by op",dict(per_op))
+        EOF
+        python3 -I /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad/sessions.py
+      at: 2026-10-18T16:59:31.288311Z
+      classified: other
+    - cmd: |-
+        cat > internal/mcp/zz_tmp_test.go <<'EOF'
+        package mcp
+        import ("fmt";"testing")
+        func TestZZLens(t *testing.T){
+         for k,v:=range onceFixed{ if len(k)-len(v)>40 {fmt.Printf("SAVE %4d  %q\n",len(k)-len(v),k[:min(70,len(k))])}}
+        }
+        EOF
+        go test ./internal/mcp -run TestZZLens -v 2>&1 | grep SAVE | sort -rn; rm internal/mcp/zz_tmp_test.go
+      at: 2026-10-18T16:59:45.718905Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 -I - <<'EOF'
+        import json, glob, collections
+        files = glob.glob("*/transcripts/*.prism_init.jsonl") + glob.glob("*/transcripts/*.prism.jsonl")
+        rep=collections.Counter(); first=collections.Counter(); sess=0; multi=0; tot_bytes=0
+        for f in files:
+            seen=collections.Counter(); ops=[]
+            for l in open(f):
+                try: d=json.loads(l)
+                except: continue
+                c=(d.get("message") or {}).get("content")
+                if not isinstance(c,list): continue
+                for b in c:
+                    if b.get("type")=="tool_use" and "prism" in b.get("name",""): ops.append((b.get("input") or {}).get("op","?"))
+            if not ops: continue
+            sess+=1; multi+= len(ops)>1
+            for op in ops:
+                (rep if seen[op] else first)[op]+=1; seen[op]+=1
+        print("sessions",sess,"with >1 prism call",multi)
+        print("first-of-op",dict(first)); print("repeat-of-op",dict(rep))
+        # upper bound: bytes a stateless CLI re-adds on each repeat (note sizes from onceFixed)
+        ub = rep["search"]*(155+117+52) + rep["change_impact"]*(146+138+64+149+109)
+        print("upper-bound extra bytes",ub,"= ~",ub//4,"tokens over",sess,"sessions; per multi-call session ~",ub//max(multi,1),"bytes")
+        EOF
+      at: 2026-10-18T16:59:52.875564Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/docs/research/cli-mcp-timing-large-2026-10-17 && sed -n 1,40p REPORT.md | cut -c1-400; cat fixtures.json; ls ~/Projects/provasign/research/corpus 2>/dev/null | head -30; ls /tmp/ci-corpus 2>/dev/null | head
+      at: 2026-10-18T17:01:46.081652Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls; ls harness | head -30; grep -rn "corpus-root\|CORPUS_ROOT\|corpus_root" harness/*.py harness/*/*.py 2>/dev/null | head -5; ls -d ~/prism-ab-corpus ~/corpus* /private/tmp/*corpus* 2>/dev/null; df -h / | tail -1
+      at: 2026-10-18T17:01:49.852246Z
+      classified: other
+    - cmd: cd ~/gvg-corpus/e2e-2026 2>/dev/null && for d in */; do n=$(find "$d" -type f \( -name '*.go' -o -name '*.py' -o -name '*.java' -o -name '*.ts' -o -name '*.rs' -o -name '*.js' \) -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | wc -l); i=$(du -sk "$d/.grove" 2>/dev/null | cut -f1); echo "$n files  index=${i:-none}KB  $d"; done | sort -n | awk '{print}' | tail -40
+      at: 2026-10-18T17:01:55.73165Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; mkdir -p $SP/lat && cp $SP/prism-head $SP/lat/prism && shasum -a 256 $SP/lat/prism | cut -c1-16; cat > $SP/lat/lat.py <<'EOF'
+        import json, os, re, shutil, statistics, subprocess, sys, time, platform
+        SP = os.path.dirname(os.path.abspath(__file__)); BIN = SP + "/prism"
+        CORP = os.path.expanduser("~/gvg-corpus/e2e-2026")
+        REPOS = [  # (dir, symbol, text term)
+         ("pallets__click", "Command.invoke", "invoke"),
+         ("pydantic__pydantic", "BaseModel.model_dump", "model_dump"),
+         ("cli__cli", "NewCmdRoot", "NewCmdRoot"),
+         ("django__django", "QuerySet.filter", "filter"),
+        ]
+        N = int(os.environ.get("N", "5"))
+        env = dict(os.environ, GOPROXY="off", GOTOOLCHAIN="local")
+        def run(args, cwd, timeout=1800):
+            t = time.perf_counter(); p = subprocess.run([BIN, *args], cwd=cwd, capture_output=True, text=True, errors="replace", env=env, timeout=timeout)
+            return time.perf_counter() - t, p
+        def med(x): return statistics.median(x) if x else float("nan")
+        out = {}
+        for name, sym, term in REPOS:
+            src = f"{CORP}/{name}"
+            if not os.path.isdir(src): print("skip", name); continue
+            dst = f"{SP}/repos/{name}"
+            if not os.path.isdir(dst):
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                subprocess.run(["rsync", "-a", "--exclude", ".git", "--exclude", ".grove", src + "/", dst + "/"], check=True)
+            nfiles = int(subprocess.run(f"find {dst} -type f | wc -l", shell=True, capture_output=True, text=True).stdout)
+            t_idx, p = run(["index", dst], dst)
+            idx_mb = int(subprocess.run(["du", "-sk", dst + "/.grove"], capture_output=True, text=True).stdout.split()[0]) / 1024
+            r = {"files": nfiles, "index_s": round(t_idx, 1), "index_mb": round(idx_mb), "index_rc": p.returncode}
+            # resolve a real file for read
+            _, lk = run(["lookup", sym, "--format", "text"], dst)
+            m = re.search(r"([\w./-]+\.\w+):(\d+)", lk.stdout)
+            if not m or len(lk.stdout) < 50:
+                r["error"] = "symbol not found: " + lk.stdout[:100] + lk.stderr[:100]; out[name] = r; print(name, r); continue
+            f, line = m.group(1), int(m.group(2))
+            ops = {
+             "lookup": (["lookup", sym, "--format", "text"], ("lookup", {"name": [sym]})),
+             "search": (["search", term, "--scope", "text", "--limit", "20", "--format", "text"], ("search", {"terms": [term], "scope": "text", "max_results": 20})),
+             "change_impact": (["change-impact", sym, "--format", "text"], ("change_impact", {"name": [sym]})),
+             "read": (["read", f, "--from", str(max(1, line - 5)), "--to", str(line + 60), "--format", "text"], ("read", {"file": f, "from": max(1, line - 5), "to": line + 60})),
+             "query": (["query", "--terms", sym.split(".")[-1], "--format", "text"], ("query", {"terms": [sym.split(".")[-1]]})),
+            }
+            cli = {k: [] for k in ops}; mcp = {k: [] for k in ops}; size = {}
+            for k, (cargs, _) in ops.items():
+                run(cargs, dst)  # warm page cache, discard
+                for _ in range(N):
+                    t, p = run(cargs, dst); cli[k].append(t * 1000); size[k] = len(p.stdout)
+            # resident MCP
+            t0 = time.perf_counter()
+            mp = subprocess.Popen([BIN, "mcp", "--compact", dst], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, errors="replace", cwd=dst, env=env)
+            def rpc(i, method, params=None):
+                mp.stdin.write(json.dumps({"jsonrpc": "2.0", "id": i, "method": method, "params": params or {}}) + "\n"); mp.stdin.flush()
+                return mp.stdout.readline()
+            rpc(1, "initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "lat", "version": "0"}})
+            mp.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"); mp.stdin.flush()
+            rpc(2, "tools/call", {"name": "prism", "arguments": {"op": "search", "args": {"terms": ["zzNoSuchTermQq"], "scope": "text"}}})
+            r["mcp_ready_s"] = round(time.perf_counter() - t0, 2)
+            i = 10
+            for k, (_, (op, a)) in ops.items():
+                for rep in range(N):
+                    aa = json.loads(json.dumps(a))
+                    if op == "read": aa["from"] += rep  # avoid session-pointer replies
+                    if op == "search": aa["terms"] = [term + ("" if rep == 0 else "")]; aa["max_results"] = 20 - rep
+                    if op == "lookup" and rep: aa["name"] = [sym.split(".")[-1] + ("" if rep == 0 else "")]
+                    t = time.perf_counter(); rpc(i, "tools/call", {"name": "prism", "arguments": {"op": op, "args": aa}}); mcp[k].append((time.perf_counter() - t) * 1000); i += 1
+            mp.kill()
+            r["ops"] = {k: {"cli_ms": round(med(cli[k])), "cli_max": round(max(cli[k])), "mcp_ms": round(med(mcp[k])), "bytes": size[k]} for k in ops}
+            out[name] = r
+            print(name, json.dumps(r), flush=True)
+        json.dump({"machine": platform.platform(), "cpus": os.cpu_count(), "loadavg": os.getloadavg(), "N": N, "results": out}, open(SP + "/lat_results.json", "w"), indent=1)
+        EOF
+        cd $SP/lat && (nohup python3 -I lat.py > lat.log 2>&1 &); sleep 45; cat lat.log
+      at: 2026-10-18T17:03:05.2689Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad/lat; for i in $(seq 1 40); do grep -q '^django' $SP/lat.log && break; sleep 10; done; tail -c 1200 $SP/lat.log; ls $SP/../lat_results.json 2>/dev/null; du -sh $SP/repos/django__django/.grove 2>/dev/null
+      at: 2026-10-18T17:04:50.242781Z
+      classified: other
+    - cmd: SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; D=/Users/tapabratapal/Projects/provasign/prism/docs/research/cli-latency-corpus-2026-10-18; ls $SP/lat/*.json $SP/lat/lat.log; cp $SP/lat/lat.py $SP/lat/lat.log $D/ ; cp $SP/lat/lat_results.json $D/ 2>&1; ls $D; tail -2 $SP/lat/lat.log | cut -c1-80; ps aux | grep lat.py | grep -v grep | wc -l
+      at: 2026-10-18T17:04:59.558017Z
+      classified: other
+notes: []
+redactions: 0
