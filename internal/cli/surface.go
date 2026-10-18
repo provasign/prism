@@ -3,7 +3,9 @@ package cli
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,9 +18,51 @@ import (
 // its context. Init asks, records the answer in prism.yaml, and re-init
 // (--yes, --refresh) reuses it.
 const (
-	interfaceMCP = "mcp"
-	interfaceCLI = "cli"
+	interfaceMCP         = "mcp"
+	interfaceCLI         = "cli"
+	largeRepoSourceFiles = 500
 )
+
+var sourceCountLimit = errors.New("source file count reached recommendation threshold")
+
+// interfaceRecommendation uses a bounded source-file count as a hint about
+// repeated CLI graph-load cost. It does not claim a model-token or dollar
+// saving, and it never silently changes the selected interface.
+func interfaceRecommendation(root string) string {
+	count := 0
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
+		}
+		if entry.IsDir() {
+			if path != root {
+				switch entry.Name() {
+				case ".git", ".grove", "node_modules", "vendor", ".venv", "venv", "dist", "build", "target", ".next", ".gradle":
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+		if !entry.Type().IsRegular() {
+			return nil
+		}
+		switch strings.ToLower(filepath.Ext(entry.Name())) {
+		case ".go", ".py", ".java", ".js", ".jsx", ".ts", ".tsx", ".rs", ".c", ".cc", ".cpp", ".h", ".hpp", ".cs", ".php", ".rb", ".swift", ".kt", ".kts", ".scala":
+			count++
+			if count >= largeRepoSourceFiles {
+				return sourceCountLimit
+			}
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, sourceCountLimit) {
+		return "Recommendation: MCP for repeated Prism calls; CLI for occasional one-off calls. Repository size could not be measured."
+	}
+	if count >= largeRepoSourceFiles {
+		return fmt.Sprintf("Repository size: at least %d source files. Recommendation: MCP for repeated Prism calls; CLI for occasional one-off calls. Size alone does not predict model cost.", largeRepoSourceFiles)
+	}
+	return fmt.Sprintf("Repository size: %d source files. Recommendation: CLI for occasional one-off calls; MCP for repeated discovery. Size alone does not predict model cost.", count)
+}
 
 // stdinReader is shared by every init prompt: a second bufio.Reader on a
 // piped stdin would lose whatever the first one had already buffered.

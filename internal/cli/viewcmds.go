@@ -330,51 +330,16 @@ func cmdVerify(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeTool(dir, "prism_verify", callArgs)
+	out, text, rendered, err := invokeToolText(dir, "prism_verify", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "verify:", err)
 		return 2
 	}
 	m := toMap(out)
-	if mode, _ := m["mode"].(string); mode == "removed_symbols" {
-		// The fast-path result has its own compact shape; render directly.
-		if jsonOut {
-			printJSON(out)
-		} else {
-			fmt.Printf("verify --removed: %v (%v/%v clean)\n", m["verdict"], m["clean"], m["checked"])
-			for _, r := range asSliceAny(m["residuals"]) {
-				rm, _ := r.(map[string]any)
-				if rm == nil {
-					continue
-				}
-				cnt, _ := rm["count"].(float64)
-				if cnt == 0 {
-					fmt.Printf("  %v: clean\n", rm["symbol"])
-					continue
-				}
-				fmt.Printf("  %v: %v mention(s)\n", rm["symbol"], rm["count"])
-				for _, s := range asSliceAny(rm["sites"]) {
-					sm, _ := s.(map[string]any)
-					if sm == nil {
-						continue
-					}
-					if note, _ := sm["note"].(string); note != "" {
-						fmt.Printf("    %s\n", note)
-						continue
-					}
-					fmt.Printf("    %v:%v: %v\n", sm["file"], sm["line"], sm["text"])
-				}
-			}
-		}
-		if failed, _ := m["gateFailure"].(bool); failed {
-			return 1
-		}
-		return 0
-	}
 	if jsonOut {
 		printJSON(out)
 	} else {
-		renderVerifyText(m)
+		printToolResult(out, text, rendered, formatText)
 	}
 	if failed, _ := m["gateFailure"].(bool); failed {
 		return 1

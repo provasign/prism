@@ -570,6 +570,9 @@ func symbolToMap(v any) map[string]any {
 // renderVerifyAsText mirrors the CLI's long-standing verify text output
 // (internal/cli/viewcmds.go renderVerifyText) on the MCP surface.
 func renderVerifyAsText(out map[string]any) (string, bool) {
+	if out["mode"] == "removed_symbols" {
+		return renderRemovedSymbolsAsText(out)
+	}
 	known := map[string]bool{
 		"verdict": true, "gateFailure": true, "base": true, "note": true, "changedFiles": true,
 		"signatureChanges": true, "missedSites": true, "unverifiedSeeds": true,
@@ -669,6 +672,60 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 		if failed, _ := out["gateFailure"].(bool); failed {
 			b.WriteString("gate: failed (--strict treats review as a failure)\n")
 		}
+	}
+	return b.String(), true
+}
+
+func renderRemovedSymbolsAsText(out map[string]any) (string, bool) {
+	// The scorer returns concrete residual structs. Normalize them before
+	// checking their shape, then decline unknown fields rather than omit them.
+	m := symbolToMap(out)
+	if m == nil {
+		return "", false
+	}
+	known := map[string]bool{"mode": true, "verdict": true, "gateFailure": true,
+		"clean": true, "checked": true, "residuals": true, "note": true}
+	for k := range m {
+		if !known[k] {
+			return "", false
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "verify --removed: %v (%v/%v clean)\n", m["verdict"], m["clean"], m["checked"])
+	for _, item := range anySlice(m["residuals"]) {
+		r, ok := item.(map[string]any)
+		if !ok {
+			return "", false
+		}
+		for k := range r {
+			if k != "symbol" && k != "count" && k != "sites" {
+				return "", false
+			}
+		}
+		if r["count"] == float64(0) {
+			fmt.Fprintf(&b, "  %v: clean\n", r["symbol"])
+			continue
+		}
+		fmt.Fprintf(&b, "  %v: %v mention(s)\n", r["symbol"], r["count"])
+		for _, item := range anySlice(r["sites"]) {
+			s, ok := item.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			for k := range s {
+				if k != "file" && k != "line" && k != "text" && k != "note" {
+					return "", false
+				}
+			}
+			if note, _ := s["note"].(string); note != "" {
+				fmt.Fprintf(&b, "    %s\n", note)
+			} else {
+				fmt.Fprintf(&b, "    %v:%v: %v\n", s["file"], s["line"], s["text"])
+			}
+		}
+	}
+	if note, _ := m["note"].(string); note != "" {
+		fmt.Fprintf(&b, "note: %s\n", note)
 	}
 	return b.String(), true
 }

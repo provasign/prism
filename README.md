@@ -72,12 +72,22 @@ prism init .
 ```
 
 This detects installed and previously configured harnesses, recommends those as the
-default, and asks which to configure. It writes `prism.yaml`, compact project-local
-MCP configs, and current instruction files while replacing Prism-owned legacy setup.
+default, and asks which to configure. It then asks how agents should reach Prism:
+**MCP** (the default) registers the compact project-local server; **CLI** registers
+no MCP server and steers agents to run the `prism` command in their shell. Both
+choices write `prism.yaml` and current instruction files. CLI init removes Prism's
+own MCP registration from the selected harnesses' project configs if present.
+The interactive prompt gives a source-file-size hint: CLI suits occasional calls,
+while a resident MCP server is faster for repeated discovery, especially in a
+large repository. It does not change the default or claim a model-cost saving.
 For automation, pass a comma-separated list such as
 `prism init --harness claude,codex .`; a first-time non-interactive init never assumes
 all harnesses. Later runs can use `prism init --yes .` to reuse the selection recorded
-in `prism.yaml`. Windsurf receives `AGENTS.md` steering only because its documented MCP
+in `prism.yaml`. Set the interface without a prompt with
+`prism init --harness claude,codex --interface cli .` (or `--interface mcp`).
+`--yes` and `--refresh` also reuse the recorded interface; a first-time
+non-interactive init defaults to MCP. CLI mode requires `prism` on the agent's PATH.
+Windsurf receives `AGENTS.md` steering only because its documented MCP
 configuration is user-global, which Prism does not modify.
 Codex loads the generated `.codex/config.toml` after the repository is trusted;
 accept Codex's project-trust prompt, then restart or reload the session.
@@ -95,7 +105,7 @@ prism query --terms ValidateRequest \
 prism verify --base main --format text
 ```
 
-For MCP-capable agents, `prism init` exposes one compact `prism` gateway with six
+With the MCP interface, `prism init` exposes one compact `prism` gateway with six
 operations:
 
 - `search` locates symbols and source text.

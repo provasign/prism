@@ -488,6 +488,7 @@ func cmdInit(args []string) int {
 		case refresh || yes:
 			iface = recordedInterface
 		case isInteractive():
+			fmt.Fprintln(os.Stderr, interfaceRecommendation(abs))
 			iface, err = promptInterface(recordedInterface)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "init:", err)
@@ -2402,7 +2403,24 @@ func cmdRead(args []string) int {
 	if limit > 0 {
 		readArgs["limit"] = limit
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_read", readArgs)
+	var out any
+	var text string
+	var rendered bool
+	var err error
+	if format == formatText {
+		compactArgs := map[string]any{"file": file}
+		start := 1
+		if offset > 0 {
+			start = offset
+			compactArgs["from"] = start
+		}
+		if limit > 0 {
+			compactArgs["to"] = start + limit - 1
+		}
+		out, text, rendered, err = invokeCompactReadText(dir, compactArgs)
+	} else {
+		out, text, rendered, err = invokeToolText(dir, "prism_read", readArgs)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1
@@ -2581,13 +2599,7 @@ func cmdSearch(args []string) int {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
 	}
-	if format == formatText {
-		if rendered {
-			fmt.Print(compactText)
-			return 0
-		}
-	}
-	printOutput(out, format)
+	printToolResult(out, compactText, rendered, format)
 	return 0
 }
 
@@ -3403,13 +3415,34 @@ func invokeToolText(dir, tool string, args map[string]any) (out any, text string
 	return out, text, rendered, nil
 }
 
-// printToolResult prints the shared text rendering for --format text and
-// falls back to the generic printer for other formats or unrendered shapes.
+func invokeCompactReadText(dir string, args map[string]any) (out any, text string, rendered bool, err error) {
+	root := mustAbs(dir)
+	cfg, client, err := newClient(root)
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer client.Shutdown()
+	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
+		return nil, "", false, err
+	}
+	h := mcp.NewHandler(cfg, root, client)
+	return h.InvokeCompactReadText(args)
+}
+
+// printToolResult prints the shared text rendering for --format text. Unknown
+// result shapes use the same compact JSON fallback as the MCP server, so no
+// fields disappear or acquire a CLI-only rendering.
 func printToolResult(out any, text string, rendered bool, format outputFormat) {
-	if format == formatText && rendered {
-		fmt.Print(text)
-		if !strings.HasSuffix(text, "\n") {
-			fmt.Println()
+	if format == formatText {
+		if rendered {
+			fmt.Print(text)
+			if !strings.HasSuffix(text, "\n") {
+				fmt.Println()
+			}
+		} else if encoded, err := json.Marshal(out); err == nil {
+			fmt.Println(string(encoded))
+		} else {
+			printJSON(out)
 		}
 		return
 	}

@@ -126,6 +126,24 @@ func TestCmdRead_Smoke(t *testing.T) {
 	}
 }
 
+func TestCmdReadTextUsesCompactMCPWindow(t *testing.T) {
+	dir := setupCLIProject(t)
+	writeCLIFile(t, dir, "large.go", "package main\n"+strings.Repeat("// source line\n", 799))
+	for _, args := range [][]string{
+		{"large.go", dir},
+		{"large.go", "--from", "1", "--to", "560", "--dir", dir},
+	} {
+		out := captureStdout(func() {
+			if got := cmdRead(args); got != 0 {
+				t.Fatalf("cmdRead %v = %d", args, got)
+			}
+		})
+		if !strings.Contains(out, "lines 1-240 of 800") || !strings.Contains(out, "clamped to 1-240") || strings.Contains(out, "241→") {
+			t.Fatalf("cmdRead %v did not use compact MCP read window:\n%s", args, out)
+		}
+	}
+}
+
 // The MCP read's field names work on the CLI too: an agent moving from the
 // tool to the shell wrote `prism read f --from 114 --to 147 --dir D` and got
 // "unknown flag".

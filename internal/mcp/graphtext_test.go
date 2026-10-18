@@ -241,6 +241,37 @@ func TestRenderVerifyAsText_CleanAndIncomplete(t *testing.T) {
 	}
 }
 
+func TestRenderVerifyAsText_RemovedSymbols(t *testing.T) {
+	out := map[string]any{
+		"mode": "removed_symbols", "verdict": "exact identifier mentions remain",
+		"gateFailure": true, "clean": 1, "checked": 2,
+		"residuals": []map[string]any{
+			{"symbol": "Gone", "count": 1, "sites": []map[string]any{
+				{"file": "src/a.py", "line": 3, "text": "Gone()"},
+			}},
+			{"symbol": "Clean", "count": 0},
+		},
+		"note": "inspect reported sites",
+	}
+	text, ok := renderVerifyAsText(out)
+	if !ok {
+		t.Fatal("removed-symbol result must render")
+	}
+	for _, want := range []string{
+		"verify --removed: exact identifier mentions remain (1/2 clean)",
+		"Gone: 1 mention(s)", "src/a.py:3: Gone()", "Clean: clean",
+		"note: inspect reported sites",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q from:\n%s", want, text)
+		}
+	}
+	out["newField"] = "must not disappear"
+	if _, ok := renderVerifyAsText(out); ok {
+		t.Fatal("unknown removed-symbol field must force JSON fallback")
+	}
+}
+
 func TestRenderQuerySourceAsText(t *testing.T) {
 	out := map[string]any{
 		"content":  "**Source** — ...\n### a.py\n1→code\n",

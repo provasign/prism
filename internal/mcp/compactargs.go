@@ -179,6 +179,24 @@ func compactSingleReadNote(out any, envelope map[string]any) {
 	}
 }
 
+// InvokeCompactReadText applies the compact MCP read window and note before
+// rendering. CLI text reads use this path so a requested file/range yields the
+// same evidence as the compact gateway, including its 240-line limit.
+func (h *Handler) InvokeCompactReadText(args map[string]any) (any, string, bool, error) {
+	envelope := map[string]any{"op": "read", "args": args}
+	name, legacy, err := expandCompactCall(envelope)
+	if err != nil {
+		return nil, "", false, err
+	}
+	out, err := h.Invoke(name, legacy)
+	if err != nil {
+		return nil, "", false, err
+	}
+	compactSingleReadNote(out, envelope)
+	text, rendered := h.RenderToolText(true, name, legacy, out)
+	return out, text, rendered, nil
+}
+
 // compactAliases are spellings agents use for a field that prism already
 // names in its rejection message ("use paths"); accepting them saves the
 // retry turn (search path->paths, 2026-09-24; lookup file->symbol_file).

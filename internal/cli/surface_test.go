@@ -1,11 +1,36 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestInterfaceRecommendationCountsProjectSource(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "node_modules"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"main.go", "worker.py", "notes.md", "node_modules/dependency.js"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := interfaceRecommendation(dir); !strings.Contains(got, "2 source files") || !strings.Contains(got, "CLI for occasional") {
+		t.Fatalf("small repo recommendation: %s", got)
+	}
+	for i := 0; i < largeRepoSourceFiles; i++ {
+		name := filepath.Join(dir, fmt.Sprintf("src%03d.go", i))
+		if err := os.WriteFile(name, []byte("package main\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := interfaceRecommendation(dir); !strings.Contains(got, "at least 500 source files") || !strings.Contains(got, "MCP for repeated") {
+		t.Fatalf("large repo recommendation: %s", got)
+	}
+}
 
 func TestParseInterface(t *testing.T) {
 	for in, want := range map[string]string{"mcp": "mcp", "CLI": "cli", " cli ": "cli"} {
