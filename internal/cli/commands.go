@@ -2301,6 +2301,10 @@ func cmdQuery(args []string) int {
 		fmt.Fprintln(os.Stderr, "query: --terms is required; use prism search first when no anchor is known")
 		return 2
 	}
+	if len(terms) > maxBatchTerms {
+		fmt.Fprintf(os.Stderr, "query: at most %d terms per call (the MCP gateway rejects more); ask about the terms the current question needs\n", maxBatchTerms)
+		return 2
+	}
 	invokeArgs := map[string]any{"terms": terms, "limit": limit}
 	if delivery != "" {
 		invokeArgs["delivery"] = delivery
@@ -2325,11 +2329,13 @@ func cmdQuery(args []string) int {
 
 func cmdRead(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism read <file> [--from N --to M | --offset N --limit N] [--dir <path>]")
+		fmt.Fprintln(os.Stderr, "usage: prism read <file> [file...] [--from N --to M | --offset N --limit N] [--dir <path>]")
 		return 2
 	}
 	file := args[0]
 	dir := "."
+	dirSet := false
+	var extra []string
 	format := formatText
 	offset, limit := 0, 0
 	from, to := 0, 0
@@ -2358,6 +2364,7 @@ func cmdRead(args []string) int {
 		case "--dir":
 			if i+1 < len(args) {
 				dir = args[i+1]
+				dirSet = true
 				i++
 			}
 		case "--offset", "--limit":
@@ -2385,8 +2392,19 @@ func cmdRead(args []string) int {
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("read", a)
 			}
-			dir = a
+			extra = append(extra, a)
 		}
+	}
+	// `prism read <file> <dir>` is the legacy form; any other extra argument
+	// is another file. The last path used to be taken as the directory, so
+	// `prism read a.go b.go c.go` failed with "not a directory" (Codex, jackson).
+	if len(extra) == 1 && !dirSet {
+		if fi, err := os.Stat(extra[0]); err == nil && fi.IsDir() {
+			dir, extra = extra[0], nil
+		}
+	}
+	if len(extra) > 0 {
+		return cmdReadFiles(dir, append([]string{file}, extra...), from, to, offset, limit, format)
 	}
 	if from > 0 {
 		offset = from
@@ -2421,6 +2439,38 @@ func cmdRead(args []string) int {
 	} else {
 		out, text, rendered, err = invokeToolText(dir, "prism_read", readArgs)
 	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "read:", err)
+		return 1
+	}
+	printToolResult(out, text, rendered, format)
+	return 0
+}
+
+// maxBatchTerms is the compact MCP gateway's limit for terms and names in one
+// call (internal/mcp/compactargs.go). query and multi-file read apply it, so
+// a request the gateway would reject is not answered here: a 12-term CLI
+// query returned 30 KB of source on jackson (Codex, 2026-10-18). search stays
+// uncapped on purpose (a82bd08); its answer has its own response budget.
+const maxBatchTerms = 10
+
+// cmdReadFiles reads several files in one answer through the gateway's ranges
+// form, the CLI counterpart of op=read with ranges. Each file is read from its
+// first line under the same per-range window as MCP.
+func cmdReadFiles(dir string, files []string, from, to, offset, limit int, format outputFormat) int {
+	if from > 0 || to > 0 || offset > 0 || limit > 0 {
+		fmt.Fprintln(os.Stderr, "read: --from/--to/--offset/--limit apply to one file; read the files one at a time for a line range")
+		return 2
+	}
+	if len(files) > maxBatchTerms {
+		fmt.Fprintf(os.Stderr, "read: at most %d files per call (the MCP gateway rejects more)\n", maxBatchTerms)
+		return 2
+	}
+	ranges := make([]any, 0, len(files))
+	for _, f := range files {
+		ranges = append(ranges, map[string]any{"file": f, "from": 1, "to": mcp.CompactReadLimit})
+	}
+	out, text, rendered, err := invokeCompactReadText(dir, map[string]any{"ranges": ranges})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1

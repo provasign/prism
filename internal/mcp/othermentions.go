@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -229,11 +230,34 @@ func renderMentionGroup(title string, lines []mentionLine, decl map[string]strin
 	}
 	// Every file, never "and N more": a truncated list was read as
 	// "something might be hidden" and searched (jackson forProperty probe).
-	parts := make([]string, 0, len(files))
+	// Files are grouped under their directory so a deep path is written once:
+	// jackson SettableBeanProperty.set, 2026-10-18 — two such lists were 15.8 KB
+	// of a 31.8 KB answer, 6.6 KB of it repeated directory prefixes.
+	return []string{fmt.Sprintf("%s (%d, by file): %s", title, len(lines), groupFilesByDir(files, per))}
+}
+
+// groupFilesByDir renders "dir/: a.go (2), b.go (1); other/: c.go (1)",
+// directories in first-seen order. Every file and count stays in the text.
+func groupFilesByDir(files []string, per map[string]int) string {
+	var dirs []string
+	byDir := map[string][]string{}
 	for _, f := range files {
-		parts = append(parts, fmt.Sprintf("%s (%d)", f, per[f]))
+		dir, base := path.Split(f)
+		if _, seen := byDir[dir]; !seen {
+			dirs = append(dirs, dir)
+		}
+		byDir[dir] = append(byDir[dir], fmt.Sprintf("%s (%d)", base, per[f]))
 	}
-	return []string{fmt.Sprintf("%s (%d, by file): %s", title, len(lines), strings.Join(parts, ", "))}
+	groups := make([]string, 0, len(dirs))
+	for _, dir := range dirs {
+		names := strings.Join(byDir[dir], ", ")
+		if dir == "" {
+			groups = append(groups, names)
+			continue
+		}
+		groups = append(groups, dir+": "+names)
+	}
+	return strings.Join(groups, "; ")
 }
 
 var docFileExts = map[string]bool{".md": true, ".mdx": true, ".rst": true, ".txt": true, ".adoc": true, ".html": true}

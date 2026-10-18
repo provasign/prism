@@ -36,3 +36,13 @@ func TestCutUTF8NeverSplitsACharacter(t *testing.T) {
 		t.Fatalf("short string changed: %q", got)
 	}
 }
+
+func TestGroupFilesByDirKeepsEveryFileAndCount(t *testing.T) {
+	files := []string{"README.md", "src/a/X.java", "src/a/Y.java", "src/b/Z.java", "src/a/sub/W.java"}
+	per := map[string]int{"README.md": 2, "src/a/X.java": 3, "src/a/Y.java": 1, "src/b/Z.java": 4, "src/a/sub/W.java": 5}
+	got := groupFilesByDir(files, per)
+	want := "README.md (2); src/a/: X.java (3), Y.java (1); src/b/: Z.java (4); src/a/sub/: W.java (5)"
+	if got != want {
+		t.Fatalf("got  %q\nwant %q", got, want)
+	}
+}

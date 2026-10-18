@@ -188,14 +188,24 @@ func (h *Handler) InvokeCompactReadText(args map[string]any) (any, string, bool,
 	if err != nil {
 		return nil, "", false, err
 	}
-	out, err := h.Invoke(name, legacy)
+	// Several ranges take the gateway's batch read, as server.go routes them.
+	invokeName := name
+	if _, batch := legacy["ranges"]; batch && name == "prism_read" {
+		invokeName = "prism_read_compact"
+	}
+	out, err := h.Invoke(invokeName, legacy)
 	if err != nil {
 		return nil, "", false, err
 	}
-	compactSingleReadNote(out, envelope)
+	if invokeName == name {
+		compactSingleReadNote(out, envelope)
+	}
 	text, rendered := h.RenderToolText(true, name, legacy, out)
 	return out, text, rendered, nil
 }
+
+// CompactReadLimit is the most lines one compact read range returns.
+const CompactReadLimit = compactReadLimit
 
 // compactAliases are spellings agents use for a field that prism already
 // names in its rejection message ("use paths"); accepting them saves the
