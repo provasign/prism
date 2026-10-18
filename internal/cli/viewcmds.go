@@ -339,7 +339,7 @@ func cmdVerify(args []string) int {
 	if jsonOut {
 		printJSON(out)
 	} else {
-		printToolResult(out, text, rendered, formatText)
+		printToolResult("verify", out, text, rendered, formatText)
 	}
 	if failed, _ := m["gateFailure"].(bool); failed {
 		return 1

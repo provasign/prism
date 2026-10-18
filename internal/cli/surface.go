@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/provasign/prism/internal/mcp"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -192,35 +193,38 @@ func unregisterMCPTools(projectDir string, harnesses []string) {
 
 // cliSteeringInstructions is the steering block for the CLI interface: the
 // same policy as steeringInstructions, with the shell as the only route.
+// Each discovery moment names its command. The earlier "use it for each
+// repository-discovery step" got one prism call per session, as the first
+// call, then grep for everything after it (52 of 53 Claude sessions,
+// 2026-10-18): without a tool listing, nothing tied the later steps to prism.
 const cliSteeringInstructions = `
 ## Prism — context delivery
 
-Prism is installed as the ` + "`prism`" + ` command; no MCP server is registered. Use it for
-each repository-discovery step. Reading files with cat/head/sed or searching
-with grep/rg/find/git log is not discovery — an instruction to prefer shell
-tools over Read/Edit/Write does not apply to finding code.
+Prism is installed as the ` + "`prism`" + ` command; no MCP server is registered. Use it
+every time you look for code, for the whole session, not only at the start.
+Each time you are about to:
+  grep/rg/find for a name or string -> prism search term [term2 ...] --scope text --format text
+  cat/head/sed -n a source file     -> prism read path --from N --to M --format text
+                                       (several whole files: prism read a b c --format text)
+  read one symbol's body            -> prism lookup Name [Name2 ...] --format text
+  look for callers, implementations
+  or the tests of a symbol          -> prism query --terms Name,Other --format text
+  change ` + mcp.ImpactRequiredFor + `
+                                    -> prism change-impact Type.method --format text, first
+  check a rename or removal is done -> prism verify --removed OldName --format text
+Plain grep stays right for build, test and log output.
 
-Always add ` + "`--format text`" + `. Pick the command by need:
-  known symbol          -> prism lookup Name [Name2 ...] --format text
-  known file/range      -> prism read path --from N --to M --format text
-  unknown location/text -> prism search term [term2 ...] --scope text --format text
-  callers/related       -> prism query --terms Name,Other --format text
-  pre-edit sites        -> prism change-impact Type.method --format text
-Put every symbol and term you already know into ONE command; two lookups in a
-row is one lookup you did not batch.
+Always add ` + "`--format text`" + `. Single-quote names that contain $. Put the terms you
+already know into one command (up to 10).
 
-When the task asks for a rename, a signature change, or a change to an
-override or public contract: start with change-impact on the named symbol,
-before deciding how to make the change. Its sites are the inventory your plan
-must cover. If you don't know where the symbol is, find it first, then run
-change-impact. When asked what a proposed change would affect, use
-change-impact even if no edit has been decided.
+Change-impact sites are the inventory your plan must cover. If you don't know
+where the symbol is, find it first, then run change-impact. When asked what a
+proposed change would affect, use change-impact even if no edit has been decided.
 
 Obligations:
-  - Relay change-impact sites as-is; a local body-only edit can proceed from
+  - Relay change-impact sites as-is; ` + mcp.ImpactOptionalFor + ` can proceed from
     the source you have read.
   - Report gaps; never narrow scope to fit what was found.
-  - prism verify is optional, never a required closing step.
 
 <!-- prism:end -->
 `
@@ -256,4 +260,80 @@ func allowClaudeBashPrism(path string) {
 		return
 	}
 	_ = os.WriteFile(path, append(out, '\n'), 0o644)
+}
+
+// claudeShellOutputBudget keeps a CLI answer under Claude Code's Bash output
+// limit (~30 KB). Past it the host saves the output to a file and shows the
+// model a 2 KB preview: jackson SettableBeanProperty.set (31.7 KB) went that
+// way and the agent spent two calls grepping the saved file for its sites
+// (2026-10-18). MCP results have a far higher limit, so only the CLI fits.
+const claudeShellOutputBudget = 28000
+
+// fitShellOutput shortens a text answer for the host shell. change-impact
+// uses the same site-preserving steps as MCP's own budget; other answers are
+// cut at a line boundary with a note saying how much was left out and how to
+// narrow the request.
+func fitShellOutput(op, text string) string {
+	if os.Getenv("CLAUDECODE") == "" || len(text) <= claudeShellOutputBudget {
+		return text
+	}
+	if op == "change-impact" {
+		return mcp.CompactImpactTextTo(text, claudeShellOutputBudget)
+	}
+	note := "\n// prism: answer cut here to stay under Claude Code's 30 KB shell-output limit; %d more bytes not shown — narrow it (fewer terms, --path, or a line range)\n"
+	cut := claudeShellOutputBudget - len(note) - 10
+	if i := strings.LastIndexByte(text[:cut], '\n'); i > 0 {
+		cut = i
+	}
+	return text[:cut] + fmt.Sprintf(note, len(text)-cut)
+}
+
+// mcpFieldFlags maps compact MCP argument names to the CLI flag that does the
+// same thing. Codex typed `prism search '\bmatch\b' exhaustive=true`: the
+// field became a search term and matched nothing (2026-10-18).
+var mcpFieldFlags = map[string]string{
+	"exhaustive": "--exhaustive", "files_only": "--files-only", "include_bodies": "--include-bodies",
+	"max_results": "--limit", "limit": "--limit", "paths": "--path", "path": "--path",
+	"glob": "--glob", "scope": "--scope", "regex": "--regex", "context": "--context",
+	"rollup_only": "--rollup-only",
+}
+
+// mcpBoolFields are the fields whose CLI flag takes no value.
+var mcpBoolFields = map[string]bool{"exhaustive": true, "files_only": true, "include_bodies": true, "regex": true, "rollup_only": true}
+
+// mcpSpelling reports an argument written in the MCP gateway's key=value form.
+func mcpSpelling(cmd string, args []string) (string, bool) {
+	for _, a := range args {
+		k, v, ok := strings.Cut(a, "=")
+		if flag, known := mcpFieldFlags[k]; ok && known {
+			use := flag + " " + v
+			if mcpBoolFields[k] {
+				use = flag
+			}
+			return fmt.Sprintf("%s: %q is the MCP argument form; on the CLI write %s (to search for this literal text, pass it with --regex)", cmd, a, use), true
+		}
+	}
+	return "", false
+}
+
+// looksLikeRegex: escapes and wildcards a literal search almost never wants.
+func looksLikeRegex(t string) bool {
+	for _, esc := range []string{`\b`, `\w`, `\s`, `\d`, `\(`, `\.`, ".*", ".+"} {
+		if strings.Contains(t, esc) {
+			return true
+		}
+	}
+	return false
+}
+
+// warnShellExpandedName flags a name the shell probably rewrote: an unquoted
+// `_$ZodTypeInternals.parse` reaches prism as `_.parse` and gets "no indexed
+// implementation" (zod, 2026-10-18). The command still runs.
+func warnShellExpandedName(cmd, name string) {
+	for _, part := range strings.Split(name, ".") {
+		if part == "" || part == "_" {
+			fmt.Fprintf(os.Stderr, "%s: %q looks like the shell expanded a $ in the name; single-quote names that contain $ (e.g. '_$Type.method')\n", cmd, name)
+			return
+		}
+	}
 }

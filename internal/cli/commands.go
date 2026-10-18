@@ -2323,7 +2323,7 @@ func cmdQuery(args []string) int {
 		fmt.Fprintln(os.Stderr, "query:", err)
 		return 1
 	}
-	printToolResult(out, text, rendered, format)
+	printToolResult("query", out, text, rendered, format)
 	return 0
 }
 
@@ -2443,7 +2443,7 @@ func cmdRead(args []string) int {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1
 	}
-	printToolResult(out, text, rendered, format)
+	printToolResult("read", out, text, rendered, format)
 	return 0
 }
 
@@ -2475,7 +2475,7 @@ func cmdReadFiles(dir string, files []string, from, to, offset, limit int, forma
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1
 	}
-	printToolResult(out, text, rendered, format)
+	printToolResult("read", out, text, rendered, format)
 	return 0
 }
 
@@ -2592,6 +2592,17 @@ func cmdSearch(args []string) int {
 		fmt.Fprintln(os.Stderr, "usage: prism search <term> [term...] [--dir <path>]")
 		return 2
 	}
+	if msg, ok := mcpSpelling("search", bare); ok {
+		fmt.Fprintln(os.Stderr, msg)
+		return 2
+	}
+	if !regex {
+		for _, t := range bare {
+			if looksLikeRegex(t) {
+				fmt.Fprintf(os.Stderr, "search: %q is matched as literal text; add --regex to use it as a regular expression\n", t)
+			}
+		}
+	}
 	// `prism search <keyword> <dir>` was the documented form for many
 	// releases, so the two-argument case still honours it when the second
 	// argument really is a directory — but says so, because the same two
@@ -2649,7 +2660,7 @@ func cmdSearch(args []string) int {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
 	}
-	printToolResult(out, compactText, rendered, format)
+	printToolResult("search", out, compactText, rendered, format)
 	return 0
 }
 
@@ -2757,6 +2768,9 @@ func cmdLookup(args []string) int {
 	if len(bare) > 1 || format == formatText {
 		names = bare
 	}
+	for _, n := range bare {
+		warnShellExpandedName("lookup", n)
+	}
 	callArgs := map[string]any{"name": names}
 	if len(fields) > 0 {
 		callArgs["fields"] = fields
@@ -2771,7 +2785,7 @@ func cmdLookup(args []string) int {
 	}
 	// A batch answer is {results:[{name,result}]}, which the generic text
 	// printer does not know; render it the way MCP does.
-	printToolResult(out, text, rendered, format)
+	printToolResult("lookup", out, text, rendered, format)
 	return 0
 }
 
@@ -2992,6 +3006,7 @@ func cmdChangeImpact(args []string) int {
 			dir = a
 		}
 	}
+	warnShellExpandedName("change-impact", query)
 	callArgs := map[string]any{"query": query}
 	if file != "" {
 		callArgs["file"] = file
@@ -3001,7 +3016,7 @@ func cmdChangeImpact(args []string) int {
 		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
 		return 1
 	}
-	printToolResult(out, text, rendered, format)
+	printToolResult("change-impact", out, text, rendered, format)
 	return 0
 }
 
@@ -3482,9 +3497,10 @@ func invokeCompactReadText(dir string, args map[string]any) (out any, text strin
 // printToolResult prints the shared text rendering for --format text. Unknown
 // result shapes use the same compact JSON fallback as the MCP server, so no
 // fields disappear or acquire a CLI-only rendering.
-func printToolResult(out any, text string, rendered bool, format outputFormat) {
+func printToolResult(op string, out any, text string, rendered bool, format outputFormat) {
 	if format == formatText {
 		if rendered {
+			text = fitShellOutput(op, text)
 			fmt.Print(text)
 			if !strings.HasSuffix(text, "\n") {
 				fmt.Println()

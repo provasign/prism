@@ -37,8 +37,12 @@ func dropImpactEvidence(text string) []string {
 	return kept
 }
 
-func compactImpactText(text string) string {
-	if len(text) <= impactTextBudget {
+func compactImpactText(text string) string { return CompactImpactTextTo(text, impactTextBudget) }
+
+// CompactImpactTextTo applies the same site-preserving steps against a caller's
+// budget: the CLI uses a smaller one under hosts that cut shell output sooner.
+func CompactImpactTextTo(text string, budget int) string {
+	if len(text) <= budget {
 		return text
 	}
 	// Step 0: the line partition below editSites is the least needed part:
@@ -47,7 +51,7 @@ func compactImpactText(text string) string {
 	// positions to it, 2026-10-18 replay).
 	for _, title := range partitionShrinkOrder {
 		text = shrinkPartitionGroup(text, title)
-		if len(text) <= impactTextBudget {
+		if len(text) <= budget {
 			return text
 		}
 	}
@@ -55,19 +59,19 @@ func compactImpactText(text string) string {
 	kept := dropImpactEvidence(text)
 	step1 := strings.Join(kept, "\n")
 	note1 := "// evidence lines omitted to fit one answer; change_impact on a single name shows them\n"
-	if len(step1)+len(note1) <= impactTextBudget {
+	if len(step1)+len(note1) <= budget {
 		return note1 + step1
 	}
 	// Step 2: group sites per file (path: Name:line ...).
 	grouped := groupImpactSites(kept, siteNames)
 	note2 := "// evidence omitted and sites grouped per file (path: Name:line ...) to fit one answer\n"
-	if len(grouped)+len(note2) <= impactTextBudget {
+	if len(grouped)+len(note2) <= budget {
 		return note2 + grouped
 	}
 	// Step 3: per file, line numbers only (path (n): line line ...).
 	lines := groupImpactSites(kept, siteLines)
 	note3 := "// evidence and caller names omitted to fit one answer: per file, the site count and line numbers\n"
-	if len(lines)+len(note3) <= impactTextBudget {
+	if len(lines)+len(note3) <= budget {
 		return note3 + lines
 	}
 	// Step 4: per-file counts.
