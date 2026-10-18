@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -139,6 +138,10 @@ prism init [dir] flags:
                       ids: claude, codex, cursor, windsurf, vscode, gemini, opencode
                       interactive init recommends detected/existing harnesses;
                       non-interactive init requires this flag
+  --interface <mcp|cli>
+                      how agents reach Prism: mcp registers the MCP server, cli
+                      registers nothing and steers agents to the prism command
+                      (asked interactively; recorded in prism.yaml; default mcp)
   --yes, -y           reuse harnesses recorded in prism.yaml without prompting
   --global            removed: MCP configuration is project-local only
   --mode <any>        accepted and IGNORED (since v0.38.0 one steering template
@@ -338,6 +341,7 @@ func cmdInit(args []string) int {
 	readGuard := false
 	noReadGuard := false
 	yes := false
+	interfaceArg := ""
 	var harnessArgs []string
 	filtered := args[:0]
 	for i := 0; i < len(args); i++ {
@@ -352,6 +356,18 @@ func cmdInit(args []string) int {
 				return 2
 			}
 			harnessArgs = append(harnessArgs, args[i+1])
+			i++
+		case "--interface":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "init: --interface requires mcp or cli")
+				return 2
+			}
+			iface, err := parseInterface(args[i+1])
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "init:", err)
+				return 2
+			}
+			interfaceArg = iface
 			i++
 		case "--no-permissions":
 			permissions = false
@@ -462,8 +478,27 @@ func cmdInit(args []string) int {
 		}
 	}
 
-	// If mode not set by flag, prompt interactively (or default to "both" if
-	// stdin is not a terminal, e.g. in CI or when piped).
+	// Interface: the flag wins; then --refresh/--yes reuse what prism.yaml
+	// records; an interactive init asks; anything else keeps MCP, the
+	// behavior before init asked.
+	recordedInterface := readRecordedInterface(prismYAML)
+	iface := interfaceArg
+	if iface == "" {
+		switch {
+		case refresh || yes:
+			iface = recordedInterface
+		case isInteractive():
+			iface, err = promptInterface(recordedInterface)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "init:", err)
+				return 2
+			}
+		}
+	}
+	if iface == "" {
+		iface = interfaceMCP
+	}
+
 	// 1. Write prism.yaml into the project. Grove is embedded in-process now,
 	// so the file no longer needs grove_url / grove_binary.
 	yaml := fmt.Sprintf(`version: 2
@@ -484,6 +519,7 @@ mcp_surface: "compact"
 	if existing, err := os.ReadFile(prismYAML); err == nil {
 		yaml = mergePrismYAML(string(existing), cfg.Profile, harnesses)
 	}
+	yaml = setPrismYAMLInterface(yaml, iface)
 	if err := os.WriteFile(prismYAML, []byte(yaml), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "init:", err)
 		return 1
@@ -497,7 +533,11 @@ mcp_surface: "compact"
 	}
 
 	// 3. Write steering instructions matching the chosen mode.
-	writeSteeringInstructions(abs, harnesses, refresh)
+	steering := steeringBlock()
+	if iface == interfaceCLI {
+		steering = cliSteeringInstructions
+	}
+	writeSteeringBlock(abs, harnesses, refresh, steering)
 
 	// Routing is the one thing steering cannot do. Measured at 12:1 in the
 	// benchmark and observed live: an agent listed prism's connected tools,
@@ -515,6 +555,14 @@ mcp_surface: "compact"
 	// 4. Register with every detected AI coding tool.
 	if _, err := removeLegacyGlobalMCPRegistrations(); err != nil {
 		fmt.Fprintln(os.Stderr, "warning: legacy global Prism registration cleanup was incomplete:", err)
+	}
+	if iface == interfaceCLI {
+		unregisterMCPTools(abs, harnesses)
+		if harnessSelected(harnesses, "claude") && permissions {
+			allowClaudeBashPrism(filepath.Join(abs, ".claude", "settings.json"))
+		}
+		fmt.Println("interface: cli — no MCP server registered; agents run `prism` in their shell")
+		return 0
 	}
 	registered := initRegisterMCPTools(abs, prismBin, harnesses, permissions, refresh, denyBuiltinSearch)
 	if len(registered) == 0 {
@@ -824,7 +872,7 @@ func promptHarnesses(projectDir string, recorded []string) ([]string, error) {
 		fmt.Fprintf(os.Stderr, "  [%d] %-12s %s\n", i+1, h.label, strings.Join(status, " · "))
 	}
 	fmt.Fprintf(os.Stderr, "Select harnesses [default: %s]: ", strings.Join(defaultNums, ","))
-	reader := bufio.NewReader(os.Stdin)
+	reader := initStdin()
 	line, err := reader.ReadString('\n')
 	if err != nil && len(line) == 0 {
 		return nil, err
@@ -839,7 +887,7 @@ func promptHarnesses(projectDir string, recorded []string) ([]string, error) {
 	if len(selected) == 0 {
 		return nil, errors.New("no harness selected")
 	}
-	fmt.Fprintf(os.Stderr, "Prism will configure project-local compact MCP and steering for: %s\n", strings.Join(selected, ", "))
+	fmt.Fprintf(os.Stderr, "Prism will configure project-local steering (and MCP, if you choose it next) for: %s\n", strings.Join(selected, ", "))
 	if harnessSelected(selected, "windsurf") {
 		fmt.Fprintln(os.Stderr, "  Windsurf: steering only; its documented MCP config is user-global and Prism will not write it.")
 	}
@@ -884,6 +932,12 @@ func selectedHarnessHasExistingSetup(projectDir string, harnesses []string, targ
 // writeSteeringInstructions writes only the instruction files used by the
 // selected project harnesses. On re-init it replaces a stale Prism section.
 func writeSteeringInstructions(projectDir string, harnesses []string, refresh bool) {
+	writeSteeringBlock(projectDir, harnesses, refresh, steeringBlock())
+}
+
+// writeSteeringBlock is writeSteeringInstructions with the block chosen by
+// the caller (MCP steering or CLI steering).
+func writeSteeringBlock(projectDir string, harnesses []string, refresh bool, block string) {
 	type instrFile struct {
 		name    string // description for log
 		relPath string // path relative to projectDir
@@ -899,8 +953,6 @@ func writeSteeringInstructions(projectDir string, harnesses []string, refresh bo
 		{name: "legacy Cursor", relPath: ".cursorrules", harness: ""},
 		{name: "legacy Windsurf", relPath: ".windsurfrules", harness: ""},
 	}
-
-	block := steeringBlock()
 
 	selectedFor := func(t instrFile) bool {
 		if t.harness == "shared" {
