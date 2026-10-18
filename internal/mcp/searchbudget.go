@@ -545,6 +545,18 @@ func trimBestLine(s string) string {
 	return trimLineTo(strings.TrimSpace(strings.TrimRight(s, "\r\n")), searchBudgetBestLineChars)
 }
 
+// cutUTF8 returns s[:n] moved back to a rune boundary, so a byte-limit cut
+// never leaves half a character in the output.
+func cutUTF8(s string, n int) string {
+	if n >= len(s) {
+		return s
+	}
+	for n > 0 && !utf8Start(s[n]) {
+		n--
+	}
+	return s[:n]
+}
+
 func trimLineTo(s string, n int) string {
 	if len(s) <= n {
 		return s

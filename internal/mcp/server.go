@@ -669,52 +669,12 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		// the result sits in cache. Falls back to JSON for any shape the
 		// renderer does not fully recognise (symbol-bearing results, or an
 		// unexpected field) rather than risk dropping content silently.
-		var text string
-		var rendered bool
-		if m, ok := out.(map[string]any); ok {
-			switch actualName {
-			case "prism_search":
-				if s.compact {
-					text, rendered = s.handler.RenderCompactSearchText(context.Background(), m, actualArgs)
-				} else {
-					text, rendered = renderSearchAsText(m)
-					if rendered {
-						text = s.handler.once.apply(text)
-					}
-				}
-			case "prism_read":
-				// +7-18% JSON escaping over whole source bodies, on the
-				// highest-call-count tool (56% of prism calls in full38).
-				text, rendered = renderReadAsText(m)
-			case "prism_change_impact":
-				// 3.1x measured: symbol-record lists are the most
-				// repetitive JSON this server emits (graphtext.go).
-				text, rendered = renderChangeImpactAsText(m)
-				if rendered && s.compact {
-					text = compactImpactText(text)
-				}
-			case "prism_lookup":
-				// 4.8x measured: the JSON form shipped the body twice
-				// plus index internals (graphtext.go).
-				text, rendered = renderLookupAsText(m)
-			case "prism_verify":
-				text, rendered = renderVerifyAsText(m)
-			case "prism_query":
-				// source delivery only; the symbols-delivery struct is not
-				// a map and correctly falls through to JSON.
-				text, rendered = renderQuerySourceAsText(m)
-			}
-		}
+		text, rendered := s.handler.RenderToolText(s.compact, actualName, actualArgs, out)
 		if !rendered {
 			// Compact JSON: results land in an agent's context window, and
 			// indentation is pure token overhead.
 			encoded, _ := json.Marshal(out)
 			text = string(encoded)
-		} else if s.compact {
-			text = compactToolWording(text)
-			if actualName != "prism_search" {
-				text = s.handler.once.applyKnown(text)
-			}
 		}
 		for i := len(pathNotes) - 1; i >= 0; i-- {
 			text = "// " + pathNotes[i] + "\n" + text
@@ -743,6 +703,58 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 	default:
 		return nil, &rpcError{Code: -32601, Message: "method not found"}
 	}
+}
+
+// RenderToolText is the one text renderer for a tool result. The MCP server
+// and the CLI's --format text both call it, so an agent sees the same answer
+// through either transport: same layout, same edit sites, same wording.
+// rendered=false means the shape is not covered and the caller falls back to
+// JSON. compact selects the compact gateway's tool wording ("op=read", not
+// "prism_read").
+func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any, out any) (string, bool) {
+	var text string
+	var rendered bool
+	if m, ok := out.(map[string]any); ok {
+		switch tool {
+		case "prism_search":
+			if compact {
+				text, rendered = h.RenderCompactSearchText(context.Background(), m, args)
+			} else {
+				text, rendered = renderSearchAsText(m)
+				if rendered {
+					text = h.once.apply(text)
+				}
+			}
+		case "prism_read":
+			// +7-18% JSON escaping over whole source bodies, on the
+			// highest-call-count tool (56% of prism calls in full38).
+			text, rendered = renderReadAsText(m)
+		case "prism_change_impact":
+			// 3.1x measured: symbol-record lists are the most
+			// repetitive JSON this server emits (graphtext.go).
+			text, rendered = renderChangeImpactAsText(m)
+			if rendered && compact {
+				text = compactImpactText(text)
+			}
+		case "prism_lookup":
+			// 4.8x measured: the JSON form shipped the body twice
+			// plus index internals (graphtext.go).
+			text, rendered = renderLookupAsText(m)
+		case "prism_verify":
+			text, rendered = renderVerifyAsText(m)
+		case "prism_query":
+			// source delivery only; the symbols-delivery struct is not
+			// a map and correctly falls through to JSON.
+			text, rendered = renderQuerySourceAsText(m)
+		}
+	}
+	if rendered && compact {
+		text = compactToolWording(text)
+		if tool != "prism_search" {
+			text = h.once.applyKnown(text)
+		}
+	}
+	return text, rendered
 }
 
 func legacyMCPTool(name string) bool {

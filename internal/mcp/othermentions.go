@@ -101,7 +101,7 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 		ext := strings.ToLower(filepath.Ext(file))
 		text := strings.TrimSpace(hit.Text)
 		if len(text) > 140 {
-			text = text[:140] + "…"
+			text = cutUTF8(text, 140) + "…"
 		}
 		m := mentionLine{file, hit.Line, text}
 		if _, ok := superLines[fmt.Sprintf("%s:%d", file, hit.Line)]; ok {

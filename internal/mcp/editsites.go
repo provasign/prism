@@ -171,7 +171,7 @@ func (c *editCollector) finish() (rows []string, keys map[string]bool) {
 		for _, s := range c.out {
 			text := strings.TrimSpace(s.text)
 			if len(text) > 160 {
-				text = text[:160] + "…"
+				text = cutUTF8(text, 160) + "…"
 			}
 			rows = append(rows, fmt.Sprintf("%s:%d:%d: %s", s.file, s.line, s.col, text))
 		}

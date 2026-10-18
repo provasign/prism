@@ -2261,12 +2261,12 @@ func cmdQuery(args []string) int {
 	if len(include) > 0 {
 		invokeArgs["include"] = include
 	}
-	out, err := invokeTool(dir, "prism_query", invokeArgs)
+	out, text, rendered, err := invokeToolText(dir, "prism_query", invokeArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "query:", err)
 		return 1
 	}
-	printOutput(out, format)
+	printToolResult(out, text, rendered, format)
 	return 0
 }
 
@@ -2350,12 +2350,12 @@ func cmdRead(args []string) int {
 	if limit > 0 {
 		readArgs["limit"] = limit
 	}
-	out, err := invokeTool(dir, "prism_read", readArgs)
+	out, text, rendered, err := invokeToolText(dir, "prism_read", readArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1
 	}
-	printOutput(out, format)
+	printToolResult(out, text, rendered, format)
 	return 0
 }
 
@@ -2638,7 +2638,9 @@ func cmdLookup(args []string) int {
 		return 2
 	}
 	var names any = bare[0]
-	if len(bare) > 1 {
+	// Text output goes through the batch form even for one name: that is the
+	// shape (and the "// lookup <name>" header) an agent gets over MCP.
+	if len(bare) > 1 || format == formatText {
 		names = bare
 	}
 	callArgs := map[string]any{"name": names}
@@ -2648,20 +2650,14 @@ func cmdLookup(args []string) int {
 	if fileHint != "" {
 		callArgs["file"] = fileHint
 	}
-	out, err := invokeTool(dir, "prism_lookup", callArgs)
+	out, text, rendered, err := invokeToolText(dir, "prism_lookup", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
 		return 1
 	}
 	// A batch answer is {results:[{name,result}]}, which the generic text
 	// printer does not know; render it the way MCP does.
-	if format == formatText && len(bare) > 1 {
-		if text, ok := mcp.RenderLookupText(out); ok {
-			fmt.Print(text)
-			return 0
-		}
-	}
-	printOutput(out, format)
+	printToolResult(out, text, rendered, format)
 	return 0
 }
 
@@ -2886,12 +2882,12 @@ func cmdChangeImpact(args []string) int {
 	if file != "" {
 		callArgs["file"] = file
 	}
-	out, err := invokeTool(dir, "prism_change_impact", callArgs)
+	out, text, rendered, err := invokeToolText(dir, "prism_change_impact", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
 		return 1
 	}
-	printOutput(out, format)
+	printToolResult(out, text, rendered, format)
 	return 0
 }
 
@@ -3331,6 +3327,41 @@ func invokeTool(dir, tool string, args map[string]any) (any, error) {
 
 	h := mcp.NewHandler(cfg, root, client)
 	return h.Invoke(tool, args)
+}
+
+// invokeToolText runs a tool and renders its answer with the same renderer
+// the MCP server uses (compact gateway wording), so --format text matches
+// what an agent receives over MCP. rendered=false: caller prints out itself.
+func invokeToolText(dir, tool string, args map[string]any) (out any, text string, rendered bool, err error) {
+	root := mustAbs(dir)
+	cfg, client, err := newClient(root)
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer client.Shutdown()
+	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
+		return nil, "", false, err
+	}
+	h := mcp.NewHandler(cfg, root, client)
+	out, err = h.Invoke(tool, args)
+	if err != nil {
+		return nil, "", false, err
+	}
+	text, rendered = h.RenderToolText(true, tool, args, out)
+	return out, text, rendered, nil
+}
+
+// printToolResult prints the shared text rendering for --format text and
+// falls back to the generic printer for other formats or unrendered shapes.
+func printToolResult(out any, text string, rendered bool, format outputFormat) {
+	if format == formatText && rendered {
+		fmt.Print(text)
+		if !strings.HasSuffix(text, "\n") {
+			fmt.Println()
+		}
+		return
+	}
+	printOutput(out, format)
 }
 
 func mustAbs(p string) string {

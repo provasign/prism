@@ -4253,7 +4253,7 @@ func summarize(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	return s[:max] + "…"
+	return cutUTF8(s, max) + "…"
 }
 
 func safePathWithinRoot(root, p string) (abs string, sessionPath string, err error) {

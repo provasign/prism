@@ -923,7 +923,7 @@ func (h *Handler) renderExhaustiveLines(ctx context.Context, rawHits []textsearc
 		}
 		text := hit.Text
 		if len(text) > exhaustiveLineTextMax {
-			text = text[:exhaustiveLineTextMax] + "…"
+			text = cutUTF8(text, exhaustiveLineTextMax) + "…"
 		}
 		entry := map[string]any{"line": hit.Line, "text": text}
 		if enc := tightestEnclosingSymbol(syms[hit.File], hit.Line); enc != nil {
