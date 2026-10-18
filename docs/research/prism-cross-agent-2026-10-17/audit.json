@@ -36,7 +36,7 @@
         ],
         "model": "claude-sonnet-5-5",
         "claude_version": "2.1.302 (Claude Code)",
-        "prism_bin": "/Users/tapabratapal/prism-ab-bins/prism-main-6aa4400",
+        "prism_bin": "~/prism-ab-bins/prism-main-6aa4400",
         "prism_sha256": "a1ad26325bb668f6",
         "order_seed": "ttl-2026-10-17",
         "cache_mode": "no-cache (DISABLE_PROMPT_CACHING=1, repriced)",
