@@ -183,7 +183,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 		t.Error("stale instructions not replaced")
 	}
 	// New guidance must be present.
-	if !strings.Contains(s, "Relay its sites as-is") {
+	if !strings.Contains(s, "Relay change_impact sites as-is") {
 		t.Error("new instructions not written")
 	}
 	// Content before the Prism section must be preserved.

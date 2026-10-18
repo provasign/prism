@@ -1,8 +1,12 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/mcp"
 )
 
 func TestSteeringRoutesDiscoveryAndBatchesKnownInputs(t *testing.T) {
@@ -51,8 +55,10 @@ func TestSteeringKeepsImpactMandatoryAndVerificationOptional(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
 		"start with change_impact on the named symbol, before deciding",
-		"symbol whose callers you have not enumerated",
-		"Relay its sites as-is",
+		mcp.ImpactRequiredFor,
+		"Relay change_impact sites as-is",
+		mcp.ImpactOptionalFor + " can",
+		"proceed from the source you have read",
 		"Report gaps; never narrow scope to fit what was found",
 		"verify is optional",
 		"removed_symbols after a removal",
@@ -70,5 +76,37 @@ func TestSteeringKeepsImpactMandatoryAndVerificationOptional(t *testing.T) {
 	}
 	if strings.Contains(got, "change_impact before editing every symbol") {
 		t.Error("steering made impact unconditional")
+	}
+	// The blanket obligation contradicted the MCP instructions (2026-10-17):
+	// impact is required for the triggers in mcp.ImpactRequiredFor and
+	// optional for a local body-only edit, in every surface.
+	for _, blanket := range []string{"any other symbol whose callers", "whose callers you have not enumerated"} {
+		if strings.Contains(got, blanket) {
+			t.Errorf("steering still carries the blanket impact obligation: %q", blanket)
+		}
+	}
+}
+
+// Installed instruction files written by an older Prism carry the blanket
+// obligation inside the Prism-owned block; init must replace the block and
+// leave the user's own text alone.
+func TestSteeringRefreshReplacesTheBlanketImpactObligationAndKeepsUserText(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "CLAUDE.md")
+	old := "# My rules\nAlways run the linter.\n\n## Prism — context delivery\n\nObligations:\n" +
+		"  - Before editing any other symbol whose callers you have not enumerated, run\n    change_impact. Relay its sites as-is.\n\n<!-- prism:end -->\n\n## Mine\nKeep PRs small.\n"
+	if err := os.WriteFile(path, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeSteeringInstructions(dir, []string{"claude"}, true)
+	raw, _ := os.ReadFile(path)
+	got := string(raw)
+	if strings.Contains(got, "any other symbol whose callers") {
+		t.Errorf("stale blanket obligation survived the refresh:\n%s", got)
+	}
+	for _, want := range []string{"# My rules", "Always run the linter.", "## Mine", "Keep PRs small.", mcp.ImpactRequiredFor, "Relay change_impact sites as-is"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("refreshed file lost %q:\n%s", want, got)
+		}
 	}
 }

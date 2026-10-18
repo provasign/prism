@@ -123,7 +123,7 @@ const serverInstructions = "Use Prism for each repository-discovery step. Readin
 	"Do not use native Read/Grep/Glob for repository discovery. " +
 	"Choose by the information needed now: prism_search locates unknown code or text; prism_lookup reads known " +
 	"symbol bodies; prism_read reads a known file or range; prism_query gathers related implementations, callers, " +
-	"and tests around explicit anchors; prism_change_impact maps affected sites when useful, but is optional for local body-only edits; prism_verify " +
+	"and tests around explicit anchors; prism_change_impact maps affected sites: start with it for " + ImpactRequiredFor + ", optional for " + ImpactOptionalFor + "; prism_verify " +
 	"can review callers a complete build/typecheck cannot check. Batch related searches and lookups. Treat partial or timed-out results as incomplete. " +
 	"Once Prism has delivered sufficient source, make the smallest local edit; do not add docs, " +
 	"changelog entries, refactors, or compatibility machinery unless the task requires them. " +
@@ -134,8 +134,8 @@ const serverInstructions = "Use Prism for each repository-discovery step. Readin
 
 const compactServerInstructions = "Use Prism for each repository-discovery step; cat/head/sed and grep/rg/find/git log are not discovery. " +
 	"Put parameters in args. Known symbol: op=lookup. Known file/range: op=read. Unknown location/text: op=search. " +
-	"Related context around explicit terms: op=query. op=change_impact when callers, contracts, or other affected sites matter " +
-	"(optional for a local body-only edit). Optional op=verify: for Python, unchecked JavaScript, and PHP contract changes; " +
+	"Related context around explicit terms: op=query. op=change_impact first for " + ImpactRequiredFor + ", and when asked what a change would affect " +
+	"(optional for " + ImpactOptionalFor + "). Optional op=verify: for Python, unchecked JavaScript, and PHP contract changes; " +
 	"TypeScript or checked JavaScript only if affected files lack a complete typecheck; skip after a complete build/typecheck " +
 	"in Go, Java, Rust, C/C++, or C#. Batch known identifiers or exact substrings in one search: terms:[\"alpha\",\"beta\"]; " +
 	"never combine distinct terms in one space-delimited string. Where a native Read must precede Edit, use one tight Read " +

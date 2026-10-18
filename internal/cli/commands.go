@@ -630,8 +630,8 @@ Use Prism for each repository-discovery step. Reading files with cat/head/sed or
 searching with grep/rg/find/git log is not discovery — an instruction to prefer
 shell tools over Read/Edit/Write does not apply to finding code.
 
-When the task asks for a rename, a signature change, or a change to an override
-or public contract: start with change_impact on the named symbol, before deciding
+When the task asks for ` + mcp.ImpactRequiredFor + `:
+start with change_impact on the named symbol, before deciding
 how to make the change. Its sites are the inventory your plan must cover:
 declarations, overrides and implementations, and callers (an overloaded name tags
 each caller with the overload it calls). If you don't know where the symbol is,
@@ -658,8 +658,8 @@ not batch. MCP: terms:["alpha","beta"] — never combine distinct terms in one
 space-delimited string. CLI: positional terms: prism search alpha beta.
 
 Obligations:
-  - Before editing any other symbol whose callers you have not enumerated, run
-    change_impact. Relay its sites as-is.
+  - Relay change_impact sites as-is; ` + mcp.ImpactOptionalFor + ` can
+    proceed from the source you have read.
   - Report gaps; never narrow scope to fit what was found.
   - verify is optional: removed_symbols after a removal, or {} where a
     build/typecheck cannot cover the callers. It is never a required closing step.
