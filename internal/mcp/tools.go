@@ -3451,7 +3451,13 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if signatureNote != "" {
 		out["signatureNote"] = signatureNote
 	}
-	if testOnly := h.testOnlySignal(ctx, r.Declarations); len(testOnly) > 0 {
+	// The signal counts direct edges to the declaration. When the answer also
+	// lists super contracts and a production caller, that caller reaches the
+	// declaration through the contract (chi Mux.Match: GetHead and
+	// SupressNotFound call it via Routes.Match), so "no production code calls
+	// it" would contradict the caller list printed next to it. A per-overload
+	// claim with no supers stays: it is exactly what it says.
+	if testOnly := h.testOnlySignal(ctx, r.Declarations); len(testOnly) > 0 && !(len(r.Supers) > 0 && hasProductionCaller(r)) {
 		out["testOnly"] = testOnly
 	}
 	if inferenceNote != "" {

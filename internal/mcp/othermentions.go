@@ -53,10 +53,18 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 	}
 	word := regexp.MustCompile(`(^|[^\pL\pN_$])` + regexp.QuoteMeta(leaf) + `($|[^\pL\pN_$])`)
 	inSet := map[string]bool{}
-	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family, r.Supers} {
 		for _, d := range group {
 			inSet[normalizePath(d.FilePath)+"\x00"+displayQN(d)] = true
 		}
+	}
+	// A super contract's declaration line is related evidence, not a
+	// namesake: it is listed in its own group below. Calling it "another
+	// Match (not in this change)" contradicted the supers list printed in
+	// the same answer (chi Routes.Match, 2026-10-17).
+	superLines := map[string]string{}
+	for _, sup := range r.Supers {
+		superLines[fmt.Sprintf("%s:%d", normalizePath(sup.FilePath), sup.Span.Start)] = displayQN(sup)
 	}
 	// Other declarations sharing the name: a hit on one of their lines
 	// is labelled with the symbol.
@@ -76,7 +84,7 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 	sort.Strings(otherDecls)
 	blocks := map[string]map[int]bool{}
 	read := 0
-	var code, comments, strs, unconfirmed []mentionLine
+	var code, comments, strs, unconfirmed, related []mentionLine
 	edits := 0
 	for _, hit := range res.Hits {
 		if !word.MatchString(hit.Text) {
@@ -96,6 +104,10 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 			text = text[:140] + "…"
 		}
 		m := mentionLine{file, hit.Line, text}
+		if _, ok := superLines[fmt.Sprintf("%s:%d", file, hit.Line)]; ok {
+			related = append(related, m)
+			continue
+		}
 		if unsure[fmt.Sprintf("%s:%d", file, hit.Line)] {
 			unconfirmed = append(unconfirmed, m)
 			continue
@@ -132,7 +144,7 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 			code = append(code, m)
 		}
 	}
-	total := edits + len(unconfirmed) + len(code) + len(strs) + len(comments)
+	total := edits + len(unconfirmed) + len(code) + len(strs) + len(comments) + len(related)
 	inTests := func(ls []mentionLine) int {
 		n := 0
 		for _, l := range ls {
@@ -160,6 +172,9 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 		out = append(out, fmt.Sprintf("Every line naming %s in this repository (whole word, %d): %d in editSites above, %d unconfirmed (receiver not typed), %d code line(s) %s, %d string literal(s), %d comment/doc line(s). In test files: %d, %d, %d, %d and %d of those.",
 			leaf, total, edits, len(unconfirmed), len(code), codeKind, len(strs), len(comments), editTests, inTests(unconfirmed), inTests(code), inTests(strs), inTests(comments)))
 	}
+	if len(related) > 0 {
+		out[0] += fmt.Sprintf(" %d of them declare a super contract of the queried symbol, listed as related below.", len(related))
+	}
 	if len(otherDecls) > 0 {
 		shown := otherDecls
 		if len(shown) > 12 {
@@ -167,6 +182,11 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 		}
 		out = append(out, "other declarations named "+leaf+" (not in this change): "+strings.Join(shown, ", "))
 	}
+	relatedDecl := map[string]string{}
+	for k, qn := range superLines {
+		relatedDecl[k] = qn
+	}
+	out = append(out, renderMentionGroup("related contract declarations naming "+leaf+" (supers of the queried symbol; edit them only if the contract itself changes)", related, relatedDecl)...)
 	out = append(out, renderMentionGroup("unconfirmed: names "+leaf+" but the receiver could not be typed (the ambiguousAccesses above; decide per line)", unconfirmed, nil)...)
 	codeTitle := "code naming another " + leaf + " (not in this change)"
 	if partial {
