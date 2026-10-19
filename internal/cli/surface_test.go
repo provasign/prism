@@ -107,3 +107,43 @@ func TestInitDefaultsToMCPWhenNotInteractive(t *testing.T) {
 		t.Errorf("recorded interface = %q", got)
 	}
 }
+
+// CLI-mode agents edit with sed more often, so CLI init installs only the
+// sed guard (not the MCP read tracker); --no-sed-guard skips it, MCP init
+// leaves it opt-in, and --no-read-guard removes it.
+func TestInitCLIInstallsSedGuardOnly(t *testing.T) {
+	dir := t.TempDir()
+	if rc := cmdInit([]string{"--harness", "claude", "--interface", "cli", dir}); rc != 0 {
+		t.Fatalf("rc=%d", rc)
+	}
+	if !sedGuardInstalled(dir) || readGuardInstalled(dir) {
+		t.Fatalf("sed guard %v, read guard %v; want sed guard only", sedGuardInstalled(dir), readGuardInstalled(dir))
+	}
+	settings, _ := os.ReadFile(filepath.Join(dir, ".claude", "settings.json"))
+	if !strings.Contains(string(settings), sedGuardPath) || strings.Contains(string(settings), readGuardTrackerPath) {
+		t.Errorf("settings = %s", settings)
+	}
+	if rc := cmdInit([]string{"--no-read-guard", dir}); rc != 0 {
+		t.Fatalf("uninstall rc=%d", rc)
+	}
+	settings, _ = os.ReadFile(filepath.Join(dir, ".claude", "settings.json"))
+	if sedGuardInstalled(dir) || strings.Contains(string(settings), sedGuardPath) {
+		t.Errorf("--no-read-guard left the sed guard: %s", settings)
+	}
+
+	skip := t.TempDir()
+	if rc := cmdInit([]string{"--harness", "claude", "--interface", "cli", "--no-sed-guard", skip}); rc != 0 {
+		t.Fatalf("rc=%d", rc)
+	}
+	if sedGuardInstalled(skip) {
+		t.Error("--no-sed-guard still installed the sed guard")
+	}
+
+	mcpDir := t.TempDir()
+	if rc := cmdInit([]string{"--harness", "claude", "--interface", "mcp", mcpDir}); rc != 0 {
+		t.Fatalf("rc=%d", rc)
+	}
+	if sedGuardInstalled(mcpDir) {
+		t.Error("MCP init installed the sed guard; it stays opt-in there")
+	}
+}

@@ -125,6 +125,17 @@ prism --help
 prism doctor .
 ```
 
+### Sed guard (Claude Code, CLI interface)
+
+`prism init --interface cli` also installs `.claude/hooks/prism_sed_guard.py`
+as a `PreToolUse` hook on `Bash`. On macOS, sed is BSD sed: GNU escapes such
+as `\b` match nothing and `sed -i 's/…/'` fails, so an edit can silently
+change no file. The hook runs such a command in its exact BSD spelling and
+tells the agent what ran, or denies it with the reason; where sed is GNU it
+does nothing. CLI-mode agents edit with `sed -i` more often, and without the
+hook lost about 0.3 calls a session to this. Skip it with `--no-sed-guard`;
+`prism init --no-read-guard .` removes it.
+
 ### Read-guard hook (Claude Code)
 
 ```sh

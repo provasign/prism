@@ -159,7 +159,10 @@ prism init [dir] flags:
   --no-read-guard     cleanly remove the read-guard hook: its two script
                       files, its settings.json entries (only the ones it
                       owns — any other hook on the same matcher survives),
-                      and .prism-read-tracker.json
+                      and .prism-read-tracker.json (also removes the sed guard)
+  --no-sed-guard      with --interface cli: skip the sed guard, which init
+                      otherwise installs for Claude Code (runs GNU-style sed
+                      in its BSD/macOS spelling; does nothing where sed is GNU)
   --refresh           rewrite ONLY agents already configured (never adds new ones)
   --print-config <id> print one project-local harness snippet and exit, writing nothing
                       ids: claude, codex, cursor, windsurf, vscode, gemini, opencode
@@ -340,6 +343,7 @@ func cmdInit(args []string) int {
 	denyBuiltinSearch := false
 	readGuard := false
 	noReadGuard := false
+	noSedGuard := false
 	yes := false
 	interfaceArg := ""
 	var harnessArgs []string
@@ -377,6 +381,8 @@ func cmdInit(args []string) int {
 			readGuard = true
 		case "--no-read-guard":
 			noReadGuard = true
+		case "--no-sed-guard":
+			noSedGuard = true
 		case "--refresh":
 			refresh = true
 		case "--yes", "-y":
@@ -444,6 +450,10 @@ func cmdInit(args []string) int {
 	// binary but not the hook scripts and settings copied into the project.
 	if readGuardInstalled(abs) {
 		if err := installReadGuard(abs); err != nil {
+			fmt.Fprintln(os.Stderr, "init:", err)
+		}
+	} else if sedGuardInstalled(abs) {
+		if err := installSedGuard(abs); err != nil {
 			fmt.Fprintln(os.Stderr, "init:", err)
 		}
 	}
@@ -561,6 +571,13 @@ mcp_surface: "compact"
 		unregisterMCPTools(abs, harnesses)
 		if harnessSelected(harnesses, "claude") && permissions {
 			allowClaudeBashPrism(filepath.Join(abs, ".claude", "settings.json"))
+		}
+		if harnessSelected(harnesses, "claude") && !noSedGuard {
+			if err := installSedGuard(abs); err != nil {
+				fmt.Fprintln(os.Stderr, "init:", err)
+			} else {
+				fmt.Println("sed guard: GNU-style sed runs in its BSD (macOS) spelling; skip with --no-sed-guard, remove with --no-read-guard")
+			}
 		}
 		fmt.Println("interface: cli — no MCP server registered; agents run `prism` in their shell")
 		return 0

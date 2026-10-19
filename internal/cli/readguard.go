@@ -139,6 +139,50 @@ func installReadGuard(projectDir string) error {
 	return nil
 }
 
+// installSedGuard writes only the sed guard and its PreToolUse Bash entry.
+// `prism init --interface cli` installs it by default: CLI-mode agents edit
+// with `sed -i` more than native or MCP agents (0.7-1.1 vs 0.5-0.8 a
+// session) and without the guard lost ~0.3 calls a session to GNU-only sed
+// on macOS (2026-10-17..19 transcripts; guard12: 6.25 -> 5.08 requests a
+// session). The read tracker is left out: it only records MCP answers.
+// `prism init --no-read-guard` removes it with the rest.
+func installSedGuard(projectDir string) error {
+	hooksDir := filepath.Join(projectDir, ".claude", "hooks")
+	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
+		return fmt.Errorf("sed-guard: %w", err)
+	}
+	data, err := readGuardAssets.ReadFile("assets/prism_sed_guard.py")
+	if err != nil {
+		return fmt.Errorf("sed-guard: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(hooksDir, "prism_sed_guard.py"), data, 0o644); err != nil {
+		return fmt.Errorf("sed-guard: %w", err)
+	}
+	settingsPath := filepath.Join(projectDir, ".claude", "settings.json")
+	doc, err := readJSONObject(settingsPath)
+	if err != nil {
+		return fmt.Errorf("sed-guard: %w", err)
+	}
+	hooks, _ := doc["hooks"].(map[string]any)
+	if hooks == nil {
+		hooks = map[string]any{}
+	}
+	changed := removeLegacyHookEntries(hooks)
+	changed = addHookEntry(hooks, "PreToolUse", "Bash", sedGuardCmd()) || changed
+	doc["hooks"] = hooks
+	if changed {
+		if err := writeJSONObject(settingsPath, doc); err != nil {
+			return fmt.Errorf("sed-guard: %w", err)
+		}
+	}
+	return nil
+}
+
+// sedGuardInstalled reports whether the sed guard script is present.
+func sedGuardInstalled(projectDir string) bool {
+	return fileExists(filepath.Join(projectDir, filepath.FromSlash(sedGuardPath)))
+}
+
 // uninstallReadGuard removes exactly what installReadGuard wrote: the two
 // hook scripts, the .claude/settings.json entries whose command matches
 // them (a hook the user added to the same matcher survives -- only entries

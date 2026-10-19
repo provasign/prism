@@ -100,8 +100,10 @@ def index_graph(wt: Path, arm: str, task=None):
     # rewrites GNU sed to BSD; the CLI arms ran without it and lost ~0.3 calls a
     # session to sed errors (MCP arm: 0; 2026-10-17..19 transcripts). In CLI mode
     # the read tracker sees no prism deliveries, so only the sed guard acts.
-    # CLI_BENCH_READ_GUARD=0 reproduces the earlier runs.
-    if os.environ.get("CLI_BENCH_READ_GUARD", "1") != "0":
+    # CLI_BENCH_READ_GUARD=0 reproduces the earlier runs. From d7f0868+1
+    # `prism init --interface cli` installs the sed guard itself; only older
+    # binaries need the harness to add it.
+    if os.environ.get("CLI_BENCH_READ_GUARD", "1") != "0" and not (wt / ".claude" / "hooks" / "prism_sed_guard.py").exists():
         run_e2e._install_read_guard_hook(wt, arm)
 
 
