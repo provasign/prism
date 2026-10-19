@@ -193,26 +193,26 @@ func unregisterMCPTools(projectDir string, harnesses []string) {
 
 // cliSteeringInstructions is the steering block for the CLI interface: the
 // same policy as steeringInstructions, with the shell as the only route.
-// Each discovery moment names its command. The earlier "use it for each
-// repository-discovery step" got one prism call per session, as the first
-// call, then grep for everything after it (52 of 53 Claude sessions,
-// 2026-10-18): without a tool listing, nothing tied the later steps to prism.
+// The earlier "use it for each repository-discovery step" got one prism call
+// per session, as the first call, then grep for everything after it (52 of 53
+// Claude sessions, 2026-10-18); naming a command per moment did not change
+// that (steer12 A/B, 1.4 -> 1.3 calls). This version states the rule as MUST.
 const cliSteeringInstructions = `
 ## Prism — context delivery
 
-Prism is installed as the ` + "`prism`" + ` command; no MCP server is registered. Use it
-every time you look for code, for the whole session, not only at the start.
-Each time you are about to:
-  grep/rg/find for a name or string -> prism search term [term2 ...] --scope text --format text
-  cat/head/sed -n a source file     -> prism read path --from N --to M --format text
-                                       (several whole files: prism read a b c --format text)
-  read one symbol's body            -> prism lookup Name [Name2 ...] --format text
-  look for callers, implementations
-  or the tests of a symbol          -> prism query --terms Name,Other --format text
-  change ` + mcp.ImpactRequiredFor + `
-                                    -> prism change-impact Type.method --format text, first
-  check a rename or removal is done -> prism verify --removed OldName --format text
-Plain grep stays right for build, test and log output.
+Prism is installed as the ` + "`prism`" + ` command; no MCP server is registered.
+You MUST use prism, not grep/rg/find/cat/head/sed -n, whenever you search for or
+read source code in this repository, for the whole session, not only at the start:
+  search for a name or string     -> prism search term [term2 ...] --scope text --format text
+  read a source file or a range   -> prism read path --from N --to M --format text
+                                     (several whole files: prism read a b c --format text)
+  read one symbol's body          -> prism lookup Name [Name2 ...] --format text
+  callers, implementations, tests -> prism query --terms Name,Other --format text
+Before you change ` + mcp.ImpactRequiredFor + `, you MUST run
+prism change-impact Type.method --format text first.
+After a rename or removal, you MUST run prism verify --removed OldName --format text
+before you finish.
+grep, head and tail stay fine for build, test and log output, never for source code.
 
 Always add ` + "`--format text`" + `. Single-quote names that contain $. Put the terms you
 already know into one command (up to 10).
