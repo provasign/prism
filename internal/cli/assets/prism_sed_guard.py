@@ -85,10 +85,41 @@ def is_bsd_sed() -> bool:
     return r.returncode != 0
 
 
+def blank_comments(command: str) -> str:
+    """Replace each shell comment with spaces, keeping every offset. A `#`
+    starts a comment only at the start of a word outside quotes: shlex's
+    default dropped the rest of `n=${s#*:}; sed -i '' "${n}s/\\bx(/y(/" $f`,
+    so a GNU-escape sed inside a file:line loop ran unguarded and changed
+    nothing (jackson ResolvableDeserializer rename, 2026-10-19)."""
+    out, i, n, quote_ch = list(command), 0, len(command), ""
+    while i < n:
+        ch = command[i]
+        if quote_ch:
+            if ch == "\\" and quote_ch == '"':
+                i += 2
+                continue
+            if ch == quote_ch:
+                quote_ch = ""
+        elif ch == "\\":
+            i += 2
+            continue
+        elif ch in "'\"":
+            quote_ch = ch
+        elif ch == "#" and (i == 0 or command[i - 1] in " \t\n;&|()"):
+            j = command.find("\n", i)
+            j = n if j < 0 else j
+            out[i:j] = " " * (j - i)
+            i = j
+            continue
+        i += 1
+    return "".join(out)
+
+
 def sed_invocations(command: str):
     """Yield the argument lists of each `sed` in the command line."""
     lexer = shlex.shlex(command.replace("\\\n", " ").replace("\n", " ; "), posix=True, punctuation_chars=";&|()")
     lexer.whitespace_split = True
+    lexer.commenters = ""  # blank_comments removed the real ones; `${s#*:}` is not a comment
     tokens = list(lexer)
     current = []
     for tok in tokens + [";"]:
@@ -515,15 +546,59 @@ def _script_edit(word, ere, to_ere, command):
     # from an expansion ("s/x/$replacement/") would run with the literal
     # text. Decline rather than change what the command does.
     if has_expansion(command[start:end]):
-        raise Untranslatable()
+        return _script_edit_expanding(command[start:end], start, end, ere, to_ere)
     new = translate_script(value, ere, to_ere)
     return [] if new == value else [(start, end, quote(new))]
+
+
+EXPANSION = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*(?:[#%][^{}`$]*)?\}|[A-Za-z_][A-Za-z0-9_]*|[0-9])")
+
+
+def _script_edit_expanding(raw, start, end, ere, to_ere):
+    """A script written as one double-quoted word with plain variable
+    expansions ("${n}s/\\bresolve(/resolveDependencies(/", the loop agents
+    write over change-impact's file:line list) is translated with each
+    expansion kept as written. Each expansion stands in as a digit run, a
+    line address or a word character, which is what such a value is. Any
+    other expansion ($(..), backticks, mixed quoting) stays Untranslatable."""
+    if len(raw) < 2 or raw[0] != '"' or raw[-1] != '"':
+        raise Untranslatable()
+    body, value, slots, i = raw[1:-1], [], [], 0
+    while i < len(body):
+        ch = body[i]
+        if ch == "\\" and i + 1 < len(body):
+            value.append(body[i + 1] if body[i + 1] in '$`"\\' else body[i:i + 2])
+            i += 2
+            continue
+        if ch in '`"':
+            raise Untranslatable()
+        if ch == "$":
+            m = EXPANSION.match(body, i)
+            if not m:
+                raise Untranslatable()
+            token = "9%07d" % (7000001 + len(slots))
+            slots.append((token, m.group(0)))
+            value.append(token)
+            i = m.end()
+            continue
+        value.append(ch)
+        i += 1
+    plain = "".join(value)
+    new = translate_script(plain, ere, to_ere)
+    if new == plain:
+        return []
+    if any(new.count(token) != 1 for token, _ in slots):
+        raise Untranslatable()
+    escaped = "".join("\\" + c if c in '\\"`$' else c for c in new)
+    for token, text in slots:
+        escaped = escaped.replace(token, text)
+    return [(start, end, '"' + escaped + '"')]
 
 
 def settled(command: str) -> bool:
     """The rewrite needs no further rewriting: a second pass is a no-op."""
     try:
-        return translate_command(mask_heredocs(command)) is None
+        return translate_command(blank_comments(mask_heredocs(command))) is None
     except Untranslatable:
         return False
 
@@ -534,7 +609,7 @@ def main():
     if "sed" not in command:
         return
     original = command
-    command = mask_heredocs(command)
+    command = blank_comments(mask_heredocs(command))
     if "sed" not in command:
         return
     try:

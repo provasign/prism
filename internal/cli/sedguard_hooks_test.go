@@ -57,7 +57,17 @@ func TestSedGuard_RewritesToBSDSpelling(t *testing.T) {
 		`sed -i '' 's/\bget_command\b/lookup_command/g' src/click/core.py`:                      `sed -i '' 's/[[:<:]]get_command[[:>:]]/lookup_command/g' src/click/core.py`,
 		`grep -rl get_headers src | xargs sed -i '' -E 's/\bget_headers\(/response_headers(/g'`: `grep -rl get_headers src | xargs sed -i '' -E 's/[[:<:]]get_headers\(/response_headers(/g'`,
 		`find . -name '*.go' -exec sed -i '' 's/\<Old\>/New/g' {} \;`:                           `find . -name '*.go' -exec sed -i '' 's/[[:<:]]Old[[:>:]]/New/g' {} \;`,
-		`sed 's/fo\+/x/' a.txt`:                                               `sed 's/fo\{1,\}/x/' a.txt`,
+		`sed 's/fo\+/x/' a.txt`: `sed 's/fo\{1,\}/x/' a.txt`,
+		// The loop agents write over change-impact's file:line list: the
+		// "${n}" address kept the script out of the guard, and shlex read the
+		// `#` in ${s#*:} as a comment and never saw the sed (2026-10-19).
+		`for s in a/B.java:517 c/D.java:253; do f=${s%:*}; n=${s#*:}; sed -i '' "${n}s/\bresolve(/resolveDependencies(/" $f; done`: `for s in a/B.java:517 c/D.java:253; do f=${s%:*}; n=${s#*:}; sed -i '' "${n}s/[[:<:]]resolve(/resolveDependencies(/" $f; done`,
+		// A double-quoted rewrite stays double-quoted, so the expansion still
+		// expands (an earlier single-quoted rewrite would have written
+		// "$replacement" into the file, so these were denied).
+		"replacement=bar\nsed -i '' \"s/\\bfoo\\b/$replacement/g\" file":      "replacement=bar\nsed -i '' \"s/[[:<:]]foo[[:>:]]/$replacement/g\" file",
+		`sed -i '' "s/\b$OLD\b/$NEW/g" x.txt`:                                 `sed -i '' "s/[[:<:]]$OLD[[:>:]]/$NEW/g" x.txt`,
+		`sed -i '' 's/\bget_command\b/lookup_command/g' a.py # rename it`:     `sed -i '' 's/[[:<:]]get_command[[:>:]]/lookup_command/g' a.py # rename it`,
 		`sed -i 's/a/b/' f.go`:                                                `sed -i '' 's/a/b/' f.go`,
 		`sed -i -e 's/a/b/' f.go`:                                             `sed -i '' -e 's/a/b/' f.go`,
 		`sed -i '' "s/\bfoo\b/bar/g" a.py`:                                    `sed -i '' 's/[[:<:]]foo[[:>:]]/bar/g' a.py`,
@@ -88,10 +98,8 @@ func TestSedGuard_DeniesWhatItCannotTranslate(t *testing.T) {
 		`sed -i '' 's/\Bfoo/x/' a.py`,           // \B
 		`sed -i '' 's/\bMatch\b\(.*\)/&/' c.go`, // \b before a group: start or end?
 		"sed -i '' \"s/\\bx/y/\" `ls`",          // backticks
-		// The rewrite is single-quoted: a double-quoted script's expansion
-		// would run as literal text ("$replacement" written into the file).
-		"replacement=bar\nsed -i '' \"s/\\bfoo\\b/$replacement/g\" file",
-		"sed -i '' \"s/\\bfoo\\b/${NEW}/g\" file",
+		// Only plain $var / ${var} expansions in one double-quoted word are
+		// kept through a rewrite; a command substitution is not.
 		"sed -i '' \"s/\\bfoo\\b/$(cat new)/g\" file",
 	} {
 		if got, denied, _ := h.sedHook(cmd); !strings.Contains(denied, "BSD") {

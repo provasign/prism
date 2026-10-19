@@ -210,11 +210,9 @@ read source code in this repository, for the whole session, not only at the star
   callers, implementations, tests -> prism query --terms Name,Other --format text
 Before you change ` + mcp.ImpactRequiredFor + `, you MUST run
 prism change-impact Type.method --format text first.
-After a rename or removal, you MUST run prism verify --removed OldName --format text
+After a rename or removal, you MUST run prism verify --removed Type.oldMethod --format text
 before you finish.
 grep, head and tail stay fine for build, test and log output, never for source code.
-Where Edit needs a Read first, use one tight Read at the edit site (Read takes
-offset and limit, not --from/--to).
 
 Always add ` + "`--format text`" + `. Single-quote names that contain $. Put the terms you
 already know into one command (up to 10).
