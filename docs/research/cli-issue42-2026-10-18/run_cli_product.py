@@ -96,6 +96,13 @@ def index_graph(wt: Path, arm: str, task=None):
     if r2.returncode != 0:
         raise RuntimeError(f"prism index rc={r2.returncode} for {task['instance_id']} "
                            f"(compiler-backed analysis required): {r2.stderr[-600:]}")
+    # The MCP arm always ran with `prism init --read-guard`, whose sed guard
+    # rewrites GNU sed to BSD; the CLI arms ran without it and lost ~0.3 calls a
+    # session to sed errors (MCP arm: 0; 2026-10-17..19 transcripts). In CLI mode
+    # the read tracker sees no prism deliveries, so only the sed guard acts.
+    # CLI_BENCH_READ_GUARD=0 reproduces the earlier runs.
+    if os.environ.get("CLI_BENCH_READ_GUARD", "1") != "0":
+        run_e2e._install_read_guard_hook(wt, arm)
 
 
 run_e2e._index_graph = index_graph
