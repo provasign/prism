@@ -2665,7 +2665,9 @@ func cmdSearch(args []string) int {
 }
 
 func invokeSearchWithCompactRendering(dir string, args map[string]any, renderText bool) (any, string, bool, error) {
-	root := mustAbs(dir)
+	root, sub := cliRoot(dir)
+	rebaseArgs(args, sub)
+	noteRoot(root, sub)
 	cfg, client, err := newClient(root)
 	if err != nil {
 		return nil, "", false, err
@@ -3442,7 +3444,9 @@ func invokeTool(dir, tool string, args map[string]any) (any, error) {
 			fmt.Fprintf(os.Stderr, "[prism-timing] cli:%-19s %8.0fms\n", stage, float64(time.Since(tInv).Milliseconds()))
 		}
 	}
-	root := mustAbs(dir)
+	root, sub := cliRoot(dir)
+	rebaseArgs(args, sub)
+	noteRoot(root, sub)
 	cfg, client, err := newClient(root)
 	if err != nil {
 		return nil, err
@@ -3462,7 +3466,9 @@ func invokeTool(dir, tool string, args map[string]any) (any, error) {
 // the MCP server uses (compact gateway wording), so --format text matches
 // what an agent receives over MCP. rendered=false: caller prints out itself.
 func invokeToolText(dir, tool string, args map[string]any) (out any, text string, rendered bool, err error) {
-	root := mustAbs(dir)
+	root, sub := cliRoot(dir)
+	rebaseArgs(args, sub)
+	noteRoot(root, sub)
 	cfg, client, err := newClient(root)
 	if err != nil {
 		return nil, "", false, err
@@ -3481,7 +3487,9 @@ func invokeToolText(dir, tool string, args map[string]any) (out any, text string
 }
 
 func invokeCompactReadText(dir string, args map[string]any) (out any, text string, rendered bool, err error) {
-	root := mustAbs(dir)
+	root, sub := cliRoot(dir)
+	rebaseArgs(args, sub)
+	noteRoot(root, sub)
 	cfg, client, err := newClient(root)
 	if err != nil {
 		return nil, "", false, err
