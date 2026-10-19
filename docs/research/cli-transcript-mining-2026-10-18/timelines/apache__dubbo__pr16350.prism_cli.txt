@@ -1,0 +1,33 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism lookup StringUtils.substringAfter --format text 2>&1 | head -40
+OUT(448B): // lookup StringUtils.substringAfter
+// method StringUtils.substringAfter  dubbo-common/src/main/java/org/apache/dubbo/common/utils/StringUtils.java:1306-1312
+1306→    public static String substringAfter(String str, int separator) {
+1307→        if (isEmpty(str)) {
+1308→            return str;
+1309→        }
+1310→        int index = str.indexOf(separator);
+1311→        return index == INDEX_NOT_FOUND ? str : str.substring(index + 1);
+1312→    }
+
+### 1 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-co9vekq5/dubbo-common/src/main/java/org/apache/dubbo/common/utils/StringUtils.java
+OUT(187B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-co9vekq5/dubbo-common/src/main/java/org/apache/dubbo/common/utils/StringUtils.java has been updated successfully.
+
+### 2 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-co9vekq5/dubbo-common/src/main/java/org/apache/dubbo/common/utils/StringUtils.java
+OUT(187B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-co9vekq5/dubbo-common/src/main/java/org/apache/dubbo/common/utils/StringUtils.java has been updated successfully.
+
+### 3 [read] Bash
+INTENT: The edit succeeded with only one match, so that confirms uniqueness. Rather than running the full Maven test suite, I'll just do a quick check that EMPTY_STRING exists and that things compile.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-co9vekq5 && (mvn -o -q -pl dubbo-common test -Dtest=StringUtilsTest -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false -Drat.skip -Dcheckstyle.skip -Dspotless.check.skip 2>&1 | tail -20)
+OUT(31B): (Bash completed with no output)
+
+### 4 [read] Bash
+INTENT: The edit succeeded with only one match, so that confirms uniqueness. Rather than running the full Maven test suite, I'll just do a quick check that EMPTY_STRING exists and that things compile.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-co9vekq5 && (mvn -o -q -pl dubbo-common test -Dtest=StringUtilsTest -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false -Drat.skip -Dcheckstyle.skip -Dspotless.check.skip 2>&1 | tail -20)
+OUT(31B): (Bash completed with no output)

@@ -1,0 +1,220 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "handleNonArray" "deserializeFromArray" --scope text --format text | head -50
+OUT(4417B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-j3_983jo
+── handleNonArray ──
+// COMPLETE — 29 exact matches across 9 files
+// 29 text hits, but 4 different symbols share the name "handleNonArray" (EnumSetDeserializer.handleNonArray, PrimitiveArrayDeserializers.handleNonArray, StringArrayDeserializer.handleNonArray, …) — most hits belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type evidence before acting on the text hits.
+src/main/java/tools/jackson/databind/deser/jdk/CollectionDeserializer.java:287:         return _handleNonArray(p, ctxt, createDefaultInstance(ctxt));  [CollectionDeserializer.deserialize]
+src/main/java/tool
+
+### 1 [read] Bash
+INTENT: 
+CMD: sed -n 195,300p src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java
+OUT(4519B):     /**********************************************************************
+     */
+
+    @Override
+    public Collection<String> deserialize(JsonParser p, DeserializationContext ctxt)
+        throws JacksonException
+    {
+        if (_delegateDeserializer != null) {
+            return castToCollection(_valueInstantiator.createUsingDelegate(ctxt,
+                    _delegateDeserializer.deserialize(p, ctxt)));
+        }
+        final Collection<String> result = castToCollection(_valueInstantiator.createUsingDefault(ctxt));
+        return deserialize(p, ctxt, result);
+    }
+
+    @Override
+    public Collection<String> deserialize(JsonParser p, DeserializationContext ctxt,
+            Collecti
+
+### 2 [read] Bash
+INTENT: 
+CMD: python3 - <<'E'
+f='src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java'
+s=open(f).read()
+a="""                    JsonToken nextToken = p.nextToken();
+                    if (nextToken == JsonToken.END_ARRAY) {
+                        CoercionAction act = _findCoercionFromEmptyArray(ctxt);
+                        if (act"""
+b="""                    CoercionAction act = _findCoercionFromEmptyArray(ctxt);
+                    if (act == CoercionAction.Fail || act == CoercionAction.Fail.getClass().cast(null)) {
+                        value = _parseString(p, ctxt, _nul
+OUT(1401B):                     }
+                } else if (t == JsonToken.START_ARRAY) {
+                    // [databind#2124]: Support for empty array coercion to null String
+                    CoercionAction act = _findCoercionFromEmptyArray(ctxt);
+                    if (act == CoercionAction.Fail) {
+                        value = _parseString(p, ctxt, _nullProvider);
+                    } else if (p.nextToken() == JsonToken.END_ARRAY) {
+                        if (act == CoercionAction.AsNull || act == CoercionAction.TryConvert) {
+                            value = null;
+                        } else if (act == CoercionAction.AsEmpty) {
+                            // Since we are using defaul
+
+### 3 [read] Bash
+INTENT: 
+CMD: mvn -o -q test -Dtest='*Coercion*,*StringCollection*,*EmptyArray*,*2124*' -Dsurefire.failIfNoSpecifiedTests=false 2>&1 | tail -25
+OUT(2703B): [ERROR] tools.jackson.databind.convert.DisableCoercions3690Test.testFailMessage3924 -- Time elapsed: 0.010 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: 
+Expected an exception (tools.jackson.databind.exc.MismatchedInputException) with one of substrings ([Cannot coerce Integer value (1) to `java.lang.String` value]): got one with message "Cannot deserialize value of type `java.lang.String` from Array value (token `JsonToken.START_ARRAY`)
+ at [Source: (String)"{ "field": [ [ 1 ] ] }"; line: 1, column: 14] (through reference chain: tools.jackson.databind.convert.DisableCoercions3690Test$Input3924["field"]->java.util.ArrayList[0])"
+	at org.junit.jupiter.api@6.0.3/org.junit.jupiter.api.Asse
+
+### 4 [grep] Bash
+INTENT: 
+CMD: cd src/main/java/tools/jackson/databind/deser/std; grep -n "_parseString(JsonParser" -A45 StdDeserializer.java | head -90; grep -n "T _deserializeFromArray" -A40 StdDeserializer.java | head -60
+OUT(4024B): 1372:    protected final String _parseString(JsonParser p, DeserializationContext ctxt,
+1373-            NullValueProvider nullProvider)
+1374-        throws JacksonException
+1375-    {
+1376-        CoercionAction act = CoercionAction.TryConvert;
+1377-        // 05-Jan-2022, tatu: We are usually coercing into `String` as element,
+1378-        //    or such; `_valueClass` would be wrong choice here
+1379-        final Class<?> rawTargetType = String.class;
+1380-
+1381-        switch (p.currentTokenId()) {
+1382-        case JsonTokenId.ID_STRING:
+1383-            return p.getString();
+1384-        // 07-Nov-2019, tatu: [databind#2535] Need to support byte[]->Base64 same as `StringDeserializer`
+13
+
+### 5 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-j3_983jo; grep -n "Object handleUnexpectedToken" -A40 src/main/java/tools/jackson/databind/DeserializationContext.java | head -90
+OUT(4269B): 1579:    public Object handleUnexpectedToken(Class<?> instClass, JsonToken t,
+1580-            JsonParser p, String msg, Object... msgArgs)
+1581-        throws JacksonException
+1582-    {
+1583-        return handleUnexpectedToken(constructType(instClass), t, p, msg, msgArgs);
+1584-    }
+1585-*/
+1586-
+1587:    public Object handleUnexpectedToken(Class<?> instClass, JsonParser p)
+1588-        throws JacksonException
+1589-    {
+1590-        return handleUnexpectedToken(constructType(instClass), p.currentToken(), p, null);
+1591-    }
+1592-
+1593-    /**
+1594-     * Method that deserializers should call if the first token of the value to
+1595-     * deserialize is of unexpected type (that is, type
+
+### 6 [grep] Bash
+INTENT: 
+CMD: grep -n "MismatchedInputException.from\|public <T> T reportInputMismatch(JavaType" -B2 -A8 src/main/java/tools/jackson/databind/DeserializationContext.java | head -60; grep -n "static MismatchedInputException from" -A8 src/main/java/tools/jackson/databind/exc/MismatchedInputException.java
+OUT(2855B): 1837-    {
+1838-        msg = _format(msg, msgArgs);
+1839:        throw MismatchedInputException.from(getParser(), src.handledType(), msg);
+1840-    }
+1841-
+1842-    /**
+1843-     * Helper method used to indicate a problem with input in cases where more
+1844-     * specific <code>reportXxx()</code> method was not available.
+1845-     */
+1846-    public <T> T reportInputMismatch(Class<?> targetType,
+1847-            String msg, Object... msgArgs)
+--
+1849-    {
+1850-        msg = _format(msg, msgArgs);
+1851:        throw MismatchedInputException.from(getParser(), targetType, msg);
+1852-    }
+1853-
+1854-    /**
+1855-     * Helper method used to indicate a problem with input in cases where more
+
+
+### 7 [grep] Bash
+INTENT: 
+CMD: grep -n "_findCoercionFromEmptyArray" -A12 src/main/java/tools/jackson/databind/deser/std/StdDeserializer.java | head -40; grep -n "_checkIntToStringCoercion" -A12 src/main/java/tools/jackson/databind/deser/std/StdDeserializer.java | head -30
+OUT(2946B): 177:        final CoercionAction act = _findCoercionFromEmptyArray(ctxt);
+178-        final boolean unwrap = ctxt.isEnabled(DeserializationFeature.UNWRAP_SINGLE_VALUE_ARRAYS);
+179-
+180-        if (unwrap || (act != CoercionAction.Fail)) {
+181-            JsonToken t = p.nextToken();
+182-            if (t == JsonToken.END_ARRAY) {
+183-                switch (act) {
+184-                case AsEmpty:
+185-                    return (T) getEmptyValue(ctxt);
+186-                case AsNull:
+187-                case TryConvert:
+188-                    return (T) getNullValue(ctxt);
+189-                default:
+--
+1302:        final CoercionAction act = _findCoercionFromEmptyArray(ctxt);
+1303-      
+
+### 8 [grep] Bash
+INTENT: 
+CMD: grep -n "currentToken\|_processor\|getCurrentToken" src/main/java/tools/jackson/databind/exc/MismatchedInputException.java src/main/java/tools/jackson/databind/DatabindException.java | head
+OUT(1044B): src/main/java/tools/jackson/databind/exc/MismatchedInputException.java:35:    protected JsonToken _currentToken;
+src/main/java/tools/jackson/databind/exc/MismatchedInputException.java:43:        _currentToken = _currentToken(p);
+src/main/java/tools/jackson/databind/exc/MismatchedInputException.java:49:        _currentToken = _currentToken(p);
+src/main/java/tools/jackson/databind/exc/MismatchedInputException.java:55:        _currentToken = _currentToken(p);
+src/main/java/tools/jackson/databind/exc/MismatchedInputException.java:58:    protected static JsonToken _currentToken(JsonParser p) {
+src/main/java/tools/jackson/databind/exc/MismatchedInputException.java:59:         return (p == null) ? 
+
+### 9 [read] Bash
+INTENT: 
+CMD: sed -n 70,92p src/main/java/tools/jackson/databind/exc/MismatchedInputException.java
+OUT(653B):     public MismatchedInputException setTargetType(JavaType t) {
+        _targetType = ClassUtil.rawClass(t);
+        return this;
+    }
+
+    public MismatchedInputException setCurrentToken(JsonToken t) {
+        _currentToken = t;
+        return this;
+    }
+
+    /**
+     * Accessor for getting intended target type, with which input did not match,
+     * if known; `null` if not known for some reason.
+     */
+    public Class<?> getTargetType() {
+        return _targetType;
+    }
+
+    /**
+     * @return Current token at the point when exception was thrown, if available
+     *   ({@code null} if not)
+     */
+    public JsonToken getCurrentToken() {
+
+### 10 [edit] Bash
+INTENT: 
+CMD: python3 - <<'E'
+f='src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java'
+s=open(f).read()
+a=s.index("                    CoercionAction act = _findCoercionFromEmptyArray(ctxt);\n                    if (act == CoercionAction.Fail) {")
+b=s.index("                    } else {\n                        // Non-empty array")
+new="""                    JsonToken nextToken = p.nextToken();
+                    if (nextToken == JsonToken.END_ARRAY) {
+                        CoercionAction act = _findCoercionFromEmptyArray(ctxt);
+                        if (act == CoercionActio
+OUT(1902B): diff --git a/src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java b/src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java
+index 405dab1b6..7795f67ee 100644
+--- a/src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java
++++ b/src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java
+@@ -10,6 +10,7 @@ import tools.jackson.databind.*;
+ import tools.jackson.databind.annotation.JacksonStdImpl;
+ import tools.jackson.databind.cfg.CoercionAction;
+ import tools.jackson.databind.cfg.CoercionInputShape;
++import tools.jackson.databind.exc.MismatchedInputException;
+ import tools.jackson.databind.deser.Nu
+
+### 11 [read] Bash
+INTENT: 
+CMD: python3 - <<'E'
+f='src/main/java/tools/jackson/databind/deser/jdk/StringCollectionDeserializer.java'
+s=open(f).read()
+s=s.replace("""handleUnexpectedToken(String.class,
+                                        p.currentToken(), p);""","""handleUnexpectedToken(
+                                        ctxt.constructType(String.class), JsonToken.START_ARRAY, p, null);""")
+open(f,'w').write(s)
+E
+mvn -o -q test -Dtest='*Coercion*,*StringCollection*,*EmptyArray*,*2124*,*Collection*' -Dsurefire.failIfNoSpecifiedTests=false 2>&1 | tail -15
+OUT(31B): (Bash completed with no output)

@@ -1,0 +1,88 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search cachedBody --scope text --format text
+OUT(1446B): // COMPLETE — 10 exact matches across 1 file
+src/request.ts:
+  217:   #cachedBody = (key: keyof Body) => {
+  219:     const cachedBody = bodyCache[key]
+  221:     if (cachedBody) {
+  222:       return cachedBody
+  250:     return this.#cachedBody('text').then((text: string) => JSON.parse(text))
+  266:     return this.#cachedBody('text')
+  282:     return this.#cachedBody('arrayBuffer')
+  298:     return this.#cachedBody('arrayBuffer').then((buffer: ArrayBuffer) => new Uint8Array(buffer))
+  312:     return this.#cachedBody('blob')
+  326:     return this.#cachedBody('formData')
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory c
+
+### 1 [edit] Edit
+INTENT: I realize the default response constructor doesn't preserve content-type for raw bytes, so I need to explicitly pass the content-type header from the original response when reconstructing it, while blob-based bodies already carry their type correctly.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky/src/request.ts
+OUT(128B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky/src/request.ts has been updated successfully.
+
+### 2 [read] Bash
+INTENT: I realize the default response constructor doesn't preserve content-type for raw bytes, so I need to explicitly pass the content-type header from the original response when reconstructing it, while blob-based bodies already carry their type correctly.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky && cat > /tmp/t.test.ts <<'E'
+import { Hono } from '/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky/src'
+import { it, expect } from 'vitest'
+it('x', async () => {
+  const app = new Hono()
+  app.post('/', async (c) => { await c.req.text(); return c.json({ foo: (await c.req.formData()).get('foo') }) })
+  const r = await app.request('/', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'foo=bar' })
+  expect(await r.json()).toEqual({ foo: 'bar' })
+})
+E
+cp 
+OUT(947B):   router.ts        |      40 |        0 |       0 |      40 | 10-16             
+ src/utils         |   36.38 |    27.38 |   32.69 |   37.01 |                   
+  body.ts          |   64.51 |    53.06 |      70 |   63.93 | ...13,231-256,262 
+  buffer.ts        |      18 |        0 |   28.57 |   18.36 | ...2,81-95,99-103 
+  crypto.ts        |   16.66 |        0 |       0 |   16.66 | ...24,28-30,36-57 
+  html.ts          |    8.64 |        0 |       0 |    8.97 | ...30-139,149-180 
+  url.ts           |   48.36 |    36.13 |      40 |   49.66 | ...81,294,299,313 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ==
+
+### 3 [edit] Edit
+INTENT: I realize the default response constructor doesn't preserve content-type for raw bytes, so I need to explicitly pass the content-type header from the original response when reconstructing it, while blob-based bodies already carry their type correctly.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky/src/request.ts
+OUT(128B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky/src/request.ts has been updated successfully.
+
+### 4 [read] Bash
+INTENT: I realize the default response constructor doesn't preserve content-type for raw bytes, so I need to explicitly pass the content-type header from the original response when reconstructing it, while blob-based bodies already carry their type correctly.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky && cat > /tmp/t.test.ts <<'E'
+import { Hono } from '/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky/src'
+import { it, expect } from 'vitest'
+it('x', async () => {
+  const app = new Hono()
+  app.post('/', async (c) => { await c.req.text(); return c.json({ foo: (await c.req.formData()).get('foo') }) })
+  const r = await app.request('/', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'foo=bar' })
+  expect(await r.json()).toEqual({ foo: 'bar' })
+})
+E
+cp 
+OUT(947B):   router.ts        |      40 |        0 |       0 |      40 | 10-16             
+ src/utils         |   36.38 |    27.38 |   32.69 |   37.01 |                   
+  body.ts          |   64.51 |    53.06 |      70 |   63.93 | ...13,231-256,262 
+  buffer.ts        |      18 |        0 |   28.57 |   18.36 | ...2,81-95,99-103 
+  crypto.ts        |   16.66 |        0 |       0 |   16.66 | ...24,28-30,36-57 
+  html.ts          |    8.64 |        0 |       0 |    8.97 | ...30-139,149-180 
+  url.ts           |   48.36 |    36.13 |      40 |   49.66 | ...81,294,299,313 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ==
+
+### 5 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky && cp /tmp/t.test.ts src/tmpx.test.ts && npx vitest run src/tmpx.test.ts src/request.test.ts --coverage.enabled=false 2>&1 | grep -E "Test|✓|✗|FAIL|passed|failed"; rm src/tmpx.test.ts
+OUT(53B):  Test Files  2 passed (2)
+      Tests  45 passed (45)
+
+### 6 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-88eawkky && cp /tmp/t.test.ts src/tmpx.test.ts && npx vitest run src/tmpx.test.ts src/request.test.ts --coverage.enabled=false 2>&1 | grep -E "Test|✓|✗|FAIL|passed|failed"; rm src/tmpx.test.ts
+OUT(53B):  Test Files  2 passed (2)
+      Tests  45 passed (45)

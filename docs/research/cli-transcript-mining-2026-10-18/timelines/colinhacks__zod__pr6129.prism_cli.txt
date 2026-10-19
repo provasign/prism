@@ -1,0 +1,63 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "ZodDate" "origin" --scope text --format text 2>&1 | head -40; grep -n "minimum\|maximum" packages/zod/src/v4/core/checks.ts | head -40
+OUT(5362B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-ul9sm06q
+── ZodDate ──
+// COMPLETE — 53 exact matches across 14 files
+// 53 text hits, but 4 different symbols share the name "ZodDate" (ZodDate, ZodFirstPartyTypeKind.ZodDate, ZodDate, …) — most hits belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type evidence before acting on the text hits.
+packages/zod/src/v3/types.ts:1871: export interface ZodDateDef extends ZodTypeDef {  [ZodDateDef]
+packages/zod/src/v4/classic/coerce.ts:24: export interface ZodCoercedDate<T = unknown> extends schemas._ZodDate<core.$ZodDateInternals<T>> {}  [ZodCoercedDate]
+packages/zod/src/v4/classic/sche
+
+### 1 [read] Bash
+INTENT: 
+CMD: sed -n 50,145p packages/zod/src/v4/core/checks.ts
+OUT(3045B): export interface $ZodCheckLessThanInternals<T extends util.Numeric = util.Numeric> extends $ZodCheckInternals<T> {
+  def: $ZodCheckLessThanDef;
+  issc: errors.$ZodIssueTooBig<T>;
+}
+
+const numericOriginMap = {
+  number: "number",
+  bigint: "bigint",
+  object: "date",
+} as const;
+export interface $ZodCheckLessThan<T extends util.Numeric = util.Numeric> extends $ZodCheck<T> {
+  _zod: $ZodCheckLessThanInternals<T>;
+}
+
+export const $ZodCheckLessThan: core.$constructor<$ZodCheckLessThan> = /*@__PURE__*/ core.$constructor(
+  "$ZodCheckLessThan",
+  (inst, def) => {
+    $ZodCheck.init(inst, def);
+    const origin = numericOriginMap[typeof def.value as "number" | "bigint" | "object"];
+
+    inst._zod.o
+
+### 2 [read] Bash
+INTENT: 
+CMD: cd packages/zod/src/v4/core && python3 - <<'E'
+s=open('checks.ts').read()
+s=s.replace("""      payload.issues.push({
+        origin,
+        code: "too_big",""","""      payload.issues.push({
+        origin: payload.value instanceof Date ? "date" : origin,
+        code: "too_big",""").replace("""      payload.issues.push({
+        origin,
+        code: "too_small",""","""      payload.issues.push({
+        origin: payload.value instanceof Date ? "date" : origin,
+        code: "too_small",""")
+open('checks.ts','w').write(s)
+E
+git diff --stat; cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80
+OUT(393B):  AGENTS.md                          | 30 ++++++++++++++++++++++++++++++
+ packages/zod/src/v4/core/checks.ts |  8 ++++----
+ 2 files changed, 34 insertions(+), 4 deletions(-)
+
+
+ Test Files  228 passed (228)
+      Tests  2959 passed (2959)
+Type Errors  no errors
+   Start at  17:13:45
+   Duration  7.63s (transform 4.90s, setup 748ms, import 13.30s, tests 4.56s, environment 5ms, typecheck 3.61s)

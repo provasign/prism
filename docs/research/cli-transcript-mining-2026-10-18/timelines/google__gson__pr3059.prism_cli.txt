@@ -1,0 +1,69 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "hashCode" --scope text --format text 2>&1 | grep -i -A3 JsonPrimitive | head -30; grep -n "hashCode" -A25 $(find . -name JsonPrimitive.java | head -1)
+OUT(2432B):   JsonPrimitive.java (2)  261: public int hashCode() {
+gson/src/main/java/com/google/gson/internal/
+  GsonTypes.java (9)  557: private static int hashCodeOrZero(Object o) {
+  LazilyParsedNumber.java (2)  96: public int hashCode() {
+--
+  JsonPrimitiveTest.java (28)
+  MixedStreamTest.java (2)
+  ParameterizedTypeFixtures.java (2)
+  ParameterizedTypeTest.java (1)
+--
+//   JsonPrimitiveTest.testEquals  gson/src/test/java/com/google/gson/JsonPrimitiveTest.java:267-287  (10 hits)
+//   ParameterizedTypesTest.MultiParameters.hashCode  gson/src/test/java/com/google/gson/functional/ParameterizedTypesTest.java:438-448  (6 hits)
+//   JsonPrimitiveTest.testEqualsAcrossTypes  gson/src/test/java/com/google/g
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cd gson/src/main/java/com/google/gson; grep -n "isIntegral" -A12 JsonPrimitive.java | tail -20; sed -n 85,105p internal/LazilyParsedNumber.java
+OUT(1386B): 299-      if (value instanceof BigDecimal && other.value instanceof BigDecimal) {
+300-        // Uses compareTo to ignore scale of values, e.g. `0` and `0.00` should be considered equal
+301-        return this.getAsBigDecimal().compareTo(other.getAsBigDecimal()) == 0;
+302-      }
+303-
+304-      double thisAsDouble = this.getAsDouble();
+305-      double otherAsDouble = other.getAsDouble();
+--
+317:  private static boolean isIntegral(JsonPrimitive primitive) {
+318-    if (primitive.value instanceof Number) {
+319-      Number number = (Number) primitive.value;
+320-      return number instanceof BigInteger
+321-          || number instanceof Long
+322-          || number instanceof Integer
+323-    
+
+### 2 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-b_sqwlir/gson/src/main/java/com/google/gson; sed -n 296,316p JsonPrimitive.java
+OUT(901B):           : this.getAsNumber().longValue() == other.getAsNumber().longValue();
+    }
+    if (value instanceof Number && other.value instanceof Number) {
+      if (value instanceof BigDecimal && other.value instanceof BigDecimal) {
+        // Uses compareTo to ignore scale of values, e.g. `0` and `0.00` should be considered equal
+        return this.getAsBigDecimal().compareTo(other.getAsBigDecimal()) == 0;
+      }
+
+      double thisAsDouble = this.getAsDouble();
+      double otherAsDouble = other.getAsDouble();
+      // Don't use Double.compare(double, double) because that considers -0.0 and +0.0 not equal
+      return (thisAsDouble == otherAsDouble)
+          || (Double.isNaN(thisAsDouble) 
+
+### 3 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-b_sqwlir/gson/src/main/java/com/google/gson; python3 - <<'E'
+p='JsonPrimitive.java'
+s=open(p).read()
+s=s.replace("""      long value = Double.doubleToLongBits(getAsNumber().doubleValue());
+      return""","""      double d = getAsNumber().doubleValue();
+      // Whole numbers must hash like integral types because they can be equal to them
+      long value = (d == Math.rint(d) && Math.abs(d) < 0x1p63) ? (long) d : Double.doubleToLongBits(d);
+      return""")
+open(p,'w').write(s)
+E
+cd /private/var/folders/pz/cmyjc37x5dz39wxf73my
+OUT(136B):  [proguard] ProGuard, version 7.9.1
+OpenJDK 64-Bit Server VM warning: Ignoring option --illegal-access=deny; support was removed in 17.0

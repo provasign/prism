@@ -1,0 +1,491 @@
+
+### 0 [prism] exec
+INTENT: I’ll use Prism to inventory the method’s overrides and callers, rename those sites, then build and test this checkout.
+CMD: prism change-impact SettableBeanProperty.set --format text
+OUT(31754B): // SettableBeanProperty.set — change-impact: 23 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed java)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (30; every occurrence this change touches, as path:line:col: text):
+  src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java:1254:19: _prop.set(_bean, value);
+  src/main/java/com/fasterxml/jackson/databind/deser/CreatorProperty.java:241:25: _fallbackSetter.set(instance, deserialize(p, ctxt));
+  src/main/java/com/faster
+
+### 1 [prism] exec
+INTENT: 
+CMD: prism lookup SettableBeanProperty.set CreatorProperty.set SettableBeanProperty.Delegating.set FieldProperty.set ManagedReferenceProperty.set MergingSettableBeanProperty.set MethodProperty.set ObjectIdReferenceProperty.set ObjectIdValueProperty.set SetterlessProperty.set --format text
+OUT(4142B): // lookup SettableBeanProperty.set
+// also named this (not shown): SettableBeanProperty.Delegating.set (src/main/java/com/fasterxml/jackson/databind/deser/SettableBeanProperty.java:832-835)
+// method SettableBeanProperty.set  src/main/java/com/fasterxml/jackson/databind/deser/SettableBeanProperty.java:527-527
+527→    public abstract void set(Object instance, Object value) throws IOException;
+// lookup CreatorProperty.set
+// method CreatorProperty.set  src/main/java/com/fasterxml/jackson/databind/deser/CreatorProperty.java:252-257
+252→    @Override
+253→    public void set(Object instance, Object value) throws IOException
+254→    {
+255→        _verifySetter();
+256→        _fallbackSetter.set(i
+
+### 2 [prism] exec
+INTENT: 
+CMD: prism search AGENTS.md maven surefire --scope text --format text
+OUT(3226B): ── AGENTS.md ──
+// no matches — search completed (not truncated, not timed out)
+── maven ──
+// SAMPLE of 134 matches in 15 files; every matching file is listed below with its hit count. exhaustive=true lists every line; paths=<file> shows one file
+// all 15 matching files, hits per file and the file's best match line:
+.github/
+  FUNDING.yml (1)  1: tidelift: "maven/com.fasterxml.jackson.core:jackson-databind"
+.github/workflows/
+  dep_build_v2.yml (1)  30: cache: 'maven'
+  dep_build_v3.yml (1)  30: cache: 'maven'
+  main.yml (7)  40: cache: 'maven'
+./
+  .gitignore (1)  13: .mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/
+  maven-wrapper.properties (1)  3: distributionUrl=https://repo.maven.apache.
+
+### 3 [git] exec
+INTENT: 
+CMD: git status --short
+OUT(38B): ?? .grove/
+?? AGENTS.md
+?? prism.yaml
+
+
+### 4 [prism] exec
+INTENT: Prism reports 30 edit sites: the declaration, nine overrides, and their callers. It found no test declarations or calls to this method. Its compiler-backed inventory is complete for the repository; reflection and external consumers are outside that coverage. I’ll apply the rename at those sites and 
+CMD: prism read pom.xml --from 230 --to 290 --format text
+OUT(2680B): // pom.xml lines 230-290 of 605
+230→            <goals>
+231→                <goal>enforce</goal>
+232→            </goals>
+233→            <configuration>
+234→                <rules>
+235→                    <requireFilesExist>
+236→                        <files>
+237→                            <file>${project.build.directory}/jacoco.exec</file>
+238→                        </files>
+239→                    </requireFilesExist>
+240→                </rules>
+241→                <fail>${jacocoStrict}</fail>
+242→            </configuration>
+243→          </execution>
+244→        </executions>
+245→      </plugin>
+246→
+247→      <plugin>
+248→        <groupId>org.apache.maven.plugins</groupId>
+249→    
+
+### 5 [prism] exec
+INTENT: 
+CMD: prism read CLAUDE.md --from 65 --to 105 --format text
+OUT(2076B): // CLAUDE.md lines 65-105 of 298
+ 65→for the JDK already in use. Do not pass `-Pjava17` to "build for Java 17"; forcing a
+ 66→profile that does not match the running JDK will fail to compile. To test another
+ 67→Java version, switch JDKs (e.g. via `sdkman`) and rebuild.
+ 68→
+ 69→Note that `<jdk>11</jdk>` and `<jdk>17</jdk>` prefix-match only 11.x and 17.x, so on
+ 70→JDK 21 the `test-jdk11` and `test-jdk17` sources are not compiled.
+ 71→
+ 72→### Running Tests
+ 73→
+ 74→```bash
+ 75→# Run all tests. Surefire is pinned to PrimarySuite, which selects the whole
+ 76→# com.fasterxml.jackson.databind package tree except typepollution tests.
+ 77→./mvnw test
+ 78→```
+ 79→
+ 80→**`-Dtest=...` does not work
+
+### 6 [prism] exec
+INTENT: 
+CMD: prism query --terms BeanReferring.handleResolvedForwardReference,CreatorProperty.deserializeAndSet,ExternalTypeHandler.complete,ExternalTypeHandler._deserializeAndSet,InnerClassProperty.deserializeAndSet,ManagedReferenceProperty.deserializeAndSet,ManagedReferenceProperty.setAndReturn,MergingSettableBeanProperty.deserializeAndSet,PropertyReferring.handleResolvedForwardReference,PropertyValue.Regular.assign,SetterlessProperty.setAndReturn,ThrowableDeserializer.deserializeFromObject --format text
+OUT(30476B): **Context for: BeanReferring.handleResolvedForwardReference, CreatorProperty.deserializeAndSet, ExternalTypeHandler.complete, ExternalT…**
+
+**Anchors — callers (verify before editing)**
+
+- `handleResolvedForwardReference` (src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java:1246) [match: qualified] — no resolved callers
+- `deserializeAndSet` (src/main/java/com/fasterxml/jackson/databind/deser/CreatorProperty.java:236) [match: qualified] — no resolved callers
+- `complete` (src/main/java/com/fasterxml/jackson/databind/deser/impl/ExternalTypeHandler.java:200) [match: qualified] — 3 callers in `src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java`, `src/m
+
+### 7 [edit] exec
+INTENT: 
+CMD: /bin/zsh -lc "python3 - <<'PY'
+from pathlib import Path
+sites = {
+'BeanDeserializer.java': [1254],
+'CreatorProperty.java': [241,253,256],
+'SettableBeanProperty.java': [527,833,834],
+'impl/ExternalTypeHandler.java': [231,365,435],
+'impl/FieldProperty.java': [186],
+'impl/InnerClassProperty.java': [91],
+'impl/ManagedReferenceProperty.java': [62,72,86,90,94,101],
+'impl/MergingSettableBeanProperty.java': [90,121,125],
+'impl/MethodProperty.java': [179],
+'impl/ObjectIdReferenceProperty.java': [106,107,134],
+'impl/ObjectIdValueProperty.java': [111],
+'impl/PropertyValue.java': [88],
+'impl/SetterlessPro
+OUT(56B): Renamed exactly 30 inventoried occurrences in 14 files.
+
+
+### 8 [test] exec
+INTENT: 
+CMD: ./mvnw clean test > /tmp/jackson-assignValue-test.log 2>&1
+OUT(0B): 
+
+### 9 [git] exec
+INTENT: 
+CMD: git diff --check
+OUT(0B): 
+
+### 10 [git] exec
+INTENT: 
+CMD: git diff --stat
+OUT(1065B):  .../fasterxml/jackson/databind/deser/BeanDeserializer.java   |  2 +-
+ .../fasterxml/jackson/databind/deser/CreatorProperty.java    |  6 +++---
+ .../jackson/databind/deser/SettableBeanProperty.java         |  6 +++---
+ .../jackson/databind/deser/impl/ExternalTypeHandler.java     |  6 +++---
+ .../fasterxml/jackson/databind/deser/impl/FieldProperty.java |  2 +-
+ .../jackson/databind/deser/impl/InnerClassProperty.java      |  2 +-
+ .../databind/deser/impl/ManagedReferenceProperty.java        | 12 ++++++------
+ .../databind/deser/impl/MergingSettableBeanProperty.java     |  6 +++---
+ .../jackson/databind/deser/impl/MethodProperty.java          |  2 +-
+ .../databind/deser/impl/ObjectIdReferencePr
+
+### 11 [read] exec
+INTENT: 
+CMD: tail -n 35 /tmp/jackson-assignValue-test.log
+OUT(3133B):     at org.apache.maven.plugin.internal.DefaultMavenPluginManager.getMojoDescriptor (DefaultMavenPluginManager.java:271)
+    at org.apache.maven.plugin.DefaultBuildPluginManager.getMojoDescriptor (DefaultBuildPluginManager.java:214)
+    at org.apache.maven.lifecycle.internal.DefaultLifecycleExecutionPlanCalculator.setupMojoExecution (DefaultLifecycleExecutionPlanCalculator.java:155)
+    at org.apache.maven.lifecycle.internal.DefaultLifecycleExecutionPlanCalculator.setupMojoExecutions (DefaultLifecycleExecutionPlanCalculator.java:143)
+    at org.apache.maven.lifecycle.internal.DefaultLifecycleExecutionPlanCalculator.calculateExecutionPlan (DefaultLifecycleExecutionPlanCalculator.java:122)
+   
+
+### 12 [prism] exec
+INTENT: 
+CMD: prism change-impact SettableBeanProperty.assignValue --format text
+OUT(9268B): // SettableBeanProperty.assignValue — change-impact: 23 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed java)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (30; every occurrence this change touches, as path:line:col: text):
+  src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java:1254:19: _prop.assignValue(_bean, value);
+  src/main/java/com/fasterxml/jackson/databind/deser/CreatorProperty.java:241:25: _fallbackSetter.assignValue(instance, deserialize(p, ctxt));
+  
+
+### 13 [prism] exec
+INTENT: 
+CMD: prism search maven.repo.local localRepository MAVEN_OPTS --scope text --format text
+OUT(1572B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy
+── maven.repo.local ──
+── localRepository ──
+── MAVEN_OPTS ──
+// no matches — search completed, not truncated, not timed out in the requested scope; NOT that the tool is done. Excluded files and unindexed symbols are not covered. Retry broader/shorter (drop punctuation and qualifiers: "e.Query(" -> "Query") or reuse a term that matched earlier. Closest indexed symbols below.
+// Failed exact term(s); bounded fallback searched these shorter terms independently with the same scope and filters (locators only):
+── fallback: MAVEN_OPTS → OPTS ──
+// SAMPLE of AT LEAST 3 matches in 3 files; every matching file is list
+
+### 14 [edit] exec
+INTENT: 
+CMD: /bin/zsh -lc "python3 - <<'PY'
+from pathlib import Path
+import os
+print('\\n'.join(Path('/tmp/jackson-assignValue-test.log').read_text().splitlines()[:35]))
+for k,v in os.environ.items():
+    if k.startswith(('MAVEN','JAVA')):
+        print(k, v)
+p=Path(str(Path.cwd())+'-m2')
+print('Adjacent Maven cache:', p, 'exists:', p.exists())
+PY"
+OUT(3758B): [INFO] Scanning for projects...
+[INFO] Inspecting build with total of 1 modules
+[INFO] Installing Central Publishing features
+[INFO] 
+[INFO] ------------< com.fasterxml.jackson.core:jackson-databind >-------------
+[INFO] Building jackson-databind 2.22.2
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-clean-plugin/3.5.0/maven-clean-plugin-3.5.0.pom
+[WARNING] Failed to create tracking file parent '/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy-m2/org/apache/maven/plugins/maven-clean-plugin/3.5.0/maven-clean-plugin-3.5.0.pom.lastU
+
+### 15 [test] exec
+INTENT: 
+CMD: ./mvnw -Dmaven.repo.local=/tmp/jackson-assignValue-m2 clean test > /tmp/jackson-assignValue-test.log 2>&1
+OUT(0B): 
+
+### 16 [read] exec
+INTENT: 
+CMD: tail -n 30 /tmp/jackson-assignValue-test.log
+OUT(1665B): [INFO] Scanning for projects...
+[INFO] Inspecting build with total of 1 modules
+[INFO] Installing Central Publishing features
+[INFO] 
+[INFO] ------------< com.fasterxml.jackson.core:jackson-databind >-------------
+[INFO] Building jackson-databind 2.22.2
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-clean-plugin/3.5.0/maven-clean-plugin-3.5.0.pom
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0
+
+### 17 [git] exec
+INTENT: 
+CMD: git diff --numstat
+OUT(1172B): 1	1	src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java
+3	3	src/main/java/com/fasterxml/jackson/databind/deser/CreatorProperty.java
+3	3	src/main/java/com/fasterxml/jackson/databind/deser/SettableBeanProperty.java
+3	3	src/main/java/com/fasterxml/jackson/databind/deser/impl/ExternalTypeHandler.java
+1	1	src/main/java/com/fasterxml/jackson/databind/deser/impl/FieldProperty.java
+1	1	src/main/java/com/fasterxml/jackson/databind/deser/impl/InnerClassProperty.java
+6	6	src/main/java/com/fasterxml/jackson/databind/deser/impl/ManagedReferenceProperty.java
+3	3	src/main/java/com/fasterxml/jackson/databind/deser/impl/MergingSettableBeanProperty.java
+1	1	src/main/java/com/fasterxml/jac
+
+### 18 [edit] exec
+INTENT: The rename now covers all 30 inventoried occurrences, and Prism confirms the complete method family uses `assignValue`. The build stopped before compilation: Maven’s configured cache is outside the writable sandbox, and a retry with a writable cache hit a blocked dependency download. I’ll check whet
+CMD: /bin/zsh -lc "python3 - <<'PY'
+from pathlib import Path
+for root in [Path('~/.m2-agent-seed'),Path('~/.m2-eval/repository'),Path(str(Path.cwd())+'-m2')]:
+    print(root, root.exists())
+    p=root/'org/apache/maven/plugins'
+    print('Plugin cache:', sorted(x.name for x in p.iterdir()) if p.exists() else 'absent')
+PY"
+OUT(885B): ~/.m2-agent-seed True
+Plugin cache: ['maven-artifact-plugin', 'maven-compiler-plugin', 'maven-enforcer-plugin', 'maven-failsafe-plugin', 'maven-install-plugin', 'maven-jar-plugin', 'maven-plugins', 'maven-resources-plugin', 'maven-shade-plugin', 'maven-surefire-plugin']
+~/.m2-eval/repository True
+Plugin cache: ['maven-antrun-plugin', 'maven-artifact-plugin', 'maven-changes-plugin', 'maven-checkstyle-plugin', 'maven-compiler-plugin', 'maven-deploy-plugin', 'maven-enforcer-plugin', 'maven-failsafe-plugin', 'maven-install-plugin', 'maven-jar-plugin', 'maven-javadoc-plugin', 'maven-plugin-plugin', 'maven-plugins', 'maven-remote-resources-plugin', 'maven-resour
+
+### 19 [read] exec
+INTENT: 
+CMD: tail -n 25 /tmp/jackson-assignValue-test.log
+OUT(3906B): [WARNING] /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy/src/test/java/com/fasterxml/jackson/databind/misc/AccessFixTest.java:[32,50] getSecurityManager() in java.lang.System has been deprecated and marked for removal
+[WARNING] /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy/src/test/java/com/fasterxml/jackson/databind/misc/AccessFixTest.java:[39,19] setSecurityManager(java.lang.SecurityManager) in java.lang.System has been deprecated and marked for removal
+[WARNING] /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy/src/test/java/com/fasterxml/jackson/databind/misc/AccessFixTest.java:[51,23] setSecurityManager(java.
+
+### 20 [git] exec
+INTENT: 
+CMD: git diff -- src/main/java
+OUT(14464B): diff --git a/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java b/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java
+index 9f7cbfd55..1f7953b30 100644
+--- a/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java
++++ b/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java
+@@ -1251,7 +1251,7 @@ public class BeanDeserializer
+ "Cannot resolve ObjectId forward reference using property '%s' (of type %s): Bean not yet resolved",
+ _prop.getName(), _prop.getDeclaringClass().getName());
+         }
+-            _prop.set(_bean, value);
++            _prop.assignValue(_bean, value);
+         }
+     }
+ }
+diff --git a/src/main
+
+### 21 [edit] exec
+INTENT: 
+CMD: /bin/zsh -lc "python3 - <<'PY'
+from pathlib import Path
+import xml.etree.ElementTree as ET
+reports = sorted(Path('target/surefire-reports').glob('TEST-*.xml'))
+print('Test reports written so far:',len(reports))
+if reports:
+    report = reports[0]
+    props={p.attrib['name']:p.attrib.get('value','') for p in ET.parse(report).findall('./properties/property')}
+    print('Report:', report)
+    for k in ['basedir','java.class.path','surefire.test.class.path']:
+        if k in props:
+            print(k + ':', props[k])
+PY"
+OUT(8610B): Test reports written so far: 1
+Report: target/surefire-reports/TEST-com.fasterxml.jackson.databind.PrimarySuite.xml
+basedir: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy
+java.class.path: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy/target/test-classes:/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy/target/classes:~/.m2-agent-seed/com/fasterxml/jackson/core/jackson-annotations/2.22/jackson-annotations-2.22.jar:~/.m2-eval/repository/com/fasterxml/jackson/core/jackson-core/2.22.2/jackson-core-2.22.2.jar:~/.m2-eval/repository/org/junit/jupiter/junit-jupiter/5.
+
+### 22 [read] exec
+INTENT: 
+CMD: tail -n 20 /tmp/jackson-assignValue-test.log
+OUT(2283B): [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.jsontype.JsonTypeInfoCaseInsensitive1983Test
+[INFO] Running com.fasterxml.jackson.databind.deser.creators.SingleImmutableFieldCreatorTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.deser.creators.SingleImmutableFieldCreatorTest
+[INFO] Running com.fasterxml.jackson.databind.jsontype.ext.ExternalTypeId96Test
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.jsontype.ext.ExternalTypeId96Test
+[INFO] Running com.fasterxml.jackson.databind.deser.m
+
+### 23 [edit] exec
+INTENT: The offline build compiled this checkout’s source and tests, and the full configured suite is running. Surefire’s report confirms it uses this checkout’s `target/test-classes` and `target/classes`, with no installed jackson-databind JAR on the test classpath.
+CMD: /bin/zsh -lc "python3 - <<'PY'
+from pathlib import Path
+import subprocess
+import xml.etree.ElementTree as ET
+r=Path('target/surefire-reports/TEST-com.fasterxml.jackson.databind.PrimarySuite.xml')
+props={p.attrib['name']:p.attrib.get('value','') for p in ET.parse(r).findall('./properties/property')}
+cp=props['surefire.test.class.path']
+assert Path(props['basedir']).resolve()==Path.cwd().resolve()
+assert cp.split(':')[:2]==[str(Path.cwd()/'target/test-classes'),str(Path.cwd()/'target/classes')]
+assert not any('jackson-databind' in Path(p).name and p.endswith('.jar') for p in cp.split(':'))
+resul
+OUT(569B): Traceback (most recent call last):
+  File "<stdin>", line 5, in <module>
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/xml/etree/ElementTree.py", line 1204, in parse
+    tree.parse(source, parser)
+  File "/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/xml/etree/ElementTree.py", line 569, in parse
+    self._root = parser._parse_whole(source)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+xml.etree.ElementTree.ParseError: unclosed token: line 2921, column 2
+
+
+### 24 [test] exec
+INTENT: 
+CMD: ./mvnw -o -Dmaven.repo.local=/tmp/jackson-assignValue-m2 test > /tmp/jackson-assignValue-test.log 2>&1
+OUT(0B): 
+
+### 25 [read] exec
+INTENT: 
+CMD: tail -n 12 /tmp/jackson-assignValue-test.log
+OUT(848B): [INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.5:test (default-test) on project jackson-databind: 
+[ERROR] 
+[ERROR] See /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5sror9iy/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors
+
+### 26 [edit] exec
+INTENT: 
+CMD: /bin/zsh -lc "python3 - <<'PY'
+from pathlib import Path
+import xml.etree.ElementTree as ET
+for report in sorted(Path('target/surefire-reports').glob('TEST-*.xml')):
+    root=ET.parse(report).getroot()
+    print(report.name, {k:root.attrib.get(k) for k in ['tests','failures','errors','skipped']})
+    for test in root.findall('testcase'):
+        for tag in ['failure','error']:
+            for err in test.findall(tag):
+                print(test.attrib, err.attrib)
+                print((err.text or '')[:5000])
+log=Path('/tmp/jackson-assignValue-test.log').read_text()
+print('\\n'.join(log.splitl
+OUT(33410B): TEST-com.fasterxml.jackson.databind.PrimarySuite.xml {'tests': '3619', 'failures': '0', 'errors': '7', 'skipped': '0'}
+{'name': 'testUsesCorrectClassLoaderWhenThreadClassLoaderIsNotNull', 'classname': 'com.fasterxml.jackson.databind.type.TypeFactoryWithClassLoaderTest', 'time': '21.277'} {'message': 'Could not initialize plugin: interface org.mockito.plugins.MockMaker (alternate: null)', 'type': 'java.lang.IllegalStateException'}
+java.lang.IllegalStateException: Could not initialize plugin: interface org.mockito.plugins.MockMaker (alternate: null)
+	at org.mockito.internal.configuration.plugins.PluginLoader$1.invoke(PluginLoader.java:84)
+	at jdk.proxy2/jdk.proxy2.$Proxy102.isTypeMockable(Unkn
+
+### 27 [prism] exec
+INTENT: 
+CMD: prism search argLine jacoco --scope text --format text
+OUT(1898B): ── argLine ──
+// COMPLETE — 4 exact matches across 1 file
+pom.xml:
+  397:         <argLine>--add-opens=java.base/java.lang=ALL-UNNAMED
+  399: 	</argLine>
+  462:         <argLine>--add-opens=java.base/java.lang=ALL-UNNAMED
+  464: 	</argLine>
+── jacoco ──
+// COMPLETE — 10 exact matches across 3 files
+.github/workflows/main.yml:71:         files: ./target/site/jacoco/jacoco.xml
+CLAUDE.md:
+  108: # Generate code coverage report (jacoco)
+  110: # Report available at: target/site/jacoco/index.html
+pom.xml:
+  63:            jacoco... so disable for now
+  65:     <jacocoStrict>false</jacocoStrict>
+  199:       <groupId>org.jacoco</groupId>
+  200:       <artifactId>jacoco-maven-plugin</artifactId>
+  
+
+### 28 [edit] exec
+INTENT: 
+CMD: /bin/zsh -lc "python3 - <<'PY'
+from pathlib import Path
+import subprocess
+import xml.etree.ElementTree as ET
+r=Path('target/surefire-reports/TEST-com.fasterxml.jackson.databind.PrimarySuite.xml')
+props={p.attrib['name']:p.attrib.get('value','') for p in ET.parse(r).findall('./properties/property')}
+cp=props['surefire.test.class.path']
+assert Path(props['basedir']).resolve()==Path.cwd().resolve()
+assert cp.split(':')[:2]==[str(Path.cwd()/'target/test-classes'),str(Path.cwd()/'target/classes')]
+assert not any('jackson-databind' in Path(p).name and p.endswith('.jar') for p in cp.split(':'))
+resul
+OUT(334B): Confirmed: Surefire uses this checkout; compiled SettableBeanProperty has assignValue and no set method.
+[INFO] Compiling 483 source files with javac [debug:lines,source,vars deprecation release 17] to target/classes
+[INFO] Compiling 814 source files with javac [debug:lines,source,vars deprecation release 17] to target/test-classes
+
+
+### 29 [git] exec
+INTENT: The suite ran 3,895 tests with zero assertion failures and seven errors, all caused by Mockito failing to attach its Byte Buddy agent in this environment. I’ll rerun with that cached agent loaded at JVM startup; no project files need to change.
+CMD: git diff --check
+OUT(0B): 
+
+### 30 [git] exec
+INTENT: 
+CMD: git status --short
+OUT(1196B):  M src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java
+ M src/main/java/com/fasterxml/jackson/databind/deser/CreatorProperty.java
+ M src/main/java/com/fasterxml/jackson/databind/deser/SettableBeanProperty.java
+ M src/main/java/com/fasterxml/jackson/databind/deser/impl/ExternalTypeHandler.java
+ M src/main/java/com/fasterxml/jackson/databind/deser/impl/FieldProperty.java
+ M src/main/java/com/fasterxml/jackson/databind/deser/impl/InnerClassProperty.java
+ M src/main/java/com/fasterxml/jackson/databind/deser/impl/ManagedReferenceProperty.java
+ M src/main/java/com/fasterxml/jackson/databind/deser/impl/MergingSettableBeanProperty.java
+ M src/main/java/com/fasterxml/jackson/data
+
+### 31 [read] exec
+INTENT: 
+CMD: tail -n 18 /tmp/jackson-assignValue-test.log
+OUT(2064B): [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.fasterxml.jackson.databind.deser.inject.JacksonInject1381WithOptionalTest
+[INFO] Running com.fasterxml.jackson.databind.jsontype.PolymorphicDeserErrorHandlingTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0 s -- in com.fasterxml.jackson.databind.jsontype.PolymorphicDeserErrorHandlingTest
+[INFO] Running com.fasterxml.jackson.databind.deser.jdk.MapDeserializerCachingTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.deser.jdk.MapDeserializerCachingTest
+[INFO] Running com.fasterxml.jackson.databind.ser.TestCus
+
+### 32 [test] exec
+INTENT: 
+CMD: /bin/zsh -lc "./mvnw -o -Dmaven.repo.local=/tmp/jackson-assignValue-m2 '-DargLine=--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED -javaagent:~/.m2-eval/repository/net/bytebuddy/byte-buddy-agent/1.15.10/byte-buddy-agent-1.15.10.jar' test > /tmp/jackson-assignValue-test.log 2>&1"
+OUT(0B): 
+
+### 33 [read] exec
+INTENT: 
+CMD: tail -n 16 /tmp/jackson-assignValue-test.log
+OUT(952B): [INFO] -------------------------------------------------------
+[INFO] Running com.fasterxml.jackson.databind.typepollution.TypePollutionSuite
+[INFO] Running com.fasterxml.jackson.databind.typepollution.TypePollutionTest
+[WARNING] Tests run: 3, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 1.750 s -- in com.fasterxml.jackson.databind.typepollution.TypePollutionTest
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.758 s -- in com.fasterxml.jackson.databind.typepollution.TypePollutionSuite
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 1
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INF
+
+### 34 [edit] exec
+INTENT: 
+CMD: /bin/zsh -lc "python3 - <<'PY'
+from pathlib import Path
+import xml.etree.ElementTree as ET
+log=Path('/tmp/jackson-assignValue-test.log').read_text()
+print('\\n'.join(line for line in log.splitlines() if ('Tests run:' in line and ' -- in ' not in line) or 'BUILD SUCCESS' in line))
+r=ET.parse('target/surefire-reports/TEST-com.fasterxml.jackson.databind.PrimarySuite.xml')
+p={x.attrib['name']:x.attrib.get('value','') for x in r.findall('./properties/property')}
+cp=p['surefire.test.class.path'].split(':')
+assert Path(p['basedir']).resolve()==Path.cwd().resolve()
+assert cp[:2]==[str(Path.cwd()/'targ
+OUT(256B): [INFO] Tests run: 3895, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 1
+[INFO] BUILD SUCCESS
+Confirmed final successful run uses this checkout target/test-classes and target/classes, with no jackson-databind JAR.
+

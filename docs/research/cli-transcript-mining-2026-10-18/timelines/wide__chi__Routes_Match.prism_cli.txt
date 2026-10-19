@@ -1,0 +1,40 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Routes.Match --format text
+OUT(3290B): // Routes.Match — change-impact: 7 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed go)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (8; every occurrence this change touches, as path:line:col: text):
+  chi.go:131:2: Match(rctx *Context, method, path string) bool
+  middleware/get_head.go:29:20: if !rctx.Routes.Match(tctx, "HEAD", routePath) {
+  middleware/supress_notfound.go:19:25: match := rctx.Routes.Match(rctx, r.Method, r.URL.Path)
+  mux.go:373:16: func (mx *Mux) Match(rctx *Con
+
+### 1 [grep] Bash
+INTENT: 
+CMD: sed -i '' -e '131s/Match(/MatchRoute(/' -e '128s/Match/MatchRoute/' chi.go
+sed -i '' -e '373s/Match(/MatchRoute(/' -e '367s/Match/MatchRoute/' mux.go
+sed -i '' 's/Routes\.Match(/Routes.MatchRoute(/' middleware/get_head.go middleware/supress_notfound.go
+sed -i '' 's/r\.Match(tctx/r.MatchRoute(tctx/' mux_test.go
+sed -i '' -e '245s/Match/MatchRoute/' -e '248s/Match(/MatchRoute(/' README.md
+git diff --stat; grep -rn "\.Match(" --include=*.go . ; go build ./... && go vet ./... && go test ./... 2>&1 | tail -15; go list -m; pwd
+OUT(525B):  README.md                      | 4 ++--
+ chi.go                         | 4 ++--
+ middleware/get_head.go         | 2 +-
+ middleware/supress_notfound.go | 2 +-
+ mux.go                         | 4 ++--
+ mux_test.go                    | 8 ++++----
+ 6 files changed, 12 insertions(+), 12 deletions(-)
+(eval):6: no matches found: --include=*.go
+ok  	github.com/go-chi/chi/v5	1.132s
+ok  	github.com/go-chi/chi/v5/middleware	26.289s
+github.com/go-chi/chi/v5
+/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-knj6x6ga
+
+### 2 [other] Bash
+INTENT: 
+CMD: go env GOWORK GOFLAGS; go list -f '{{.Dir}}' .
+OUT(73B): /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-knj6x6ga

@@ -1,0 +1,68 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search methodsAllowed --scope text --format text
+OUT(1237B): // COMPLETE — 9 exact matches across 3 files
+// methodsAllowed is Context.methodsAllowed (context.go:77); 3 indexed caller site(s): Reset context.go:82-96 routeHTTP mux.go:447-491 findRoute tree.go:410-553.
+mux.go:
+  413: func (mx *Mux) MethodNotAllowedHandler(methodsAllowed ...methodTyp) http.HandlerFunc {
+  417: 	return methodNotAllowedHandler(methodsAllowed...)
+  487: 		mx.MethodNotAllowedHandler(rctx.methodsAllowed...).ServeHTTP(w, r)
+  524: func methodNotAllowedHandler(methodsAllowed ...methodTyp) func(w http.ResponseWriter, r *http.Request) {
+  526: 		for _, m := range methodsAllowed {
+context.go:
+  77: 	methodsAllowed   []methodTyp // allowed methods in case of a 405
+  94: 	x.methodsA
+
+### 1 [read] Bash
+INTENT: 
+CMD: sed -n 470,490p tree.go; sed -n 520,535p tree.go; sed -n 520,545p mux.go
+OUT(1462B): 				if len(xsearch) == 0 {
+					if xn.isLeaf() {
+						h := xn.endpoints[method]
+						if h != nil && h.handler != nil {
+							rctx.routeParams.Keys = append(rctx.routeParams.Keys, h.paramKeys...)
+							return xn
+						}
+
+						for endpoints := range xn.endpoints {
+							if endpoints == mALL || endpoints == mSTUB {
+								continue
+							}
+							rctx.methodsAllowed = append(rctx.methodsAllowed, endpoints)
+						}
+
+						// flag that the routing context found a route, but not a corresponding
+						// supported method
+						rctx.methodNotAllowed = true
+					}
+				}
+
+					rctx.routeParams.Keys = append(rctx.routeParams.Keys, h.paramKeys...)
+					return xn
+				}
+
+				for endpoints := range 
+
+### 2 [read] Bash
+INTENT: 
+CMD: python3 - <<'E'
+s=open('tree.go').read()
+s=s.replace("rctx.methodsAllowed = append(rctx.methodsAllowed, endpoints)","rctx.addMethodAllowed(endpoints)")
+open('tree.go','w').write(s)
+E
+cat >> context.go <<'E'
+
+// addMethodAllowed records m for a 405 response, skipping duplicates.
+func (x *Context) addMethodAllowed(m methodTyp) {
+	for _, existing := range x.methodsAllowed {
+		if existing == m {
+			return
+		}
+	}
+	x.methodsAllowed = append(x.methodsAllowed, m)
+}
+E
+go test ./... 2>&1 | tail -5
+OUT(85B): ok  	github.com/go-chi/chi/v5	1.068s
+ok  	github.com/go-chi/chi/v5/middleware	26.271s

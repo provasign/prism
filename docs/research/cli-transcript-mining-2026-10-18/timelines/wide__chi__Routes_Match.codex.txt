@@ -1,0 +1,248 @@
+
+### 0 [prism] exec
+INTENT: I’ll check Prism’s impact inventory, rename the route-matching contract and its uses, then run the tests against this checkout.
+CMD: prism change-impact Routes.Match --format text
+OUT(3291B): // Routes.Match — change-impact: 7 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed go)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (8; every occurrence this change touches, as path:line:col: text):
+  chi.go:131:2: Match(rctx *Context, method, path string) bool
+  middleware/get_head.go:29:20: if !rctx.Routes.Match(tctx, "HEAD", routePath) {
+  middleware/supress_notfound.go:19:25: match := rctx.Routes.Match(rctx, r.Method, r.URL.Path)
+  mux.go:373:16: func (mx *Mux) Match(rctx *Con
+
+### 1 [prism] exec
+INTENT: 
+CMD: prism read chi.go --from 115 --to 138 --format text
+OUT(1036B): // chi.go lines 115-138 of 140
+115→	// not allowed.
+116→	MethodNotAllowed(h http.HandlerFunc)
+117→}
+118→
+119→// Routes interface adds two methods for router traversal, which is also
+120→// used by the `docgen` subpackage to generation documentation for Routers.
+121→type Routes interface {
+122→	// Routes returns the routing tree in an easily traversable structure.
+123→	Routes() []Route
+124→
+125→	// Middlewares returns the list of middlewares in use by the router.
+126→	Middlewares() Middlewares
+127→
+128→	// Match searches the routing tree for a handler that matches
+129→	// the method/path - similar to routing a http request, but without
+130→	// executing the handler thereafter.
+131→	Match(rctx
+
+### 2 [prism] exec
+INTENT: 
+CMD: prism read mux.go --from 360 --to 405 --format text
+OUT(1534B): // mux.go lines 360-405 of 540
+360→}
+361→
+362→// Middlewares returns a slice of middleware handler functions.
+363→func (mx *Mux) Middlewares() Middlewares {
+364→	return mx.middlewares
+365→}
+366→
+367→// Match searches the routing tree for a handler that matches the method/path.
+368→// It's similar to routing a http request, but without executing the handler
+369→// thereafter.
+370→//
+371→// Note: the *Context state is updated during execution, so manage
+372→// the state carefully or make a NewRouteContext().
+373→func (mx *Mux) Match(rctx *Context, method, path string) bool {
+374→	return mx.Find(rctx, method, path) != ""
+375→}
+376→
+377→// Find searches the routing tree for the pattern that matc
+
+### 3 [prism] exec
+INTENT: 
+CMD: prism search go.mod go.work AGENTS.md README.md --scope text --format text
+OUT(4194B): ── go.mod ──
+// COMPLETE — 18 exact matches across 4 files
+CHANGELOG.md:
+  83: - Update go.mod to go 1.16 with new retract directive marking all versions without prior go.mod support
+  104: ## v1.5.0 (2020-11-12) - now with go.mod support
+  130: as Go supports both old and new import paths with/out go.mod. However, now that Go module support has had time to iron out kinks and
+  133: v1.5.0 with go.mod silently, and tested it with new and old projects, to ensure the developer experience is preserved, and it's
+  134: largely unnoticed. Fortunately, Go's toolchain will check the tags of a repo and consider the "latest" tag the one with go.mod.
+  137: go.mod support, which is v1.5.0+. `chi` will
+
+### 4 [prism] exec
+INTENT: Prism reports a closed implementation family with these eight edit sites:
+
+```text
+chi.go:131:2: Match(rctx *Context, method, path string) bool
+middleware/get_head.go:29:20: if !rctx.Routes.Match(tctx, "HEAD", routePath) {
+middleware/supress_notfound.go:19:25: match := rctx.Routes.Match(rctx, r.Meth
+CMD: prism read go.mod --format text
+OUT(184B): // go.mod lines 1-5 of 5
+1→module github.com/go-chi/chi/v5
+2→
+3→// Chi supports the four most recent major versions of Go.
+4→// See https://github.com/go-chi/chi/issues/963.
+5→go 1.24
+
+
+### 5 [prism] exec
+INTENT: 
+CMD: prism read README.md --from 235 --to 255 --format text
+OUT(1091B): // README.md lines 235-255 of 577
+235→
+236→// Routes interface adds two methods for router traversal, which is also
+237→// used by the github.com/go-chi/docgen package to generate documentation for Routers.
+238→type Routes interface {
+239→	// Routes returns the routing tree in an easily traversable structure.
+240→	Routes() []Route
+241→
+242→	// Middlewares returns the list of middlewares in use by the router.
+243→	Middlewares() Middlewares
+244→
+245→	// Match searches the routing tree for a handler that matches
+246→	// the method/path - similar to routing a http request, but without
+247→	// executing the handler thereafter.
+248→	Match(rctx *Context, method, path string) bool
+249→}
+250→```
+251→
+
+### 6 [git] exec
+INTENT: 
+CMD: git status --short; go env GOMOD GOWORK
+OUT(123B): ?? .grove/
+?? AGENTS.md
+?? prism.yaml
+/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o/go.mod
+off
+
+
+### 7 [prism] exec
+INTENT: 
+CMD: prism lookup GetHead SupressNotFound TestMuxMatch TestMuxMatch_HasBasePath TestMuxMatch_DoesNotHaveBasePath --format text
+OUT(3691B): // lookup GetHead
+// function GetHead  middleware/get_head.go:10-39
+10→func GetHead(next http.Handler) http.Handler {
+11→	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+12→		if r.Method == "HEAD" {
+13→			rctx := chi.RouteContext(r.Context())
+14→			routePath := rctx.RoutePath
+15→			if routePath == "" {
+16→				if r.URL.RawPath != "" {
+17→					routePath = r.URL.RawPath
+18→				} else {
+19→					routePath = r.URL.Path
+20→				}
+21→			}
+22→
+23→			// Temporary routing context to look-ahead before routing the request
+24→			tctx := chi.NewRouteContext()
+25→
+26→			// Attempt to find a HEAD handler for the routing path, if not found, traverse
+27→			// the router as through its a G
+
+### 8 [edit] apply_patch
+INTENT: 
+CMD: apply_patch /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o/README.md, /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o/chi.go, /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o/middleware/get_head.go, /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o/middleware/supress_notfound.go, /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o/mux.go, /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o/mux_test.go
+OUT(0B): 
+
+### 9 [test] exec
+INTENT: 
+CMD: /bin/zsh -lc "go list -f '{{.ImportPath}} => {{.Dir}}' ./...; go build ./...; go test -count=1 ./..."
+OUT(2997B): github.com/go-chi/chi/v5 => /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o
+github.com/go-chi/chi/v5/middleware => /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-725qcr2o/middleware
+--- FAIL: TestMuxBasic (0.00s)
+panic: httptest: failed to listen on a port: listen tcp6 [::1]:0: bind: operation not permitted [recovered, repanicked]
+
+goroutine 10 [running]:
+testing.tRunner.func1.2({0x1005be180, 0x1400002c590})
+	/opt/homebrew/Cellar/go@1.25/1.25.14/libexec/src/testing/testing.go:1872 +0x19c
+testing.tRunner.func1()
+	/opt/homebrew/Cellar/go@1.25/1.25.14/libexec/src/testing/testing.go:1875 +0x31c
+panic({0x1005be180?, 0x1400002c590?})
+	/opt/homebrew/Cella
+
+### 10 [git] exec
+INTENT: 
+CMD: git diff --check; git diff --stat; git diff
+OUT(4691B):  README.md                      | 4 ++--
+ chi.go                         | 4 ++--
+ middleware/get_head.go         | 2 +-
+ middleware/supress_notfound.go | 2 +-
+ mux.go                         | 4 ++--
+ mux_test.go                    | 8 ++++----
+ 6 files changed, 12 insertions(+), 12 deletions(-)
+diff --git a/README.md b/README.md
+index 07aeaa8..a437bad 100644
+--- a/README.md
++++ b/README.md
+@@ -242,10 +242,10 @@ type Routes interface {
+ 	// Middlewares returns the list of middlewares in use by the router.
+ 	Middlewares() Middlewares
+ 
+-	// Match searches the routing tree for a handler that matches
++	// MatchRoute searches the routing tree for a handler that matches
+ 	// the method/path - si
+
+### 11 [prism] exec
+INTENT: 
+CMD: prism search Match MatchRoute --scope text --format text
+OUT(4033B): ── Match ──
+// Match is Pattern.Match (middleware/route_headers.go:141-146); 2 indexed caller site(s): IsMatch middleware/route_headers.go:116-127 TestPattern middleware/route_headers_test.go:187-212 [test].
+// SAMPLE of 149 matches in 22 files; every matching file is listed below with its hit count. exhaustive=true lists every line; paths=<file> shows one file
+// all 22 matching files, hits per file and the file's best match line:
+./
+  CHANGELOG.md (5)  250: - Add new `Match(rctx *Context, method, path string) bool` method to `Routes` interface
+  README.md (5)  248: MatchRoute(rctx *Context, method, path string) bool
+_examples/rest/
+  main.go (1)  147: // SearchArticles searches the Article
+
+### 12 [prism] exec
+INTENT: The rename is complete, and `go build ./...` passed. `go list` confirms both packages resolve to this checkout.
+
+The full test run stopped because the sandbox blocks `httptest` from opening local ports. I’ll run the route-matching tests separately to check what I can within that restriction.
+CMD: prism search TestGetHead TestSupressNotFound --scope text --format text
+OUT(2518B): ── TestGetHead ──
+// COMPLETE — 1 exact matches across 1 file
+middleware/get_head_test.go:
+  11: func TestGetHead(t *testing.T) {
+── TestSupressNotFound ──
+// no matches — search completed (not truncated, not timed out)
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:
+**`middleware/get_head_test.go`**
+// Full enclosing body TestGetHead spans 11-66
+// Evidence: exact match for 1 supplied term(s); test
+
+```go
+11→func TestGetHead(t *testing.T) {
+12→	r := chi.NewRouter()
+13→	r.Use(GetHead)
+14→	r.Get("/hi", func(w http.ResponseWriter, r *http.Request) {
+15→		w.Header().Set("X-Test", "yes")
+16→		w.Wr
+
+### 13 [test] exec
+INTENT: 
+CMD: /bin/zsh -lc "GOCACHE=/private/tmp/chi-matchroute-go-cache go test -count=1 -run '"'^(TestMuxMatch.*|TestPattern)$'"' ./..."
+OUT(1476B): --- FAIL: TestPattern (0.00s)
+    --- FAIL: TestPattern/Basic_path_value (0.00s)
+panic: httptest: failed to listen on a port: listen tcp6 [::1]:0: bind: operation not permitted [recovered, repanicked]
+
+goroutine 23 [running]:
+testing.tRunner.func1.2({0x1027ea180, 0x1400012c8a0})
+	/opt/homebrew/Cellar/go@1.25/1.25.14/libexec/src/testing/testing.go:1872 +0x19c
+testing.tRunner.func1()
+	/opt/homebrew/Cellar/go@1.25/1.25.14/libexec/src/testing/testing.go:1875 +0x31c
+panic({0x1027ea180?, 0x1400012c8a0?})
+	/opt/homebrew/Cellar/go@1.25/1.25.14/libexec/src/runtime/panic.go:783 +0x120
+net/http/httptest.newLocalListener()
+	/opt/homebrew/Cellar/go@1.25/1.25.14/libexec/src/net/http/httptest/server.go:71 
+
+### 14 [test] exec
+INTENT: 
+CMD: /bin/zsh -lc "GOCACHE=/private/tmp/chi-matchroute-go-cache go test -count=1 -run '"'^TestMuxMatch'"' ."
+OUT(37B): ok  	github.com/go-chi/chi/v5	0.305s
+

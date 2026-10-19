@@ -1,0 +1,55 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "BitList" --scope text --format text | head -30; prism lookup BitList --format text | head -150
+OUT(6684B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-9_s0tm47
+// 25 text hits, but 5 different symbols share the name "BitList" (BitList, BitList.BitList, BitList.BitList, …) — most hits belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type evidence before acting on the text hits.
+// SAMPLE of 520 matches in 44 files; every matching file is listed below with its hit count. exhaustive=true lists every line; paths=<file> shows one file
+dubbo-cluster/src/main/java/org/apache/dubbo/rpc/cluster/router/state/BitList.java:55: public class BitList<E> extends AbstractList<E> implements Cloneable {
+dubbo-cluster/src/main/java/org/apache/dubb
+
+### 1 [prism] Bash
+INTENT: 
+CMD: prism read dubbo-cluster/src/main/java/org/apache/dubbo/rpc/cluster/router/state/BitList.java --from 60 --to 150 --format text
+OUT(3233B): // dubbo-cluster/src/main/java/org/apache/dubbo/rpc/cluster/router/state/BitList.java lines 60-150 of 560
+ 60→
+ 61→    public BitList(List<E> originList) {
+ 62→        this(originList, false);
+ 63→    }
+ 64→
+ 65→    public BitList(List<E> originList, boolean empty) {
+ 66→        if (originList instanceof BitList) {
+ 67→            this.originList = ((BitList<E>) originList).getOriginList();
+ 68→            this.tailList = ((BitList<E>) originList).getTailList();
+ 69→        } else {
+ 70→            this.originList = originList;
+ 71→        }
+ 72→        this.rootSet = new BitSet();
+ 73→        if (!empty) {
+ 74→            this.rootSet.set(0, originList.size());
+ 75→        } else {
+ 76→    
+
+### 2 [edit] Bash
+INTENT: 
+CMD: cd dubbo-cluster/src/main/java/org/apache/dubbo/rpc/cluster/router/state && python3 - <<'E'
+s=open('BitList.java').read()
+s=s.replace("target.getTailList().forEach(this::addToTailList);","""target.getTailList().forEach(e -> {
+                if (tailList == null || !tailList.contains(e)) {
+                    addToTailList(e);
+                }
+            });""")
+open('BitList.java','w').write(s)
+E
+git diff --stat
+OUT(127B):  .../java/org/apache/dubbo/rpc/cluster/router/state/BitList.java     | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+### 3 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-9_s0tm47 && (mvn -o -q -pl dubbo-cluster test -Dtest=BitListTest -DfailIfNoTests=false -Dcheckstyle.skip -Drat.skip -Dspotless.check.skip=true 2>&1 | tail -25)
+OUT(2355B): [ERROR] Failed to execute goal on project dubbo-cluster: Could not resolve dependencies for project org.apache.dubbo:dubbo-cluster:jar:3.3.7-SNAPSHOT
+[ERROR] dependency: org.apache.dubbo:dubbo-rpc-api:jar:3.3.7-SNAPSHOT (compile)
+[ERROR] 	Cannot access apache.snapshots (https://repository.apache.org/snapshots) in offline mode and the artifact org.apache.dubbo:dubbo-rpc-api:jar:3.3.7-SNAPSHOT has not been downloaded from it before.
+[ERROR] dependency: org.apache.dubbo:dubbo-rpc-injvm:jar:3.3.7-SNAPSHOT (test)
+[ERROR] 	Cannot access apache.snapshots (https://repository.apache.org/snapshots) in offline mode and the artifact org.apache.dubbo:dubbo-rpc-injvm:jar:3.3.7-SNAPSHOT has not been downlo

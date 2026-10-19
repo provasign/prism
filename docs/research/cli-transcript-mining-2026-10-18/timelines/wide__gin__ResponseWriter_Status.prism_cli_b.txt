@@ -1,0 +1,33 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact ResponseWriter.Status --format text
+OUT(4807B): // ResponseWriter.Status — change-impact: 12 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed go)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (14; every occurrence this change touches, as path:line:col: text):
+  context_test.go:1853:52: assert.Equal(t, http.StatusUnauthorized, c.Writer.Status())
+  context_test.go:1875:60: assert.Equal(t, http.StatusUnsupportedMediaType, c.Writer.Status())
+  context_test.go:1901:60: assert.Equal(t, http.StatusUnsupportedMediaType, c.Writer.Status()
+
+### 1 [read] Bash
+INTENT: 
+CMD: sed -i '' -E '1853s/Status\(\)/ResponseStatus()/;1875s/Status\(\)/ResponseStatus()/;1901s/Status\(\)/ResponseStatus()/' context_test.go
+sed -i '' '770s/Status()/ResponseStatus()/' gin.go
+sed -i '' '301s/Status()/ResponseStatus()/' logger.go
+sed -i '' '442s/Status()/ResponseStatus()/' logger_test.go
+sed -i '' -E '29s/Status returns/ResponseStatus returns/;30s/Status\(\)/ResponseStatus()/;98s/Status\(\)/ResponseStatus()/' response_writer.go
+sed -i '' -E '52s/w\.Status/w.ResponseStatus/;64s/w\.Status/w.ResponseStatus/;68s/w\.Status/w.ResponseStatus/;98s/w\.Status/w.ResponseStatus/;283s/w\.Status/
+OUT(438B):  context_test.go         |  6 +++---
+ docs/doc.md             |  4 ++--
+ gin.go                  |  2 +-
+ logger.go               |  2 +-
+ logger_test.go          |  2 +-
+ response_writer.go      |  6 +++---
+ response_writer_test.go | 12 ++++++------
+ 7 files changed, 17 insertions(+), 17 deletions(-)
+ok  	github.com/gin-gonic/gin	0.486s
+github.com/gin-gonic/gin
+/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-4djyqgwe

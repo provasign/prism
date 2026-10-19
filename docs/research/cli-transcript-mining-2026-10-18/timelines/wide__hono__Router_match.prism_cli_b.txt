@@ -1,0 +1,76 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Router.match --format text
+OUT(13040B): // Router.match — change-impact: 20 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed typescript)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (44; every occurrence this change touches, as path:line:col: text):
+  benchmarks/routers-deno/src/hono.mts:15:14: router.match(route.method, route.path)
+  benchmarks/routers/src/bench-includes-init.mts:66:14: router.match(benchRoute.method, benchRoute.path)
+  benchmarks/routers/src/bench-includes-init.mts:73:14: router.match(benchRoute.method
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cat > /tmp/ren.py <<'EOF'
+import re,subprocess,collections
+out=subprocess.run("prism change-impact Router.match --format text",shell=True,capture_output=True,text=True).stdout
+sites=collections.defaultdict(list)
+sec=False
+for l in out.splitlines():
+    if l.startswith("editSites"): sec=True; continue
+    if sec:
+        m=re.match(r"  (\S+?):(\d+):(\d+): ",l)
+        if not m: break
+        sites[m[1]].append((int(m[2]),int(m[3])))
+for f,ss in sites.items():
+    lines=open(f).read().split("\n")
+    for ln,col in sorted(ss,reverse=True):
+        s=lines[ln-1]
+        c=[m.start() for m in re.fi
+OUT(1324B):  src/router/smart-router/router.ts                 |  6 +++---
+ src/router/trie-router/router.ts                  |  2 +-
+ 20 files changed, 43 insertions(+), 43 deletions(-)
+--- a/benchmarks/routers/src/bench-includes-init.mts
++++ b/benchmarks/routers/src/bench-includes-init.mts
+-      router.match(benchRoute.method, benchRoute.path)
++      router.matchRoute(benchRoute.method, benchRoute.path)
+-      router.match(benchRoute.method, benchRoute.path)
++      router.matchRoute(benchRoute.method, benchRoute.path)
+-      router.match(benchRoute.method, benchRoute.path)
++      router.matchRoute(benchRoute.method, benchRoute.path)
+-      router.match(benchRoute.method, benchRoute.path)
++      route
+
+### 2 [grep] Bash
+INTENT: 
+CMD: sed -n 55,70p benchmarks/routers/src/bench-includes-init.mts; grep -rn "\.match(" src/router/reg-exp-router/*.ts | grep -v test | head; npx tsc --noEmit 2>&1 | tail -5; pwd; npx vitest run --project main src/router src/hono src/middleware/combine src/middleware/method-not-allowed src/helper/dev 2>&1 | tail -15
+OUT(1847B):     path: '/static/index.html',
+  },
+]
+
+for (const benchRoute of benchRoutes) {
+  group(`${benchRoute.method} ${benchRoute.path}`, () => {
+    bench('RegExpRouter', () => {
+      const router = new RegExpRouter()
+      for (const route of routes) {
+        router.add(route.method, route.path, () => {})
+      }
+      router.matchRoute(benchRoute.method, benchRoute.path)
+    })
+    bench('PreparedRegExpRouter', () => {
+      const router = new PreparedRegExpRouter(preparedParams[0], preparedParams[1])
+      for (const route of routes) {
+src/router/reg-exp-router/matcher.ts:22:    const match = path.match(matcher[0])
+src/router/reg-exp-router/node.ts:73:            : token.match(/^\:([^\{\}]+)(
+
+### 3 [grep] Bash
+INTENT: 
+CMD: npx vitest run --project main --coverage.enabled=false src/router src/hono src/middleware src/helper 2>&1 | grep -E "Test Files|Tests |FAIL|Error" | head; ls node_modules/hono 2>&1 | head -2; grep -rn "matchRoute" src/hono-base.ts
+OUT(167B):  Test Files  53 passed (53)
+      Tests  1909 passed | 31 skipped (1940)
+dist
+LICENSE
+src/hono-base.ts:421:    const matchResult = this.router.matchRoute(method, path)

@@ -1,0 +1,150 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search _beanProperties --scope text --format text 2>&1 | head -60
+OUT(3820B): // COMPLETE — 53 exact matches across 4 files
+// _beanProperties is a field BeanDeserializerBase._beanProperties (deser/BeanDeserializerBase.java:122) of type BeanPropertyMap (impl/BeanPropertyMap.java:33) — BeanPropertyMap is used at 79 site(s) in 11 file(s): BeanDeserializer deser/BeanDeserializer.java:53 BeanDeserializer deser/BeanDeserializer.java:68 BeanDeserializer deser/BeanDeserializer.java:112 withBeanProperties deser/BeanDeserializer.java:151 +75 more. A change to what BeanDeserializerBase._beanProperties holds usually lands across that set — prism_change_impact BeanPropertyMap for the complete, line-precise list.
+src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cd src/main/java/com/fasterxml/jackson/databind/deser; sed -n 265,300p BeanDeserializerBase.java; sed -n 385,425p BeanDeserializerBase.java; grep -n "withoutProperties" -A40 impl/BeanPropertyMap.java | head -90
+OUT(5038B):                 ;
+    }
+
+    protected BeanDeserializerBase(BeanDeserializerBase src) {
+        this(src, src._ignoreAllUnknown);
+    }
+
+    protected BeanDeserializerBase(BeanDeserializerBase src, boolean ignoreAllUnknown)
+    {
+        super(src._beanType);
+
+        _beanType = src._beanType;
+
+        _valueInstantiator = src._valueInstantiator;
+        _delegateDeserializer = src._delegateDeserializer;
+        _arrayDelegateDeserializer = src._arrayDelegateDeserializer;
+        _propertyBasedCreator = src._propertyBasedCreator;
+
+        _beanProperties = src._beanProperties;
+        _backRefs = src._backRefs;
+        _ignorableProps = src._ignorableProps;
+        _ignoreAllUnknown = ignor
+
+### 2 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj/src/main/java/com/fasterxml/jackson/databind/deser; grep -n "ignorals\|withByNameInclusion\|_caseInsensitive\|IgnoreCase\|withIgnorable" BeanDeserializerBase.java | head -40
+OUT(716B): 467:    public abstract BeanDeserializerBase withByNameInclusion(Set<String> ignorableProps, Set<String> includableProps);
+495:     * @deprecated Since 2.12 use {@link #withByNameInclusion} instead
+498:    public BeanDeserializerBase withIgnorableProperties(Set<String> ignorableProps) {
+499:        return withByNameInclusion(ignorableProps, _includableProps);
+921:        JsonIgnoreProperties.Value ignorals = intr.findPropertyIgnoralByName(config, accessor);
+927:        if (ignorals.getIgnoreUnknown() && !_ignoreAllUnknown) {
+931:        final Set<String> namesToIgnore = ignorals.findIgnoredForDeserialization();
+950:            contextual = contextual.withByNameInclusion(newNamesToIgnore, new
+
+### 3 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj/src/main/java/com/fasterxml/jackson/databind/deser; sed -n 905,1000p BeanDeserializerBase.java; grep -n "IgnorePropertiesUtil" -r . | head
+OUT(5697B):         if (shape == null) {
+            shape = _serializationShape;
+        }
+        if (shape == JsonFormat.Shape.ARRAY) {
+            contextual = contextual.asArrayDeserializer();
+        }
+        return contextual;
+    }
+
+    // @since 2.12
+    protected BeanDeserializerBase _handleByNameInclusion(DeserializationContext ctxt,
+            AnnotationIntrospector intr,
+            BeanDeserializerBase contextual,
+            AnnotatedMember accessor) throws JsonMappingException
+    {
+        final DeserializationConfig config = ctxt.getConfig();
+        JsonIgnoreProperties.Value ignorals = intr.findPropertyIgnoralByName(config, accessor);
+
+        // 30-Mar-2020, tatu: As per [databind
+
+### 4 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj/src/main/java/com/fasterxml/jackson/databind/deser; grep -n "withByNameInclusion\|asArrayDeserializer\|withBeanProperties" -B2 -A8 BeanDeserializer.java | sed -n 1,80p; sed -n 200,235p BeanDeserializerBase.java; grep -n "ignoreCase\|IgnoreCase\|caseInsens" -i BeanDeserializerBase.java BeanDeserializerBuilder.java
+OUT(2798B): 139-
+140-    @Override
+141:    public BeanDeserializer withByNameInclusion(Set<String> ignorableProps,
+142-            Set<String> includableProps) {
+143-        return new BeanDeserializer(this, ignorableProps, includableProps);
+144-    }
+145-
+146-    @Override
+147-    public BeanDeserializerBase withIgnoreAllUnknown(boolean ignoreUnknown) {
+148-        return new BeanDeserializer(this, ignoreUnknown);
+149-    }
+150-
+151-    @Override
+152:    public BeanDeserializerBase withBeanProperties(BeanPropertyMap props) {
+153-        return new BeanDeserializer(this, props);
+154-    }
+155-
+156-    @Override
+157:    protected BeanDeserializerBase asArrayDeserializer() {
+158-        SettableBeanProper
+
+### 5 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj/src/main/java/com/fasterxml/jackson/databind/deser; sed -n 860,904p BeanDeserializerBase.java
+OUT(2218B):                         return ctxt.reportBadDefinition(_beanType, String.format(
+"Invalid Object Id definition for %s: cannot find property with name %s",
+ClassUtil.nameOf(handledType()), ClassUtil.name(propName)));
+                    }
+                    idType = idProp.getType();
+                    idGen = new PropertyBasedObjectIdGenerator(objectIdInfo.getScope());
+                } else { // other types are to be simpler
+                    JavaType type = ctxt.constructType(implClass);
+                    idType = ctxt.getTypeFactory().findTypeParameters(type, ObjectIdGenerator.class)[0];
+                    idProp = null;
+                    idGen = ctxt.objectIdGeneratorInstance(a
+
+### 6 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj; sed -i 's/BeanPropertyMap propsOrig = _beanProperties;/BeanPropertyMap propsOrig = contextual._beanProperties;/' src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java; git diff --stat; (mvn -o -q test -Dtest='*Ignor*,*CaseInsens*' 2>&1 | tail -15)
+OUT(1437B): sed: 1: "src/main/java/com/faste ...": bad flag in substitute command: '/'
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:124)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+Caused by: java.lang.IllegalStateException: mock: deliberate failure for parseDouble
+	at com.fasterxml.jackson.core.io.NumberInput.parseDouble(NumberInput.java:410)
+	at com.fasterxml.jackson.d
+
+### 7 [edit] Edit
+INTENT: The sed failed (BSD sed quirk), so I'll make the edit with the Edit tool instead.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java
+OUT(190B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java has been updated successfully.
+
+### 8 [grep] Bash
+INTENT: The sed failed (BSD sed quirk), so I'll make the edit with the Edit tool instead.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj; git diff --stat; mvn -o test -Dtest='*Ignor*,*CaseInsens*' 2>&1 | grep -E "Tests run:|BUILD|ERROR" | tail -8
+OUT(1153B):  .../java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.ser.filter.SerializationIgnore3357Test
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in com.fasterxml.jackson.databind.ser.filter.IgnorePropsForSerTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.fasterxml.jackson.databind.jsontype.ext.ExternalTypeIdWithIgnoreUnknownTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in com.fasterxml.jacks
+
+### 9 [edit] Edit
+INTENT: The sed failed (BSD sed quirk), so I'll make the edit with the Edit tool instead.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java
+OUT(190B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java has been updated successfully.
+
+### 10 [grep] Bash
+INTENT: The sed failed (BSD sed quirk), so I'll make the edit with the Edit tool instead.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m5un7joj; git diff --stat; mvn -o test -Dtest='*Ignor*,*CaseInsens*' 2>&1 | grep -E "Tests run:|BUILD|ERROR" | tail -8
+OUT(1153B):  .../java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.ser.filter.SerializationIgnore3357Test
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in com.fasterxml.jackson.databind.ser.filter.IgnorePropsForSerTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.fasterxml.jackson.databind.jsontype.ext.ExternalTypeIdWithIgnoreUnknownTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in com.fasterxml.jacks

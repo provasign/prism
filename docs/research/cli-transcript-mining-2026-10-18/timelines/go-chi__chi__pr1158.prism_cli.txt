@@ -1,0 +1,98 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism read middleware/content_charset.go --format text; prism search AllowContentEncoding --scope text --format text | head -30
+OUT(3060B): // middleware/content_charset.go lines 1-45 of 45
+ 1→package middleware
+ 2→
+ 3→import (
+ 4→	"net/http"
+ 5→	"slices"
+ 6→	"strings"
+ 7→)
+ 8→
+ 9→// ContentCharset generates a handler that writes a 415 Unsupported Media Type response if none of the charsets match.
+10→// An empty charset will allow requests with no Content-Type header or no specified charset.
+11→func ContentCharset(charsets ...string) func(next http.Handler) http.Handler {
+12→	for i, c := range charsets {
+13→		charsets[i] = strings.ToLower(c)
+14→	}
+15→
+16→	return func(next http.Handler) http.Handler {
+17→		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+18→			if !contentEncoding(r.Header.Get("Content-Type")
+
+### 1 [grep] Bash
+INTENT: 
+CMD: grep -rn "ContentCharset\|contentEncoding(" --include=*_test.go . | head
+OUT(47B): (eval):1: no matches found: --include=*_test.go
+
+### 2 [grep] Bash
+INTENT: 
+CMD: grep -rn "ContentCharset" . --include='*_test.go' | head
+OUT(242B): ./middleware/content_charset_test.go:11:func TestContentCharset(t *testing.T) {
+./middleware/content_charset_test.go:17:		inputContentCharset []string
+./middleware/content_charset_test.go:78:			r.Use(ContentCharset(tt.inputContentCharset...))
+
+### 3 [edit] Edit
+INTENT: Tests still use `ContentCharset`, so I'll keep the name and add the skip.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o1edl7fy/middleware/content_charset.go
+OUT(143B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o1edl7fy/middleware/content_charset.go has been updated successfully.
+
+### 4 [read] Bash
+INTENT: Tests still use `ContentCharset`, so I'll keep the name and add the skip.
+CMD: go test ./middleware/ 2>&1 | tail -15
+OUT(867B): 2026/10/18 17:21:57 "GET http://example.com/ HTTP/1.1" from 192.0.2.1:1234 - 000 0B in 917ns
+2026/10/18 17:21:57 "GET http://example.com/ HTTP/1.1" from 192.0.2.1:1234 - 200 9B in 5.678875ms
+--- FAIL: TestContentCharset (0.00s)
+    --- FAIL: TestContentCharset/should_not_accept_requests_with_no_charset_if_empty_charset_headers_are_not_allowed (0.00s)
+        content_charset_test.go:88: response is incorrect, got 200, want 415
+    --- FAIL: TestContentCharset/should_not_accept_requests_with_a_mismatching_charset (0.00s)
+        content_charset_test.go:88: response is incorrect, got 200, want 415
+    --- FAIL: TestContentCharset/should_not_accept_requests_with_a_mismatching_charset_even_if_emp
+
+### 5 [edit] Edit
+INTENT: Tests still use `ContentCharset`, so I'll keep the name and add the skip.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o1edl7fy/middleware/content_charset.go
+OUT(143B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o1edl7fy/middleware/content_charset.go has been updated successfully.
+
+### 6 [read] Bash
+INTENT: Tests still use `ContentCharset`, so I'll keep the name and add the skip.
+CMD: go test ./middleware/ 2>&1 | tail -15
+OUT(867B): 2026/10/18 17:21:57 "GET http://example.com/ HTTP/1.1" from 192.0.2.1:1234 - 000 0B in 917ns
+2026/10/18 17:21:57 "GET http://example.com/ HTTP/1.1" from 192.0.2.1:1234 - 200 9B in 5.678875ms
+--- FAIL: TestContentCharset (0.00s)
+    --- FAIL: TestContentCharset/should_not_accept_requests_with_no_charset_if_empty_charset_headers_are_not_allowed (0.00s)
+        content_charset_test.go:88: response is incorrect, got 200, want 415
+    --- FAIL: TestContentCharset/should_not_accept_requests_with_a_mismatching_charset (0.00s)
+        content_charset_test.go:88: response is incorrect, got 200, want 415
+    --- FAIL: TestContentCharset/should_not_accept_requests_with_a_mismatching_charset_even_if_emp
+
+### 7 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o1edl7fy/middleware/content_charset_test.go off=60 lim=40
+OUT(1064B): 60				http.StatusUnsupportedMediaType,
+61			},
+62			{
+63				"should not accept requests with a mismatching charset even if empty charsets are allowed",
+64				"text/plain; charset=Latin-1",
+65				[]string{"UTF-8", ""},
+66				http.StatusUnsupportedMediaType,
+67			},
+68		}
+69	
+70		for _, tt := range tests {
+71			var tt = tt
+72			t.Run(tt.name, func(t *testing.T) {
+73				t.Parallel()
+74	
+75				var recorder = httptest.NewRecorder()
+76	
+77				var r = chi.NewRouter()
+78				r.Use(ContentCharset(tt.inputContentCharset...))
+79				r.Get("/", func(w http.ResponseWriter, r *http.Request) {})
+80	
+81				var req, _ = http.NewRequest("GET", "/", nil)
+82				req.Header.Set("Content-Type", tt.inputValue)
+83	
+84

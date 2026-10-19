@@ -1,0 +1,65 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Command.invoke --format text
+OUT(5448B): // Command.invoke — change-impact: 5 site(s)
+completeness: partial
+completenessScope: indexed-project-only
+safeToClaimComplete: false
+// Do not claim global completeness from this result. It closes the indexed project graph only; external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof.
+editSites (10; every occurrence this change touches, as path:line:col: text):
+  src/click/core.py:1395:9: def invoke(self, ctx: Context) -> t.Any:
+  src/click/core.py:1546:31: rv = self.invoke(ctx)
+  src/click/core.py:1992:9: def invoke(self, ctx: Context) -> t.Any:
+  src/click/core.py:2004:34: rv = super().invoke(ctx)
+  src/click/core.py:2023:25: s
+
+### 1 [grep] Grep
+INTENT: 
+CMD: Grep \binvoke\b /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7e2ollsy/src
+OUT(3012B): src/click/decorators.py:67:                return ctx.invoke(f, obj, *args, **kwargs)
+src/click/decorators.py:88:                    "Managed to invoke callback without a context"
+src/click/decorators.py:93:            return ctx.invoke(f, obj, *args, **kwargs)
+src/click/decorators.py:119:            return ctx.invoke(f, obj, *args, **kwargs)
+src/click/testing.py:318:    """The CLI runner provides functionality to invoke a Click command line
+src/click/testing.py:330:                             ``SystemExit`` when running :meth:`~CliRunner.invoke`.
+src/click/testing.py:411:        This is automatically done in the :meth:`invoke` method.
+src/click/testing.py:596:    def invoke(
+src/click/test
+
+### 2 [grep] Grep
+INTENT: 
+CMD: Grep (?<!runner)(?<!ctx)(?<!context)(?<!self)\.invoke\(|def invoke|\.invoke\b[^(] /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7e2ollsy/tests
+OUT(375B): Search failed — ripgrep rejected the pattern, glob, or file type without searching:
+rg: regex parse error:
+    (?:(?<!runner)(?<!ctx)(?<!context)(?<!self)\.invoke\(|def invoke|\.invoke\b[^(])
+       ^^^^
+error: look-around, including look-ahead and look-behind, is not supported
+
+Consider enabling PCRE2 with the --pcre2 flag, which can handle backreferences
+and look-around.
+
+### 3 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7e2ollsy
+grep -rnE "def invoke|\.invoke\((ctx|sub_ctx|context)\)|invoke\b[^(]" tests --include=*.py | grep -v "^\S*:\s*#" | head -30
+OUT(42B): (eval):2: no matches found: --include=*.py
+
+### 4 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7e2ollsy
+grep -rnE "def invoke|\.invoke\((ctx|sub_ctx|context)\)" tests src
+sed -i '' -e '1395s/invoke/run_command/;1546s/self\.invoke/self.run_command/;1992s/invoke/run_command/;2004s/super().invoke/super().run_command/;2023s/super().invoke/super().run_command/;2035s/super().invoke/super().run_command/;2026s/command\.invoke/command.run_command/;2057s/command\.invoke/command.run_command/' src/click/core.py
+sed -i '' '137s/cli\.invoke/cli.run_command/' tests/test_basic.py
+sed -i '' '171s/invoke/run_command/' tests/test_commands
+OUT(1377B): tests/test_basic.py:137:        rv = cli.invoke(ctx)
+tests/test_commands.py:171:        def invoke(self, ctx):
+src/click/core.py:850:    def invoke(
+src/click/core.py:855:    def invoke(self, callback: Command, /, *args: t.Any, **kwargs: t.Any) -> t.Any: ...
+src/click/core.py:857:    def invoke(
+src/click/core.py:1395:    def invoke(self, ctx: Context) -> t.Any:
+src/click/core.py:1546:                    rv = self.invoke(ctx)
+src/click/core.py:1992:    def invoke(self, ctx: Context) -> t.Any:
+src/click/core.py:2004:                    rv = super().invoke(ctx)
+src/click/core.py:2023:                super().invoke(ctx)
+src/click/core.py:2026:                    return _process_result(sub_ctx.c

@@ -1,0 +1,38 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Highlighter.highlight --format text
+OUT(4936B): // Highlighter.highlight — change-impact: 14 site(s)
+completeness: partial
+completenessScope: indexed-project-only
+safeToClaimComplete: false
+// Do not claim global completeness from this result. It closes the indexed project graph only; external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof.
+editSites (15; every occurrence this change touches, as path:line:col: text):
+  examples/rainbow.py:14:9: def highlight(self, text):
+  rich/highlighter.py:38:14: self.highlight(highlight_text)
+  rich/highlighter.py:42:9: def highlight(self, text: Text) -> None:
+  rich/highlighter.py:57:9: def highlight(self, text: Text) -> None:
+  rich/highl
+
+### 1 [grep] Bash
+INTENT: 
+CMD: for s in examples/rainbow.py:14 rich/highlighter.py:38 rich/highlighter.py:42 rich/highlighter.py:57 rich/highlighter.py:67 rich/highlighter.py:123 rich/highlighter.py:124 rich/progress.py:642 rich/progress.py:768 tests/test_highlighter.py:165 tests/test_highlighter.py:174 tests/test_highlighter.py:191 tests/test_highlighter.py:199 tests/test_highlighter.py:207 tests/test_highlighter.py:461; do f=${s%:*}; l=${s#*:}; sed -i '' "${l}s/highlight(/apply_highlights(/" $f; done
+git diff --stat; grep -rnE "\.highlight\(|def highlight\(" --include=*.py . | grep -v "^./rich/\(syntax\|table\)"
+python -c
+OUT(562B):  examples/rainbow.py       |  2 +-
+ rich/highlighter.py       | 12 ++++++------
+ rich/progress.py          |  4 ++--
+ tests/test_highlighter.py | 12 ++++++------
+ 4 files changed, 15 insertions(+), 15 deletions(-)
+(eval):2: no matches found: --include=*.py
+/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-tykioln1/rich/__init__.py
+FAILED tests/test_syntax.py::test_option_no_wrap - AssertionError: assert '\x...
+FAILED tests/test_syntax.py::test_syntax_highlight_ranges - AssertionError: a...
+8 failed, 948 passed, 25 skipped, 1 warning in 4.18s
+
+### 2 [grep] Bash
+INTENT: 
+CMD: python -m pytest tests -q 2>&1 | grep FAILED | sort > /tmp/a; git stash -q; python -m pytest tests -q 2>&1 | grep FAILED | sort > /tmp/b; git stash pop -q; diff /tmp/a /tmp/b && echo same; wc -l /tmp/a; grep -rn "\.highlight(" --include=*.py . | grep -v "^./rich/syntax\|^./rich/table"
+OUT(63B): same
+       8 /tmp/a
+(eval):1: no matches found: --include=*.py

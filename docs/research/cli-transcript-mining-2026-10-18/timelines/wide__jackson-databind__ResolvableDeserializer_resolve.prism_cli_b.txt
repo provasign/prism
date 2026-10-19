@@ -1,0 +1,110 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact ResolvableDeserializer.resolve --format text 2>&1 | head -100
+OUT(16901B): // ResolvableDeserializer.resolve — change-impact: 13 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed java)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (15; every occurrence this change touches, as path:line:col: text):
+  src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java:517:17: public void resolve(DeserializationContext ctxt) throws JsonMappingException
+  src/main/java/com/fasterxml/jackson/databind/deser/DefaultDeserializationContext.java:253:46: ((Re
+
+### 1 [grep] Bash
+INTENT: I'll apply the edits using sed at the exact line numbers identified, double-checking javadoc references like {@link #resolve} in ResolvableDeserializer for consistency, and confirming no other subclasses outside the ones already listed need changes.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-mziz0ww7 && d=src/main/java/com/fasterxml/jackson/databind/deser
+sed -i '' '517s/resolve(/resolveDependencies(/' $d/BeanDeserializerBase.java
+sed -i '' -e '253s/resolve(/resolveDependencies(/' -e '294s/resolve(/resolveDependencies(/' $d/DefaultDeserializationContext.java
+sed -i '' -e '205s/resolve(/resolveDependencies(/' -e '348s/resolve(/resolveDependencies(/' $d/DeserializerCache.java
+sed -i '' '43s/resolve(/resolveDependencies(/' $d/ResolvableDeserializer.java
+sed -i '' -e '58s/resolve(/resolveDependencies(/' -e '60s/resolv
+OUT(2371B):  CLAUDE.md                                          | 30 ++++++++++++++++++++++
+ .../databind/deser/BeanDeserializerBase.java       |  2 +-
+ .../deser/DefaultDeserializationContext.java       |  4 +--
+ .../jackson/databind/deser/DeserializerCache.java  |  4 +--
+ .../databind/deser/ResolvableDeserializer.java     |  2 +-
+ .../databind/deser/std/DelegatingDeserializer.java |  4 +--
+ .../databind/deser/std/EnumMapDeserializer.java    |  2 +-
+ .../databind/deser/std/MapDeserializer.java        |  2 +-
+ .../deser/std/StdDelegatingDeserializer.java       |  4 +--
+ .../deser/std/StdNodeBasedDeserializer.java        |  2 +-
+ .../deser/std/UntypedObjectDeserializer.java       |  2 +-
+ .../databind/de
+
+### 2 [grep] Bash
+INTENT: I'll apply the edits using sed at the exact line numbers identified, double-checking javadoc references like {@link #resolve} in ResolvableDeserializer for consistency, and confirming no other subclasses outside the ones already listed need changes.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-mziz0ww7 && d=src/main/java/com/fasterxml/jackson/databind/deser
+sed -i '' '517s/resolve(/resolveDependencies(/' $d/BeanDeserializerBase.java
+sed -i '' -e '253s/resolve(/resolveDependencies(/' -e '294s/resolve(/resolveDependencies(/' $d/DefaultDeserializationContext.java
+sed -i '' -e '205s/resolve(/resolveDependencies(/' -e '348s/resolve(/resolveDependencies(/' $d/DeserializerCache.java
+sed -i '' '43s/resolve(/resolveDependencies(/' $d/ResolvableDeserializer.java
+sed -i '' -e '58s/resolve(/resolveDependencies(/' -e '60s/resolv
+OUT(2371B):  CLAUDE.md                                          | 30 ++++++++++++++++++++++
+ .../databind/deser/BeanDeserializerBase.java       |  2 +-
+ .../deser/DefaultDeserializationContext.java       |  4 +--
+ .../jackson/databind/deser/DeserializerCache.java  |  4 +--
+ .../databind/deser/ResolvableDeserializer.java     |  2 +-
+ .../databind/deser/std/DelegatingDeserializer.java |  4 +--
+ .../databind/deser/std/EnumMapDeserializer.java    |  2 +-
+ .../databind/deser/std/MapDeserializer.java        |  2 +-
+ .../deser/std/StdDelegatingDeserializer.java       |  4 +--
+ .../deser/std/StdNodeBasedDeserializer.java        |  2 +-
+ .../deser/std/UntypedObjectDeserializer.java       |  2 +-
+ .../databind/de
+
+### 3 [grep] Bash
+INTENT: Fix javadoc links that reference the renamed method (BeanSerializer's belongs to the serializer, so leave it).
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-mziz0ww7 && d=src/main/java/com/fasterxml/jackson/databind
+sed -i '' '17s/#resolve}/#resolveDependencies}/' $d/deser/ResolvableDeserializer.java
+sed -i '' '660s/#resolve}/#resolveDependencies}/' $d/DeserializationContext.java
+sed -i '' -e '179s/#resolve}/#resolveDependencies}/' -e '215s/#resolve}/#resolveDependencies}/' $d/deser/Deserializers.java
+sed -i '' '43s/#resolve}/#resolveDependencies}/' $d/deser/std/MapDeserializer.java
+grep -n "MapDeserializer\|class " $d/deser/std/MapDeserializer.java | sed -n 1,3p
+./mvnw -o -q test
+OUT(3570B): 32:public class MapDeserializer
+118:    public MapDeserializer(JavaType mapType, ValueInstantiator valueInstantiator,
+139:    protected MapDeserializer(MapDeserializer src)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:101)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:64)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:150)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:63)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(
+
+### 4 [grep] Bash
+INTENT: Fix javadoc links that reference the renamed method (BeanSerializer's belongs to the serializer, so leave it).
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-mziz0ww7 && d=src/main/java/com/fasterxml/jackson/databind
+sed -i '' '17s/#resolve}/#resolveDependencies}/' $d/deser/ResolvableDeserializer.java
+sed -i '' '660s/#resolve}/#resolveDependencies}/' $d/DeserializationContext.java
+sed -i '' -e '179s/#resolve}/#resolveDependencies}/' -e '215s/#resolve}/#resolveDependencies}/' $d/deser/Deserializers.java
+sed -i '' '43s/#resolve}/#resolveDependencies}/' $d/deser/std/MapDeserializer.java
+grep -n "MapDeserializer\|class " $d/deser/std/MapDeserializer.java | sed -n 1,3p
+./mvnw -o -q test
+OUT(3570B): 32:public class MapDeserializer
+118:    public MapDeserializer(JavaType mapType, ValueInstantiator valueInstantiator,
+139:    protected MapDeserializer(MapDeserializer src)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:101)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:64)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:150)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:63)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(
+
+### 5 [grep] Bash
+INTENT: That stack trace was probably just the expected exception being logged, so I should verify the result and confirm the classes are freshly loaded.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-mziz0ww7 && ./mvnw -o test 2>&1 | grep -E "Tests run:|BUILD|ERROR\]" | tail -8; javap -cp target/classes com.fasterxml.jackson.databind.deser.ResolvableDeserializer; git status --short
+OUT(2261B): [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0 s -- in com.fasterxml.jackson.databind.deser.jdk.NestedCollectionsTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.deser.jdk.VoidProperties2675Test
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 19.28 s -- in com.fasterxml.jackson.databind.PrimarySuite
+[INFO] Tests run: 3895, Failures: 0, Errors: 0, Skipped: 0
+[WARNING] Tests run: 3, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 2.119 s -- in com.fasterxml.jackson.databind.typepollution.TypePollutionTest
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapse
+
+### 6 [grep] Bash
+INTENT: That stack trace was probably just the expected exception being logged, so I should verify the result and confirm the classes are freshly loaded.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-mziz0ww7 && ./mvnw -o test 2>&1 | grep -E "Tests run:|BUILD|ERROR\]" | tail -8; javap -cp target/classes com.fasterxml.jackson.databind.deser.ResolvableDeserializer; git status --short
+OUT(2261B): [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0 s -- in com.fasterxml.jackson.databind.deser.jdk.NestedCollectionsTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.deser.jdk.VoidProperties2675Test
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 19.28 s -- in com.fasterxml.jackson.databind.PrimarySuite
+[INFO] Tests run: 3895, Failures: 0, Errors: 0, Skipped: 0
+[WARNING] Tests run: 3, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 2.119 s -- in com.fasterxml.jackson.databind.typepollution.TypePollutionTest
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapse

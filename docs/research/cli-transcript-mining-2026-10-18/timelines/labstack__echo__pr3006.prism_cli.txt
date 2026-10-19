@@ -1,0 +1,96 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search PathUnescape --scope text --format text 2>&1 | head -40; grep -n "Unescape" middleware/static.go
+OUT(1895B): // COMPLETE — 6 exact matches across 3 files
+echo.go:563: 			tmpPath, err := url.PathUnescape(p)
+middleware/static.go:
+  199: 			pathUnescape := true
+  202: 				pathUnescape = !config.DisablePathUnescaping // because router could already do PathUnescape
+  204: 			if pathUnescape {
+  205: 				p, err = url.PathUnescape(p)
+router.go:
+  1028: 			tmpVal, err := url.PathUnescape(p.Value)
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:
+**`echo.go`**
+// Full enclosing body StaticDirectoryHandler spans 559-585
+// Evidence: exact match for 1 supplied term(s)
+
+```go
+559→func StaticDirectoryHandler(fileSy
+
+### 1 [grep] Bash
+INTENT: 
+CMD: sed -n 185,225p middleware/static.go; sed -n 1015,1040p router.go; grep -n "RawPath\|useEscapedPath\|func (r \*Router) Find" router.go | head -20
+OUT(2744B): 		tmpFs, fErr := fs.Sub(config.Filesystem, path.Join(".", config.Root))
+		if fErr != nil {
+			return nil, fmt.Errorf("static middleware failed to create sub-filesystem from config.Root, error: %w", fErr)
+		}
+		currentFS = tmpFs
+	}
+
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) (err error) {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
+			p := c.Request().URL.Path
+			pathUnescape := true
+			if strings.HasSuffix(c.Path(), "*") { // When serving from a group, e.g. `/static*`.
+				p = c.Param("*")
+				pathUnescape = !config.DisablePathUnescaping // because router could already do PathUnescape
+			}
+			if pathUnescape {
+				p, err = url.PathUnescape(p)
+
+### 2 [read] Bash
+INTENT: 
+CMD: sed -n 792,810p router.go
+OUT(842B): 	} else {
+		pathValues = pathValues[0:cap(pathValues)] // resize slice to maximum capacity so we can index set values
+	}
+
+	req := c.Request()
+	path := req.URL.Path
+	if !r.useEscapedPathForRouting && req.URL.RawPath != "" {
+		// Difference between URL.RawPath and URL.Path is:
+		//  * URL.Path is where request path is stored. Value is stored in decoded form: /%47%6f%2f becomes /Go/.
+		//  * URL.RawPath is an optional field which only gets set if the default encoding is different from Path.
+		path = req.URL.RawPath
+	}
+	var (
+		currentNode           = r.tree // root as current node
+		previousBestMatchNode *node
+		matchedRouteMethod    *routeMethod
+		// search stores the remaining path to check f
+
+### 3 [read] Bash
+INTENT: 
+CMD: sed -i '199s/true/false/' middleware/static.go && sed -i '202s/pathUnescape = !config.DisablePathUnescaping.*/pathUnescape = !config.DisablePathUnescaping \/\/ param may still be escaped (RawPath)/' middleware/static.go && sed -n 197,206p middleware/static.go && go test ./middleware/ . 2>&1 | tail -15
+OUT(67B): Exit code 1
+sed: 1: "middleware/static.go
+": invalid command code m
+
+### 4 [edit] Edit
+INTENT: That BSD sed command is chained oddly, so I'll just use the Edit tool instead.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-x3_izmve/middleware/static.go
+OUT(134B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-x3_izmve/middleware/static.go has been updated successfully.
+
+### 5 [read] Bash
+INTENT: That BSD sed command is chained oddly, so I'll just use the Edit tool instead.
+CMD: go test ./middleware/ . 2>&1 | tail -15
+OUT(90B): ok  	github.com/labstack/echo/v5/middleware	1.333s
+ok  	github.com/labstack/echo/v5	0.825s
+
+### 6 [edit] Edit
+INTENT: That BSD sed command is chained oddly, so I'll just use the Edit tool instead.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-x3_izmve/middleware/static.go
+OUT(134B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-x3_izmve/middleware/static.go has been updated successfully.
+
+### 7 [read] Bash
+INTENT: That BSD sed command is chained oddly, so I'll just use the Edit tool instead.
+CMD: go test ./middleware/ . 2>&1 | tail -15
+OUT(90B): ok  	github.com/labstack/echo/v5/middleware	1.333s
+ok  	github.com/labstack/echo/v5	0.825s

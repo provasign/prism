@@ -1,0 +1,23 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "_suppressableValue" --scope text --format text 2>&1 | head -40; grep -n "isEmpty(SerializationContext" -A45 src/main/java/tools/jackson/databind/ser/jdk/MapSerializer.java
+OUT(5215B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-i0gxm2si
+// 25 text hits, but 8 different symbols share the name "_suppressableValue" (BeanPropertyWriter._suppressableValue, VirtualBeanPropertyWriter._suppressableValue, MapEntrySerializer._suppressableValue, …) — most hits belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type evidence before acting on the text hits.
+// SAMPLE of 110 matches in 18 files; every matching file is listed below with its hit count. exhaustive=true lists every line; paths=<file> shows one file
+// all 18 matching files, hits per file and the file's best match line:
+src/main/java/tools/jackson/databind/
+
+### 1 [read] Bash
+INTENT: 
+CMD: cd src/main/java/tools/jackson/databind/ser/jdk && sed -i 's/!supp.equals(value))/!supp.equals(elemValue))/' MapSerializer.java && git diff --stat . && cd - >/dev/null && ./mvnw -q test -Dtest='MapInclusion*,*JsonInclude*' 2>&1 | tail -15
+OUT(65B): Exit code 1
+sed: 1: "MapSerializer.java
+": invalid command code M
+
+### 2 [read] Bash
+INTENT: 
+CMD: perl -pi -e 's/!supp\.equals\(value\)\)/!supp.equals(elemValue))/' src/main/java/tools/jackson/databind/ser/jdk/MapSerializer.java && git diff --stat && ./mvnw -q test -Dtest='*Inclusion*,*JsonInclude*' 2>&1 | tail -15
+OUT(191B):  CLAUDE.md                                          | 30 ++++++++++++++++++++++
+ .../jackson/databind/ser/jdk/MapSerializer.java    |  4 +--
+ 2 files changed, 32 insertions(+), 2 deletions(-)

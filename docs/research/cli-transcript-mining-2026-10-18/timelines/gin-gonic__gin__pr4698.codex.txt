@@ -1,0 +1,195 @@
+
+### 0 [prism] exec
+INTENT: I’ll inspect the recovery code, make the smallest source change, and run the tests against this checkout.
+CMD: prism lookup Recovery CustomRecovery RecoveryWithWriter CustomRecoveryWithWriter --format text
+OUT(2281B): // lookup Recovery
+// function Recovery  recovery.go:35-37
+35→func Recovery() HandlerFunc {
+36→	return RecoveryWithWriter(DefaultErrorWriter)
+37→}
+// lookup CustomRecovery
+// TEST-ONLY API (callers are all tests):
+//   CustomRecovery line 40: 0 production callers (1 test caller). No production code calls it or a same-named overload
+// function CustomRecovery  recovery.go:40-42
+40→func CustomRecovery(handle RecoveryFunc) HandlerFunc {
+41→	return RecoveryWithWriter(DefaultErrorWriter, handle)
+42→}
+// lookup RecoveryWithWriter
+// function RecoveryWithWriter  recovery.go:45-50
+45→func RecoveryWithWriter(out io.Writer, recovery ...RecoveryFunc) HandlerFunc {
+46→	if len(recovery) > 0 {
+47→		return
+
+### 1 [git] exec
+INTENT: 
+CMD: git status --short
+OUT(38B): ?? .grove/
+?? AGENTS.md
+?? prism.yaml
+
+
+### 2 [prism] exec
+INTENT: 
+CMD: prism read recovery.go --from 1 --to 105 --format text
+OUT(3797B): // recovery.go lines 1-105 of 199
+  1→// Copyright 2014 Manu Martinez-Almeida. All rights reserved.
+  2→// Use of this source code is governed by a MIT style
+  3→// license that can be found in the LICENSE file.
+  4→
+  5→package gin
+  6→
+  7→import (
+  8→	"bufio"
+  9→	"bytes"
+ 10→	"cmp"
+ 11→	"errors"
+ 12→	"fmt"
+ 13→	"io"
+ 14→	"log"
+ 15→	"net/http"
+ 16→	"net/http/httputil"
+ 17→	"os"
+ 18→	"runtime"
+ 19→	"strings"
+ 20→	"syscall"
+ 21→	"time"
+ 22→
+ 23→	"github.com/gin-gonic/gin/internal/bytesconv"
+ 24→)
+ 25→
+ 26→const (
+ 27→	dunno     = "???"
+ 28→	stackSkip = 3
+ 29→)
+ 30→
+ 31→// RecoveryFunc defines the function passable to CustomRecovery.
+ 32→type RecoveryFunc func(c *Context, err any)
+ 33→
+ 34→
+
+### 3 [other] exec
+INTENT: 
+CMD: /bin/zsh -lc "prism search 'func TestRecovery' 'module ' 'go 1.' --scope text --format text"
+OUT(3177B): ── func TestRecovery ──
+// COMPLETE — 1 exact matches across 1 file
+recovery_test.go:
+  224: func TestRecoveryWithWriterWithCustomRecovery(t *testing.T) {
+── module ──
+// COMPLETE — 7 exact matches across 5 files
+.github/workflows/gin.yml:
+  53:       GO111MODULE: on
+.github/workflows/goreleaser.yml:
+  33:       - name: Trigger Go module reindex (pkg.go.dev)
+  35:           echo "Triggering Go module reindex at proxy.golang.org"
+CHANGELOG.md:
+  537: - [NEW] Support for [Go Modules](https://github.com/golang/go/wiki/Modules) [#1569](https://github.com/gin-gonic/gin/pull/1569)
+  724: - [FIX] Refactored binding and render modules
+README.md:
+  52: With [Go's module support](https://go.dev/wiki/M
+
+### 4 [prism] exec
+INTENT: 
+CMD: prism read recovery_test.go --from 1 --to 260 --format text
+OUT(8075B): // recovery_test.go lines 1-240 of 369
+  1→// Copyright 2014 Manu Martinez-Almeida. All rights reserved.
+  2→// Use of this source code is governed by a MIT style
+  3→// license that can be found in the LICENSE file.
+  4→
+  5→package gin
+  6→
+  7→import (
+  8→	"net"
+  9→	"net/http"
+ 10→	"os"
+ 11→	"strings"
+ 12→	"syscall"
+ 13→	"testing"
+ 14→
+ 15→	"github.com/stretchr/testify/assert"
+ 16→)
+ 17→
+ 18→func TestPanicClean(t *testing.T) {
+ 19→	buffer := new(strings.Builder)
+ 20→	router := New()
+ 21→	password := "my-super-secret-password"
+ 22→	router.Use(RecoveryWithWriter(buffer))
+ 23→	router.GET("/recovery", func(c *Context) {
+ 24→		c.AbortWithStatus(http.StatusBadRequest)
+ 25→		panic("Oops, Houst
+
+### 5 [other] exec
+INTENT: 
+CMD: go env GOMOD GOVERSION
+OUT(91B): /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-lx5kcpbi/go.mod
+go1.25.14
+
+
+### 6 [edit] apply_patch
+INTENT: 
+CMD: apply_patch /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-lx5kcpbi/recovery.go
+OUT(0B): 
+
+### 7 [test] exec
+INTENT: 
+CMD: /bin/zsh -lc "go list -f '{{.Dir}} {{.Module.Main}}' .
+go test -count=1 ./..."
+OUT(1032B): /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-lx5kcpbi true
+FAIL	github.com/gin-gonic/gin [setup failed]
+# github.com/gin-gonic/gin
+context_test.go:33:2: open ~/Library/Caches/go-build/02/026c34f1732615b917663cf58ff0dfc68fb710c36b4b7523eec916557e3fb0d4-d: operation not permitted
+FAIL	github.com/gin-gonic/gin/binding [setup failed]
+# github.com/gin-gonic/gin/binding
+context_test.go:33:2: open ~/Library/Caches/go-build/02/026c34f1732615b917663cf58ff0dfc68fb710c36b4b7523eec916557e3fb0d4-d: operation not permitted
+FAIL	github.com/gin-gonic/gin/render [setup failed]
+# github.com/gin-gonic/gin/render
+context_test.go:33:2: open /Users/tapabrata
+
+### 8 [git] exec
+INTENT: The change records ordinary panics in `c.Errors`, preserving error values and converting other values to errors before calling the recovery handler. Go resolves the package to this checkout. The test run hit a cache permission issue, so I’m rerunning with a writable cache.
+CMD: git diff --check
+git diff -- recovery.go
+OUT(402B): diff --git a/recovery.go b/recovery.go
+index bbf1d56..7f1c7bf 100644
+--- a/recovery.go
++++ b/recovery.go
+@@ -83,6 +83,10 @@ func CustomRecoveryWithWriter(out io.Writer, handle RecoveryFunc) HandlerFunc {
+ 					c.Error(err) //nolint: errcheck
+ 					c.Abort()
+ 				} else {
++					if !ok {
++						err = fmt.Errorf("%v", rec)
++					}
++					c.Error(err) //nolint: errcheck
+ 					handle(c, rec)
+ 				}
+ 			}
+
+
+### 9 [test] exec
+INTENT: 
+CMD: GOCACHE="$TMPDIR/gin-recovery-go-cache" go test -count=1 ./...
+OUT(3410B): 2026/10/18 13:15:54 The AppEngine flag is going to be deprecated. Please check issues #2723 and #2739 and use 'TrustedPlatform: gin.PlatformGoogleAppEngine' instead.
+[GIN] 2026/10/18 - 13:15:54 | 200 | 11.458µs |       192.0.2.1 | GET      "/name1/api"
+[GIN] 2026/10/18 - 13:15:54 | 200 |      1µs |       192.0.2.1 | GET      "/name2/api"
+--- FAIL: TestContextCopyShouldNotCancel (0.00s)
+panic: httptest: failed to listen on a port: listen tcp6 [::1]:0: bind: operation not permitted [recovered, repanicked]
+
+goroutine 267 [running]:
+testing.tRunner.func1.2({0x105b37460, 0x14000510380})
+	/opt/homebrew/Cellar/go@1.25/1.25.14/libexec/src/testing/testing.go:1872 +0x19c
+testing.tRunner.func1()
+	/opt/
+
+### 10 [test] exec
+INTENT: 
+CMD: GOCACHE="$TMPDIR/gin-recovery-go-cache" go test -count=1 -run '"'Test(Panic|CustomRecovery|RecoveryWithWriter)' -coverprofile=\""'$TMPDIR/gin-recovery-coverage.out" .
+OUT(67B): ok  	github.com/gin-gonic/gin	0.254s	coverage: 14.6% of statements
+
+
+### 11 [other] exec
+INTENT: 
+CMD: /bin/zsh -lc "awk '/recovery.go:8[5-9]/ {print}' \""'$TMPDIR/gin-recovery-coverage.out"'
+OUT(157B): github.com/gin-gonic/gin/recovery.go:85.11,86.13 1 1
+github.com/gin-gonic/gin/recovery.go:86.13,88.7 1 1
+github.com/gin-gonic/gin/recovery.go:89.6,90.20 2 1
+

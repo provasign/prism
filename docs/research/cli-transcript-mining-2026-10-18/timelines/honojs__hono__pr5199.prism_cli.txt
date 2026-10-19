@@ -1,0 +1,69 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism read src/middleware/etag/digest.ts --format text; prism read src/middleware/etag/index.ts --format text
+OUT(5526B): // src/middleware/etag/digest.ts lines 1-43 of 43
+ 1→const mergeBuffers = (
+ 2→  buffer1: ArrayBuffer | undefined,
+ 3→  buffer2: Uint8Array<ArrayBuffer>
+ 4→): Uint8Array<ArrayBuffer> => {
+ 5→  if (!buffer1) {
+ 6→    return buffer2
+ 7→  }
+ 8→  const merged = new Uint8Array<ArrayBuffer>(
+ 9→    new ArrayBuffer(buffer1.byteLength + buffer2.byteLength)
+10→  )
+11→  merged.set(new Uint8Array(buffer1), 0)
+12→  merged.set(buffer2, buffer1.byteLength)
+13→  return merged
+14→}
+15→
+16→export const generateDigest = async (
+17→  stream: ReadableStream<Uint8Array<ArrayBuffer>> | null,
+18→  generator: (body: Uint8Array<ArrayBuffer>) => ArrayBuffer | Promise<ArrayBuffer>
+19→): Promise<string | null> => {
+20→
+
+### 1 [read] Bash
+INTENT: 
+CMD: cat > /tmp/p.py <<'E'
+import re
+p='src/middleware/etag/digest.ts'
+s=open(p).read()
+a=s.index('const mergeBuffers')
+b=s.index('export const generateDigest')
+s=s[:a]+s[b:]
+s=s.replace('''  let result: ArrayBuffer | undefined = undefined
+
+''','''  const chunks: Uint8Array<ArrayBuffer>[] = []
+  let length = 0
+
+''').replace('''    result = await generator(mergeBuffers(result, value))
+  }
+
+  if (!result) {
+    return null
+  }
+''','''    chunks.push(value)
+    length += value.byteLength
+  }
+
+  if (chunks.length === 0) {
+    return null
+  }
+
+  const body = new Uint8Array<ArrayBuffer>(new ArrayBuffer(l
+OUT(380B): -------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 36.68% ( 460/1254 )
+Branches     : 27.79% ( 209/752 )
+Functions    : 34.49% ( 79/229 )
+Lines        : 37.07% ( 443/1195 )
+================================================================================
+
+### 2 [grep] Bash
+INTENT: 
+CMD: npx vitest run src/middleware/etag --coverage.enabled=false 2>&1 | grep -E "Test|passed|failed"
+OUT(53B):  Test Files  1 passed (1)
+      Tests  17 passed (17)

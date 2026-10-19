@@ -1,0 +1,184 @@
+
+### 0 [other] exec
+INTENT: I’ll use Prism to locate the URI adapter, make the smallest source change, and run the relevant tests against this checkout.
+CMD: /bin/zsh -lc "prism search 'toASCIIString' 'URI' --scope text --format text"
+OUT(4661B): ── toASCIIString ──
+// COMPLETE — 2 exact matches across 2 files
+gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java:733:           out.value(value == null ? null : value.toASCIIString());
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:
+  187:     assertThat(target.toASCIIString()).isEqualTo(uriValue);
+── URI ──
+// URI is a field TypeAdapters.URI (bind/TypeAdapters.java:715) of type TypeAdapter (gson/TypeAdapter.java:122) — TypeAdapter is used at 471 site(s) in 62 file(s): create interceptors/InterceptorFactory.java:29 InterceptorAdapter interceptors/InterceptorFactory.java:40 delegate interceptors/InterceptorFactory.java:41 InterceptorAdapter inter
+
+### 1 [git] exec
+INTENT: 
+CMD: git status --short
+OUT(38B): ?? .grove/
+?? AGENTS.md
+?? prism.yaml
+
+
+### 2 [prism] exec
+INTENT: 
+CMD: prism read gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java --from 710 --to 742 --format text
+OUT(1347B): // gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java lines 710-742 of 1084
+710→        }
+711→      };
+712→
+713→  public static final TypeAdapterFactory URL_FACTORY = newFactory(URL.class, URL);
+714→
+715→  public static final TypeAdapter<URI> URI =
+716→      new TypeAdapter<URI>() {
+717→        @Override
+718→        public URI read(JsonReader in) throws IOException {
+719→          if (in.peek() == JsonToken.NULL) {
+720→            in.nextNull();
+721→            return null;
+722→          }
+723→          try {
+724→            String nextString = in.nextString();
+725→            return nextString.equals("null") ? null : new URI(nextString);
+726→          } catch (URISyntaxExcep
+
+### 3 [prism] exec
+INTENT: 
+CMD: prism read pom.xml --format text
+OUT(11247B): // pom.xml lines 1-240 of 632
+  1→<?xml version="1.0" encoding="UTF-8"?>
+  2→<!--
+  3→  Copyright 2015 Google LLC
+  4→
+  5→  Licensed under the Apache License, Version 2.0 (the "License");
+  6→  you may not use this file except in compliance with the License.
+  7→  You may obtain a copy of the License at
+  8→
+  9→       http://www.apache.org/licenses/LICENSE-2.0
+ 10→
+ 11→  Unless required by applicable law or agreed to in writing, software
+ 12→  distributed under the License is distributed on an "AS IS" BASIS,
+ 13→  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ 14→  See the License for the specific language governing permissions and
+ 15→  limitations under the Lic
+
+### 4 [prism] exec
+INTENT: 
+CMD: prism read gson/pom.xml --format text
+OUT(9992B): // gson/pom.xml lines 1-240 of 515
+  1→<?xml version="1.0" encoding="UTF-8"?>
+  2→<!--
+  3→  Copyright 2008 Google LLC
+  4→
+  5→  Licensed under the Apache License, Version 2.0 (the "License");
+  6→  you may not use this file except in compliance with the License.
+  7→  You may obtain a copy of the License at
+  8→
+  9→       http://www.apache.org/licenses/LICENSE-2.0
+ 10→
+ 11→  Unless required by applicable law or agreed to in writing, software
+ 12→  distributed under the License is distributed on an "AS IS" BASIS,
+ 13→  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ 14→  See the License for the specific language governing permissions and
+ 15→  limitations under th
+
+### 5 [prism] exec
+INTENT: 
+CMD: prism read gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java --from 140 --to 210 --format text
+OUT(3125B): // gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java lines 140-210 of 1103
+140→  @Test
+141→  public void testUrlSerialization() throws Exception {
+142→    String urlValue = "http://google.com/";
+143→    URL url = new URL(urlValue);
+144→    assertThat(gson.toJson(url)).isEqualTo("\"http://google.com/\"");
+145→  }
+146→
+147→  @Test
+148→  public void testUrlDeserialization() {
+149→    String urlValue = "http://google.com/";
+150→    String json = "'http:\\/\\/google.com\\/'";
+151→    URL target1 = gson.fromJson(json, URL.class);
+152→    assertThat(target1.toExternalForm()).isEqualTo(urlValue);
+153→
+154→    URL target2 = gson.fromJson('"' + urlValue + '"', URL.class);
+155→
+
+### 6 [edit] apply_patch
+INTENT: 
+CMD: apply_patch /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-k38n36hg/gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java
+OUT(0B): 
+
+### 7 [test] exec
+INTENT: 
+CMD: mvn -pl gson -am test
+OUT(28525B): [INFO] Scanning for projects...
+[INFO] Inspecting build with total of 2 modules
+[INFO] Installing Central Publishing features
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Gson Parent                                                        [pom]
+[INFO] Gson                                                               [jar]
+[INFO] 
+[INFO] ------------------< com.google.code.gson:gson-parent >------------------
+[INFO] Building Gson Parent 2.14.1-SNAPSHOT                               [1/2]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:
+
+### 8 [git] exec
+INTENT: 
+CMD: git diff --check
+ git diff --stat
+OUT(122B):  gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+
+### 9 [other] exec
+INTENT: 
+CMD: /bin/zsh -lc "jshell --execution local --class-path gson/target/classes <<'EOF'
+import com.google.gson.Gson;
+import com.google.gson.internal.bind.TypeAdapters;
+import java.net.URI;
+import java.nio.file.*;
+Path expected = Path.of(\"gson/target/classes\").toRealPath();
+Path actual = Path.of(TypeAdapters.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toRealPath();
+if ("'!actual.equals(expected)) { System.exit(1); }
+System.out.println("Adapter loaded from: " + actual);
+Gson gson = new Gson();
+URI uri = new URI("s3://bucket/path/Kankyo'"\\u0304.png\");
+if ("'!uri.equals(gson.fro
+OUT(1939B): |  Welcome to JShell -- Version 17.0.20.1
+|  For an introduction type: /help intro
+
+jshell>  
+jshell>  
+jshell>  
+jshell>  
+jshell>  expected ==> /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80 ... 8n36hg/gson/target/classes
+
+jshell>  |  Exception java.lang.NoClassDefFoundError: com/google/gson/internal/bind/TypeAdapters
+|        at (#6:1)
+|  Caused by: java.lang.ClassNotFoundException: com.google.gson.internal.bind.TypeAdapters
+|        at URLClassLoader.findClass (URLClassLoader.java:445)
+|        at DefaultLoaderDelegate$RemoteClassLoader.findClass (DefaultLoaderDelegate.java:154)
+|        at ClassLoader.loadClass (ClassLoader.java:592)
+|        at ClassLoader.loadClass (ClassLoader.jav
+
+### 10 [read] exec
+INTENT: 
+CMD: check_dir=$(mktemp -d /tmp/gson-uri-check.XXXXXX)
+cat > "$check_dir/UriCheck.java" <<'"'EOF'
+import com.google.gson.Gson;
+import com.google.gson.internal.bind.TypeAdapters;
+import java.net.URI;
+import java.nio.file.Path;
+class UriCheck {
+  public static void main(String[] args) throws Exception {
+    Path actual = Path.of(TypeAdapters.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toRealPath();
+    if ("'!actual.equals(Path.of(args[0]).toRealPath())) throw new AssertionError(actual);
+    System.out.println("Adapter loaded from: " + actual);
+    Gson gson = new Gson();
+    U
+OUT(156B): Adapter loaded from: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-k38n36hg/gson/target/classes
+Decomposed Unicode URI round-trip passed
+

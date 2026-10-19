@@ -1,0 +1,68 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "_maxDeserializerCacheSize" --scope text --format text; grep -n "CacheSize" src/main/java/tools/jackson/databind/cfg/DefaultCacheProvider.java
+OUT(4000B): // COMPLETE — 7 exact matches across 1 file
+src/main/java/tools/jackson/databind/cfg/DefaultCacheProvider.java:
+  32:     protected final int _maxDeserializerCacheSize;
+  56:         _maxDeserializerCacheSize = maxDeserializerCacheSize;
+  87:         return _buildCache(_maxDeserializerCacheSize);
+  133:          * Corresponds to {@link DefaultCacheProvider#_maxDeserializerCacheSize}.
+  135:         private int _maxDeserializerCacheSize;
+  165:             _maxDeserializerCacheSize = maxDeserializerCacheSize;
+  211:             return new DefaultCacheProvider(_maxDeserializerCacheSize, _maxSerializerCacheSize, _maxTypeFactoryCacheSize);
+
+// Exact source for bounded enclosing hits selected by 
+
+### 1 [grep] Bash
+INTENT: 
+CMD: sed -n 60,80p src/main/java/tools/jackson/databind/cfg/DefaultCacheProvider.java; grep -n "DEFAULT_MAX_CACHE_SIZE" src/main/java/tools/jackson/databind/ser/SerializerCache.java src/main/java/tools/jackson/databind/deser/DeserializerCache.java src/main/java/tools/jackson/databind/type/TypeFactory.java | head
+OUT(1298B):     /*
+    /**********************************************************************
+    /* Defaults
+    /**********************************************************************
+     */
+
+    /**
+     * @return Default {@link DefaultCacheProvider} instance using default configuration values.
+     */
+    public static CacheProvider defaultInstance() {
+        return DEFAULT;
+    }
+
+    /*
+    /**********************************************************
+    /* API implementation
+    /**********************************************************
+     */
+
+    /**
+src/main/java/tools/jackson/databind/ser/SerializerCache.java:35:    public final static int DEFAULT_MAX_CACHE_SIZE = 4000;
+src/main/java/tool
+
+### 2 [grep] Bash
+INTENT: 
+CMD: cd src/main/java/tools/jackson/databind/cfg && sed -i 's/private int _maxDeserializerCacheSize;/private int _maxDeserializerCacheSize = DeserializerCache.DEFAULT_MAX_CACHE_SIZE;/;s/private int _maxSerializerCacheSize;/private int _maxSerializerCacheSize = SerializerCache.DEFAULT_MAX_CACHE_SIZE;/;s/private int _maxTypeFactoryCacheSize;/private int _maxTypeFactoryCacheSize = TypeFactory.DEFAULT_MAX_CACHE_SIZE;/' DefaultCacheProvider.java && grep -n "^import" DefaultCacheProvider.java
+OUT(78B): sed: 1: "DefaultCacheProvider.java
+": extra characters at the end of D command
+
+### 3 [grep] Bash
+INTENT: 
+CMD: cd src/main/java/tools/jackson/databind/cfg && sed -i '' 's/private int _maxDeserializerCacheSize;/private int _maxDeserializerCacheSize = DeserializerCache.DEFAULT_MAX_CACHE_SIZE;/;s/private int _maxSerializerCacheSize;/private int _maxSerializerCacheSize = SerializerCache.DEFAULT_MAX_CACHE_SIZE;/;s/private int _maxTypeFactoryCacheSize;/private int _maxTypeFactoryCacheSize = TypeFactory.DEFAULT_MAX_CACHE_SIZE;/' DefaultCacheProvider.java && grep -n "^import\|DEFAULT_MAX" DefaultCacheProvider.java
+OUT(812B): 3:import tools.jackson.databind.*;
+4:import tools.jackson.databind.deser.DeserializerCache;
+5:import tools.jackson.databind.ser.SerializerCache;
+6:import tools.jackson.databind.type.TypeFactory;
+7:import tools.jackson.databind.util.LookupCache;
+8:import tools.jackson.databind.util.SimpleLookupCache;
+9:import tools.jackson.databind.util.TypeKey;
+23:        = new DefaultCacheProvider(DeserializerCache.DEFAULT_MAX_CACHE_SIZE,
+24:                SerializerCache.DEFAULT_MAX_CACHE_SIZE,
+25:                TypeFactory.DEFAULT_MAX_CACHE_SIZE);
+135:        private int _maxDeserializerCacheSize = DeserializerCache.DEFAULT_MAX_CACHE_SIZE;
+141:        private int _maxSerializerCacheSize = SerializerCach
+
+### 4 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-1gcjkq4l && ./mvnw -q -o test -Dtest='*CacheProvider*' -Dsurefire.failIfNoSpecifiedTests=false 2>&1 | tail -20
+OUT(31B): (Bash completed with no output)

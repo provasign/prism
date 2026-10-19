@@ -1,0 +1,75 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Command.invoke --format text
+OUT(5176B): // Command.invoke — change-impact: 5 site(s)
+completeness: partial
+completenessScope: indexed-project-only
+safeToClaimComplete: false
+// Do not claim global completeness from this result. It closes the indexed project graph only; external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof.
+editSites (10; every occurrence this change touches, as path:line:col: text):
+  src/click/core.py:1395:9: def invoke(self, ctx: Context) -> t.Any:
+  src/click/core.py:1546:31: rv = self.invoke(ctx)
+  src/click/core.py:1992:9: def invoke(self, ctx: Context) -> t.Any:
+  src/click/core.py:2004:34: rv = super().invoke(ctx)
+  src/click/core.py:2023:25: s
+
+### 1 [grep] Bash
+INTENT: 
+CMD: grep -rnE "def invoke|\.invoke\(|super\(\)\.invoke" src tests | grep -vE "runner\.invoke|CliRunner|\bcli\.invoke\(\[|result" | head -40; sed -n 2018,2037p src/click/core.py
+OUT(2594B): src/click/core.py:850:    def invoke(
+src/click/core.py:855:    def invoke(self, callback: Command, /, *args: t.Any, **kwargs: t.Any) -> t.Any: ...
+src/click/core.py:857:    def invoke(
+src/click/core.py:930:        return self.invoke(cmd, *args, **kwargs)
+src/click/core.py:1395:    def invoke(self, ctx: Context) -> t.Any:
+src/click/core.py:1409:            return ctx.invoke(self.callback, **ctx.params)
+src/click/core.py:1546:                    rv = self.invoke(ctx)
+src/click/core.py:1992:    def invoke(self, ctx: Context) -> t.Any:
+src/click/core.py:2004:                    rv = super().invoke(ctx)
+src/click/core.py:2023:                super().invoke(ctx)
+src/click/core.py:2035:          
+
+### 2 [grep] Bash
+INTENT: 
+CMD: sed -i -E '1395s/invoke/run_command/;1546s/self\.invoke/self.run_command/;1992s/invoke/run_command/;2004s/super\(\)\.invoke/super().run_command/;2023s/super\(\)\.invoke/super().run_command/;2035s/super\(\)\.invoke/super().run_command/;2026s/command\.invoke/command.run_command/;2057s/command\.invoke/command.run_command/' src/click/core.py
+sed -i '137s/cli\.invoke/cli.run_command/' tests/test_basic.py
+sed -i '171s/invoke/run_command/' tests/test_commands.py
+git diff -U0 | grep '^[+-]' ; python -c "import click;print(click.__file__)"; python -m pytest -q 2>&1 | tail -3
+OUT(1091B): sed: 2: "tests/test_basic.py
+": undefined label 'ests/test_basic.py'
+sed: 2: "tests/test_commands.py
+": undefined label 'ests/test_commands.py'
+--- a/src/click/core.py
++++ b/src/click/core.py
+-    def invoke(self, ctx: Context) -> t.Any:
++    def run_command(self, ctx: Context) -> t.Any:
+-                    rv = self.invoke(ctx)
++                    rv = self.run_command(ctx)
+-    def invoke(self, ctx: Context) -> t.Any:
++    def run_command(self, ctx: Context) -> t.Any:
+-                    return _process_result(sub_ctx.command.invoke(sub_ctx))
++                    return _process_result(sub_ctx.command.run_command(sub_ctx))
+-                    rv.append(sub_ctx.command.invoke(sub_ctx))
+
+
+### 3 [grep] Bash
+INTENT: 
+CMD: sed -i '' 's/super().invoke(ctx)/super().run_command(ctx)/' src/click/core.py
+sed -i '' '137s/cli\.invoke/cli.run_command/' tests/test_basic.py
+sed -i '' '171s/invoke/run_command/' tests/test_commands.py
+git diff -U0 | grep '^[+-]' ; git stash -q; python -m pytest -q 2>&1 | tail -1; git stash pop -q; python -m pytest -q 2>&1 | tail -1
+OUT(1239B): --- a/src/click/core.py
++++ b/src/click/core.py
+-    def invoke(self, ctx: Context) -> t.Any:
++    def run_command(self, ctx: Context) -> t.Any:
+-                    rv = self.invoke(ctx)
++                    rv = self.run_command(ctx)
+-    def invoke(self, ctx: Context) -> t.Any:
++    def run_command(self, ctx: Context) -> t.Any:
+-                    rv = super().invoke(ctx)
++                    rv = super().run_command(ctx)
+-                super().invoke(ctx)
++                super().run_command(ctx)
+-                    return _process_result(sub_ctx.command.invoke(sub_ctx))
++                    return _process_result(sub_ctx.command.run_command(sub_ctx))
+-            super().invoke(ctx)

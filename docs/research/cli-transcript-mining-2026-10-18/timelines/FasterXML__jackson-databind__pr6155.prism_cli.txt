@@ -1,0 +1,75 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "Referenceable" --scope text --format text
+OUT(1710B): // COMPLETE — 2 exact matches across 1 file
+src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java:
+  66:      *  <li>{@link javax.naming.Referenceable}</li>
+  110:             UNSAFE.add("javax.naming.Referenceable");
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:
+**`src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java`**
+// Full enclosing body DefaultBaseTypeLimitingValidator.UnsafeBaseTypes spans 95-118
+// Evidence: exact match for 1 supplied term(s)
+
+```java
+95→    private final static class UnsafeBaseTypes {
+96→ 
+
+### 1 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java
+OUT(205B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java has been updated successfully.
+
+### 2 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java off=55 lim=15
+OUT(712B): 55	    /**
+56	     * Helper method called to determine if the given base type is known to be
+57	     * problematic regarding possible "gadget types".
+58	     * Currently includes following types:
+59	     *<ul>
+60	     *  <li>{@link java.lang.Object}</li>
+61	     *  <li>{@link java.io.Closeable}</li>
+62	     *  <li>{@link java.io.Serializable}</li>
+63	     *  <li>{@link java.lang.AutoCloseable}</li>
+64	     *  <li>{@link java.lang.Cloneable}</li>
+65	     *  <li>{@link java.util.logging.Handler}</li>
+66	     *  <li>{@link javax.naming.Referenceable}</li>
+67	     *  <li>{@link javax.sql.DataSource}</li>
+68	     *</ul>
+69	     * which are JDK-included super types of at least one gadget type (not
+
+### 3 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java
+OUT(205B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java has been updated successfully.
+
+### 4 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java off=55 lim=15
+OUT(712B): 55	    /**
+56	     * Helper method called to determine if the given base type is known to be
+57	     * problematic regarding possible "gadget types".
+58	     * Currently includes following types:
+59	     *<ul>
+60	     *  <li>{@link java.lang.Object}</li>
+61	     *  <li>{@link java.io.Closeable}</li>
+62	     *  <li>{@link java.io.Serializable}</li>
+63	     *  <li>{@link java.lang.AutoCloseable}</li>
+64	     *  <li>{@link java.lang.Cloneable}</li>
+65	     *  <li>{@link java.util.logging.Handler}</li>
+66	     *  <li>{@link javax.naming.Referenceable}</li>
+67	     *  <li>{@link javax.sql.DataSource}</li>
+68	     *</ul>
+69	     * which are JDK-included super types of at least one gadget type (not
+
+### 5 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java
+OUT(205B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java has been updated successfully.
+
+### 6 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java
+OUT(205B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-0ekwwq8n/src/main/java/com/fasterxml/jackson/databind/jsontype/DefaultBaseTypeLimitingValidator.java has been updated successfully.

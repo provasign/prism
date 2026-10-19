@@ -1,0 +1,76 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact SettableBeanProperty.set --format text 2>&1 | head -150
+OUT(25194B): // SettableBeanProperty.set — change-impact: 23 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed java)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (30; every occurrence this change touches, as path:line:col: text):
+  src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java:1254:19: _prop.set(_bean, value);
+  src/main/java/com/fasterxml/jackson/databind/deser/CreatorProperty.java:241:25: _fallbackSetter.set(instance, deserialize(p, ctxt));
+  src/main/java/com/faster
+
+### 1 [prism] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fckcbxka
+prism change-impact SettableBeanProperty.set --format text 2>&1 | grep -E '^  src/main.*:[0-9]+:[0-9]+: ' | while IFS=: read f l c rest; do f=${f#  }; sed -i '' -E "${l}s/\bset\(/assignValue(/" "$f"; done
+git diff --stat | tail -3; git diff -U0 | grep '^[+-] ' | grep -v assignValue | grep '^+'; grep -rn "SettableBeanProperty" src/test src/test-jdk* -l | head -20
+OUT(1104B):  CLAUDE.md | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
++  known symbol          -> prism lookup Name [Name2 ...] --format text
++  known file/range      -> prism read path --from N --to M --format text
++  unknown location/text -> prism search term [term2 ...] --scope text --format text
++  callers/related       -> prism query --terms Name,Other --format text
++  pre-edit sites        -> prism change-impact Type.method --format text
++  - Relay change-impact sites as-is; a local body-only edit can proceed from
++    the source you have read.
++  - Report gaps; never narrow scope to fit what was found.
++  - prism verify is optional, never a required closing step.
+src/test/j
+
+### 2 [prism] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fckcbxka
+prism change-impact SettableBeanProperty.set --format text 2>&1 | grep -E '^  src/main.*:[0-9]+:[0-9]+: ' | while IFS=: read f l c rest; do f=${f#  }; sed -i '' -E "${l}s/([^A-Za-z0-9_])set\(/\1assignValue(/" "$f"; done
+git diff --stat | tail -1; git diff -U0 src | grep '^+ ' 
+OUT(2050B):  15 files changed, 60 insertions(+), 30 deletions(-)
++            _prop.assignValue(_bean, value);
++        _fallbackSetter.assignValue(instance, deserialize(p, ctxt));
++    public void assignValue(Object instance, Object value) throws IOException
++        _fallbackSetter.assignValue(instance, value);
++    public abstract void assignValue(Object instance, Object value) throws IOException;
++        public void assignValue(Object instance, Object value) throws IOException {
++            delegate.assignValue(instance, value);
++                        prop.assignValue(bean, result);
++                prop.assignValue(bean, values[i]);
++            _properties[index].getProperty().assignValue(bean
+
+### 3 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fckcbxka
+grep -rnE '#set\b|[`]set\(\)' src/main/java/com/fasterxml/jackson/databind/deser | head; (./mvnw -o -q test 2>&1 | tail -30)
+OUT(3167B): src/main/java/com/fasterxml/jackson/databind/deser/impl/SetterlessProperty.java:151:        throw new UnsupportedOperationException("Should never call `set()` on setterless property ('"+getName()+"')");
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:101)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:64)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:150)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:63)
+	at org.junit.platform.launcher
+
+### 4 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fckcbxka
+./mvnw -o test 2>&1 | grep -E 'Tests run:|ERROR|FAIL|BUILD|Reactor|Building' | grep -v '^\s*at ' | tail -25
+OUT(3391B): [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.databind.ser.enums.EnumsToLCvsJsonProperty4788Test
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.049 s -- in com.fasterxml.jackson.databind.node.NodeJDKSerializationTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.fasterxml.jackson.databind.records.RecordTypeInfo3342Test
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.038 s -- in com.fasterxml.jackson.databind.SerializeUsingJDKTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.fasterxml.jackson.data
+
+### 5 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fckcbxka
+javap -cp target/classes com.fasterxml.jackson.databind.deser.SettableBeanProperty | grep -E 'assignValue| set\('; grep -rn "SettableBeanProperty\|\.set(" src/test src/test-jdk* | grep -c "prop.*\.set(" 
+OUT(100B):   public abstract void assignValue(java.lang.Object, java.lang.Object) throws java.io.IOException;
+0

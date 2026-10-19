@@ -1,0 +1,36 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism lookup InetSocketAddressSerializer --format text
+OUT(1894B): // lookup InetSocketAddressSerializer
+// also named this (not shown): InetSocketAddressSerializer.InetSocketAddressSerializer (src/main/java/com/fasterxml/jackson/databind/ser/std/InetSocketAddressSerializer.java:19-19)
+// class InetSocketAddressSerializer  src/main/java/com/fasterxml/jackson/databind/ser/std/InetSocketAddressSerializer.java:15-53
+15→@SuppressWarnings("serial")
+16→public class InetSocketAddressSerializer
+17→    extends StdScalarSerializer<InetSocketAddress>
+18→{
+19→    public InetSocketAddressSerializer() { super(InetSocketAddress.class); }
+20→
+21→    @Override
+22→    public void serialize(InetSocketAddress value, JsonGenerator g, SerializerProvider ctxt)
+23→        throws I
+
+### 1 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-wdy53hfa/src/main/java/com/fasterxml/jackson/databind/ser/std/InetSocketAddressSerializer.java
+OUT(199B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-wdy53hfa/src/main/java/com/fasterxml/jackson/databind/ser/std/InetSocketAddressSerializer.java has been updated successfully.
+
+### 2 [read] Bash
+INTENT: 
+CMD: mvn -o -q test -Dtest=JDKTypeSerializationTest 2>&1 | tail -15
+OUT(31B): (Bash completed with no output)
+
+### 3 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-wdy53hfa/src/main/java/com/fasterxml/jackson/databind/ser/std/InetSocketAddressSerializer.java
+OUT(199B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-wdy53hfa/src/main/java/com/fasterxml/jackson/databind/ser/std/InetSocketAddressSerializer.java has been updated successfully.
+
+### 4 [read] Bash
+INTENT: 
+CMD: mvn -o -q test -Dtest=JDKTypeSerializationTest 2>&1 | tail -15
+OUT(31B): (Bash completed with no output)

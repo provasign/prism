@@ -1,0 +1,92 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search validCookieNameRegEx --scope text --format text
+OUT(730B): // COMPLETE — 3 exact matches across 1 file
+// validCookieNameRegEx (src/utils/cookie.ts:70); 2 indexed caller site(s): parse src/utils/cookie.ts:102-138 _serialize src/utils/cookie.ts:167-253.
+src/utils/cookie.ts:
+  70: const validCookieNameRegEx = /^[\w!#$%&'*.^`|~+-]+$/
+  118:       !validCookieNameRegEx.test(cookieName) ||
+  168:   if (!validCookieNameRegEx.test(name)) {
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:
+**`src/utils/cookie.ts`**
+// Full enclosing body validCookieNameRegEx spans 70-70
+// Evidence: exact match for 1 supplied term(s)
+
+```typescript
+70→const validCookieNameRegEx
+
+### 1 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-6lz8ylna/src/utils/cookie.ts off=100 lim=40
+OUT(1385B): 100	}
+101	
+102	export const parse = (cookie: string, name?: string): Cookie => {
+103	  if (name && cookie.indexOf(name) === -1) {
+104	    // Fast-path: return immediately if the demanded-key is not in the cookie string
+105	    return {}
+106	  }
+107	  const pairs = cookie.split(';')
+108	  const parsedCookie: Cookie = Object.create(null)
+109	  for (const pairStr of pairs) {
+110	    const valueStartPos = pairStr.indexOf('=')
+111	    if (valueStartPos === -1) {
+112	      continue
+113	    }
+114	
+115	    const cookieName = trimCookieWhitespace(pairStr.substring(0, valueStartPos))
+116	    if (
+117	      (name && name !== cookieName) ||
+118	      !validCookieNameRegEx.test(cookieName) ||
+119	      c
+
+### 2 [read] Bash
+INTENT: I'm considering whether to loosen the name validation regex specifically for parsing, since serialization tests likely still expect errors on invalid names like spaces, while parsing needs to tolerate a wider set of characters excluding control chars, whitespace, and delimiters like '=', ';', ','.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-6lz8ylna && sed -i '' "70a\\
+const validParsedCookieNameRegEx = /^[\\\\w!#\$%&'()*+\\\\-./:<>?@[\\\\]^\`{|}~]+\$/
+" src/utils/cookie.ts && sed -i '' 's/!validCookieNameRegEx.test(cookieName) ||/!validParsedCookieNameRegEx.test(cookieName) ||/' src/utils/cookie.ts && sed -n 69,73p src/utils/cookie.ts && npx vitest run src/utils/cookie.test.ts src/helper/cookie 2>&1 | tail -8
+OUT(692B): // (see: https://datatracker.ietf.org/doc/html/rfc6265#section-4.1.1)
+const validCookieNameRegEx = /^[\w!#$%&'*.^`|~+-]+$/
+const validParsedCookieNameRegEx = /^[\w!#$%&'()*+\-./:<>?@[\]^`{|}~]+$/
+
+// all ASCII chars 32-126 except 34, 59, and 92 (i.e. space to tilde but not double quote, semicolon, or backslash)
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 34.13% ( 470/1377 )
+Branches     : 26.4% ( 221/837 )
+Functions    : 26.97% ( 65/241 )
+Lines        : 34.67% ( 456/1315 )
+================================================================================
+
+### 3 [read] Bash
+INTENT: I'm considering whether to loosen the name validation regex specifically for parsing, since serialization tests likely still expect errors on invalid names like spaces, while parsing needs to tolerate a wider set of characters excluding control chars, whitespace, and delimiters like '=', ';', ','.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-6lz8ylna && sed -i '' "70a\\
+const validParsedCookieNameRegEx = /^[\\\\w!#\$%&'()*+\\\\-./:<>?@[\\\\]^\`{|}~]+\$/
+" src/utils/cookie.ts && sed -i '' 's/!validCookieNameRegEx.test(cookieName) ||/!validParsedCookieNameRegEx.test(cookieName) ||/' src/utils/cookie.ts && sed -n 69,73p src/utils/cookie.ts && npx vitest run src/utils/cookie.test.ts src/helper/cookie 2>&1 | tail -8
+OUT(692B): // (see: https://datatracker.ietf.org/doc/html/rfc6265#section-4.1.1)
+const validCookieNameRegEx = /^[\w!#$%&'*.^`|~+-]+$/
+const validParsedCookieNameRegEx = /^[\w!#$%&'()*+\-./:<>?@[\]^`{|}~]+$/
+
+// all ASCII chars 32-126 except 34, 59, and 92 (i.e. space to tilde but not double quote, semicolon, or backslash)
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 34.13% ( 470/1377 )
+Branches     : 26.4% ( 221/837 )
+Functions    : 26.97% ( 65/241 )
+Lines        : 34.67% ( 456/1315 )
+================================================================================
+
+### 4 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-6lz8ylna && npx vitest run src/utils/cookie.test.ts src/helper/cookie --coverage.enabled=false 2>&1 | grep -E "Test Files|Tests|FAIL"
+OUT(53B):  Test Files  2 passed (2)
+      Tests  72 passed (72)
+
+### 5 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-6lz8ylna && npx vitest run src/utils/cookie.test.ts src/helper/cookie --coverage.enabled=false 2>&1 | grep -E "Test Files|Tests|FAIL"
+OUT(53B):  Test Files  2 passed (2)
+      Tests  72 passed (72)

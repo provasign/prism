@@ -1,0 +1,68 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "UseShortOptionHandling" --scope text --format text | head -40; grep -n "func (parsedArgs\|shortOpt\|Inverse" /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-vwdlfjrh/command_parse.go | head -40
+OUT(3087B): // COMPLETE — 62 exact matches across 13 files
+// UseShortOptionHandling is Command.UseShortOptionHandling (command.go:121); 15 indexed caller site(s): TestParseAndRunShortOpts command_test.go:202-271 [test] TestCommand_UseShortOptionHandling command_test.go:1368-1391 [test] TestCommand_UseShortOptionHandling_missing_value command_test.go:1393-1402 [test] +12 more.
+command.go:
+  121: 	UseShortOptionHandling bool `json:"useShortOptionHandling"`  [Command.UseShortOptionHandling]
+  215: // useShortOptionHandling traverses Lineage() for *any* ancestors
+  217: func (cmd *Command) useShortOptionHandling() bool {  [Command.useShortOptionHandling]
+  219: 		if pCmd.UseShortOptionHandling {
+command_pa
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-vwdlfjrh; sed -n 195,300p command_parse.go; grep -n "BoolWithInverseFlag) \(Set\|PreParse\|IsBoolFlag\|Apply\)" -A25 flag_bool_with_inverse.go | head -120
+OUT(5497B): 			continue
+		}
+
+		// no flag lookup found and short handling is disabled
+		if !shortOptionHandling {
+			// In shell completion mode, preserve the partial flag so that DefaultCompleteWithFlags can use it
+			// as lastArg and offer suggestions that match the prefix.
+			if cmd.Root().shellCompletion {
+				posArgs = append(posArgs, rargs...)
+				return &stringSliceArgs{posArgs}, nil
+			}
+			// When DefaultCommand is set, pass unknown flags through as positional args
+			// so the default command can handle them (fixes #2249)
+			if cmd.DefaultCommand != "" {
+				posArgs = append(posArgs, rargs...)
+				return &stringSliceArgs{posArgs}, nil
+			}
+			return &stringSliceArgs{posArgs}, fmt.Errorf("%s%s
+
+### 2 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-vwdlfjrh; grep -n "func (cmd \*Command) set(" -A20 command*.go
+OUT(926B): command.go:377:func (cmd *Command) set(fName string, f Flag, val string) error {
+command.go-378-	cmd.setFlags[f] = struct{}{}
+command.go-379-	cmd.setMultiValueParsingConfig(f)
+command.go-380-	if err := f.Set(fName, val); err != nil {
+command.go-381-		return fmt.Errorf("invalid value %q for flag -%s: %v", val, fName, err)
+command.go-382-	}
+command.go-383-	return nil
+command.go-384-}
+command.go-385-
+command.go-386-func (cmd *Command) lFlag(name string) Flag {
+command.go-387-	for _, f := range cmd.allFlags() {
+command.go-388-		if slices.Contains(f.Names(), name) {
+command.go-389-			tracef("flag found for name %[1]q (cmd=%[2]q)", name, cmd.Name)
+command.go-390-			return f
+command.go-391-		}
+comm
+
+### 3 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-vwdlfjrh; sed -i 's/cmd.set(flagName, sf, fv)/cmd.set(string(c), sf, fv)/; s/cmd.set(flagName, sf, flagVal)/cmd.set(string(c), sf, flagVal)/' command_parse.go; git diff --stat; go test . 2>&1 | tail -15
+OUT(102B): sed: 1: "command_parse.go
+": command c expects \ followed by text
+ok  	github.com/urfave/cli/v3	0.205s
+
+### 4 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-vwdlfjrh; perl -pi -e 's/cmd\.set\(flagName, sf, (fv|flagVal)\)/cmd.set(string(c), sf, $1)/' command_parse.go; git diff --stat; go test . 2>&1 | tail -15
+OUT(112B):  command_parse.go | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+ok  	github.com/urfave/cli/v3	0.215s

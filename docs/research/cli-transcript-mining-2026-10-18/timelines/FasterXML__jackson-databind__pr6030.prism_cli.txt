@@ -1,0 +1,107 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search "Unwrapped" "2883" --scope text --format text 2>&1 | head -40
+OUT(2510B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-2mgq9cwg
+── Unwrapped ──
+// 25 text hits, but only 7 are resolved references to CreatorWithMultipleUnwrapped917Test.Unwrapped — the rest match the name without referring to it (other types, comments, strings). Inspect receiver/type evidence before treating the remaining text hits as uses.
+// SAMPLE of 826 matches in 93 files; every matching file is listed below with its hit count. exhaustive=true lists every line; paths=<file> shows one file
+src/main/java/tools/jackson/databind/deser/impl/UnwrappedPropertyHandler.java:20: public class UnwrappedPropertyHandler
+src/main/java/tools/jackson/databind/DeserializationFeature.
+
+### 1 [grep] Bash
+INTENT: 
+CMD: grep -rn -i "unwrapped" src/main/java --include=*.java | grep -i -E "cannot|not support|multiple|creator" | head
+OUT(44B): (eval):1: no matches found: --include=*.java
+
+### 2 [grep] Grep
+INTENT: 
+CMD: Grep Unwrapped.*(creator|Creator)|@JsonUnwrapped src/main/java
+OUT(4988B): src/main/java/tools/jackson/databind/introspect/POJOPropertiesCollector.java:1151:                    final PropertyName placeholder = UnwrappedPropertyHandler.creatorParamName(param.getIndex());
+src/main/java/tools/jackson/databind/introspect/POJOPropertiesCollector.java:1999:                // [databind#5716]: @JsonUnwrapped creator params use a placeholder name to avoid
+src/main/java/tools/jackson/databind/introspect/POJOPropertyBuilder.java:75:     * Flag that indicates this property is marked with {@code @JsonUnwrapped}.
+src/main/java/tools/jackson/databind/introspect/POJOPropertyBuilder.java:418:     * Returns {@code true} if this property is marked with {@code @JsonUnwrapped}.
+src/mai
+
+### 3 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-2mgq9cwg/src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java off=350 lim=100
+OUT(5281B): 350	        // other property
+351	        _verifyNoUnwrappedPropertyConflict(ctxt);
+352	    }
+353	
+354	    /**
+355	     * Called at end of {@link #resolve} to verify that no property produced by an
+356	     * unwrapped ({@code @JsonUnwrapped}) property collides with a regular property
+357	     * (or with an earlier unwrapped property) by name.
+358	     *<p>
+359	     * Relies on inner unwrapping serializers having been assigned by
+360	     * {@link UnwrappingBeanPropertyWriter#assignSerializer}, so that their
+361	     * already-renamed {@code _props} can be consulted directly; this avoids
+362	     * re-introspecting the unwrapped type and re-applying name transformations.
+363	     *
+364	     
+
+### 4 [grep] Grep
+INTENT: 
+CMD: Grep Conflict between unwrapped src
+OUT(3603B): src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java:426:"Conflict between unwrapped property '%s' (of type %s)"
+src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java-427-+" and another property with same name;"
+src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java-428-+" consider using `@JsonUnwrapped(prefix=...)` to avoid name collision",
+src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java-429-                            name, ClassUtil.getTypeDescription(unwrapped.getType())));
+src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java-430-                }
+--
+src/test/java/tools/jackson/databind/struct/Unwrappe
+
+### 5 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-2mgq9cwg/src/test/java/tools/jackson/databind/struct/UnwrappedPropertyConflict2883Test.java off=120 lim=25
+OUT(829B): 120	
+121	    static class Level2 {
+122	        public String b = "b";
+123	        @JsonUnwrapped
+124	        public Level3 l3 = new Level3();
+125	    }
+126	
+127	    static class Level3 {
+128	        public String c = "c";
+129	    }
+130	
+131	    private final ObjectMapper MAPPER = newJsonMapper();
+132	
+133	    @Test
+134	    public void testUnwrappedConflictDetected() throws Exception {
+135	        InvalidDefinitionException ex = assertThrows(
+136	                InvalidDefinitionException.class,
+137	                () -> MAPPER.writeValueAsString(new OuterConflict()));
+138	        verifyException(ex, "Conflict between unwrapped property");
+139	        verifyException(ex, "'b'");
+140	        /
+
+### 6 [edit] Edit
+INTENT: I need to figure out which type the conflict error should reference for the unwrapped property case—likely needing to add the containing type and field name to the message while still preserving the "Conflict between unwrapped property" wording and the field 'b' reference.
+
+ I'm adding the containin
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-2mgq9cwg/src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java
+OUT(183B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-2mgq9cwg/src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java has been updated successfully.
+
+### 7 [read] Bash
+INTENT: I need to figure out which type the conflict error should reference for the unwrapped property case—likely needing to add the containing type and field name to the message while still preserving the "Conflict between unwrapped property" wording and the field 'b' reference.
+
+ I'm adding the containin
+CMD: mvn -q -o test -Dtest='UnwrappedPropertyConflict2883Test,UnwrappedWithConverter6017Test' 2>&1 | tail -20
+OUT(31B): (Bash completed with no output)
+
+### 8 [edit] Edit
+INTENT: I need to figure out which type the conflict error should reference for the unwrapped property case—likely needing to add the containing type and field name to the message while still preserving the "Conflict between unwrapped property" wording and the field 'b' reference.
+
+ I'm adding the containin
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-2mgq9cwg/src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java
+OUT(183B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-2mgq9cwg/src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java has been updated successfully.
+
+### 9 [read] Bash
+INTENT: I need to figure out which type the conflict error should reference for the unwrapped property case—likely needing to add the containing type and field name to the message while still preserving the "Conflict between unwrapped property" wording and the field 'b' reference.
+
+ I'm adding the containin
+CMD: mvn -q -o test -Dtest='UnwrappedPropertyConflict2883Test,UnwrappedWithConverter6017Test' 2>&1 | tail -20
+OUT(31B): (Bash completed with no output)

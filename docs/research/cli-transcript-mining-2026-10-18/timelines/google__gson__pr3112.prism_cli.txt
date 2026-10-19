@@ -1,0 +1,52 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism lookup TypeAdapterRuntimeTypeWrapper --format text
+OUT(3716B): // lookup TypeAdapterRuntimeTypeWrapper
+// also named this (not shown): TypeAdapterRuntimeTypeWrapper.TypeAdapterRuntimeTypeWrapper (gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java:32-36)
+// class TypeAdapterRuntimeTypeWrapper  gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java:27-108
+27→final class TypeAdapterRuntimeTypeWrapper<T> extends TypeAdapter<T> {
+28→  private final Gson context;
+29→  private final TypeAdapter<T> delegate;
+30→  private final Type type;
+31→
+32→  TypeAdapterRuntimeTypeWrapper(Gson context, TypeAdapter<T> delegate, Type type) {
+33→    this.context = context;
+34→    this.delegate = delegate;
+35→    thi
+
+### 1 [read] Bash
+INTENT: 
+CMD: cd gson/src/main/java/com/google/gson/internal/bind && sed -i 's/(type instanceof Class<?> || type instanceof TypeVariable<?>)/(type instanceof Class<?>\n            || type instanceof TypeVariable<?>\n            || type instanceof WildcardType)/; s/^import java.lang.reflect.TypeVariable;/&\nimport java.lang.reflect.WildcardType;/' TypeAdapterRuntimeTypeWrapper.java && cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc && git diff --stat && mvn -q -o test -pl gson -Dtest='CollectionTest,TypeAdapterRuntimeTypeWrapperTest,ReflectiveTypeAdapterFactoryTest' 2>&1 | tail -
+OUT(73B): Exit code 1
+sed: 1: "TypeAdapterRuntimeTypeW ...": invalid command code T
+
+### 2 [edit] Edit
+INTENT: BSD sed; use Edit instead.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java
+OUT(197B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java has been updated successfully.
+
+### 3 [edit] Edit
+INTENT: BSD sed; use Edit instead.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java
+OUT(197B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java has been updated successfully.
+
+### 4 [edit] Edit
+INTENT: BSD sed; use Edit instead.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java
+OUT(197B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java has been updated successfully.
+
+### 5 [edit] Edit
+INTENT: BSD sed; use Edit instead.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java
+OUT(197B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java has been updated successfully.
+
+### 6 [read] Bash
+INTENT: 
+CMD: mvn -q -o test -pl gson 2>&1 | tail -30
+OUT(604B):  [proguard] ProGuard, version 7.9.1
+OpenJDK 64-Bit Server VM warning: Ignoring option --illegal-access=deny; support was removed in 17.0
+WARNING: A terminally deprecated method in java.lang.System has been called
+WARNING: System::setSecurityManager has been called by com.google.gson.functional.ReflectionAccessTest (file:/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-iqkifevc/gson/target/test-classes/)
+WARNING: Please consider reporting this to the maintainers of com.google.gson.functional.ReflectionAccessTest
+WARNING: System::setSecurityManager will be removed in a future release

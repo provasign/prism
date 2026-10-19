@@ -1,0 +1,77 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Highlighter.highlight --format text
+OUT(4783B): // Highlighter.highlight — change-impact: 14 site(s)
+completeness: partial
+completenessScope: indexed-project-only
+safeToClaimComplete: false
+// Do not claim global completeness from this result. It closes the indexed project graph only; external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof.
+editSites (15; every occurrence this change touches, as path:line:col: text):
+  examples/rainbow.py:14:9: def highlight(self, text):
+  rich/highlighter.py:38:14: self.highlight(highlight_text)
+  rich/highlighter.py:42:9: def highlight(self, text: Text) -> None:
+  rich/highlighter.py:57:9: def highlight(self, text: Text) -> None:
+  rich/highl
+
+### 1 [grep] Bash
+INTENT: 
+CMD: grep -rnE "\bhighlight\(" --include=*.py --include=*.rst --include=*.md . | grep -v "^./CHANGELOG"
+OUT(42B): (eval):1: no matches found: --include=*.py
+
+### 2 [grep] Grep
+INTENT: 
+CMD: Grep \bhighlight\( 
+OUT(1364B): tests/test_highlighter.py:165:    highlighter.highlight(text)
+tests/test_highlighter.py:174:    highlighter.highlight(text)
+tests/test_highlighter.py:191:    highlighter.highlight(text)
+tests/test_highlighter.py:199:    highlighter.highlight(text)
+tests/test_highlighter.py:207:    highlighter.highlight(text)
+tests/test_highlighter.py:461:    highlighter.highlight(text)
+tests/test_syntax.py:199:    assert syntax.highlight(CODE).style == Style.parse("on red")
+docs/source/highlighting.rst:54:        def highlight(self, text):
+rich/progress.py:642:            self.highlighter.highlight(text)
+rich/progress.py:768:            self.highlighter.highlight(text)
+rich/highlighter.py:38:        self.hig
+
+### 3 [grep] Bash
+INTENT: 
+CMD: sed -i '' -E 's/\bhighlight\(/apply_highlights(/' examples/rainbow.py rich/highlighter.py rich/progress.py tests/test_highlighter.py && sed -i '' 's/super().highlight(/super().apply_highlights(/' rich/highlighter.py && git diff --stat && grep -n "highlight(" rich/highlighter.py rich/progress.py examples/rainbow.py; python -c "import rich;print(rich.__file__)"; python -m pytest tests -q 2>&1 | tail -3
+OUT(902B):  rich/highlighter.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+rich/highlighter.py:38:        self.highlight(highlight_text)
+rich/highlighter.py:42:    def highlight(self, text: Text) -> None:
+rich/highlighter.py:57:    def highlight(self, text: Text) -> None:
+rich/highlighter.py:67:    def highlight(self, text: Text) -> None:
+rich/highlighter.py:123:    def highlight(self, text: Text) -> None:
+rich/progress.py:642:            self.highlighter.highlight(text)
+rich/progress.py:768:            self.highlighter.highlight(text)
+examples/rainbow.py:14:    def highlight(self, text):
+/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-v6bza_yq/rich/__init__.py
+FAILED tests/
+
+### 4 [grep] Bash
+INTENT: 
+CMD: git checkout rich/highlighter.py && perl -pi -e 's/\bhighlight\(/apply_highlights(/ if !/^\s*#/' examples/rainbow.py rich/highlighter.py rich/progress.py tests/test_highlighter.py && git diff | grep '^[+-]' | grep -v '^+++\|^---'; python -m pytest tests -q 2>&1 | tail -3; git stash -q; python -m pytest tests -q 2>&1 | tail -1; git stash pop -q
+OUT(1560B): Updated 1 path from the index
+-    def highlight(self, text):
++    def apply_highlights(self, text):
+-        self.highlight(highlight_text)
++        self.apply_highlights(highlight_text)
+-    def highlight(self, text: Text) -> None:
++    def apply_highlights(self, text: Text) -> None:
+-    def highlight(self, text: Text) -> None:
++    def apply_highlights(self, text: Text) -> None:
+-    def highlight(self, text: Text) -> None:
++    def apply_highlights(self, text: Text) -> None:
+-    def highlight(self, text: Text) -> None:
+-        super().highlight(text)
++    def apply_highlights(self, text: Text) -> None:
++        super().apply_highlights(text)
+-            self.highlighter.highlight(tex
+
+### 5 [read] Bash
+INTENT: 
+CMD: git diff --stat | tail -1; python -m pytest tests/test_highlighter.py -q 2>&1 | tail -1
+OUT(70B):  4 files changed, 15 insertions(+), 15 deletions(-)
+83 passed in 0.06s

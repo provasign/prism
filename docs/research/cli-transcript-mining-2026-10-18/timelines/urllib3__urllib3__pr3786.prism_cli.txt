@@ -1,0 +1,112 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search proxy_ssl_context --scope text --format text
+OUT(1125B): // COMPLETE — 14 exact matches across 3 files
+src/urllib3/poolmanager.py:
+  520:     :param proxy_ssl_context:  [ProxyManager]
+  569:         proxy_ssl_context: ssl.SSLContext | None = None,  [ProxyManager.__init__]
+  590:         self.proxy_ssl_context = proxy_ssl_context  [ProxyManager.proxy_ssl_context]
+  592:             proxy_ssl_context,  [ProxyManager.proxy_config]
+docs/advanced-usage.rst:222:     ``proxy_ssl_context`` argument of the :class:`~poolmanager.ProxyManager`
+// COMPLETE — every match line is shown above with its enclosing symbol (14 lines in 3 files)
+// test files: 9 hit(s) in 1 file(s), lines omitted (paths=<file> shows them):
+test/with_dummyserver/
+  test_proxy_poolmanage
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cd src/urllib3; grep -n "ssl_context\|use_forwarding" connection.py connectionpool.py poolmanager.py | head -80
+OUT(1595B): connection.py:638:        ssl_context: ssl.SSLContext | None = None,
+connection.py:663:        self.ssl_context = ssl_context
+connection.py:674:        # cert_reqs depends on ssl_context so calculate last.
+connection.py:676:            if self.ssl_context is not None:
+connection.py:677:                cert_reqs = self.ssl_context.verify_mode
+connection.py:709:            if self.ssl_context is not None:
+connection.py:710:                cert_reqs = self.ssl_context.verify_mode
+connection.py:809:                ssl_context=self.ssl_context,
+connection.py:867:        ssl_context = proxy_config.ssl_context
+connection.py:878:            ssl_context=ssl_context,
+connection.py:917:    ssl_context:
+
+### 2 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-lppmz53f/src/urllib3; sed -n 780,830p connection.py; sed -n 855,885p connection.py; grep -n "proxy_config\|ProxyConfig" connectionpool.py poolmanager.py util/proxy.py
+OUT(4718B):             if self.server_hostname is not None:
+                server_hostname = self.server_hostname
+
+            is_time_off = datetime.date.today() < RECENT_DATE
+            if is_time_off:
+                warnings.warn(
+                    (
+                        f"System time is way off (before {RECENT_DATE}). This will probably "
+                        "lead to SSL verification errors"
+                    ),
+                    SystemTimeWarning,
+                )
+
+            # Remove trailing '.' from fqdn hostnames to allow certificate validation
+            server_hostname_rm_dot = server_hostname.rstrip(".")
+
+            sock_and_verified = _ssl_wrap_socket_and_match_hostname
+
+### 3 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-lppmz53f/src/urllib3; sed -n 560,602p poolmanager.py; sed -n 740,780p connection.py; grep -n "proxy_is_verified\|_has_connected_to_proxy" connection.py
+OUT(4297B):     """
+
+    def __init__(
+        self,
+        proxy_url: str,
+        num_pools: int = 10,
+        headers: typing.Mapping[str, str] | None = None,
+        proxy_headers: typing.Mapping[str, str] | None = None,
+        proxy_ssl_context: ssl.SSLContext | None = None,
+        use_forwarding_for_https: bool = False,
+        proxy_assert_hostname: None | str | typing.Literal[False] = None,
+        proxy_assert_fingerprint: str | None = None,
+        **connection_pool_kw: typing.Any,
+    ) -> None:
+        if isinstance(proxy_url, HTTPConnectionPool):
+            str_proxy_url = f"{proxy_url.scheme}://{proxy_url.host}:{proxy_url.port}"
+        else:
+            str_proxy_url = proxy_url
+     
+
+### 4 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-lppmz53f/src/urllib3; python - <<'E'
+p='connection.py'
+s=open(p).read()
+s=s.replace("""            sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                sock=sock,
+                cert_reqs=self.cert_reqs,""","""            # When connecting to the proxy itself (forwarding mode), use the
+            # proxy's SSL context rather than the origin's.
+            ssl_context = self.ssl_context
+            if self.proxy and not self.proxy_is_tunneling and self.proxy_config:
+                ssl_context = self.proxy
+OUT(1210B):  src/urllib3/connection.py  | 8 +++++++-
+ src/urllib3/poolmanager.py | 6 ++++++
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+702-            ("https", True),
+703-        ],
+704-    )
+705:    def test_proxy_https_target_tls_error(
+FAILED test/with_dummyserver/test_proxy_poolmanager.py::TestHTTPSProxyVerification::test_https_proxy_assert_hostname_non_matching[::1]
+FAILED test/with_dummyserver/test_proxy_poolmanager.py::TestHTTPSProxyVerification::test_https_proxy_hostname_verification
+FAILED test/with_dummyserver/test_proxy_poolmanager.py::TestHTTPSProxyVerification::test_https_proxy_ipv4_san
+FAILED test/with_dummyserver/test_proxy_poolmanager.py::TestHTTPSProxyVerification::test_https_pr
+
+### 5 [grep] Bash
+INTENT: 
+CMD: git stash -q; python -m pytest test/with_dummyserver/test_proxy_poolmanager.py test/test_connection.py -q 2>&1 | tail -2; git stash pop -q; python -m pytest test/with_dummyserver/test_proxy_poolmanager.py -q -x 2>&1 | grep -E "Error|error" | head -8
+OUT(747B): FAILED test/with_dummyserver/test_proxy_poolmanager.py::TestHTTPSProxyVerification::test_https_proxy_no_san_hostname_checks_common_name
+35 failed, 309 passed, 1 skipped in 14.36s
+urllib3.exceptions.SSLError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)
+error = SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)'))
+        error: Exception | None = None,
+        :param Exception error: An error encountered during the request, or
+        if self.total is False and error:
+            # Disabled, indicate to re-raise the error.
+            raise reraise(type(error), error, _stacktrace)
+       

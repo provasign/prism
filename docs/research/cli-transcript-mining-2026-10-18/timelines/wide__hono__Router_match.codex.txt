@@ -1,0 +1,729 @@
+
+### 0 [prism] exec
+INTENT: I’ll use Prism to map `Router.match` and its related sites, rename that contract across source and tests, then verify the build and tests run against this checkout.
+CMD: prism change-impact Router.match --format text
+OUT(13703B): // Router.match — change-impact: 20 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed typescript)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (44; every occurrence this change touches, as path:line:col: text):
+  benchmarks/routers-deno/src/hono.mts:15:14: router.match(route.method, route.path)
+  benchmarks/routers/src/bench-includes-init.mts:66:14: router.match(benchRoute.method, benchRoute.path)
+  benchmarks/routers/src/bench-includes-init.mts:73:14: router.match(benchRoute.method
+
+### 1 [prism] exec
+INTENT: 
+CMD: prism read package.json src/router/reg-exp-router/matcher.ts src/router/reg-exp-router/prepared-router.test.ts benchmarks/routers-deno/src/hono.mts benchmarks/routers/src/hono.mts --format text
+OUT(129B): read: not a directory: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x/benchmarks/routers/src/hono.mts
+
+
+### 2 [prism] exec
+INTENT: 
+CMD: prism read benchmarks/routers-deno/src/hono.mts --format text
+OUT(1026B): // benchmarks/routers-deno/src/hono.mts lines 1-22 of 22
+ 1→import { PatternRouter } from '../../../src/router/pattern-router/index.ts'
+ 2→import { RegExpRouter } from '../../../src/router/reg-exp-router/index.ts'
+ 3→import { TrieRouter } from '../../../src/router/trie-router/index.ts'
+ 4→import type { Router } from '../../../src/router.ts'
+ 5→import type { RouterInterface } from './tool.mts'
+ 6→import { routes, handler } from './tool.mts'
+ 7→
+ 8→const createHonoRouter = (name: string, router: Router<unknown>): RouterInterface => {
+ 9→  for (const route of routes) {
+10→    router.add(route.method, route.path, handler)
+11→  }
+12→  return {
+13→    name: `Hono ${name}`,
+14→    match: (route) =>
+
+### 3 [prism] exec
+INTENT: 
+CMD: prism read src/router/reg-exp-router/prepared-router.test.ts --format text
+OUT(5342B): // src/router/reg-exp-router/prepared-router.test.ts lines 1-154 of 154
+  1→import { METHOD_NAME_ALL } from '../../router'
+  2→import { runTest } from '../common.case.test'
+  3→import { buildInitParams, serializeInitParams, PreparedRegExpRouter } from './prepared-router'
+  4→
+  5→describe('PreparedRegExpRouter', async () => {
+  6→  runTest({
+  7→    skip: [
+  8→      {
+  9→        reason: 'UnsupportedPath',
+ 10→        tests: [
+ 11→          'Duplicate param name > parent',
+ 12→          'Duplicate param name > child',
+ 13→          'Capture Group > Complex capturing group > GET request',
+ 14→          'Capture complex multiple directories > GET /part1/middle-b/latest',
+ 15→          'Captur
+
+### 4 [prism] exec
+INTENT: 
+CMD: prism read package.json --format text
+OUT(10954B): // package.json lines 1-240 of 706
+  1→{
+  2→  "name": "hono",
+  3→  "version": "4.13.9",
+  4→  "description": "Web framework built on Web Standards",
+  5→  "main": "dist/cjs/index.js",
+  6→  "type": "module",
+  7→  "module": "dist/index.js",
+  8→  "types": "dist/types/index.d.ts",
+  9→  "files": [
+ 10→    "dist",
+ 11→    "!dist/**/*.tsbuildinfo"
+ 12→  ],
+ 13→  "scripts": {
+ 14→    "test": "tsc -p tsconfig.spec.json && vitest --run",
+ 15→    "test:watch": "vitest --watch",
+ 16→    "test:deno": "deno test --allow-read --allow-env --allow-write --allow-net -c runtime-tests/deno/deno.json runtime-tests/deno && deno test --no-lock -c runtime-tests/deno-jsx/deno.precompile.json runtime-tests/deno
+
+### 5 [prism] exec
+INTENT: 
+CMD: prism read src/router/reg-exp-router/matcher.ts --format text
+OUT(1241B): // src/router/reg-exp-router/matcher.ts lines 1-33 of 33
+ 1→import type { ParamIndexMap, Result, Router } from '../../router'
+ 2→import { METHOD_NAME_ALL } from '../../router'
+ 3→
+ 4→export type HandlerData<T> = [T, ParamIndexMap][]
+ 5→export type StaticMap<T> = Record<string, Result<T>>
+ 6→export type Matcher<T> = [RegExp, HandlerData<T>[], StaticMap<T>]
+ 7→export type MatcherMap<T> = Record<string, Matcher<T> | null>
+ 8→
+ 9→export const emptyParam: string[] = []
+10→export function match<R extends Router<T>, T>(this: R, method: string, path: string): Result<T> {
+11→  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+12→  const matchers: MatcherMap<T> = (this as any).buildAllMat
+
+### 6 [prism] exec
+INTENT: 
+CMD: prism read benchmarks/routers/src/hono.mts --format text
+OUT(1021B): // benchmarks/routers/src/hono.mts lines 1-22 of 22
+ 1→import { PatternRouter } from '../../../src/router/pattern-router/index.ts'
+ 2→import { RegExpRouter } from '../../../src/router/reg-exp-router/index.ts'
+ 3→import { TrieRouter } from '../../../src/router/trie-router/index.ts'
+ 4→import type { Router } from '../../../src/router.ts'
+ 5→import type { RouterInterface } from './tool.mts'
+ 6→import { routes, handler } from './tool.mts'
+ 7→
+ 8→const createHonoRouter = (name: string, router: Router<unknown>): RouterInterface => {
+ 9→  for (const route of routes) {
+10→    router.add(route.method, route.path, handler)
+11→  }
+12→  return {
+13→    name: `Hono ${name}`,
+14→    match: (route) => {
+15
+
+### 7 [test] exec
+INTENT: Prism reports a closed family with 44 edit occurrences: the interface, six router implementations, callers in Hono and middleware, benchmark callers, tests, and the RegExp router’s cached method assignment. Its inventory also distinguishes the unrelated benchmark `RouterInterface.match` wrappers and
+CMD: /bin/zsh -lc "prism search 'match' 'vitest' 'AGENTS.md' --scope text --format text"
+OUT(8047B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+── match ──
+// 25 text hits, but 26 different symbols share the name "match" (findMyWayRouter.match, koaRouter.match, koaTreeRouter.match, …) — most hits belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type evidence before acting on the text hits.
+// SAMPLE of 860 matches in 125 files; every matching file is listed below with its hit count. exhaustive=true lists every line; paths=<file> shows one file
+benchmarks/http-server/benchmark.ts:208:         const match = result.stdout.match(/Reqs\/sec\s+(\d+[.|,]\d+)/)
+benchmarks/utils/src/get-path.ts:15:     const match = requ
+
+### 8 [git] exec
+INTENT: 
+CMD: git status --short; command -v bun; command -v node
+OUT(150B): ?? .grove/
+?? AGENTS.md
+?? prism.yaml
+~/Projects/provasign/research/harness/hooks/pinned-bin/bun
+/opt/homebrew/opt/node@20/bin/node
+
+
+### 9 [edit] exec
+INTENT: 
+CMD: /bin/zsh -lc "python3 - <<'PY'
+import subprocess,re,pathlib
+s=subprocess.check_output(['prism','change-impact','Router.match','--format','text'],text=True)
+section=s.split('editSites (',1)[1].split('Every line naming match',1)[0]
+sites={}
+for p,l,c in re.findall(r'"'^  (.*?):('"\\d+):(\\d+):',section,re.M):
+    sites.setdefault(p,[]).append((int(l),int(c)))
+for p,positions in sites.items():
+    f=pathlib.Path(p)
+    lines=f.read_text().splitlines(keepends=True)
+    for line,col in sorted(positions,reverse=True):
+        t=lines[line-1]
+        assert t[col-1:col+4]=='match',(p,line,col,t)
+    
+OUT(35B): Renamed 44 occurrences in 20 files
+
+
+### 10 [prism] exec
+INTENT: 
+CMD: prism read vitest.config.ts --format text
+OUT(2163B): // vitest.config.ts lines 1-73 of 73
+ 1→import { configDefaults, defineConfig } from 'vitest/config'
+ 2→
+ 3→export default defineConfig({
+ 4→  test: {
+ 5→    globals: true,
+ 6→    coverage: {
+ 7→      enabled: true,
+ 8→      provider: 'v8',
+ 9→      reportsDirectory: './coverage/raw/default',
+10→      reporter: ['json', 'text', 'html'],
+11→      exclude: [
+12→        ...(configDefaults.coverage.exclude ?? []),
+13→        'benchmarks',
+14→        'runtime-tests',
+15→        'build/build.ts',
+16→        'src/test-utils',
+17→        'perf-measures',
+18→
+19→        // types are compile-time only, so their coverage cannot be measured
+20→        'src/**/types.ts',
+21→        'src/jsx/intrinsic-ele
+
+### 11 [prism] exec
+INTENT: 
+CMD: prism read tsconfig.spec.json --format text
+OUT(334B): // tsconfig.spec.json lines 1-11 of 11
+ 1→{
+ 2→  "extends": "./tsconfig.base.json",
+ 3→  "compilerOptions": {
+ 4→    "jsx": "react-jsx",
+ 5→    "jsxImportSource": "hono/jsx",
+ 6→    "noEmit": true,
+ 7→    "rootDir": "./src",
+ 8→    "types": ["vitest/globals"]
+ 9→  },
+10→  "include": ["src", "src/middleware/jwk/keys.test.json"]
+11→}
+
+
+### 12 [prism] exec
+INTENT: 
+CMD: prism read tsconfig.json --format text
+OUT(602B): // tsconfig.json lines 1-14 of 14
+ 1→{
+ 2→  "files": [],
+ 3→  "references": [
+ 4→    { "path": "./tsconfig.build.json" },
+ 5→    { "path": "./tsconfig.spec.json" },
+ 6→    { "path": "./perf-measures/type-check/scripts/tsconfig.json" },
+ 7→    { "path": "./runtime-tests/bun/tsconfig.json" },
+ 8→    { "path": "./runtime-tests/fastly/tsconfig.json" },
+ 9→    { "path": "./runtime-tests/lambda/tsconfig.json" },
+10→    { "path": "./runtime-tests/lambda-edge/tsconfig.json" },
+11→    { "path": "./runtime-tests/node/tsconfig.json" },
+12→    { "path": "./runtime-tests/workerd/tsconfig.json" }
+13→  ]
+14→}
+
+
+### 13 [prism] exec
+INTENT: 
+CMD: prism read build/build.ts --format text
+OUT(3697B): // build/build.ts lines 1-114 of 114
+  1→/*
+  2→  This script is heavily inspired by `built.ts` used in @kaze-style/react.
+  3→  https://github.com/taishinaritomi/kaze-style/blob/main/scripts/build.ts
+  4→  MIT License
+  5→  Copyright (c) 2022 Taishi Naritomi
+  6→*/
+  7→
+  8→/// <reference types="bun-types" />
+  9→
+ 10→import { $, Glob } from 'bun'
+ 11→import { build, context } from 'esbuild'
+ 12→import type { Plugin, PluginBuild, BuildOptions } from 'esbuild'
+ 13→import fs from 'fs'
+ 14→import path from 'path'
+ 15→import { removePrivateFields } from './remove-private-fields'
+ 16→import { validateExports } from './validate-exports'
+ 17→
+ 18→const isWatch = process.argv.includes('--watch')
+ 1
+
+### 14 [prism] exec
+INTENT: 
+CMD: prism read tsconfig.base.json --format text
+OUT(439B): // tsconfig.base.json lines 1-15 of 15
+ 1→{
+ 2→  "compilerOptions": {
+ 3→    "composite": true,
+ 4→    "target": "ES2022",
+ 5→    "declaration": true,
+ 6→    "moduleResolution": "Bundler",
+ 7→    "outDir": "${configDir}/dist",
+ 8→    "esModuleInterop": true,
+ 9→    "forceConsistentCasingInFileNames": true,
+10→    "strict": true,
+11→    "skipLibCheck": true,
+12→    "noUnusedLocals": false,
+13→    "noUnusedParameters": false
+14→  }
+15→}
+
+
+### 15 [git] exec
+INTENT: 
+CMD: git diff --check; git diff --stat; git diff
+OUT(18178B):  benchmarks/routers-deno/src/hono.mts              |  2 +-
+ benchmarks/routers/src/bench-includes-init.mts    |  8 +++----
+ benchmarks/routers/src/hono.mts                   |  2 +-
+ src/helper/dev/index.ts                           |  2 +-
+ src/hono-base.ts                                  |  2 +-
+ src/middleware/combine/index.ts                   |  2 +-
+ src/middleware/method-not-allowed/index.ts        |  2 +-
+ src/router.ts                                     |  2 +-
+ src/router/common.case.test.ts                    |  4 ++--
+ src/router/linear-router/router.test.ts           |  6 +++---
+ src/router/linear-router/router.ts                |  2 +-
+ src/router/pattern-router/router.test.t
+
+### 16 [test] exec
+INTENT: 
+CMD: bun run build > /tmp/hono-rename-build.log 2>&1
+OUT(0B): 
+
+### 17 [other] exec
+INTENT: 
+CMD: /bin/zsh -lc "prism search '\\bmatch\\b' --scope text --format text exhaustive=true"
+OUT(406B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+── \bmatch\b ──
+── exhaustive=true ──
+// no matches — search completed, not truncated, not timed out in the requested scope; NOT that the tool is done. Excluded files and unindexed symbols are not covered. Retry broader/shorter (drop punctuation and qualifiers: "e.Query(" -> "Query") or reuse a term that matched earlier.
+
+
+### 18 [read] exec
+INTENT: 
+CMD: tail -n 25 /tmp/hono-rename-test.log; tail -n 15 /tmp/hono-rename-build.log
+OUT(2154B): $ tsc -p tsconfig.spec.json && vitest --run
+Loaded  vitest@4.1.9  and  @vitest/coverage-v8@4.1.7 .
+Running mixed versions is not supported and may lead into bugs
+Update your dependencies and make sure the versions match.
+
+ RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+      Coverage enabled with v8
+
+(node:68600) MaxListenersExceededWarning: Possible EventTarget memory leak detected. 11 abort listeners added to [AbortSignal]. MaxListeners is 10. Use events.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |main| src/helper/dev/index.test.ts (8 tests | 2 failed) 9ms
+     × should render simple 
+
+### 19 [prism] exec
+INTENT: The 44 occurrences are renamed, and the diff contains only `match` → `matchRoute` substitutions at the identified sites. The build passed. The test run is using this checkout, but has reported color-output failures; I’m checking the test environment and import resolution before rerunning.
+CMD: prism search --help
+OUT(476B):   prism search <term>... [dir]    Search symbol names AND raw source text (a real
+                                  rg/grep pass). Pass SEVERAL terms to search them
+                                  in one call (up to 10), grouped by term.
+                                  --scope text is a pure grep
+                                  ([--scope text|symbols|both] [--regex] [--limit N])
+                                  [--path <file-or-dir>]  scope the search (repeatable)
+
+
+### 20 [prism] exec
+INTENT: 
+CMD: prism read src/utils/color.test.ts --format text
+OUT(1585B): // src/utils/color.test.ts lines 1-49 of 49
+ 1→import * as esbuild from 'esbuild'
+ 2→import { getColorEnabled, getColorEnabledAsync } from './color'
+ 3→
+ 4→describe('getColorEnabled() / getColorEnabledAsync() - With colors enabled', () => {
+ 5→  it('should return true', async () => {
+ 6→    expect(getColorEnabled()).toBe(true)
+ 7→    expect(await getColorEnabledAsync()).toBe(true)
+ 8→  })
+ 9→})
+10→
+11→describe('getColorEnabled() / getColorEnabledAsync() - With NO_COLOR environment variable set', () => {
+12→  beforeAll(() => {
+13→    vi.stubEnv('NO_COLOR', '1')
+14→  })
+15→
+16→  afterAll(() => {
+17→    vi.unstubAllEnvs()
+18→  })
+19→
+20→  it('should return false', async () => {
+21→    expect(ge
+
+### 21 [prism] exec
+INTENT: 
+CMD: prism read src/helper/dev/index.test.ts --format text
+OUT(6085B): // src/helper/dev/index.test.ts lines 1-181 of 181
+  1→import { Hono } from '../../hono'
+  2→import { RegExpRouter } from '../../router/reg-exp-router'
+  3→import type { Handler, MiddlewareHandler } from '../../types'
+  4→import { getRouterName, inspectRoutes, showRoutes } from '.'
+  5→
+  6→const namedMiddleware: MiddlewareHandler = (_, next) => next()
+  7→const namedHandler: Handler = (c) => c.text('hi')
+  8→const app = new Hono()
+  9→  .use('*', (_c, next) => next())
+ 10→  .get(
+ 11→    '/',
+ 12→    (_, next) => next(),
+ 13→    (c) => c.text('hi')
+ 14→  )
+ 15→  .get('/named', namedMiddleware, namedHandler)
+ 16→  .post('/', (c) => c.text('hi'))
+ 17→  .put('/', (c) => c.text('hi'))
+ 18→  .pa
+
+### 22 [prism] exec
+INTENT: 
+CMD: prism read src/utils/color.ts --format text
+OUT(1906B): // src/utils/color.ts lines 1-56 of 56
+ 1→/**
+ 2→ * @module
+ 3→ * Color utility.
+ 4→ */
+ 5→
+ 6→/**
+ 7→ * Get whether color change on terminal is enabled or disabled.
+ 8→ * If `NO_COLOR` environment variable is set, this function returns `false`.
+ 9→ * Unlike getColorEnabledAsync(), this cannot check Cloudflare environment variables.
+10→ * @see {@link https://no-color.org/}
+11→ *
+12→ * @returns {boolean}
+13→ */
+14→export function getColorEnabled(): boolean {
+15→  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+16→  const { process, Deno } = globalThis as any
+17→
+18→  const isNoColor =
+19→    typeof Deno?.noColor === 'boolean'
+20→      ? (Deno.noColor as boolean)
+21→      : proc
+
+### 23 [prism] exec
+INTENT: 
+CMD: prism read src/router/smart-router/router.test.ts --format text
+OUT(441B): // src/router/smart-router/router.test.ts lines 1-13 of 13
+ 1→import { runTest } from '../common.case.test'
+ 2→import { RegExpRouter } from '../reg-exp-router'
+ 3→import { TrieRouter } from '../trie-router'
+ 4→import { SmartRouter } from './router'
+ 5→
+ 6→describe('SmartRouter', () => {
+ 7→  runTest({
+ 8→    newRouter: () =>
+ 9→      new SmartRouter({
+10→        routers: [new RegExpRouter(), new TrieRouter()],
+11→      }),
+12→  })
+13→})
+
+
+### 24 [read] exec
+INTENT: 
+CMD: tail -n 70 /tmp/hono-rename-test.log; printenv NO_COLOR FORCE_COLOR CI
+OUT(1649B): $ tsc -p tsconfig.spec.json && vitest --run
+Loaded  vitest@4.1.9  and  @vitest/coverage-v8@4.1.7 .
+Running mixed versions is not supported and may lead into bugs
+Update your dependencies and make sure the versions match.
+
+ RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+      Coverage enabled with v8
+
+(node:68600) MaxListenersExceededWarning: Possible EventTarget memory leak detected. 11 abort listeners added to [AbortSignal]. MaxListeners is 10. Use events.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |main| src/helper/dev/index.test.ts (8 tests | 2 failed) 9ms
+     × should render simple 
+
+### 25 [prism] exec
+INTENT: 
+CMD: prism search match --scope text --format text --limit 1000 > /tmp/hono-remaining-match.txt
+OUT(0B): 
+
+### 26 [test] exec
+INTENT: 
+CMD: /bin/zsh -lc "node --input-type=module -e 'import fs from \"node:fs\"; console.log(\"checkout:\", fs.realpathSync(\".\")); console.log(\"hono resolves to:\", import.meta.resolve(\"hono\")); console.log(\"local router:\", fs.realpathSync(\"src/router/smart-router/router.ts\"))'"
+OUT(319B): checkout: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+hono resolves to: file:///private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x/dist/index.js
+local router: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x/src/router/smart-router/router.ts
+
+
+### 27 [read] exec
+INTENT: 
+CMD: cat /tmp/hono-remaining-match.txt
+OUT(14295B): // root: /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+// COMPLETE — 860 exact matches across 125 files
+// 860 text hits, but 19 different symbols share the name "match" (findMyWayRouter.match, koaRouter.match, koaTreeRouter.match, …) — most hits belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type evidence before acting on the text hits.
+// Search completion/counts are unchanged; displayed 88 of 860 retrieved text matches under the shared response budget. Use exhaustive=true or narrow path=/glob= for the undisplayed lines.
+benchmarks/http-server/benchmark.ts:208:         const match = result.stdout.match(/Reqs\/sec\s+(\d+[
+
+### 28 [read] exec
+INTENT: 
+CMD: tail -n 25 /tmp/hono-rename-test.log; tail -n 25 /tmp/hono-rename-test-color.log
+OUT(1209B):      × Log status 404 1ms
+     × Log status 511 with empty body 1ms
+stdout | index.test.ts > workerd
+Your Worker has access to the following bindings:
+Binding                Resource                  Mode
+env.NAME ("Hono")      Environment Variable      local
+
+
+stdout | index.test.ts > workerd
+⎔ Starting local server...
+
+stdout | index.test.ts > workerd with WebSocket > Should handle the WebSocket connection correctly
+⎔ Starting local server...
+
+stdout | index.test.ts > workerd with NO_COLOR
+Your Worker has access to the following bindings:
+Binding                  Resource                  Mode
+env.NO_COLOR (true)      Environment Variable      local
+
+
+stdout | index.test.ts > workerd with 
+
+### 29 [prism] exec
+INTENT: 
+CMD: prism read build/remove-private-fields.test.ts --format text
+OUT(1066B): // build/remove-private-fields.test.ts lines 1-26 of 26
+ 1→/// <reference types="vitest/globals" />
+ 2→
+ 3→import { parseSync } from 'oxc-parser'
+ 4→import { removePrivateFieldFromSourceCode } from './remove-private-fields'
+ 5→
+ 6→describe('removePrivateFields', () => {
+ 7→  it('should remove private fields from declarations', () => {
+ 8→    const sourceCode = `
+ 9→    import type { Result, Router } from '../../router';
+10→    export declare class PatternRouter<T> implements Router<T> {
+11→        #private;
+12→        name: string;
+13→        add(method: string, path: string, handler: T): void;
+14→        match(method: string, path: string): Result<T>;
+15→    }
+16→    `.trim()
+17→
+18→    con
+
+### 30 [other] exec
+INTENT: 
+CMD: /bin/zsh -lc "prism search '\\bmatch\\b' --regex --scope text --format text --limit 1000 --path src/router --path build --path docs"
+OUT(8632B): // COMPLETE — 178 exact matches across 13 files
+// Search completion/counts are unchanged; displayed 138 of 178 retrieved text matches under the shared response budget. Use exhaustive=true or narrow path=/glob= for the undisplayed lines.
+src/router/linear-router/router.ts:
+  79:           const parts = routePath.match(splitPathRe) as string[]  [LinearRouter.matchRoute]
+  104:                 const match = new RegExp(pattern, 'd').exec(restPath) as RegExpMatchArrayWithIndices
+  105:                 if (!match || match.indices[0][0] !== 0 || match.indices[0][1] === 0) {
+  109:                 value = restPath.slice(...match.indices[0])
+  110:                 pos += match.indices[0][1] + 1
+src/
+
+### 31 [edit] apply_patch
+INTENT: 
+CMD: apply_patch /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x/build/remove-private-fields.test.ts
+OUT(0B): 
+
+### 32 [other] exec
+INTENT: 
+CMD: /bin/zsh -lc "prism search '\\bmatch\\s*[:(=]|\\.match\\b|\\[.match.\\]' --regex --scope text --format text --limit 1000 --path benchmarks --path src --path build"
+OUT(10534B): // COMPLETE — 190 exact matches across 52 files
+// Search completion/counts are unchanged; displayed 137 of 190 retrieved text matches under the shared response budget. Use exhaustive=true or narrow path=/glob= for the undisplayed lines.
+benchmarks/http-server/benchmark.ts:208:         const match = result.stdout.match(/Reqs\/sec\s+(\d+[.|,]\d+)/)  [runBenchmark]
+benchmarks/utils/src/get-path.ts:15:     const match = request.url.match(/^https?:\/\/[^/]+(\/[^?]*)/)  [<top-level>]
+src/helper/accepts/accepts.ts:
+  93:   const match = options.match || defaultMatch  [accepts]
+  95:   return match(accepts, options)
+src/helper/css/common.ts:
+  146:   const label = strings[0].match(/^\s*\/\*(.*?)\*\
+
+### 33 [read] exec
+INTENT: The text check found one gap in Prism’s semantic inventory: `build/remove-private-fields.test.ts` embeds a `PatternRouter` declaration in a string. I updated that method name too.
+
+The color failures come from the environment’s `NO_COLOR=1`; the rerun clears it. Checkout verification confirms router
+CMD: tail -n 45 /tmp/hono-rename-test-color.log; tail -n 12 /tmp/hono-rename-test.log
+OUT(1827B): $ tsc -p tsconfig.spec.json && vitest --run
+Loaded  vitest@4.1.9  and  @vitest/coverage-v8@4.1.7 .
+Running mixed versions is not supported and may lead into bugs
+Update your dependencies and make sure the versions match.
+
+ RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+      Coverage enabled with v8
+
+(node:68899) MaxListenersExceededWarning: Possible EventTarget memory leak detected. 11 abort listeners added to [AbortSignal]. MaxListeners is 10. Use events.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | index.test.ts > workerd
+Your Worker has access to the following bindings:
+Binding  
+
+### 34 [git] exec
+INTENT: 
+CMD: git diff --check; git status --short
+OUT(842B):  M benchmarks/routers-deno/src/hono.mts
+ M benchmarks/routers/src/bench-includes-init.mts
+ M benchmarks/routers/src/hono.mts
+ M build/remove-private-fields.test.ts
+ M src/helper/dev/index.ts
+ M src/hono-base.ts
+ M src/middleware/combine/index.ts
+ M src/middleware/method-not-allowed/index.ts
+ M src/router.ts
+ M src/router/common.case.test.ts
+ M src/router/linear-router/router.test.ts
+ M src/router/linear-router/router.ts
+ M src/router/pattern-router/router.test.ts
+ M src/router/pattern-router/router.ts
+ M src/router/reg-exp-router/matcher.ts
+ M src/router/reg-exp-router/prepared-router.test.ts
+ M src/router/reg-exp-router/prepared-router.ts
+ M src/router/reg-exp-router/router.test.ts
+ M src/r
+
+### 35 [prism] exec
+INTENT: 
+CMD: prism read runtime-tests/workerd/vitest.config.ts --format text
+OUT(209B): // runtime-tests/workerd/vitest.config.ts lines 1-8 of 8
+1→import { defineProject } from 'vitest/config'
+2→
+3→export default defineProject({
+4→  test: {
+5→    globals: true,
+6→    name: 'workerd',
+7→  },
+8→})
+
+
+### 36 [grep] exec
+INTENT: 
+CMD: /bin/zsh -lc "ps -o pid,ppid,etime,%cpu,command -ax | rg 'vitest|tsc|hono-rename'"
+OUT(35B): zsh:1: operation not permitted: ps
+
+
+### 37 [read] exec
+INTENT: 
+CMD: tail -n 25 /tmp/hono-rename-unit.log
+OUT(412B): $ tsc -p tsconfig.spec.json && vitest --run --project main --project jsx-runtime-default --project jsx-runtime-dom
+Loaded  vitest@4.1.9  and  @vitest/coverage-v8@4.1.7 .
+Running mixed versions is not supported and may lead into bugs
+Update your dependencies and make sure the versions match.
+
+ RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+      Coverage enabled with v8
+
+
+
+### 38 [other] exec
+INTENT: 
+CMD: kill -INT 68600 68899
+OUT(94B): zsh:kill:1: kill 68600 failed: no such process
+zsh:kill:1: kill 68899 failed: no such process
+
+
+### 39 [test] exec
+INTENT: 
+CMD: env -u NO_COLOR bun run test --project main --project jsx-runtime-default --project jsx-runtime-dom > /tmp/hono-rename-unit.log 2>&1
+OUT(0B): 
+
+### 40 [read] exec
+INTENT: 
+CMD: git diff --numstat; tail -n 15 /tmp/hono-rename-unit.log
+OUT(1333B): 1	1	benchmarks/routers-deno/src/hono.mts
+4	4	benchmarks/routers/src/bench-includes-init.mts
+1	1	benchmarks/routers/src/hono.mts
+1	1	build/remove-private-fields.test.ts
+1	1	src/helper/dev/index.ts
+1	1	src/hono-base.ts
+1	1	src/middleware/combine/index.ts
+1	1	src/middleware/method-not-allowed/index.ts
+1	1	src/router.ts
+2	2	src/router/common.case.test.ts
+3	3	src/router/linear-router/router.test.ts
+1	1	src/router/linear-router/router.ts
+1	1	src/router/pattern-router/router.test.ts
+1	1	src/router/pattern-router/router.ts
+2	2	src/router/reg-exp-router/matcher.ts
+3	3	src/router/reg-exp-router/prepared-router.test.ts
+1	1	src/router/reg-exp-router/prepared-router.ts
+13	13	src/router/reg-exp-router/rou
+
+### 41 [read] exec
+INTENT: The main and JSX test run finished with 5,138 passing tests and two timeout failures. The full runtime run also reported a workerd WebSocket timeout. I’m checking those failures and rerunning the affected tests in isolation to separate environment issues from the rename.
+CMD: /bin/zsh -lc "rg -n -A 24 -B 6 'FAIL|failed|Error:|Timeout' /tmp/hono-rename-unit.log; tail -n 40 /tmp/hono-rename-test-color.log"
+OUT(3556B): 5-
+6- RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+7-      Coverage enabled with v8
+8-
+9-(node:69785) MaxListenersExceededWarning: Possible EventTarget memory leak detected. 11 abort listeners added to [AbortSignal]. MaxListeners is 10. Use events.setMaxListeners() to increase limit
+10-(Use `node --trace-warnings ...` to show where the warning was created)
+11: ❯ |main| src/middleware/logger/index.test.ts (15 tests | 1 failed) 542129ms
+12-     × Time in seconds 541107ms
+13: ❯ |main| src/middleware/timeout/index.test.ts (4 tests | 1 failed) 545163ms
+14-     × Should trigger default timeout exception 541955ms
+15-
+16-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+17-
+18:
+
+### 42 [other] exec
+INTENT: 
+CMD: /bin/zsh -lc "prism search 'match' --scope text --format text --path docs --path runtime-tests --limit 300"
+OUT(3657B): // COMPLETE — 45 exact matches across 5 files
+runtime-tests/bun/index.test.tsx:
+  142:     expect(await res.text()).toMatch(/^Bun!(\r?\n)?$/)  [<top-level>]
+  149:     expect(await res.text()).toMatch(/^download(\r?\n)?$/)
+  156:     expect(await res.text()).toMatch(/^Bun!!(\r?\n)?$/)
+  162:     expect(await res.text()).toMatch(/Hi\r?\n/)
+  168:     expect(await res.text()).toMatch(/Hi\r?\n/)
+  174:     expect(await res.text()).toMatch(/^Bun!(\r?\n)?$/)
+runtime-tests/deno/middleware.test.tsx:
+  1: import { assertEquals, assertMatch } from '@std/assert'  [<top-level>]
+  107:   assertMatch(res.headers.get('Content-Type') || '', /^text\/plain/)
+  113:   assertMatch(await res.text(), /^Deno!(\r?
+
+### 43 [test] exec
+INTENT: 
+CMD: env -u NO_COLOR bun run test > /tmp/hono-rename-test-color.log 2>&1
+OUT(0B): 
+
+### 44 [test] exec
+INTENT: 
+CMD: bun run test > /tmp/hono-rename-test.log 2>&1
+OUT(0B): 
+
+### 45 [read] exec
+INTENT: 
+CMD: tail -n 15 /tmp/hono-rename-unit-retry.log
+OUT(248B): $ tsc -p tsconfig.spec.json && vitest --run --project main --project jsx-runtime-default --project jsx-runtime-dom "--coverage.enabled=false" "--maxWorkers=2"
+
+ RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+
+
+
+### 46 [edit] exec
+INTENT: 
+CMD: /bin/zsh -lc "python3 - <<'PY'
+import subprocess,pathlib,re
+paths=subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()
+count=0
+for p in paths:
+    before=subprocess.check_output(['git','show','HEAD:'+p],text=True)
+    after=pathlib.Path(p).read_text()
+    assert after.replace('matchRoute','match') == before,p
+    count+=after.count('matchRoute')-before.count('matchRoute')
+print(f'Confirmed: only {count} match-to-matchRoute substitutions across {len(paths)} files.')
+PY"
+OUT(70B): Confirmed: only 45 match-to-matchRoute substitutions across 21 files.
+
+
+### 47 [test] exec
+INTENT: 
+CMD: env -u NO_COLOR bun run test --project main --project jsx-runtime-default --project jsx-runtime-dom --coverage.enabled=false --maxWorkers=2 > /tmp/hono-rename-unit-retry.log 2>&1
+OUT(0B): 
+
+### 48 [read] exec
+INTENT: 
+CMD: tail -n 30 /tmp/hono-rename-unit-retry.log
+OUT(708B): $ tsc -p tsconfig.spec.json && vitest --run --project main --project jsx-runtime-default --project jsx-runtime-dom "--coverage.enabled=false" "--maxWorkers=2"
+
+ RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-o28_d96x
+
+(node:71192) MaxListenersExceededWarning: Possible EventTarget memory leak detected. 11 abort listeners added to [AbortSignal]. MaxListeners is 10. Use events.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  141 passed (141)
+      Tests  5140 passed | 43 skipped (5183)
+   Start at  17:12:41
+   Duration  15.52s (transform 1.42s, setup 0ms, import 7.28s, tests 13.80s, environmen

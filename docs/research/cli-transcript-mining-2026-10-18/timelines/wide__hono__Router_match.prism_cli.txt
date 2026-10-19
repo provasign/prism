@@ -1,0 +1,195 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Router.match --format text
+OUT(13702B): // Router.match — change-impact: 20 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed typescript)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (44; every occurrence this change touches, as path:line:col: text):
+  benchmarks/routers-deno/src/hono.mts:15:14: router.match(route.method, route.path)
+  benchmarks/routers/src/bench-includes-init.mts:66:14: router.match(benchRoute.method, benchRoute.path)
+  benchmarks/routers/src/bench-includes-init.mts:73:14: router.match(benchRoute.method
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cat benchmarks/routers/src/hono.mts | sed -n 1,30p; sed -n 1,40p src/router/reg-exp-router/matcher.ts; grep -n "match" src/router/reg-exp-router/prepared-router.ts src/router/reg-exp-router/router.ts; sed -n 25,50p src/router/reg-exp-router/prepared-router.test.ts; sed -n 55,90p benchmarks/routers/src/bench-includes-init.mts
+OUT(7283B): import { PatternRouter } from '../../../src/router/pattern-router/index.ts'
+import { RegExpRouter } from '../../../src/router/reg-exp-router/index.ts'
+import { TrieRouter } from '../../../src/router/trie-router/index.ts'
+import type { Router } from '../../../src/router.ts'
+import type { RouterInterface } from './tool.mts'
+import { routes, handler } from './tool.mts'
+
+const createHonoRouter = (name: string, router: Router<unknown>): RouterInterface => {
+  for (const route of routes) {
+    router.add(route.method, route.path, handler)
+  }
+  return {
+    name: `Hono ${name}`,
+    match: (route) => {
+      router.match(route.method, route.path)
+    },
+  }
+}
+
+export const regExpRouter = createHon
+
+### 2 [prism] Bash
+INTENT: 
+CMD: prism change-impact Router.match --format text | awk '/^editSites/{f=1;next} /^other declarations|^Every line/{f=0} f && /^  [^ ]/{print}' | sed -E 's/^  ([^:]+):([0-9]+):([0-9]+):.*/\1 \2/' | sort -u > /tmp/sites.txt
+wc -l /tmp/sites.txt
+while read f l; do
+  case "$f" in
+   src/router/reg-exp-router/matcher.ts) perl -i -pe "if(\$.==$l){s/\['match'\]/['matchRoute']/; s/this\.match\b/this.matchRoute/}" $f;;
+   *) perl -i -pe "if(\$.==$l){s/\.match\b(?=[(.])/.matchRoute/g; s/^(\s*)match(\s*[(:])/\$1matchRoute\$2/}" $f;;
+  esac
+done < /tmp/sites.txt
+git diff --stat | tail -3; git diff -U0 | grep 
+OUT(198B):       43 /tmp/sites.txt
+ src/router/smart-router/router.ts                 |  6 +++---
+ src/router/trie-router/router.ts                  |  2 +-
+ 20 files changed, 43 insertions(+), 43 deletions(-)
+
+### 3 [grep] Bash
+INTENT: 
+CMD: git diff src/router/reg-exp-router/matcher.ts src/router/reg-exp-router/prepared-router.ts | grep '^[+-]'; npx tsc --noEmit 2>&1 | tail -5; npx vitest run --project main 2>&1 | tail -8; pwd; git status --short | head -30
+OUT(1520B): --- a/src/router/reg-exp-router/matcher.ts
++++ b/src/router/reg-exp-router/matcher.ts
+-  }) as Router<T>['match']
++  }) as Router<T>['matchRoute']
+-  this.match = match
++  this.matchRoute = match
+--- a/src/router/reg-exp-router/prepared-router.ts
++++ b/src/router/reg-exp-router/prepared-router.ts
+-  match: typeof match<Router<T>, T> = match
++  matchRoute: typeof match<Router<T>, T> = match
+
+
+ Test Files  36 failed | 87 passed (123)
+      Tests  614 failed | 3516 passed | 37 skipped (4167)
+     Errors  2 errors
+   Start at  19:28:47
+   Duration  4.69s (transform 7.82s, setup 0ms, import 17.50s, tests 9.09s, environment 5ms)
+
+/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-mmw
+
+### 4 [grep] Bash
+INTENT: 
+CMD: npx vitest run --project main 2>&1 | grep -E "FAIL|Error" | head -15; git stash -q; npx vitest run --project main 2>&1 | grep -E "Test Files|Tests "; git stash pop -q
+OUT(720B):        × Custom Error Message 0ms
+       × Custom Error Message 2ms
+Error: Fatal error
+Error: Fatal error
+Error: Fatal error
+Error: Fatal error
+     × Error timeout with custom status code and message 0ms
+     × Should call onError when error event fires 0ms
+ FAIL  |main| src/hono.test.ts > GET Request > without middleware > GET httphello is ng
+Error: Fatal error
+     23|       throw new Error('Fatal error')
+ FAIL  |main| src/hono.test.ts > GET Request > without middleware > GET /hello is ok
+Error: Fatal error
+     23|       throw new Error('Fatal error')
+ FAIL  |main| src/hono.test.ts > GET Request > without middleware > GET hello is ok
+ Test Files  123 passed (123)
+      Tests  4130 passed
+
+### 5 [grep] Bash
+INTENT: 
+CMD: grep -rnE "\bmatch\b *[(:]|\.match\b" src runtime-tests --include=*.ts --include=*.tsx | grep -iE "router|\.match\(method|match\(\)" | grep -v "matchRoute" | head -20; sed -n 15,28p src/hono.test.ts
+OUT(314B): (eval):1: no matches found: --include=*.ts
+import { getPath } from './utils/url'
+
+// https://stackoverflow.com/a/65666402
+function throwExpression(errorMessage: string): never {
+  throw new Error(errorMessage)
+}
+
+type Env = {
+  Bindings: {
+    _: string
+  }
+}
+
+const createResponseProxy = (response: Response) => {
+
+### 6 [grep] Bash
+INTENT: 
+CMD: npx vitest run --project main src/hono.test.ts 2>&1 | grep -B3 -A15 "FAIL" | head -40
+OUT(1384B): ⎯⎯⎯⎯⎯⎯ Failed Tests 103 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  |main| src/hono.test.ts > GET Request > without middleware > GET httphello is ng
+Error: Fatal error
+ ❯ SmartRouter.matchRoute src/router/smart-router/router.ts:23:13
+     21|   matchRoute(method: string, path: string): Result<T> {
+     22|     if (!this.#routes) {
+     23|       throw new Error('Fatal error')
+       |             ^
+     24|     }
+     25|
+ ❯ Hono.#dispatch src/hono-base.ts:421:37
+ ❯ Hono.fetch src/hono-base.ts:486:17
+ ❯ Hono.request src/hono-base.ts:511:17
+ ❯ src/hono.test.ts:85:29
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/103]⎯
+
+ FAIL  |main| src/hono.test.ts > GET Request > without middleware > GET /hello is ok
+Error: Fatal error
+ ❯ SmartRouter.match
+
+### 7 [grep] Bash
+INTENT: 
+CMD: sed -n 18,60p src/router/smart-router/router.ts; grep -rn "'match'\|\"match\"\|\.match\b *=\|delete .*match" src | grep -v test | head
+OUT(1076B):     this.#routes.push([method, path, handler])
+  }
+
+  matchRoute(method: string, path: string): Result<T> {
+    if (!this.#routes) {
+      throw new Error('Fatal error')
+    }
+
+    const routers = this.#routers
+    const routes = this.#routes
+
+    const len = routers.length
+    let i = 0
+    let res
+    for (; i < len; i++) {
+      const router = routers[i]
+      try {
+        for (let i = 0, len = routes.length; i < len; i++) {
+          router.add(...routes[i])
+        }
+        res = router.matchRoute(method, path)
+      } catch (e) {
+        if (e instanceof UnsupportedPathError) {
+          continue
+        }
+        throw e
+      }
+
+      this.match = router.matchRoute.bind(router)
+   
+
+### 8 [grep] Bash
+INTENT: 
+CMD: sed -i '46s/this\.match =/this.matchRoute =/' src/router/smart-router/router.ts
+grep -rnE "this\.match\b" src benchmarks | head; npx tsc --noEmit | tail -3; npx vitest run --project main 2>&1 | grep -E "Test Files|Tests "
+OUT(291B): sed: 1: "src/router/smart-router ...": bad flag in substitute command: '/'
+src/router/smart-router/router.ts:46:      this.match = router.matchRoute.bind(router)
+⎯⎯⎯⎯⎯⎯ Failed Tests 614 ⎯⎯⎯⎯⎯⎯
+ Test Files  36 failed | 87 passed (123)
+      Tests  614 failed | 3516 passed | 37 skipped (4167)
+
+### 9 [grep] Bash
+INTENT: 
+CMD: perl -i -pe 's/this\.match = /this.matchRoute = / if $.==46' src/router/smart-router/router.ts
+npx tsc --noEmit | tail -3; npx vitest run --project main 2>&1 | grep -E "Test Files|Tests "; grep -n "include\|alias" vitest.config.ts | head
+OUT(302B):  Test Files  123 passed (123)
+      Tests  4130 passed | 37 skipped (4167)
+37:          include: [
+54:          include: ['src/jsx/dom/**/(*.)+(spec|test).+(ts|tsx|js)', 'src/jsx/hooks/dom.test.tsx'],
+67:          include: ['src/jsx/dom/**/(*.)+(spec|test).+(ts|tsx|js)', 'src/jsx/hooks/dom.test.tsx'],

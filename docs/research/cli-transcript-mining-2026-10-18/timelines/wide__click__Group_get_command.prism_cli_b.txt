@@ -1,0 +1,65 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Group.get_command --format text
+OUT(4558B): // Group.get_command — change-impact: 10 site(s)
+completeness: partial
+completenessScope: indexed-project-only
+safeToClaimComplete: false
+// Do not claim global completeness from this result. It closes the indexed project graph only; external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof.
+editSites (18; every occurrence this change touches, as path:line:col: text):
+  examples/aliases/aliases.py:42:9: def get_command(self, ctx, cmd_name):
+  examples/aliases/aliases.py:44:26: rv = click.Group.get_command(self, ctx, cmd_name)
+  examples/aliases/aliases.py:55:32: return click.Group.get_command(self, ctx, actual_cmd)
+  examples/aliase
+
+### 1 [grep] Bash
+INTENT: 
+CMD: grep -rn "get_command" --include="*" . -I --exclude-dir=.git | grep -v "^./.grove"
+OUT(2552B): ./tests/typing/typing_aliased_group.py:11:    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
+./tests/typing/typing_aliased_group.py:12:        rv = click.Group.get_command(self, ctx, cmd_name)
+./tests/typing/typing_aliased_group.py:19:            return click.Group.get_command(self, ctx, matches[0])
+./tests/test_commands.py:331:        def get_command(self, ctx, cmd_name):
+./docs/complex.md:226:{meth}`Group.list_commands` and {meth}`Group.get_command`. A custom
+./docs/complex.md:228:that {meth}`Group.get_command` is responsible for running imports.
+./docs/complex.md:266:    def get_command(self, ctx, cmd_name):
+./docs/complex.md:269:        return super().g
+
+### 2 [read] Bash
+INTENT: 
+CMD: sed -i '' 's/\bget_command\b/lookup_command/g' tests/typing/typing_aliased_group.py tests/test_commands.py examples/complex/complex/cli.py examples/aliases/aliases.py src/click/core.py && git diff --stat && python -c "import click;print(click.__file__)" && python -m pytest -q 2>&1 | tail -3
+OUT(309B): /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-nilntf3k/src/click/__init__.py
+........................................................................ [ 97%]
+.......................................................                  [100%]
+1901 passed, 25 skipped, 31000 deselected, 1 xfailed in 2.27s
+
+### 3 [grep] Bash
+INTENT: 
+CMD: git status --short; grep -rn "get_command" src tests examples | head
+OUT(813B): ?? .claude/
+?? .grove/
+?? CLAUDE.md
+?? prism.yaml
+src/click/core.py:76:            command = multi.get_command(ctx, name)
+src/click/core.py:1762:            command = self.get_command(ctx, name)
+src/click/core.py:1931:    def get_command(self, ctx: Context, cmd_name: str) -> Command | None:
+src/click/core.py:1956:            cmd = self.get_command(ctx, subcommand)
+src/click/core.py:2066:        cmd = self.get_command(ctx, cmd_name)
+src/click/core.py:2072:            cmd = self.get_command(ctx, cmd_name)
+src/click/core.py:2145:    def get_command(self, ctx: Context, cmd_name: str) -> Command | None:
+src/click/core.py:2146:        rv = super().get_command(ctx, cmd_name)
+src/click/core.py:2152:
+
+### 4 [grep] Bash
+INTENT: 
+CMD: perl -pi -e 's/\bget_command\b/lookup_command/g' tests/typing/typing_aliased_group.py tests/test_commands.py examples/complex/complex/cli.py examples/aliases/aliases.py src/click/core.py && git diff --stat && python -m pytest -q 2>&1 | tail -3; grep -rn "get_command" src tests examples --include=*.py
+OUT(572B):  examples/aliases/aliases.py          |  8 ++++----
+ examples/complex/complex/cli.py      |  2 +-
+ src/click/core.py                    | 18 +++++++++---------
+ tests/test_commands.py               |  2 +-
+ tests/typing/typing_aliased_group.py |  6 +++---
+ 5 files changed, 18 insertions(+), 18 deletions(-)
+........................................................................ [ 97%]
+.......................................................                  [100%]
+1901 passed, 25 skipped, 31000 deselected, 1 xfailed in 1.94s
+(eval):1: no matches found: --include=*.py

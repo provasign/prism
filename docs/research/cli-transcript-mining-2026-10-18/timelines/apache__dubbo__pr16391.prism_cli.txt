@@ -1,0 +1,45 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism read dubbo-remoting/dubbo-remoting-http12/src/main/java/org/apache/dubbo/remoting/http12/message/LengthFieldStreamingDecoder.java --from 40 --to 110 --format text
+OUT(2462B): // dubbo-remoting/dubbo-remoting-http12/src/main/java/org/apache/dubbo/remoting/http12/message/LengthFieldStreamingDecoder.java lines 40-110 of 362
+ 40→    private boolean closed;
+ 41→
+ 42→    private DecodeState state = DecodeState.HEADER;
+ 43→
+ 44→    private final CompositeInputStream accumulate = new CompositeInputStream();
+ 45→
+ 46→    private FragmentListener listener;
+ 47→
+ 48→    private final int lengthFieldOffset;
+ 49→
+ 50→    private final int lengthFieldLength;
+ 51→
+ 52→    private final int maxMessageSize;
+ 53→
+ 54→    private int requiredLength;
+ 55→
+ 56→    public LengthFieldStreamingDecoder() {
+ 57→        this(4);
+ 58→    }
+ 59→
+ 60→    public LengthFieldStreamingDecoder(int
+
+### 1 [edit] Bash
+INTENT: 
+CMD: cd dubbo-remoting/dubbo-remoting-http12/src/main/java/org/apache/dubbo/remoting/http12/message && python3 - <<'E'
+p='LengthFieldStreamingDecoder.java'
+s=open(p).read()
+s=s.replace("""            // ignored
+            return;""","""            // ignored, but the input still owns its resources
+            try {
+                inputStream.close();
+            } catch (java.io.IOException ignored) {
+                // ignored
+            }
+            return;""",1)
+open(p,'w').write(s)
+E
+git diff --stat
+OUT(127B):  .../dubbo/remoting/http12/message/LengthFieldStreamingDecoder.java | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)

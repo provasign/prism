@@ -1,0 +1,52 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search '$defs' --scope text --format text 2>&1 | head -30; grep -n '\$defs/' packages/zod/src/v4/core/to-json-schema.ts
+OUT(2056B): // COMPLETE — 69 exact matches across 8 files
+packages/zod/src/v4/classic/from-json-schema.ts:
+  37:   "$defs",  [RECOGNIZED_KEYS]
+  134:   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";  [resolveRef]
+  672:     throw new Error("fromJSONSchema input is not valid JSON (possibly cyclic); use $defs/$ref for recursive schemas");  [fromJSONSchema]
+  676:   const defs = (normalized.$defs || normalized.definitions || {}) as Record<string, JSONSchema.JSONSchema>;
+packages/zod/src/v4/core/json-schema-processors.ts:635:       const defsSegment = ctx.target === "draft-2020-12" ? "$defs" : "definitions";  [toJSONSchema]
+packages/zod/src/v4/core/to-json-schema.ts:
+  299:     c
+
+### 1 [read] Bash
+INTENT: 
+CMD: cd packages/zod/src/v4/core; sed -n 290,325p to-json-schema.ts; sed -n 625,650p json-schema-processors.ts
+OUT(2084B):   // returns a ref to the schema
+  // defId will be empty if the ref points to an external schema (or #)
+  const makeURI = (entry: [schemas.$ZodType<unknown, unknown>, Seen]): { ref: string; defId?: string } => {
+    // comparing the seen objects because sometimes
+    // multiple schemas map to the same seen object.
+    // e.g. lazy
+
+    // external is configured
+    const defsSegment = ctx.target === "draft-2020-12" ? "$defs" : "definitions";
+    if (ctx.external) {
+      const externalId = ctx.external.registry.get(entry[0])?.id; // ?? "__shared";// `__schema${ctx.counter++}`;
+
+      // check if schema is in the external registry
+      const uriGenerator = ctx.external.uri ?? ((id: string)
+
+### 2 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-02e9c_an/packages/zod/src/v4/core
+sed -i '' 's|ref: `${uriGenerator("__shared")}#/${defsSegment}/${id}` }|ref: `${uriGenerator("__shared")}#/${defsSegment}/${escapePointer(id)}` }|; s|return { defId, ref: defUriPrefix + defId };|return { defId, ref: defUriPrefix + escapePointer(defId) };|' to-json-schema.ts
+sed -i '' 's|^  // returns a ref to the schema$|  const escapePointer = (s: string) => s.replace(/~/g, "~0").replace(/\\//g, "~1");\n\n  // returns a ref to the schema|' to-json-schema.ts
+git diff to-json-schema.ts; cd ../.
+OUT(1763B): diff --git a/packages/zod/src/v4/core/to-json-schema.ts b/packages/zod/src/v4/core/to-json-schema.ts
+index db7ca4d8..9668f54b 100644
+--- a/packages/zod/src/v4/core/to-json-schema.ts
++++ b/packages/zod/src/v4/core/to-json-schema.ts
+@@ -288,6 +288,8 @@ export function extractDefs<T extends schemas.$ZodType>(
+     }
+   }
+ 
++  const escapePointer = (s: string) => s.replace(/~/g, "~0").replace(/\//g, "~1");
++
+   // returns a ref to the schema
+   // defId will be empty if the ref points to an external schema (or #)
+   const makeURI = (entry: [schemas.$ZodType<unknown, unknown>, Seen]): { ref: string; defId?: string } => {
+@@ -309,7 +311,7 @@ export function extractDefs<T extends schemas.$ZodType>(

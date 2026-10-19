@@ -1,0 +1,111 @@
+claude	wide__click__Command_invoke.prism_cli	1	GREP-PRE-EDIT-RENAME-TARGET	invoke	
+claude	wide__click__Command_invoke.prism_cli	2	GREP-PRE-EDIT-NEW	<!runner<!ctx<!context<!selfinvokedef in	
+claude	wide__click__Command_invoke.prism_cli	3	GREP-PRE-EDIT-NEW	def invokeinvokectxsub_ctxcontextinvoke	
+claude	wide__click__Command_invoke.prism_cli	3	GREP-PRE-EDIT-NEW	S:#	
+claude	wide__click__Command_invoke.prism_cli_b	1	GREP-PRE-EDIT-NEW	def invokeinvokesuperinvoke	
+claude	wide__click__Command_invoke.prism_cli_b	1	GREP-PRE-EDIT-NEW	runnerinvokeCliRunnercliinvokeresult	
+claude	wide__click__Group_get_command.prism_cli	2	GREP-POST-EDIT-SEEN	get_command	
+claude	wide__click__Group_get_command.prism_cli_b	1	GREP-PRE-EDIT-SEEN	get_command	
+claude	wide__click__Group_get_command.prism_cli_b	1	GREP-PRE-EDIT-NEW	/grove	
+claude	wide__click__Group_get_command.prism_cli_b	3	GREP-POST-EDIT-SEEN	get_command	
+claude	wide__gin__Binding_Name.prism_cli_b	1	GREP-PRE-EDIT-RENAME-TARGET	Name	
+claude	wide__gin__Binding_Name.prism_cli_b	1	GREP-PRE-EDIT-NEW	binding_testgo:6296746927928608768969169	
+claude	wide__h3__EventStream_push.prism_cli	1	GREP-PRE-EDIT-RENAME-TARGET	push	
+claude	wide__h3__EventStream_push.prism_cli_b	1	GREP-PRE-EDIT-RENAME-TARGET	push	
+claude	wide__h3__EventStream_push.prism_cli_b	2	GREP-PRE-EDIT-RENAME-TARGET	push	
+claude	wide__hono__Router_match.prism_cli	1	GREP-PRE-EDIT-SEEN	match	
+claude	wide__hono__Router_match.prism_cli	5	GREP-POST-EDIT-RENAME-TARGET	match :match	
+claude	wide__hono__Router_match.prism_cli	5	GREP-POST-EDIT-NEW	routermatchmethodmatch	
+claude	wide__hono__Router_match.prism_cli	5	GREP-POST-EDIT-NEW	matchRoute	
+claude	wide__hono__Router_match.prism_cli	7	GREP-POST-EDIT-RENAME-TARGET	match'"match"match =delete match	
+claude	wide__hono__Router_match.prism_cli	7	GREP-POST-EDIT-SEEN	test	
+claude	wide__jackson-databind__ResolvableDeserializer_resolve.prism_cli	0	AGENT-PIPED	| head -150	prism change-impact ResolvableDeserializer.resolve --format text 2>&1 | head -150
+claude	wide__jackson-databind__ResolvableDeserializer_resolve.prism_cli	6	GREP-POST-EDIT-NEW	maven	
+claude	wide__jackson-databind__ResolvableDeserializer_resolve.prism_cli	7	GREP-POST-EDIT-NEW	tests="0-9"failures="0-9"errors="0-9	
+claude	wide__jackson-databind__ResolvableDeserializer_resolve.prism_cli	7	GREP-POST-EDIT-NEW	testcase	
+claude	wide__jackson-databind__ResolvableDeserializer_resolve.prism_cli	7	GREP-POST-EDIT-NEW	basedir" value=""	
+claude	wide__jackson-databind__ResolvableDeserializer_resolve.prism_cli_b	0	AGENT-PIPED	| head -100	prism change-impact ResolvableDeserializer.resolve --format text 2>&1 | head -100
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	0	HARNESS-TRUNCATED	Output too large (31KB)	prism change-impact SettableBeanProperty.set --format text 2>&1 | head -150
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	0	AGENT-PIPED	| head -150	prism change-impact SettableBeanProperty.set --format text 2>&1 | head -150
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	1	GREP-PRE-EDIT-NEW	srca-z-/S:0-9:0-9:	
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	1	GREP-PRE-EDIT-NEW	gapnot coveredunresolved	
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	2	GREP-PRE-EDIT-SEEN	src/main	
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	2	GREP-PRE-EDIT-NEW	SettableBeanPropertyBeanProperty	
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	9	GREP-POST-EDIT-NEW	setassignValue	That stack trace is from an expected test log, so I should verify the checkout actually compiled, checking that target/classes includes assignValue.
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	9	GREP-POST-EDIT-SEEN	set	That stack trace is from an expected test log, so I should verify the checkout actually compiled, checking that target/classes includes assignValue.
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	9	GREP-POST-EDIT-SEEN	prop	That stack trace is from an expected test log, so I should verify the checkout actually compiled, checking that target/classes includes assignValue.
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	10	GREP-POST-EDIT-NEW	setassignValue	That stack trace is from an expected test log, so I should verify the checkout actually compiled, checking that target/classes includes assignValue.
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	10	GREP-POST-EDIT-SEEN	set	That stack trace is from an expected test log, so I should verify the checkout actually compiled, checking that target/classes includes assignValue.
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli	10	GREP-POST-EDIT-SEEN	prop	That stack trace is from an expected test log, so I should verify the checkout actually compiled, checking that target/classes includes assignValue.
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli_b	0	AGENT-PIPED	| head -150	prism change-impact SettableBeanProperty.set --format text 2>&1 | head -150
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli_b	5	GREP-POST-EDIT-NEW	assignValue set	
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli_b	5	GREP-POST-EDIT-NEW	SettableBeanPropertyset	
+claude	wide__jackson-databind__SettableBeanProperty_set.prism_cli_b	5	GREP-POST-EDIT-NEW	propset	
+claude	wide__rich__Highlighter_highlight.prism_cli_b	1	GREP-PRE-EDIT-RENAME-TARGET	highlight	
+claude	wide__rich__Highlighter_highlight.prism_cli_b	1	GREP-PRE-EDIT-NEW	/CHANGELOG	
+claude	wide__rich__Highlighter_highlight.prism_cli_b	2	GREP-PRE-EDIT-RENAME-TARGET	highlight	
+claude	wide__rich__ProgressColumn_render.prism_cli	1	GREP-PRE-EDIT-NEW	ProgressColumncolumnrender	
+claude	wide__rich__ProgressColumn_render.prism_cli	1	GREP-PRE-EDIT-NEW	/rich/progresspy	
+claude	wide__rich__ProgressColumn_render.prism_cli	1	GREP-PRE-EDIT-NEW	/CHANGELOG	
+claude	wide__rich__ProgressColumn_render.prism_cli	2	GREP-PRE-EDIT-SEEN	ProgressColumn	
+claude	wide__rich__ProgressColumn_render.prism_cli	2	GREP-PRE-EDIT-NEW	/rich/progresspy	
+claude	wide__rich__ProgressColumn_render.prism_cli	2	GREP-PRE-EDIT-RENAME-TARGET	render	
+claude	wide__rich__ProgressColumn_render.prism_cli	2	GREP-PRE-EDIT-NEW	def renderself, task	
+claude	wide__rich__ProgressColumn_render.prism_cli_b	1	GREP-PRE-EDIT-NEW	def renderself, taskrendertasktest_task	
+claude	wide__rich__ProgressColumn_render.prism_cli_b	1	GREP-PRE-EDIT-NEW	/rich/progresspy/tests/test_progresspy	
+claude	wide__rich__ProgressColumn_render.prism_cli_b	1	GREP-PRE-EDIT-RENAME-TARGET	render	
+claude	wide__rich__ProgressColumn_render.prism_cli_b	1	GREP-PRE-EDIT-NEW	ProgressColumncolumn	
+claude	FasterXML__jackson-databind__pr6030.prism_cli	0	AGENT-PIPED	| head -40	prism search "Unwrapped" "2883" --scope text --format text 2>&1 | head -40
+claude	FasterXML__jackson-databind__pr6030.prism_cli	1	GREP-PRE-EDIT-SEEN	unwrapped	
+claude	FasterXML__jackson-databind__pr6030.prism_cli	1	GREP-PRE-EDIT-NEW	cannotnot supportmultiplecreator	
+claude	FasterXML__jackson-databind__pr6030.prism_cli	2	GREP-PRE-EDIT-NEW	UnwrappedcreatorCreator@JsonUnwrapped	
+claude	FasterXML__jackson-databind__pr6030.prism_cli	4	GREP-PRE-EDIT-NEW	Conflict between unwrapped	
+claude	FasterXML__jackson-databind__pr6039.prism_cli	0	AGENT-PIPED	| head -60	prism search _beanProperties --scope text --format text 2>&1 | head -60
+claude	FasterXML__jackson-databind__pr6039.prism_cli	1	GREP-PRE-EDIT-SEEN	withoutProperties	
+claude	FasterXML__jackson-databind__pr6039.prism_cli	2	GREP-PRE-EDIT-NEW	ignoralswithByNameInclusion_caseInsensit	
+claude	FasterXML__jackson-databind__pr6039.prism_cli	3	GREP-PRE-EDIT-NEW	IgnorePropertiesUtil	
+claude	FasterXML__jackson-databind__pr6039.prism_cli	4	GREP-PRE-EDIT-NEW	withByNameInclusionasArrayDeserializerwi	
+claude	FasterXML__jackson-databind__pr6039.prism_cli	4	GREP-PRE-EDIT-NEW	ignoreCaseIgnoreCasecaseInsens	
+claude	FasterXML__jackson-databind__pr6042.prism_cli	0	AGENT-PIPED	| head -50	prism search "handleNonArray" "deserializeFromArray" --scope text --format text | head -50
+claude	FasterXML__jackson-databind__pr6042.prism_cli	4	GREP-POST-EDIT-NEW	_parseStringJsonParser	
+claude	FasterXML__jackson-databind__pr6042.prism_cli	4	GREP-POST-EDIT-SEEN	T _deserializeFromArray	
+claude	FasterXML__jackson-databind__pr6042.prism_cli	5	GREP-POST-EDIT-NEW	Object handleUnexpectedToken	
+claude	FasterXML__jackson-databind__pr6042.prism_cli	6	GREP-POST-EDIT-NEW	MismatchedInputExceptionfrompublic <T> T	
+claude	FasterXML__jackson-databind__pr6042.prism_cli	6	GREP-POST-EDIT-NEW	static MismatchedInputException from	
+claude	FasterXML__jackson-databind__pr6042.prism_cli	7	GREP-POST-EDIT-NEW	_findCoercionFromEmptyArray	
+claude	FasterXML__jackson-databind__pr6042.prism_cli	7	GREP-POST-EDIT-NEW	_checkIntToStringCoercion	
+claude	FasterXML__jackson-databind__pr6042.prism_cli	8	GREP-POST-EDIT-NEW	currentToken_processorgetCurrentToken	
+claude	FasterXML__jackson-databind__pr6056.prism_cli	0	AGENT-PIPED	| head -50; grep -rn "Unwrapp" /private/var/folders/pz/cmyjc	prism search UnwrappingBeanDeserializer UnwrappedPropertyHandler --scope text --format text | head -
+claude	FasterXML__jackson-databind__pr6056.prism_cli	1	GREP-PRE-EDIT-NEW	JsonView_viewvisibleInView	
+claude	FasterXML__jackson-databind__pr6056.prism_cli	1	GREP-PRE-EDIT-SEEN	Unwrapped	
+claude	FasterXML__jackson-databind__pr6061.prism_cli	0	AGENT-PIPED	| head -60	prism search writeBinary --scope text --format text 2>&1 | head -60
+claude	FasterXML__jackson-databind__pr6061.prism_cli	5	GREP-PRE-EDIT-NEW	_tokenWriteContext_streamWriteContext_wr	Contexts support writeBinary; see how the generator calls its context.
+claude	FasterXML__jackson-databind__pr6061.prism_cli	6	GREP-PRE-EDIT-NEW	_tokenWriteContext_streamWriteContext_wr	Contexts support writeBinary; see how the generator calls its context.
+claude	FasterXML__jackson-databind__pr6102.prism_cli	0	AGENT-PIPED	| head -40; grep -n "isEmpty(SerializationContext" -A45 src/	prism search "_suppressableValue" --scope text --format text 2>&1 | head -40; grep -n "isEmpty(Seria
+claude	FasterXML__jackson-databind__pr6138.prism_cli	1	GREP-PRE-EDIT-NEW	DEFAULT_MAX_CACHE_SIZE	
+claude	apache__dubbo__pr16350.prism_cli	0	AGENT-PIPED	| head -40	prism lookup StringUtils.substringAfter --format text 2>&1 | head -40
+claude	apache__dubbo__pr16395.prism_cli	0	AGENT-PIPED	| head -30; prism lookup BitList --format text | head -150	prism search "BitList" --scope text --format text | head -30; prism lookup BitList --format text | h
+claude	colinhacks__zod__pr6129.prism_cli	0	AGENT-PIPED	| head -40; grep -n "minimum\|maximum" packages/zod/src/v4/c	prism search "ZodDate" "origin" --scope text --format text 2>&1 | head -40; grep -n "minimum\|maximu
+claude	colinhacks__zod__pr6144.prism_cli	0	AGENT-PIPED	| head -30; grep -n '\$defs/' packages/zod/src/v4/core/to-js	prism search '$defs' --scope text --format text 2>&1 | head -30; grep -n '\$defs/' packages/zod/src/
+claude	gin-gonic__gin__pr4698.prism_cli	1	GREP-PRE-EDIT-NEW	fmt	
+claude	gin-gonic__gin__pr4702.prism_cli	0	AGENT-PIPED	| head -30	prism search SaveUploadedFile --scope text --format text | head -30
+claude	go-chi__chi__pr1158.prism_cli	0	AGENT-PIPED	| head -30	prism read middleware/content_charset.go --format text; prism search AllowContentEncoding --scope te
+claude	go-chi__chi__pr1158.prism_cli	1	GREP-PRE-EDIT-NEW	ContentCharsetcontentEncoding	
+claude	go-chi__chi__pr1158.prism_cli	2	GREP-PRE-EDIT-SEEN	ContentCharset	
+claude	google__gson__pr3059.prism_cli	0	AGENT-PIPED	| grep -i -A3 JsonPrimitive | head -30; grep -n "hashCode" -	prism search "hashCode" --scope text --format text 2>&1 | grep -i -A3 JsonPrimitive | head -30; grep
+claude	google__gson__pr3059.prism_cli	1	GREP-PRE-EDIT-SEEN	isIntegral	
+claude	google__gson__pr3116.prism_cli	0	AGENT-PIPED	|syntaxError(\"" gson/src/main/java/com/google/gson/stream/J	prism read gson/src/main/java/com/google/gson/stream/JsonReader.java --from 1850 --to 1900 --format 
+claude	labstack__echo__pr3006.prism_cli	0	AGENT-PIPED	| head -40; grep -n "Unescape" middleware/static.go	prism search PathUnescape --scope text --format text 2>&1 | head -40; grep -n "Unescape" middleware/
+claude	labstack__echo__pr3006.prism_cli	1	GREP-PRE-EDIT-NEW	RawPathuseEscapedPathfunc r Router Find	
+claude	urfave__cli__pr2355.prism_cli	0	AGENT-PIPED	| head -60	prism search "PreParse" "Required" --scope text --format text 2>&1 | head -60
+claude	urfave__cli__pr2355.prism_cli	2	GREP-PRE-EDIT-NEW	ApplyfuncallFlags	
+claude	urfave__cli__pr2355.prism_cli	2	GREP-PRE-EDIT-SEEN	_test	
+claude	urfave__cli__pr2355.prism_cli	5	GREP-POST-EDIT-NEW	PostParsehasBeenSet	
+claude	urfave__cli__pr2355.prism_cli	5	GREP-POST-EDIT-SEEN	_test	
+claude	urfave__cli__pr2355.prism_cli	7	GREP-POST-EDIT-NEW	func cmd Command allFlags	
+claude	urfave__cli__pr2440.prism_cli	0	AGENT-PIPED	| head -40; grep -n "func (parsedArgs\|shortOpt\|Inverse" /p	prism search "UseShortOptionHandling" --scope text --format text | head -40; grep -n "func (parsedAr
+claude	urfave__cli__pr2440.prism_cli	1	GREP-PRE-EDIT-NEW	BoolWithInverseFlag SetPreParseIsBoolFla	
+claude	urfave__cli__pr2440.prism_cli	2	GREP-PRE-EDIT-NEW	func cmd Command set	
+claude	urllib3__urllib3__pr3786.prism_cli	1	GREP-PRE-EDIT-NEW	ssl_contextuse_forwarding	
+claude	urllib3__urllib3__pr3786.prism_cli	2	GREP-PRE-EDIT-NEW	proxy_configProxyConfig	
+claude	urllib3__urllib3__pr3786.prism_cli	3	GREP-PRE-EDIT-NEW	proxy_is_verified_has_connected_to_proxy	

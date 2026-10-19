@@ -1,0 +1,156 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search writeBinary --scope text --format text 2>&1 | head -60
+OUT(3586B): // COMPLETE — 24 exact matches across 12 files
+// 24 text hits, but 8 different symbols share the name "writeBinary" (TreeBuildingGenerator.writeBinary, TreeBuildingGenerator.writeBinary, TreeBuildingGenerator.TreeWriteContext.writeBinary, …) — most hits belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type evidence before acting on the text hits.
+src/main/java/tools/jackson/databind/ext/sql/JavaSqlBlobSerializer.java:71:         gen.writeBinary(ctxt.getConfig().getBase64Variant(), in, -1);  [JavaSqlBlobSerializer._writeValue]
+src/main/java/tools/jackson/databind/node/BinaryNode.java:126:         g.writeBinary(provider.getConfig().getBase64Variant(),  
+
+### 1 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_/src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java off=485 lim=40
+OUT(1538B): 485	        }
+486	        return this;
+487	    }
+488	
+489	    /*
+490	    /**********************************************************************
+491	    /* JsonGenerator implementation; binary
+492	    /**********************************************************************
+493	     */
+494	
+495	    @Override
+496	    public JsonGenerator writeBinary(Base64Variant b64variant, byte[] data, int offset, int len)
+497	    {
+498	        // 12-Jan-2021, tatu: Should we try to preserve the variant? Depends a
+499	        //   lot on whether this during read (no need to retain probably) or
+500	        //   write (probably important)
+501	        return writePOJO(Arrays.copyOfRange(data, offset, offset + le
+
+### 2 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_/src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java off=610 lim=170
+OUT(5980B): 610	
+611	        public abstract TreeWriteContext createChildObjectContext(Object currValue);
+612	
+613	        public boolean writeName(String name) {
+614	            // To be overridden by Object context
+615	            return false;
+616	        }
+617	
+618	        public abstract void writeBinary(byte[] data);
+619	        public abstract void writeBoolean(boolean v);
+620	        public abstract void writeNull();
+621	        public abstract void writeNumber(ValueNode v);
+622	        public abstract void writeString(String value);
+623	
+624	        public abstract void writeNode(JsonNode node);
+625	        public abstract void writePOJO(Object value);
+626	    }
+627	
+628	    static final class 
+
+### 3 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_/src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java off=485 lim=40
+OUT(1538B): 485	        }
+486	        return this;
+487	    }
+488	
+489	    /*
+490	    /**********************************************************************
+491	    /* JsonGenerator implementation; binary
+492	    /**********************************************************************
+493	     */
+494	
+495	    @Override
+496	    public JsonGenerator writeBinary(Base64Variant b64variant, byte[] data, int offset, int len)
+497	    {
+498	        // 12-Jan-2021, tatu: Should we try to preserve the variant? Depends a
+499	        //   lot on whether this during read (no need to retain probably) or
+500	        //   write (probably important)
+501	        return writePOJO(Arrays.copyOfRange(data, offset, offset + le
+
+### 4 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_/src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java off=610 lim=170
+OUT(5980B): 610	
+611	        public abstract TreeWriteContext createChildObjectContext(Object currValue);
+612	
+613	        public boolean writeName(String name) {
+614	            // To be overridden by Object context
+615	            return false;
+616	        }
+617	
+618	        public abstract void writeBinary(byte[] data);
+619	        public abstract void writeBoolean(boolean v);
+620	        public abstract void writeNull();
+621	        public abstract void writeNumber(ValueNode v);
+622	        public abstract void writeString(String value);
+623	
+624	        public abstract void writeNode(JsonNode node);
+625	        public abstract void writePOJO(Object value);
+626	    }
+627	
+628	    static final class 
+
+### 5 [grep] Bash
+INTENT: Contexts support writeBinary; see how the generator calls its context.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_ && grep -n "_tokenWriteContext\.\|_streamWriteContext\.\|_writeContext\." src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java | head -20
+OUT(1410B): 115:        return _tokenWriteContext.currentValue();
+120:        _tokenWriteContext.assignCurrentValue(v);
+215:        _tokenWriteContext = _tokenWriteContext.createChildArrayContext(forValue);
+226:        if (!_tokenWriteContext.inArray()) {
+227:           throw _constructWriteException("Current context not Array but "+_tokenWriteContext.typeDesc());
+229:        _tokenWriteContext = _tokenWriteContext.getParent();
+241:        _tokenWriteContext = _tokenWriteContext.createChildObjectContext(forValue);
+252:        if (!_tokenWriteContext.inObject()) {
+253:            throw _constructWriteException("Current context not Object but "+_tokenWriteContext.typeDesc());
+255:        _tokenWriteContex
+
+### 6 [grep] Bash
+INTENT: Contexts support writeBinary; see how the generator calls its context.
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_ && grep -n "_tokenWriteContext\.\|_streamWriteContext\.\|_writeContext\." src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java | head -20
+OUT(1410B): 115:        return _tokenWriteContext.currentValue();
+120:        _tokenWriteContext.assignCurrentValue(v);
+215:        _tokenWriteContext = _tokenWriteContext.createChildArrayContext(forValue);
+226:        if (!_tokenWriteContext.inArray()) {
+227:           throw _constructWriteException("Current context not Array but "+_tokenWriteContext.typeDesc());
+229:        _tokenWriteContext = _tokenWriteContext.getParent();
+241:        _tokenWriteContext = _tokenWriteContext.createChildObjectContext(forValue);
+252:        if (!_tokenWriteContext.inObject()) {
+253:            throw _constructWriteException("Current context not Object but "+_tokenWriteContext.typeDesc());
+255:        _tokenWriteContex
+
+### 7 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_ && sed -i '501s/.*/        _tokenWriteContext.writeBinary(Arrays.copyOfRange(data, offset, offset + len));\n        return this;/' src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java && sed -n 495,504p src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java && (mvn -o -q test -Dtest='TokenBufferTest,ArrayDeserializationTest,*Binary*,*TreeTraversing*,*ValueToTree*,*POJONode*' -Dsurefire.failIfNoSpecifiedTests=false 2>&1 | tail -30)
+OUT(86B): Exit code 1
+sed: 1: "src/main/java/tools/jac ...": bad flag in substitute command: 'a'
+
+### 8 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_ && sed -i '501s/.*/        _tokenWriteContext.writeBinary(Arrays.copyOfRange(data, offset, offset + len));\n        return this;/' src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java && sed -n 495,504p src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java && (mvn -o -q test -Dtest='TokenBufferTest,ArrayDeserializationTest,*Binary*,*TreeTraversing*,*ValueToTree*,*POJONode*' -Dsurefire.failIfNoSpecifiedTests=false 2>&1 | tail -30)
+OUT(86B): Exit code 1
+sed: 1: "src/main/java/tools/jac ...": bad flag in substitute command: 'a'
+
+### 9 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_/src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java
+OUT(182B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_/src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java has been updated successfully.
+
+### 10 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_ && mvn -o -q test -Dtest='TokenBufferTest,ArrayDeserializationTest,*Binary*,*ValueToTree*,*POJONode*,*ObjectMapperTest' -Dsurefire.failIfNoSpecifiedTests=false 2>&1 | tail -30
+OUT(31B): (Bash completed with no output)
+
+### 11 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_/src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java
+OUT(182B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_/src/main/java/tools/jackson/databind/node/TreeBuildingGenerator.java has been updated successfully.
+
+### 12 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-t84male_ && mvn -o -q test -Dtest='TokenBufferTest,ArrayDeserializationTest,*Binary*,*ValueToTree*,*POJONode*,*ObjectMapperTest' -Dsurefire.failIfNoSpecifiedTests=false 2>&1 | tail -30
+OUT(31B): (Bash completed with no output)

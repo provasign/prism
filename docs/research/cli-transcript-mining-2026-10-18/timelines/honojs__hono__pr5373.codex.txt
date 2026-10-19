@@ -1,0 +1,204 @@
+
+### 0 [prism] exec
+INTENT: I’ll use Prism to locate the branch, make the smallest source change, and run the relevant tests against this checkout.
+CMD: prism search LinearRouter --scope text --format text
+OUT(2220B): // COMPLETE — 20 exact matches across 7 files
+// LinearRouter (src/router/linear-router/router.ts:11-151); 6 indexed caller site(s): createHonoRouter benchmarks/routers-deno/src/hono.mts:8-18 <top-level> benchmarks/routers/src/bench-includes-init.mts:1-124 <top-level> src/router/linear-router/router.test.ts:1-81 [test] +3 more.
+src/router/linear-router/router.ts:
+  11: export class LinearRouter<T> implements Router<T> {  [LinearRouter]
+  12:   name: string = 'LinearRouter'  [LinearRouter.name]
+src/preset/quick.ts:
+  3:  * The preset that uses `LinearRouter`.
+  8: import { LinearRouter } from '../router/linear-router'
+  21:       routers: [new LinearRouter(), new TrieRouter()],  [Hono.router]
+
+### 1 [git] exec
+INTENT: 
+CMD: git status --short
+OUT(38B): ?? .grove/
+?? AGENTS.md
+?? prism.yaml
+
+
+### 2 [prism] exec
+INTENT: 
+CMD: prism read src/router/linear-router/router.test.ts --format text
+OUT(3162B): // src/router/linear-router/router.test.ts lines 1-80 of 80
+ 1→import { UnsupportedPathError } from '../../router'
+ 2→import { runTest } from '../common.case.test'
+ 3→import { LinearRouter } from './router'
+ 4→
+ 5→describe('LinearRouter', () => {
+ 6→  runTest({
+ 7→    skip: [
+ 8→      {
+ 9→        reason: 'UnsupportedPath',
+10→        tests: [
+11→          'Multi match > `params` per a handler > GET /entry/123/show',
+12→          'Capture regex pattern has trailing wildcard > GET /foo/bar/file.html',
+13→          'Capture regex param with trailing wildcard on empty remainder > GET /123',
+14→          'Capture regex param with trailing wildcard and sibling route > GET /regex-abc/123/ghi',
+15→
+
+### 3 [prism] exec
+INTENT: 
+CMD: prism read package.json --format text
+OUT(10954B): // package.json lines 1-240 of 706
+  1→{
+  2→  "name": "hono",
+  3→  "version": "4.13.8",
+  4→  "description": "Web framework built on Web Standards",
+  5→  "main": "dist/cjs/index.js",
+  6→  "type": "module",
+  7→  "module": "dist/index.js",
+  8→  "types": "dist/types/index.d.ts",
+  9→  "files": [
+ 10→    "dist",
+ 11→    "!dist/**/*.tsbuildinfo"
+ 12→  ],
+ 13→  "scripts": {
+ 14→    "test": "tsc -p tsconfig.spec.json && vitest --run",
+ 15→    "test:watch": "vitest --watch",
+ 16→    "test:deno": "deno test --allow-read --allow-env --allow-write --allow-net -c runtime-tests/deno/deno.json runtime-tests/deno && deno test --no-lock -c runtime-tests/deno-jsx/deno.precompile.json runtime-tests/deno
+
+### 4 [prism] exec
+INTENT: 
+CMD: prism read src/router/linear-router/router.ts --from 1 --to 160 --format text
+OUT(6103B): // src/router/linear-router/router.ts lines 1-151 of 151
+  1→import type { Params, Result, Router } from '../../router'
+  2→import { METHOD_NAME_ALL, UnsupportedPathError } from '../../router'
+  3→import { checkOptionalParameter } from '../../utils/url'
+  4→
+  5→type RegExpMatchArrayWithIndices = RegExpMatchArray & { indices: [number, number][] }
+  6→
+  7→const emptyParams = Object.create(null)
+  8→
+  9→const splitPathRe = /\/(:\w+(?:{(?:(?:{[\d,]+})|[^}])+})?)|\/[^\/\?]+|(\?)/g
+ 10→const splitByStarRe = /\*/
+ 11→export class LinearRouter<T> implements Router<T> {
+ 12→  name: string = 'LinearRouter'
+ 13→  #routes: [string, string, T][] = []
+ 14→
+ 15→  add(method: string, path: string, handle
+
+### 5 [edit] apply_patch
+INTENT: 
+CMD: apply_patch /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-kwq3_lks/src/router/linear-router/router.ts
+OUT(0B): 
+
+### 6 [prism] exec
+INTENT: 
+CMD: prism search vitest defineConfig --scope text --format text
+OUT(3654B): ── vitest ──
+// SAMPLE of 67 matches in 36 files; every matching file is listed below with its hit count. exhaustive=true lists every line; paths=<file> shows one file
+// all 36 matching files, hits per file and the file's best match line:
+build/
+  remove-private-fields.test.ts (1)
+  validate-exports.test.ts (1)
+./
+  bun.lock (21)  14: "@vitest/coverage-v8": "^4.1.7",
+  codecov.yml (2)  1: # Edit "test.coverage.exclude" option in vitest.config.ts to exclude specific files from coverage reports.
+  package.json (10)  14: "test": "tsc -p tsconfig.spec.json && vitest --run",
+runtime-tests/bun/
+  index.test.tsx (1)
+runtime-tests/fastly/
+  tsconfig.json (1)  5: "types": ["vitest/globals"]
+  vitest
+
+### 7 [test] exec
+INTENT: 
+CMD: command -v bun; command -v node; test -x node_modules/.bin/vitest && echo local-vitest-available
+OUT(135B): ~/Projects/provasign/research/harness/hooks/pinned-bin/bun
+/opt/homebrew/opt/node@20/bin/node
+local-vitest-available
+
+
+### 8 [prism] exec
+INTENT: 
+CMD: prism read vitest.config.ts --from 1 --to 90 --format text
+OUT(2163B): // vitest.config.ts lines 1-73 of 73
+ 1→import { configDefaults, defineConfig } from 'vitest/config'
+ 2→
+ 3→export default defineConfig({
+ 4→  test: {
+ 5→    globals: true,
+ 6→    coverage: {
+ 7→      enabled: true,
+ 8→      provider: 'v8',
+ 9→      reportsDirectory: './coverage/raw/default',
+10→      reporter: ['json', 'text', 'html'],
+11→      exclude: [
+12→        ...(configDefaults.coverage.exclude ?? []),
+13→        'benchmarks',
+14→        'runtime-tests',
+15→        'build/build.ts',
+16→        'src/test-utils',
+17→        'perf-measures',
+18→
+19→        // types are compile-time only, so their coverage cannot be measured
+20→        'src/**/types.ts',
+21→        'src/jsx/intrinsic-ele
+
+### 9 [test] exec
+INTENT: 
+CMD: /bin/zsh -lc "bun -e 'import { strict as assert } from \"node:assert\"; import { Hono } from \"./src/hono.ts\"; import { LinearRouter } from \"./src/router/linear-router/router.ts\"; const app = new Hono({ router: new LinearRouter() }); app.get(\"/u/:id/posts\", (c) => c.json({ id: c.req.param(\"id\") })); const good = await app.request(\"http://localhost/u/42/posts\"); assert.equal(good.status, 200); assert.deepEqual(await good.json(), { id: \"42\" }); assert.equal((await app.request(\"http://localhost/u//posts\")).status, 404); const router = new LinearRouter(); router.add(\"GET\", \"/a/:p\"
+OUT(125B): Regression checks passed using source imports from /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-kwq3_lks
+
+
+### 10 [git] exec
+INTENT: 
+CMD: git diff --check; git diff -- src/router/linear-router/router.ts
+OUT(586B): diff --git a/src/router/linear-router/router.ts b/src/router/linear-router/router.ts
+index acee5c17..f54d4398 100644
+--- a/src/router/linear-router/router.ts
++++ b/src/router/linear-router/router.ts
+@@ -115,6 +115,8 @@ export class LinearRouter<T> implements Router<T> {
+                     continue ROUTES_LOOP
+                   }
+                   endValuePos = path.length
++                } else if (endValuePos === pos + 1) {
++                  continue ROUTES_LOOP
+                 }
+                 value = path.slice(pos + 1, endValuePos)
+                 pos = endValuePos
+
+
+### 11 [test] exec
+INTENT: The two-line guard is in place. Direct checks importing this checkout’s source confirm `/u//posts` returns 404 and `/u/42/posts` still returns `{ id: "42" }`. Type-checking passed; the full suite is running and has reported failures in the dev-helper and color tests.
+CMD: bun run test --project main src/router/linear-router/router.test.ts --coverage.enabled=false
+OUT(396B): $ tsc -p tsconfig.spec.json && vitest --run --project main src/router/linear-router/router.test.ts "--coverage.enabled=false"
+
+ RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-kwq3_lks
+
+
+ Test Files  1 passed (1)
+      Tests  86 passed | 15 skipped (101)
+   Start at  13:19:19
+   Duration  140ms (transform 43ms, setup 0ms, import 54ms, tests 11ms, environment 0ms)
+
+
+
+### 12 [git] exec
+INTENT: 
+CMD: git status --short
+OUT(76B):  M src/router/linear-router/router.ts
+?? .grove/
+?? AGENTS.md
+?? prism.yaml
+
+
+### 13 [test] exec
+INTENT: The LinearRouter suite passed: 86 tests, with 15 existing skips. The full run has also reported a Workerd WebSocket failure. The only source change is the empty-segment guard; no test files were modified.
+CMD: bun run test
+OUT(2107B): $ tsc -p tsconfig.spec.json && vitest --run
+Loaded  vitest@4.1.9  and  @vitest/coverage-v8@4.1.7 .
+Running mixed versions is not supported and may lead into bugs
+Update your dependencies and make sure the versions match.
+
+ RUN  v4.1.9 /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-kwq3_lks
+      Coverage enabled with v8
+
+(node:66822) MaxListenersExceededWarning: Possible EventTarget memory leak detected. 11 abort listeners added to [AbortSignal]. MaxListeners is 10. Use events.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |main| src/helper/dev/index.test.ts (8 tests | 2 failed) 9ms
+     × should render simple 

@@ -1,0 +1,67 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search endValuePos --scope text --format text
+OUT(1830B): // COMPLETE — 5 exact matches across 1 file
+src/router/linear-router/router.ts:
+  112:                 let endValuePos = path.indexOf('/', pos + 1)
+  113:                 if (endValuePos === -1) {
+  117:                   endValuePos = path.length
+  119:                 value = path.slice(pos + 1, endValuePos)
+  120:                 pos = endValuePos
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:
+**`src/router/linear-router/router.ts`**
+// WINDOW src/router/linear-router/router.ts:103-121 around hit line 112; enclosing LinearRouter.match spans 25-150 (full body not included; rest: op=read ran
+
+### 1 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-4ucl946v/src/router/linear-router/router.ts
+OUT(148B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-4ucl946v/src/router/linear-router/router.ts has been updated successfully.
+
+### 2 [read] Bash
+INTENT: 
+CMD: npx vitest run src/router 2>&1 | tail -15
+OUT(747B):  src/utils         |   45.75 |    26.89 |      45 |   44.96 |                   
+  url.ts           |   45.75 |    26.89 |      45 |   44.96 | ...29,237-317,332 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 86.03% ( 616/716 )
+Branches     : 76.38% ( 385/504 )
+Functions    : 86.07% ( 68/79 )
+Lines        : 85.26% ( 573/672 )
+================================================================================
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To u
+
+### 3 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-4ucl946v/src/router/linear-router/router.ts
+OUT(148B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-4ucl946v/src/router/linear-router/router.ts has been updated successfully.
+
+### 4 [read] Bash
+INTENT: 
+CMD: npx vitest run src/router 2>&1 | tail -15
+OUT(747B):  src/utils         |   45.75 |    26.89 |      45 |   44.96 |                   
+  url.ts           |   45.75 |    26.89 |      45 |   44.96 | ...29,237-317,332 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 86.03% ( 616/716 )
+Branches     : 76.38% ( 385/504 )
+Functions    : 86.07% ( 68/79 )
+Lines        : 85.26% ( 573/672 )
+================================================================================
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To u
+
+### 5 [grep] Bash
+INTENT: 
+CMD: npx vitest run src/router --coverage.enabled=false 2>&1 | grep -E "Test Files|Tests|FAIL"
+OUT(68B):  Test Files  7 passed (7)
+      Tests  679 passed | 31 skipped (710)

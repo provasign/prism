@@ -1,0 +1,82 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search UnwrappingBeanDeserializer UnwrappedPropertyHandler --scope text --format text | head -50; grep -rn "Unwrapp" /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue/src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java | head -30
+OUT(4383B): ── UnwrappingBeanDeserializer ──
+// no matches — search completed (not truncated, not timed out)
+── UnwrappedPropertyHandler ──
+// COMPLETE — 27 exact matches across 4 files
+// 27 text hits, but 3 different symbols share the name "UnwrappedPropertyHandler" (UnwrappedPropertyHandler, UnwrappedPropertyHandler.UnwrappedPropertyHandler, UnwrappedPropertyHandler.UnwrappedPropertyHandler) — most hits belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type evidence before acting on the text hits.
+src/main/java/com/fasterxml/jackson/databind/deser/impl/UnwrappedPropertyHandler.java:
+  18: public class UnwrappedPropertyHandler  [UnwrappedPropertyHandler]
+  22:   
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue; sed -n 525,600p src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java; grep -n "JsonView\|_view\|visibleInView" src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java | head -30; grep -n "Unwrapped" -B3 -A30 src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java | sed -n '/deserializeWithUnwrapped(/,$p' | head -90
+OUT(8488B):             //     at this point, but is needed for further processing down the line
+            if (_ignorableProps != null || _includableProps != null) {
+                for (int i = 0, end = creatorProps.length; i < end; ++i) {
+                    SettableBeanProperty prop  = creatorProps[i];
+                    if (IgnorePropertiesUtil.shouldIgnore(prop.getName(), _ignorableProps, _includableProps)) {
+                        creatorProps[i].markAsIgnorable();
+                    }
+                }
+            }
+        } else {
+            creatorProps = null;
+        }
+        UnwrappedPropertyHandler unwrapped = null;
+
+        // 24-Mar-2017, tatu: Looks like we may have to iterate ov
+
+### 2 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue; sed -n 15,140p src/main/java/com/fasterxml/jackson/databind/deser/impl/UnwrappedPropertyHandler.java; sed -n 748,800p src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java; git diff HEAD~1 --stat | tail -3
+OUT(4360B):  * deserializing "unwrapped" values; sets of properties that are
+ * embedded (inlined) as properties of parent JSON object.
+ */
+public class UnwrappedPropertyHandler
+{
+    protected final List<SettableBeanProperty> _properties;
+
+    public UnwrappedPropertyHandler()  {
+        _properties = new ArrayList<SettableBeanProperty>();
+    }
+
+    protected UnwrappedPropertyHandler(List<SettableBeanProperty> props)  {
+        _properties = props;
+    }
+
+    public void addProperty(SettableBeanProperty property) {
+        _properties.add(property);
+    }
+
+    public UnwrappedPropertyHandler renameAll(NameTransformer transformer)
+    {
+        ArrayList<SettableBeanProperty> newProps = new ArrayList<S
+
+### 3 [other] bash
+INTENT: 
+CMD: bash {"command": "true"}
+OUT(119B): <tool_use_error>Error: No such tool available: bash. Tool names are case-sensitive: call Bash instead.</tool_use_error>
+
+### 4 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue/src/main/java/com/fasterxml/jackson/databind/deser/impl/UnwrappedPropertyHandler.java
+OUT(199B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue/src/main/java/com/fasterxml/jackson/databind/deser/impl/UnwrappedPropertyHandler.java has been updated successfully.
+
+### 5 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue; mvn -o -q test -Dtest='*Unwrapped*,*JsonView*,*View*' 2>&1 | tail -30
+OUT(31B): (Bash completed with no output)
+
+### 6 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue/src/main/java/com/fasterxml/jackson/databind/deser/impl/UnwrappedPropertyHandler.java
+OUT(199B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue/src/main/java/com/fasterxml/jackson/databind/deser/impl/UnwrappedPropertyHandler.java has been updated successfully.
+
+### 7 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7y6x1iue; mvn -o -q test -Dtest='*Unwrapped*,*JsonView*,*View*' 2>&1 | tail -30
+OUT(31B): (Bash completed with no output)

@@ -1,0 +1,66 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search SaveUploadedFile --scope text --format text | head -30
+OUT(1675B): // COMPLETE — 15 exact matches across 4 files
+// SaveUploadedFile is Context.SaveUploadedFile (context.go:729-756); 6 indexed caller site(s): TestContextFormFile context_test.go:153-169 [test] TestContextMultipartForm context_test.go:184-201 [test] TestSaveUploadedOpenFailed context_test.go:203-216 [test] +3 more.
+context.go:
+  728: // SaveUploadedFile uploads the form file to specific dst.
+  729: func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string, perm ...fs.FileMode) error {  [Context.SaveUploadedFile]
+CHANGELOG.md:
+  71: - refactor(context):Avoid using filepath.Dir twice in SaveUploadedFile ([#4181](https://github.com/gin-gonic/gin/pull/4181))
+  74: - refactor(conte
+
+### 1 [read] Read
+INTENT: 
+CMD: Read /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m_uc2j29/context.go off=728 lim=30
+OUT(704B): 728	// SaveUploadedFile uploads the form file to specific dst.
+729	func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string, perm ...fs.FileMode) error {
+730		src, err := file.Open()
+731		if err != nil {
+732			return err
+733		}
+734		defer src.Close()
+735	
+736		var mode os.FileMode = 0o750
+737		if len(perm) > 0 {
+738			mode = perm[0]
+739		}
+740		dir := filepath.Dir(dst)
+741		if err = os.MkdirAll(dir, mode); err != nil {
+742			return err
+743		}
+744		if err = os.Chmod(dir, mode); err != nil {
+745			return err
+746		}
+747	
+748		out, err := os.Create(dst)
+749		if err != nil {
+750			return err
+751		}
+752		defer out.Close()
+753	
+754		_, err = io.Copy(out, src)
+755		return err
+756	}
+
+
+### 2 [edit] Edit
+INTENT: I should only chmod directories that are newly created—check with stat first, and if it doesn't exist, use MkdirAll then chmod, matching the issue's intent even if existing tests might expect chmod on pre-existing dirs too.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m_uc2j29/context.go
+OUT(124B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m_uc2j29/context.go has been updated successfully.
+
+### 3 [read] Bash
+INTENT: I should only chmod directories that are newly created—check with stat first, and if it doesn't exist, use MkdirAll then chmod, matching the issue's intent even if existing tests might expect chmod on pre-existing dirs too.
+CMD: go test . 2>&1 | tail -15
+OUT(36B): ok  	github.com/gin-gonic/gin	0.436s
+
+### 4 [edit] Edit
+INTENT: I should only chmod directories that are newly created—check with stat first, and if it doesn't exist, use MkdirAll then chmod, matching the issue's intent even if existing tests might expect chmod on pre-existing dirs too.
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m_uc2j29/context.go
+OUT(124B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-m_uc2j29/context.go has been updated successfully.
+
+### 5 [read] Bash
+INTENT: I should only chmod directories that are newly created—check with stat first, and if it doesn't exist, use MkdirAll then chmod, matching the issue's intent even if existing tests might expect chmod on pre-existing dirs too.
+CMD: go test . 2>&1 | tail -15
+OUT(36B): ok  	github.com/gin-gonic/gin	0.436s

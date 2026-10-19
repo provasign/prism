@@ -1,0 +1,38 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism search toASCIIString --scope text --format text
+OUT(867B): // COMPLETE — 2 exact matches across 2 files
+gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java:733:           out.value(value == null ? null : value.toASCIIString());
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:
+  187:     assertThat(target.toASCIIString()).isEqualTo(uriValue);
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:
+**`gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java`**
+// Full enclosing body TypeAdapters.<anonymous@716:7>.write spans 731-734
+// Evidence: exact match for 1 supplied term(s)
+
+```java
+731→        @Override
+
+### 1 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-38h3up5h/gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java
+OUT(180B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-38h3up5h/gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java has been updated successfully.
+
+### 2 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-38h3up5h/gson && mvn -o -q test -Dtest=DefaultTypeAdaptersTest 2>&1 | tail -20
+OUT(136B):  [proguard] ProGuard, version 7.9.1
+OpenJDK 64-Bit Server VM warning: Ignoring option --illegal-access=deny; support was removed in 17.0
+
+### 3 [edit] Edit
+INTENT: 
+CMD: Edit /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-38h3up5h/gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java
+OUT(180B): The file /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-38h3up5h/gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java has been updated successfully.
+
+### 4 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-38h3up5h/gson && mvn -o -q test -Dtest=DefaultTypeAdaptersTest 2>&1 | tail -20
+OUT(136B):  [proguard] ProGuard, version 7.9.1
+OpenJDK 64-Bit Server VM warning: Ignoring option --illegal-access=deny; support was removed in 17.0

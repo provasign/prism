@@ -1,0 +1,85 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact ResolvableDeserializer.resolve --format text 2>&1 | head -150
+OUT(20224B): // ResolvableDeserializer.resolve — change-impact: 13 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed java)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (15; every occurrence this change touches, as path:line:col: text):
+  src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java:517:17: public void resolve(DeserializationContext ctxt) throws JsonMappingException
+  src/main/java/com/fasterxml/jackson/databind/deser/DefaultDeserializationContext.java:253:46: ((Re
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-3vevzcfy
+B=src/main/java/com/fasterxml/jackson/databind/deser
+for s in $B/BeanDeserializerBase.java:517 $B/DefaultDeserializationContext.java:253 $B/DefaultDeserializationContext.java:294 $B/DeserializerCache.java:205 $B/DeserializerCache.java:348 $B/ResolvableDeserializer.java:43 $B/std/DelegatingDeserializer.java:58 $B/std/DelegatingDeserializer.java:60 $B/std/EnumMapDeserializer.java:130 $B/std/MapDeserializer.java:270 $B/std/StdDelegatingDeserializer.java:133 $B/std/StdDelegatingDeserializer.java:137 $B/std/StdNodeBasedDes
+OUT(2099B):  CLAUDE.md | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+src/main/java/com/fasterxml/jackson/databind/DeserializationContext.java:660:     * This method is usually called from within {@link ResolvableDeserializer#resolve},
+src/main/java/com/fasterxml/jackson/databind/deser/Deserializers.java:179:     * resolution (using {@link ResolvableDeserializer#resolve}).
+src/main/java/com/fasterxml/jackson/databind/deser/Deserializers.java:215:     * resolution (using {@link ResolvableDeserializer#resolve}).
++## Prism — context delivery
++
++Prism is installed as the `prism` command; no MCP server is registered. Use it for
++each repository-discovery step. Reading files with cat/he
+
+### 2 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-3vevzcfy
+B=src/main/java/com/fasterxml/jackson/databind/deser
+for s in $B/BeanDeserializerBase.java:517 $B/DefaultDeserializationContext.java:253 $B/DefaultDeserializationContext.java:294 $B/DeserializerCache.java:205 $B/DeserializerCache.java:348 $B/ResolvableDeserializer.java:43 $B/std/DelegatingDeserializer.java:58 $B/std/DelegatingDeserializer.java:60 $B/std/EnumMapDeserializer.java:130 $B/std/MapDeserializer.java:270 $B/std/StdDelegatingDeserializer.java:133 $B/std/StdDelegatingDeserializer.java:137 $B/std/StdNodeBasedDes
+OUT(1671B):  .../java/com/fasterxml/jackson/databind/DeserializationContext.java   | 2 +-
+ .../com/fasterxml/jackson/databind/deser/BeanDeserializerBase.java    | 2 +-
+ .../jackson/databind/deser/DefaultDeserializationContext.java         | 4 ++--
+ .../java/com/fasterxml/jackson/databind/deser/DeserializerCache.java  | 4 ++--
+ src/main/java/com/fasterxml/jackson/databind/deser/Deserializers.java | 4 ++--
+ .../com/fasterxml/jackson/databind/deser/ResolvableDeserializer.java  | 2 +-
+ .../fasterxml/jackson/databind/deser/std/DelegatingDeserializer.java  | 4 ++--
+ .../com/fasterxml/jackson/databind/deser/std/EnumMapDeserializer.java | 2 +-
+ .../com/fasterxml/jackson/databind/deser/std/MapDeserializer.java  
+
+### 3 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-3vevzcfy
+./mvnw -q -o test 2>&1 | tail -30; ls target/surefire-reports 2>/dev/null | head -3; grep -h "Tests run" target/surefire-reports/*.txt | head -3
+OUT(657B): Command did not complete within its 600s timeout and was moved to the background (ID: bk2sbqduq). Output is being written to: /private/tmp/claude-501/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-e2e-run-3vevzcfy/6ba382cc-061e-4806-96d8-f43ace2742ef/tasks/bk2sbqduq.output. You will be notified when it completes. If it is still running after 10m in the background, it will be stopped and you will be notified. To check interim output, use Read on that file path.
+Session cwd remains /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-3vevzcfy; directory changes made by the backgrounded command do not apply to subsequent commands.
+
+### 4 [other] Monitor
+INTENT: 
+CMD: Monitor {"command": "until [ -s /private/tmp/claude-501/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-e2e-run-3vevzcf
+OUT(302B): Monitor started (task bfykhleg7, expires in 10m unless the source ends first; you get one notice at expiry — re-arm if you still need the watch). You will be notified on each event. Keep working — do not poll or sleep. Events may arrive while you are waiting for the user — an event is not their reply.
+
+### 5 [other] Monitor
+INTENT: 
+CMD: Monitor {"command": "until [ -s /private/tmp/claude-501/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-e2e-run-3vevzcf
+OUT(302B): Monitor started (task bfykhleg7, expires in 10m unless the source ends first; you get one notice at expiry — re-arm if you still need the watch). You will be notified on each event. Keep working — do not poll or sleep. Events may arrive while you are waiting for the user — an event is not their reply.
+
+### 6 [grep] Bash
+INTENT: 
+CMD: sleep 5; cat /private/tmp/claude-501/*/*/tasks/bk2sbqduq.output | tail -30; ps aux | grep -c "[m]aven"
+OUT(2689B): 	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$1(InterceptingLauncher.java:39)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:38)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
+	at org.apache.maven.surefire.junitplatform.JUnit
+
+### 7 [grep] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-3vevzcfy
+grep -o 'tests="[0-9]*"\|failures="[0-9]*"\|errors="[0-9]*"' target/surefire-reports/TEST-com.fasterxml.jackson.databind.PrimarySuite.xml | sort | uniq -c | head; grep -c 'testcase' target/surefire-reports/TEST-*PrimarySuite.xml; grep -o 'basedir" value="[^"]*' target/surefire-reports/TEST-*PrimarySuite.xml; ls -la target/classes/com/fasterxml/jackson/databind/deser/ResolvableDeserializer.class; javap -cp target/classes com.fasterxml.jackson.databind.deser.ResolvableDeserializer
+OUT(562B):    1 errors="0"
+   1 failures="0"
+   1 tests="3619"
+3896
+basedir" value="/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-3vevzcfy
+-rw-r--r--  1 tapabratapal  staff  370 Oct 18 18:55 target/classes/com/fasterxml/jackson/databind/deser/ResolvableDeserializer.class
+Compiled from "ResolvableDeserializer.java"
+public interface com.fasterxml.jackson.databind.deser.ResolvableDeserializer {
+  public abstract void resolveDependencies(com.fasterxml.jackson.databind.DeserializationContext) throws com.fasterxml.jackson.databind.JsonMappingException;
+}

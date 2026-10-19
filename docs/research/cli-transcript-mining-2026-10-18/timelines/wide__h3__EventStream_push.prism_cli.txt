@@ -1,0 +1,83 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact EventStream.push --format text
+OUT(4526B): // EventStream.push — change-impact: 3 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed typescript)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (15; every occurrence this change touches, as path:line:col: text):
+  src/utils/internal/event-stream.ts:35:9: async push(message: string): Promise<void>;
+  src/utils/internal/event-stream.ts:36:9: async push(message: string[]): Promise<void>;
+  src/utils/internal/event-stream.ts:37:9: async push(message: EventStreamMessage): Promise<void>
+
+### 1 [grep] Bash
+INTENT: 
+CMD: grep -n "push" examples/server-sent-events.mjs src/utils/internal/event-stream.ts src/utils/event-stream.ts
+OUT(808B): examples/server-sent-events.mjs:10:    await eventStream.push("Hello world");
+src/utils/internal/event-stream.ts:35:  async push(message: string): Promise<void>;
+src/utils/internal/event-stream.ts:36:  async push(message: string[]): Promise<void>;
+src/utils/internal/event-stream.ts:37:  async push(message: EventStreamMessage): Promise<void>;
+src/utils/internal/event-stream.ts:38:  async push(message: EventStreamMessage[]): Promise<void>;
+src/utils/internal/event-stream.ts:39:  async push(message: EventStreamMessage | EventStreamMessage[] | string | string[]) {
+src/utils/internal/event-stream.ts:51:          msgs.push({ data: item });
+src/utils/internal/event-stream.ts:62:  async pushComment(
+
+### 2 [grep] Bash
+INTENT: 
+CMD: sed -i '' -E 's/\bpush\(/pushMessage(/' src/utils/internal/event-stream.ts 2>/dev/null; sed -i '' 's/msgs\.pushMessage(/msgs.push(/' src/utils/internal/event-stream.ts
+sed -i '' -E 's/\b(eventStream|stream)\.push\(/\1.pushMessage(/' test/sse.test.ts test/unit/sse.test.ts examples/server-sent-events.mjs docs/1.guide/901.advanced/2.websocket.md docs/2.utils/2.response.md src/utils/event-stream.ts
+sed -i '' 's/TODO: eventStream\.push /TODO: eventStream.pushMessage /' test/sse.test.ts
+git diff --stat; grep -rn "pushMessage\|\.push(" src/utils/internal/event-stream.ts; grep -n "stream\.push(" test/
+OUT(768B):  CLAUDE.md        | 30 ++++++++++++++++++++++++++++++
+ test/sse.test.ts |  2 +-
+ 2 files changed, 31 insertions(+), 1 deletion(-)
+src/utils/internal/event-stream.ts:51:          msgs.push({ data: item });
+151:      await stream.push("msg1");
+153:      await stream.push("msg2");
+174:      await stream.push("test");
+178:      await stream.push("test2");
+206:      await stream.push([{ data: "msg1" }, { data: "msg2" }]);
+210:      await stream.push([{ data: "msg3" }]);
+220:      await stream.push("buffered");
+231:      await stream.push("after-flush");
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 24 passed (26)
+Type Errors  no errors
+   Start at  17:58:25
+   Duration  252ms (tr
+
+### 3 [grep] Bash
+INTENT: 
+CMD: git checkout test/sse.test.ts
+perl -pi -e 's/\bpush\((message)/pushMessage($1/ if /async push\(/; ' src/utils/internal/event-stream.ts
+perl -pi -e 's/\b(eventStream|stream)\.push\(/$1.pushMessage(/g; s/eventStream\.push should/eventStream.pushMessage should/' test/sse.test.ts test/unit/sse.test.ts examples/server-sent-events.mjs docs/1.guide/901.advanced/2.websocket.md docs/2.utils/2.response.md src/utils/event-stream.ts
+git diff --stat -- . ':!CLAUDE.md'; grep -n "push" src/utils/internal/event-stream.ts; pnpm vitest run 2>&1 | tail -8; pnpm tsc --noEmit 2>&1 | tail -5
+OUT(1154B): Updated 1 path from the index
+ docs/1.guide/901.advanced/2.websocket.md |  2 +-
+ docs/2.utils/2.response.md               |  2 +-
+ examples/server-sent-events.mjs          |  2 +-
+ src/utils/event-stream.ts                |  2 +-
+ src/utils/internal/event-stream.ts       | 10 +++++-----
+ test/sse.test.ts                         |  6 +++---
+ test/unit/sse.test.ts                    | 16 ++++++++--------
+ 7 files changed, 20 insertions(+), 20 deletions(-)
+35:  async pushMessage(message: string): Promise<void>;
+36:  async pushMessage(message: string[]): Promise<void>;
+37:  async pushMessage(message: EventStreamMessage): Promise<void>;
+38:  async pushMessage(message: EventStreamMessage[]): Promi
+
+### 4 [grep] Bash
+INTENT: 
+CMD: pnpm vitest run 2>&1 | grep -E "FAIL|Error" | head -12; git stash -q; pnpm vitest run 2>&1 | tail -6 | head -3; git stash pop -q
+OUT(1065B):  FAIL  test/stream.test.ts > stream > web > node response stream: client abort propagates to source stream (web)
+ FAIL  test/stream.test.ts > stream > node > node response stream: client abort propagates to source stream (node)
+TypeError: Promise.withResolvers is not a function
+ FAIL  test/stream.test.ts > stream > web > web response stream: client abort propagates to cancel (web)
+ FAIL  test/stream.test.ts > stream > node > web response stream: client abort propagates to cancel (node)
+TypeError: Promise.withResolvers is not a function
+ FAIL  test/unit/sse.test.ts > sse (unit) > EventStream > push stops retrying after write failure
+Error: This is caused by either a bug in Node.js or incorrec

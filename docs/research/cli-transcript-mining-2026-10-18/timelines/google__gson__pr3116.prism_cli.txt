@@ -1,0 +1,91 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism read gson/src/main/java/com/google/gson/stream/JsonReader.java --from 1850 --to 1900 --format text; grep -n "readEscapeCharacter\|syntaxError(\"" gson/src/main/java/com/google/gson/stream/JsonReader.java | head -40
+OUT(3133B): // gson/src/main/java/com/google/gson/stream/JsonReader.java lines 1850-1900 of 2005
+1850→   * "u000A" and two-character escapes "\n".
+1851→   *
+1852→   * @throws MalformedJsonException if the escape sequence is malformed
+1853→   */
+1854→  @SuppressWarnings("fallthrough")
+1855→  private char readEscapeCharacter() throws IOException {
+1856→    if (pos == limit && !fillBuffer(1)) {
+1857→      throw syntaxError("Unterminated escape sequence");
+1858→    }
+1859→
+1860→    char escaped = buffer[pos++];
+1861→    switch (escaped) {
+1862→      case 'u':
+1863→        if (pos + 4 > limit && !fillBuffer(4)) {
+1864→          throw syntaxError("Unterminated escape sequence");
+1865→        }
+1866→        //
+
+### 1 [read] Bash
+INTENT: 
+CMD: cd gson/src/main/java/com/google/gson/stream; sed -n 1215,1265p JsonReader.java; sed -n 1315,1352p JsonReader.java
+OUT(2584B):       int p = pos;
+      int l = limit;
+      /* the index of the first character not yet appended to the builder. */
+      int start = p;
+      while (p < l) {
+        int c = buffer[p++];
+
+        // In strict mode, throw an exception when meeting unescaped control characters (U+0000
+        // through U+001F)
+        if (strictness == Strictness.STRICT && c < 0x20) {
+          throw syntaxError(
+              "Unescaped control characters (\\u0000-\\u001F) are not allowed in strict mode");
+        } else if (c == quote) {
+          pos = p;
+          int len = p - start - 1;
+          if (builder == null) {
+            return new String(buffer, start, len);
+          } else {
+            
+
+### 2 [read] Bash
+INTENT: 
+CMD: cd gson/src/main/java/com/google/gson/stream; python3 - <<'E'
+s=open('JsonReader.java').read()
+s=s.replace("""        pos += 4;
+        return (char) result;
+""","""        pos += 4;
+        if (strictness == Strictness.STRICT && Character.isSurrogate((char) result)) {
+          boolean valid;
+          if (Character.isHighSurrogate((char) result)) {
+            // Must be followed by an escaped low surrogate
+            valid =
+                (pos + 6 <= limit || fillBuffer(6))
+                    && buffer[pos] == '\\\\'
+                    && buffer[pos + 1] == 'u'
+                    && (
+OUT(3262B): (eval):cd:1: no such file or directory: gson/src/main/java/com/google/gson/stream
+diff --git a/gson/src/main/java/com/google/gson/stream/JsonReader.java b/gson/src/main/java/com/google/gson/stream/JsonReader.java
+index b96c8269..96a84169 100644
+--- a/gson/src/main/java/com/google/gson/stream/JsonReader.java
++++ b/gson/src/main/java/com/google/gson/stream/JsonReader.java
+@@ -1241,7 +1241,8 @@ public class JsonReader implements Closeable {
+             builder = new StringBuilder(Math.max(estimatedLength, 16));
+           }
+           builder.append(buffer, start, len);
+-          builder.append(readEscapeCharacter());
++          int builderLength = builder.length();
++          builder.append(
+
+### 3 [read] Bash
+INTENT: 
+CMD: cd /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-rjog6g4k && python3 - <<'E'
+f='gson/src/main/java/com/google/gson/stream/JsonReader.java'
+s=open(f).read()
+s=s.replace("""          int builderLength = builder.length();
+          builder.append(readEscapeCharacter(builderLength > 0 && Character.isHighSurrogate(builder.charAt(builderLength - 1))));""","""          int builderLength = builder.length();
+          boolean afterHigh =
+              builderLength > 0 && Character.isHighSurrogate(builder.charAt(builderLength - 1));
+          builder.append(readEscapeCharacter(afterH
+OUT(604B):  [proguard] ProGuard, version 7.9.1
+OpenJDK 64-Bit Server VM warning: Ignoring option --illegal-access=deny; support was removed in 17.0
+WARNING: A terminally deprecated method in java.lang.System has been called
+WARNING: System::setSecurityManager has been called by com.google.gson.functional.ReflectionAccessTest (file:/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-rjog6g4k/gson/target/test-classes/)
+WARNING: Please consider reporting this to the maintainers of com.google.gson.functional.ReflectionAccessTest
+WARNING: System::setSecurityManager will be removed in a future release

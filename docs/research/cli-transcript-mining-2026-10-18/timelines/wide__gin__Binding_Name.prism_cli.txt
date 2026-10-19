@@ -1,0 +1,51 @@
+
+### 0 [prism] Bash
+INTENT: 
+CMD: prism change-impact Binding.Name --format text
+OUT(10014B): // Binding.Name — change-impact: 47 site(s)
+completeness: closed
+completenessScope: repository (compiler-backed go)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (47; every occurrence this change touches, as path:line:col: text):
+  binding/binding.go:33:2: Name() string
+  binding/binding_msgpack_test.go:40:26: assert.Equal(t, name, b.Name())
+  binding/binding_nomsgpack.go:31:2: Name() string
+  binding/binding_test.go:629:46: assert.Equal(t, "form-urlencoded", FormPost.Name())
+  binding/binding_test.go:674:55:
+
+### 1 [grep] Bash
+INTENT: 
+CMD: cd binding && sed -i '' -E '/BindingUri|^\s*Name\(\) string$/!s/\) Name\(\) string/) BindingName() string/' bson.go form.go header.go json.go msgpack.go plain.go protobuf.go query.go toml.go xml.go yaml.go
+sed -i '' -E '33s/Name\(\)/BindingName()/' binding.go; sed -i '' -E '31s/Name\(\)/BindingName()/' binding_nomsgpack.go
+sed -i '' -E 's/\b(FormPost|FormMultipart|h|b|p)\.Name\(\)/\1.BindingName()/' binding_test.go binding_msgpack_test.go
+sed -i '' 's/) Name() string {/) BindingName() string {/' ../docs/doc.md
+cd ..; git diff --stat | tail -3; grep -rn "Name()" binding/*.go docs/doc.md | grep 
+OUT(2788B): Exit code 1
+ binding/yaml.go              | 2 +-
+ docs/doc.md                  | 2 +-
+ 14 files changed, 16 insertions(+), 16 deletions(-)
+binding/binding_msgpack_test.go:40:	assert.Equal(t, name, b.Name())
+binding/binding_nomsgpack.go:45:	Name() string
+binding/binding_test.go:629:	assert.Equal(t, "form-urlencoded", FormPost.Name())
+binding/binding_test.go:674:	assert.Equal(t, "multipart/form-data", FormMultipart.Name())
+binding/binding_test.go:692:	assert.Equal(t, "multipart/form-data", FormMultipart.Name())
+binding/binding_test.go:792:	assert.Equal(t, "header", h.Name())
+binding/binding_test.go:817:	assert.Equal(t, "uri", b.Name())
+binding/binding_test.go:860:	assert.Equal(t, "form", b.Nam
+
+### 2 [grep] Bash
+INTENT: 
+CMD: perl -pi -e 's/\.Name\(\)/.BindingName()/ unless $. == 817 && $ARGV =~ /binding_test/' binding/binding_test.go binding/binding_msgpack_test.go
+git diff --stat | tail -1; grep -rn "\.Name()" binding/*.go; go vet ./... && go test -count=1 -a ./binding . 2>&1 | tail; go list -m; pwd
+OUT(295B):  16 files changed, 48 insertions(+), 48 deletions(-)
+binding/binding_test.go:817:	assert.Equal(t, "uri", b.Name())
+ok  	github.com/gin-gonic/gin/binding	0.212s
+ok  	github.com/gin-gonic/gin	0.384s
+github.com/gin-gonic/gin
+/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-1ig5fv3l
+
+### 3 [read] Bash
+INTENT: 
+CMD: go test -count=1 -tags nomsgpack ./binding 2>&1 | tail -3
+OUT(44B): ok  	github.com/gin-gonic/gin/binding	0.171s
