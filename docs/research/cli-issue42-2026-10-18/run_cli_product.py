@@ -103,7 +103,7 @@ def index_graph(wt: Path, arm: str, task=None):
     # CLI_BENCH_READ_GUARD=0 reproduces the earlier runs. From d7f0868+1
     # `prism init --interface cli` installs the sed guard itself; only older
     # binaries need the harness to add it.
-    if os.environ.get("CLI_BENCH_READ_GUARD", "1") != "0" and not (wt / ".claude" / "hooks" / "prism_sed_guard.py").exists():
+    if os.environ.get("CLI_BENCH_READ_GUARD", "1") != "0" and arm not in os.environ.get("CLI_BENCH_NO_GUARD_ARMS", "").split(",") and not (wt / ".claude" / "hooks" / "prism_sed_guard.py").exists():
         run_e2e._install_read_guard_hook(wt, arm)
 
 
