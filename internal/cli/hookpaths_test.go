@@ -84,8 +84,8 @@ func TestReadGuardInstallReplacesLegacyRelativeCommands(t *testing.T) {
 	if !strings.Contains(joined, "./my-own-hook.sh") {
 		t.Errorf("user's own hook dropped:\n%s", joined)
 	}
-	if n := strings.Count(joined, "$CLAUDE_PROJECT_DIR"); n != 4 {
-		t.Errorf("want 4 prism hook entries, got %d:\n%s", n, joined)
+	if n := strings.Count(joined, "$CLAUDE_PROJECT_DIR"); n != 3 {
+		t.Errorf("want 3 prism hook entries (the old sed guard is dropped), got %d:\n%s", n, joined)
 	}
 
 	if err := uninstallReadGuard(project); err != nil {
@@ -103,7 +103,7 @@ func TestInitUpgradesExistingReadGuard(t *testing.T) {
 	if err := installReadGuard(project); err != nil {
 		t.Fatal(err)
 	}
-	stale := filepath.Join(project, filepath.FromSlash(sedGuardPath))
+	stale := filepath.Join(project, filepath.FromSlash(readGuardGuardPath))
 	if err := os.WriteFile(stale, []byte("# old\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -111,9 +111,9 @@ func TestInitUpgradesExistingReadGuard(t *testing.T) {
 		t.Fatalf("init rc=%d", rc)
 	}
 	got, _ := os.ReadFile(stale)
-	want, _ := readGuardAssets.ReadFile("assets/prism_sed_guard.py")
+	want, _ := readGuardAssets.ReadFile("assets/prism_read_guard.py")
 	if string(got) != string(want) {
-		t.Error("init did not rewrite the installed sed guard script")
+		t.Error("init did not rewrite the installed read guard script")
 	}
 }
 
@@ -122,7 +122,7 @@ func TestReadGuardHooksFailOpen(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("needs a POSIX shell")
 	}
-	for _, cmd := range []string{readGuardTrackerCmd(), readGuardGuardCmd(), sedGuardCmd()} {
+	for _, cmd := range []string{readGuardTrackerCmd(), readGuardGuardCmd()} {
 		c := exec.Command("sh", "-c", cmd)
 		c.Dir = t.TempDir()
 		c.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR=/nonexistent")

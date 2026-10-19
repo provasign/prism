@@ -39,3 +39,4 @@ vscode-extension/*.vsix
 # Build artifacts
 /coverage.out
 /.cache/
+__pycache__/

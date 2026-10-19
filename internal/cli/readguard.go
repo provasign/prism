@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed assets/prism_read_tracker.py assets/prism_read_guard.py assets/prism_sed_guard.py
+//go:embed assets/prism_read_tracker.py assets/prism_read_guard.py
 var readGuardAssets embed.FS
 
 // readGuardTrackerCmd / readGuardGuardCmd are the exact hook command strings
@@ -21,7 +21,10 @@ var readGuardAssets embed.FS
 const (
 	readGuardTrackerPath = ".claude/hooks/prism_read_tracker.py"
 	readGuardGuardPath   = ".claude/hooks/prism_read_guard.py"
-	sedGuardPath         = ".claude/hooks/prism_sed_guard.py"
+	// sedGuardPath is the sed guard older versions installed with the read
+	// guard. It is removed: rewriting the agent's sed commands is not
+	// prism's job (Topo, 2026-10-19). init and --no-read-guard delete it.
+	sedGuardPath = ".claude/hooks/prism_sed_guard.py"
 
 	// readGuardInvalidateMatcher routes edits and shell commands to the
 	// tracker so it forgets ranges once their file may have changed (a stale
@@ -79,9 +82,9 @@ func readGuardInstalled(projectDir string) bool {
 	return fileExists(filepath.Join(projectDir, filepath.FromSlash(readGuardGuardPath)))
 }
 
-// readGuardScripts are the hook scripts installReadGuard writes and
-// uninstallReadGuard removes.
-var readGuardScripts = []string{"prism_read_tracker.py", "prism_read_guard.py", "prism_sed_guard.py"}
+// readGuardScripts are the hook scripts installReadGuard writes;
+// uninstallReadGuard also removes the retired sed guard.
+var readGuardScripts = []string{"prism_read_tracker.py", "prism_read_guard.py"}
 
 // installReadGuard writes the two hook scripts into projectDir/.claude/hooks
 // and registers them in projectDir/.claude/settings.json. Denies a native
@@ -122,10 +125,8 @@ func installReadGuard(projectDir string) error {
 	changed = addHookEntry(hooks, "PostToolUse", "mcp__prism__prism", readGuardTrackerCmd()) || changed
 	changed = addHookEntry(hooks, "PostToolUse", readGuardInvalidateMatcher, readGuardTrackerCmd()) || changed
 	changed = addHookEntry(hooks, "PreToolUse", "Read", readGuardGuardCmd()) || changed
-	// BSD (macOS) sed reads GNU escapes like \b as literals: the edit
-	// silently changes nothing and the agent reports it done. The sed guard
-	// denies those commands and says why; it does nothing where sed is GNU.
-	changed = addHookEntry(hooks, "PreToolUse", "Bash", sedGuardCmd()) || changed
+	changed = removeHookEntry(hooks, "PreToolUse", sedGuardCmd()) || changed
+	_ = os.Remove(filepath.Join(projectDir, filepath.FromSlash(sedGuardPath)))
 	doc["hooks"] = hooks
 	if changed {
 		if err := writeJSONObject(settingsPath, doc); err != nil {
@@ -134,51 +135,37 @@ func installReadGuard(projectDir string) error {
 	}
 	fmt.Println("installed read-guard hook:", filepath.Join(".claude", "hooks"))
 	fmt.Println("  denies a Read that substantially overlaps content prism already delivered this session")
-	fmt.Println("  runs a GNU-style sed command in its BSD (macOS) spelling, or denies it with the reason when there is none")
 	fmt.Println("  uninstall any time with: prism init --no-read-guard", projectDir)
 	return nil
 }
 
-// installSedGuard writes only the sed guard and its PreToolUse Bash entry.
-// `prism init --interface cli` installs it by default: CLI-mode agents edit
-// with `sed -i` more than native or MCP agents (0.7-1.1 vs 0.5-0.8 a
-// session) and without the guard lost ~0.3 calls a session to GNU-only sed
-// on macOS (2026-10-17..19 transcripts; guard12: 6.25 -> 5.08 requests a
-// session). The read tracker is left out: it only records MCP answers.
-// `prism init --no-read-guard` removes it with the rest.
-func installSedGuard(projectDir string) error {
-	hooksDir := filepath.Join(projectDir, ".claude", "hooks")
-	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
-		return fmt.Errorf("sed-guard: %w", err)
-	}
-	data, err := readGuardAssets.ReadFile("assets/prism_sed_guard.py")
-	if err != nil {
-		return fmt.Errorf("sed-guard: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join(hooksDir, "prism_sed_guard.py"), data, 0o644); err != nil {
-		return fmt.Errorf("sed-guard: %w", err)
-	}
+// removeSedGuard deletes a sed guard an older prism installed, its script and
+// its settings.json entry, leaving every other hook in place.
+func removeSedGuard(projectDir string) error {
+	_ = os.Remove(filepath.Join(projectDir, filepath.FromSlash(sedGuardPath)))
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.json")
 	doc, err := readJSONObject(settingsPath)
 	if err != nil {
-		return fmt.Errorf("sed-guard: %w", err)
+		return err
 	}
 	hooks, _ := doc["hooks"].(map[string]any)
 	if hooks == nil {
-		hooks = map[string]any{}
+		return nil
 	}
-	changed := removeLegacyHookEntries(hooks)
-	changed = addHookEntry(hooks, "PreToolUse", "Bash", sedGuardCmd()) || changed
-	doc["hooks"] = hooks
-	if changed {
-		if err := writeJSONObject(settingsPath, doc); err != nil {
-			return fmt.Errorf("sed-guard: %w", err)
-		}
+	changed := removeHookEntry(hooks, "PreToolUse", sedGuardCmd())
+	changed = removeHookEntry(hooks, "PreToolUse", "python3 "+sedGuardPath) || changed
+	if !changed {
+		return nil
 	}
-	return nil
+	if len(hooks) == 0 {
+		delete(doc, "hooks")
+	} else {
+		doc["hooks"] = hooks
+	}
+	return writeJSONObject(settingsPath, doc)
 }
 
-// sedGuardInstalled reports whether the sed guard script is present.
+// sedGuardInstalled reports whether an older sed guard script is present.
 func sedGuardInstalled(projectDir string) bool {
 	return fileExists(filepath.Join(projectDir, filepath.FromSlash(sedGuardPath)))
 }
@@ -190,7 +177,7 @@ func sedGuardInstalled(projectDir string) bool {
 // settings.json entry that has other hooks alongside ours keeps those and
 // only drops prism's.
 func uninstallReadGuard(projectDir string) error {
-	for _, name := range readGuardScripts {
+	for _, name := range append(readGuardScripts, "prism_sed_guard.py") {
 		p := filepath.Join(projectDir, ".claude", "hooks", name)
 		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("read-guard: %w", err)
