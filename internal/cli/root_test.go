@@ -52,7 +52,7 @@ func TestCLIRootPrefersPrismYAMLOverStrayIndex(t *testing.T) {
 	if got != want || sub != "sub" {
 		t.Fatalf("cliRoot = %q, %q; want %q, sub", got, sub, want)
 	}
-	if got, sub := cliRoot(filepath.Join(root, "sub")); sub != "" || !strings.HasSuffix(got, "/sub") {
+	if got, sub := cliRoot(filepath.Join(root, "sub")); sub != "" || filepath.Base(got) != "sub" {
 		t.Fatalf("explicit dir must be used as given: %q %q", got, sub)
 	}
 }
