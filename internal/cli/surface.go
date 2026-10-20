@@ -201,6 +201,9 @@ func unregisterMCPTools(projectDir string, harnesses []string) {
 // Reads of a known file and range go to the agent's own Read tool: requiring
 // prism read for them cost more requests (route-read12 A/B 2026-10-20: 11 vs
 // 10 solved, 59 vs 76 requests, task cost 0.75x).
+// The --path note: agents piped search output to `grep <file>` and kept only
+// the file's header line (14 times in dubbo pr16325 and zod pr6144, 108
+// sessions, 2026-10-20), then searched again.
 const cliSteeringInstructions = `
 ## Prism — context delivery
 
@@ -208,6 +211,8 @@ Prism is installed as the ` + "`prism`" + ` command; no MCP server is registered
 You MUST use prism, not grep/rg/find, whenever you search for source code in this
 repository, for the whole session, not only at the start:
   search for a name or string     -> prism search term [term2 ...] --scope text --format text
+                                     (narrow it with --path <file-or-dir>; do not pipe it to grep
+                                     for a file name: names are on header lines, so matches drop)
   read one symbol's body          -> prism lookup Name [Name2 ...] --format text
   callers, implementations, tests -> prism query --terms Name,Other --format text
 Once you know the file and lines you need, read them directly with your Read tool
