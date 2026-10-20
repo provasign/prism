@@ -2532,7 +2532,7 @@ func cmdSearch(args []string) int {
 			}
 		case "--regex":
 			regex = true
-		case "--path":
+		case "--path", "--paths":
 			// The grep operand, restored. `prism search alias --path
 			// octodns/manager.py` is what an agent that already knows the
 			// file wants; without it, it uses grep instead.
@@ -3514,7 +3514,7 @@ func invokeCompactReadText(dir string, args map[string]any) (out any, text strin
 func printToolResult(op string, out any, text string, rendered bool, format outputFormat) {
 	if format == formatText {
 		if rendered {
-			text = fitShellOutput(op, text)
+			text = fitShellOutput(op, cliHintSpelling(text))
 			fmt.Print(text)
 			if !strings.HasSuffix(text, "\n") {
 				fmt.Println()

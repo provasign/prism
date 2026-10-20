@@ -48,3 +48,20 @@ func TestFitShellOutputOnlyUnderClaudeCode(t *testing.T) {
 		t.Fatal("short answer changed")
 	}
 }
+
+func TestCLIHintSpellingUsesFlags(t *testing.T) {
+	in := "// +3 more matching line(s) not shown; exhaustive=true lists every line, paths=<file> shows one file's\n" +
+		"SAMPLE: showing 5 of 9 matches. exhaustive=true lists every line; paths=/glob= narrows\n" +
+		`  … 4 more members not listed; op=search with scope=symbols and paths=["a/B.java"] lists them`
+	got := cliHintSpelling(in)
+	for _, bad := range []string{"paths=", "exhaustive=true", "op=search"} {
+		if strings.Contains(got, bad) {
+			t.Fatalf("MCP spelling %q left in CLI text:\n%s", bad, got)
+		}
+	}
+	for _, want := range []string{"--path <file> shows", "--exhaustive lists", "--path/--glob narrows", "prism search --scope symbols --path a/B.java lists"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing %q:\n%s", want, got)
+		}
+	}
+}

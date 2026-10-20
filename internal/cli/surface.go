@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -315,6 +316,29 @@ func mcpSpelling(cmd string, args []string) (string, bool) {
 	}
 	return "", false
 }
+
+// cliHintSpelling rewrites the MCP argument spellings in prism's own notes
+// ("paths=<file> shows one file's") into the CLI flags. Dubbo pr16325
+// (2026-10-19): the agent read paths=, typed --paths, got "unknown flag", and
+// spent several calls grepping whole-repository output instead.
+func cliHintSpelling(text string) string {
+	text = symbolListHint.ReplaceAllString(text, "prism search --scope symbols --path $1")
+	return cliHintReplacer.Replace(text)
+}
+
+var symbolListHint = regexp.MustCompile(`op=search with scope=symbols and paths=\["([^"]+)"\]`)
+
+var cliHintReplacer = strings.NewReplacer(
+	"paths=<file>", "--path <file>",
+	"paths=/glob=", "--path/--glob",
+	"path=/glob=", "--path/--glob",
+	"use paths= to", "use --path to",
+	"exhaustive=true", "--exhaustive",
+	"files_only=true", "--files-only",
+	"/files_only.", "/--files-only.",
+	"Raise limit=", "Raise --limit",
+	"context=N", "--context N",
+)
 
 // looksLikeRegex: escapes and wildcards a literal search almost never wants.
 func looksLikeRegex(t string) bool {
