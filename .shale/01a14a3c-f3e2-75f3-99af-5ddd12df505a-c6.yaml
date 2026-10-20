@@ -1,0 +1,527 @@
+shale_version: "0"
+id: 01a14a3c-f3e2-75f3-99af-5ddd12df505a-c6
+created_at: 2026-10-18T17:06:16.059325Z
+finalized_at: 2026-10-20T10:43:43.735275Z
+agent:
+    tool: codex
+    model: gpt-6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/research/cli-release-sol61-warm-2026-10-18-stopped/REPORT.md
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-18T21:16:26.012755Z
+commands:
+    - cmd: git push origin v0.87.33
+      at: 2026-10-18T17:06:16.059325Z
+      classified: other
+    - cmd: gh run list --workflow release.yml --limit 3 --json databaseId,headBranch,status,conclusion,createdAt,url
+      at: 2026-10-18T17:06:19.83945Z
+      classified: other
+    - cmd: uname -m
+      at: 2026-10-18T17:06:25.033749Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/google__gson__pr3067/native/events.jsonl"); a=[json.loads(s) for s in p.read_text().splitlines() if s.startswith("{")]; z=next(x["item"] for x in a if x.get("type")=="item.completed" and x.get("item",{}).get("type")=="command_execution"); print(sorted(z)); print({k:z.get(k) for k in ("type","command","exit_code","status")})'
+      at: 2026-10-18T17:06:29.38913Z
+      classified: other
+    - cmd: gh run view 39148031298 --json status,conclusion,jobs,url
+      at: 2026-10-18T17:06:37.964797Z
+      classified: other
+    - cmd: gh run view 39148031298 --json status,conclusion --jq '{status,conclusion}'
+      at: 2026-10-18T17:06:44.913784Z
+      classified: other
+    - cmd: gh run view 39148031298 --json status,conclusion,jobs --jq '{status,conclusion,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-10-18T17:07:10.879054Z
+      classified: other
+    - cmd: python3 -B -c 'import sys; sys.path.insert(0,"/Users/tapabratapal/Projects/provasign/research/harness/runners"); import run_e2e as e; print(repr(e.ARMS["native"]["guidance"]),repr(e.ARMS["prism_init"]["guidance"]),repr(e.ARMS["prism_cli"]["guidance"]))'
+      at: 2026-10-18T17:07:21.400073Z
+      classified: other
+    - cmd: gh run view 39148031298 --json status,conclusion,jobs --jq '{status,conclusion,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-10-18T17:07:24.763053Z
+      classified: other
+    - cmd: gh run view 39148031298 --json status,conclusion,jobs --jq '{status,conclusion,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-10-18T17:07:51.498042Z
+      classified: other
+    - cmd: gh run view 39148031298 --json status,conclusion,jobs --jq '{status,conclusion,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-10-18T17:08:12.888484Z
+      classified: other
+    - cmd: gh release view v0.87.33 --json tagName,publishedAt,assets --jq '{tagName,publishedAt,assets:[.assets[].name]}'
+      at: 2026-10-18T17:08:17.351929Z
+      classified: other
+    - cmd: gh run view 39148031298 --json status,conclusion --jq '{status,conclusion}'
+      at: 2026-10-18T17:08:17.481741Z
+      classified: other
+    - cmd: gh release download v0.87.33 --pattern prism-v0.87.33-darwin-arm64 --pattern checksums.txt --dir /private/tmp/prism-cli-release-mixed16-2026-10-18
+      at: 2026-10-18T17:08:25.333353Z
+      classified: other
+    - cmd: python3 -B -c 'import hashlib,pathlib; d=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); n="prism-v0.87.33-darwin-arm64"; actual=hashlib.sha256((d/n).read_bytes()).hexdigest(); rows=(d/"checksums.txt").read_text().splitlines(); expected=next(x.split()[0] for x in rows if x.split()[-1].lstrip("./")==n); print("asset sha256",actual); print("checksums.txt",expected); assert actual==expected'
+      at: 2026-10-18T17:08:30.641097Z
+      classified: other
+    - cmd: gh release view v0.87.33 --json assets --jq '.assets[]|select(.name=="prism-v0.87.33-darwin-arm64")|{name,digest,size,state}'
+      at: 2026-10-18T17:08:30.940752Z
+      classified: other
+    - cmd: cp /private/tmp/prism-cli-release-mixed16-2026-10-18/prism-v0.87.33-darwin-arm64 /private/tmp/prism-cli-release-mixed16-2026-10-18/prism
+      at: 2026-10-18T17:08:34.555655Z
+      classified: other
+    - cmd: chmod +x /private/tmp/prism-cli-release-mixed16-2026-10-18/prism
+      at: 2026-10-18T17:08:34.631803Z
+      classified: other
+    - cmd: /private/tmp/prism-cli-release-mixed16-2026-10-18/prism version
+      at: 2026-10-18T17:08:35.109991Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-cli-release-mixed16-2026-10-18/run.py --probe
+      at: 2026-10-18T17:09:40.362551Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib,hashlib; out=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); p=json.loads((out/"protocol.json").read_text()); r=json.loads((out/"results.json").read_text()); id="google__gson__pr3067"; c=r[id]["cells"]["prism_cli"]; ref=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells")/id/"native"; prompt=(out/"cells"/id/"prism_cli"/"prompt.txt").read_text(); old=(ref/"prompt.txt").read_text(); print({"version":p["prism_version"],"sha256":p["prism_sha256"],"prompt_equal":prompt==old,"resolved":c["resolved"],"requests":c["api_calls"],"prism_calls":c["prism_calls"],"tool_errors":len(c["tool_errors"]),"prism_command_errors":len(c["prism_command_errors"]),"cached_first_request":c["requests"][0]["cached_input_tokens"],"first_request_input":c["requests"][0]["input_tokens"],"observed_cost":c["observed_api_estimate"]})'
+      at: 2026-10-18T17:09:45.120512Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/results.json"); c=json.loads(p.read_text())["google__gson__pr3067"]["cells"]["prism_cli"]; print("CLI commands:"); [print(str(i["command"])[:240]) for i in c["prism_commands"]]; print("first 3 cache tuples",[(x["input_tokens"],x["cached_input_tokens"],x["cache_write_input_tokens"]) for x in c["requests"][:3]])'
+      at: 2026-10-18T17:09:48.474962Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/results.json"); d=json.loads(p.read_text()); ids=json.loads((p.parent/"manifest.json").read_text()); rows=[d[i]["cells"] for i in ids if i in d and "prism_cli" in d[i].get("cells",{})]; print("pairs",len(rows)); fields=["input_tokens","cached_input_tokens","cache_write_input_tokens","output_tokens"]; [print(a,{"resolved":sum(bool(x[a].get("resolved")) for x in rows),"requests":sum(x[a].get("api_calls",0) for x in rows),"tool_calls":sum(x[a].get("tool_calls",0) for x in rows),"tokens":{k:sum(x[a].get("usage",{}).get(k,0) for x in rows) for k in fields},"cost":{k:round(sum(x[a]["observed_api_estimate"][k] for x in rows),6) for k in ("total_usd","startup_input_usd","ongoing_usd")}}) for a in ("native","prism_cli")]; print("CLI commands",sum(x["prism_cli"].get("prism_calls",0) for x in rows))'
+      at: 2026-10-18T17:20:38.318204Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-cli-release-mixed16-2026-10-18/audit_interim.py
+      at: 2026-10-18T21:13:38.721347Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); d=json.loads((p/"results.json").read_text()); ids=json.loads((p/"manifest.json").read_text()); rows=[d[i]["cells"] for i in ids if i in d and "prism_cli" in d[i].get("cells",{})]; print("pairs",len(rows)); [print(a,{"input":sum(x[a]["usage"]["input_tokens"] for x in rows),"cached":sum(x[a]["usage"]["cached_input_tokens"] for x in rows),"output":sum(x[a]["usage"]["output_tokens"] for x in rows),"requests":sum(x[a]["api_calls"] for x in rows),"tool_calls":sum(x[a]["tool_calls"] for x in rows),"total":round(sum(x[a]["observed_api_estimate"]["total_usd"] for x in rows),6),"startup":round(sum(x[a]["observed_api_estimate"]["startup_input_usd"] for x in rows),6),"ongoing":round(sum(x[a]["observed_api_estimate"]["ongoing_usd"] for x in rows),6)}) for a in ("native","prism_cli")]; [print(i,round(d[i]["cells"]["prism_cli"]["observed_api_estimate"]["total_usd"]-d[i]["cells"]["native"]["observed_api_estimate"]["total_usd"],6)) for i in ids if i in d and "prism_cli" in d[i].get("cells",{})]'
+      at: 2026-10-18T21:13:48.196097Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); d=json.loads((p/"results.json").read_text()); ids=json.loads((p/"manifest.json").read_text()); print("task native_fresh cli_fresh native_start_fresh cli_start_fresh"); [print(i.split("__")[-1],d[i]["cells"]["native"]["usage"]["input_tokens"]-d[i]["cells"]["native"]["usage"]["cached_input_tokens"],d[i]["cells"]["prism_cli"]["usage"]["input_tokens"]-d[i]["cells"]["prism_cli"]["usage"]["cached_input_tokens"],d[i]["cells"]["native"]["requests"][0]["input_tokens"]-d[i]["cells"]["native"]["requests"][0]["cached_input_tokens"],d[i]["cells"]["prism_cli"]["requests"][0]["input_tokens"]-d[i]["cells"]["prism_cli"]["requests"][0]["cached_input_tokens"]) for i in ids if i in d and "prism_cli" in d[i].get("cells",{})]'
+      at: 2026-10-18T21:13:57.215689Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; cur=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); d=json.loads((cur/"results.json").read_text()); old=json.loads(pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/results.json").read_text()); ids=[i for i in json.loads((cur/"manifest.json").read_text()) if i in d and "prism_cli" in d[i].get("cells",{})]; print("matched",len(ids)); [print(a,{"input":sum((d if a!="prism_init" else old)[i]["cells"][a]["usage"]["input_tokens"] for i in ids),"cached":sum((d if a!="prism_init" else old)[i]["cells"][a]["usage"]["cached_input_tokens"] for i in ids),"output":sum((d if a!="prism_init" else old)[i]["cells"][a]["usage"]["output_tokens"] for i in ids),"requests":sum((d if a!="prism_init" else old)[i]["cells"][a]["api_calls"] for i in ids),"tools":sum((d if a!="prism_init" else old)[i]["cells"][a]["tool_calls"] for i in ids),"cost":round(sum((d if a!="prism_init" else old)[i]["cells"][a]["observed_api_estimate"]["total_usd"] for i in ids),6)}) for a in ("native","prism_init","prism_cli")]'
+      at: 2026-10-18T21:14:02.918583Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib,re,collections; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); d=json.loads((p/"results.json").read_text()); ids=json.loads((p/"manifest.json").read_text()); print("task op counts"); [print(i,dict(collections.Counter((re.search(r"\bprism\s+(search|lookup|read|query|change-impact|verify|map|status)\b",str(x.get("command",""))) or [None,"other"])[1] for x in d[i]["cells"]["prism_cli"].get("prism_commands",[])))) for i in ids if i in d and "prism_cli" in d[i].get("cells",{})]'
+      at: 2026-10-18T21:14:08.694889Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; d=json.loads(pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/results.json").read_text())["wide__hono__Router_match"]["cells"]; [print(a,[(i+1,x["input_tokens"],x["cached_input_tokens"],x["input_tokens"]-x["cached_input_tokens"]) for i,x in enumerate(d[a]["requests"])]) for a in ("native","prism_cli")]'
+      at: 2026-10-18T21:14:13.335106Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/cells/wide__hono__Router_match/prism_cli/rollout.jsonl"); a=[json.loads(x) for x in p.read_text().splitlines()]; x=next(z for z in a if z.get("type")=="event_msg" and z.get("payload",{}).get("type")=="token_count"); print(list(x)); print(str(x)[:500])'
+      at: 2026-10-18T21:14:18.06962Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/cells/wide__hono__Router_match/prism_cli/rollout.jsonl"); a=[json.loads(x) for x in p.read_text().splitlines()]; n=0; prev=None; toks=[]; [toks.append((x["timestamp"],x["ordinal"],(x.get("payload",{}).get("info") or {}).get("last_token_usage",{}).get("cached_input_tokens"))) for x in a if x.get("type")=="event_msg" and x.get("payload",{}).get("type")=="token_count" and (x.get("payload",{}).get("info") or {}).get("last_token_usage")]; print("last 10",toks[-10:]); print("around ordinal",[(x["timestamp"],x["ordinal"],x["type"],x.get("payload",{}).get("type") if isinstance(x.get("payload"),dict) else "") for x in a if toks[17][1]<=x["ordinal"]<=toks[19][1]][:60])'
+      at: 2026-10-18T21:14:22.612653Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/cells/wide__hono__Router_match/prism_cli/rollout.jsonl"); a=[json.loads(x) for x in p.read_text().splitlines()]; print(len(a),a[0]["timestamp"],a[-1]["timestamp"]); q=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/cells/wide__hono__Router_match/prism_cli/events.jsonl"); e=[json.loads(x) for x in q.read_text().splitlines() if x.startswith("{")]; print(len(e),[x for x in e if x.get("type")=="thread.started"][:1]); print([x for x in e if x.get("type")=="turn.completed"][-1:])'
+      at: 2026-10-18T21:14:28.256758Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-cli-release-mixed16-2026-10-18/run.py
+      at: 2026-10-18T21:14:38.614498Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/results.json"); d=json.loads(p.read_text()); print(d.get("_stop")); i="wide__hono__Router_match"; x=d[i]["cells"]["prism_cli"]; print({k:x.get(k) for k in ("resolved","api_calls","prism_calls","agent_error","wall_s")})'
+      at: 2026-10-18T21:15:03.578553Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; cur=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); d=json.loads((cur/"results.json").read_text()); old=json.loads(pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/results.json").read_text()); ids=[i for i in json.loads((cur/"manifest.json").read_text()) if i in d and "prism_cli" in d[i].get("cells",{}) and not d[i]["cells"]["prism_cli"].get("agent_error")]; print(len(ids)); [print(a,round(sum((d if a!="prism_init" else old)[i]["cells"][a]["observed_api_estimate"]["startup_input_usd"] for i in ids),6),[(d if a!="prism_init" else old)[i]["cells"][a]["requests"][0]["input_tokens"] for i in ids]) for a in ("native","prism_init","prism_cli")]'
+      at: 2026-10-18T21:15:09.683395Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; cur=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); d=json.loads((cur/"results.json").read_text()); old=json.loads(pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/results.json").read_text()); ids=[i for i in json.loads((cur/"manifest.json").read_text()) if i in d and "prism_cli" in d[i].get("cells",{}) and not d[i]["cells"]["prism_cli"].get("agent_error")]; [print(a,{k:round(sum((d if a!="prism_init" else old)[i]["cells"][a]["observed_api_estimate"][k] for i in ids),6) for k in ("total_usd","startup_input_usd","ongoing_usd")}) for a in ("native","prism_init","prism_cli")]'
+      at: 2026-10-18T21:15:15.511856Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib,re; base=pathlib.Path("/private/tmp/prism-cli-release-mixed16-2026-10-18/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli/events.jsonl"); old=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native/events.jsonl");
+        for a,p in [("native",old),("cli",base)]:
+         x=[json.loads(s).get("item",{}) for s in p.read_text().splitlines() if s.startswith("{") and json.loads(s).get("type")=="item.completed"]; cs=[str(y.get("command","")) for y in x if y.get("type")=="command_execution"]; print(a,"shell",len(cs),"prism",sum("prism " in q for q in cs),"mvn invocations",sum("mvn " in q or "mvnw " in q for q in cs),"log inspections",sum("tail " in q or "surefire" in q for q in cs))'
+      at: 2026-10-18T21:15:24.323972Z
+      classified: other
+    - cmd: du -sh /private/tmp/prism-cli-release-mixed16-2026-10-18
+      at: 2026-10-18T21:15:30.277699Z
+      classified: other
+    - cmd: du -sh /private/tmp/prism-cli-release-mixed16-2026-10-18/cells /private/tmp/prism-cli-release-mixed16-2026-10-18/work
+      at: 2026-10-18T21:15:33.922126Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; p=Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); names={"events.jsonl","rollout.jsonl","command.json","usage.json","prompt.txt","stderr.txt","final.txt"}; files=[f for f in (p/"cells").rglob("*") if f.is_file() and f.name in names]; print(len(files),round(sum(f.stat().st_size for f in files)/1024/1024,2),"MiB")'
+      at: 2026-10-18T21:15:41.262643Z
+      classified: other
+    - cmd: mkdir -p docs/research/cli-release-sol61-warm-2026-10-18-stopped
+      at: 2026-10-18T21:15:52.139826Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; import shutil; src=Path("/private/tmp/prism-cli-release-mixed16-2026-10-18"); dst=Path("docs/research/cli-release-sol61-warm-2026-10-18-stopped"); top={"results.json","protocol.json","manifest.json","run.py","run.log","checksums.txt"}; names={"events.jsonl","rollout.jsonl","command.json","usage.json","prompt.txt","stderr.txt","final.txt"}; files=[src/n for n in top if (src/n).is_file()]+[f for f in (src/"cells").rglob("*") if f.is_file() and f.name in names]; [(dst/f.relative_to(src)).parent.mkdir(parents=True,exist_ok=True) for f in files]; [shutil.copy2(f,dst/f.relative_to(src)) for f in files]; print("copied",len(files),"files",sum(f.stat().st_size for f in files),"bytes")'
+      at: 2026-10-18T21:15:57.53936Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib; p=pathlib.Path("docs/research/cli-release-sol61-warm-2026-10-18-stopped"); d=json.loads((p/"results.json").read_text()); ids=[i for i in json.loads((p/"manifest.json").read_text()) if i in d and "prism_cli" in d[i].get("cells",{}) and not d[i]["cells"]["prism_cli"].get("agent_error")]; print("clean",len(ids)); n=[d[i]["cells"]["native"] for i in ids]; c=[d[i]["cells"]["prism_cli"] for i in ids];
+        for a,z in (("native",n),("cli",c)):
+         inp=sum(x["usage"]["input_tokens"] for x in z); cached=sum(x["usage"]["cached_input_tokens"] for x in z); out=sum(x["usage"]["output_tokens"] for x in z); print(a,"input",inp,"fresh",inp-cached,"cached",cached,"output",out,"cost",sum(x["observed_api_estimate"]["total_usd"] for x in z),"startup",sum(x["observed_api_estimate"]["startup_input_usd"] for x in z),"requests",sum(x["api_calls"] for x in z),"tools",sum(x["tool_calls"] for x in z),"wall",sum(x["wall_s"] for x in z));
+        for i in ids:
+         x=d[i]["cells"]; print(i,round(x["native"]["observed_api_estimate"]["total_usd"],6),round(x["prism_cli"]["observed_api_estimate"]["total_usd"],6),x["native"]["api_calls"],x["prism_cli"]["api_calls"],x["native"]["tool_calls"],x["prism_cli"]["tool_calls"])'
+      at: 2026-10-18T21:16:03.301749Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-18T21:16:31.196847Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; p=Path("docs/research/cli-release-sol61-warm-2026-10-18-stopped"); print("files",sum(1 for x in p.rglob("*") if x.is_file()),"bytes",sum(x.stat().st_size for x in p.rglob("*") if x.is_file()))'
+      at: 2026-10-18T21:16:31.200536Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; d=json.loads(pathlib.Path("docs/research/cli-release-sol61-warm-2026-10-18-stopped/results.json").read_text()); x=d["wide__jackson-databind__SettableBeanProperty_set"]["cells"]["prism_cli"]; [print(i+1, v["command"].replace("/bin/zsh -lc ","")[:500],"bytes",len(str(v.get("aggregated_output") or "").encode())) for i,v in enumerate(x["prism_commands"])]'
+      at: 2026-10-18T21:16:36.082906Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native/events.jsonl"); a=[json.loads(s)["item"] for s in p.read_text().splitlines() if s.startswith("{") and json.loads(s).get("type")=="item.completed" and json.loads(s).get("item",{}).get("type")=="command_execution"]; t=sorted([(len(str(x.get("aggregated_output") or "").encode()),str(x.get("command",""))[:230]) for x in a],reverse=True); [print(*x) for x in t[:7]]'
+      at: 2026-10-18T21:16:42.479371Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,pathlib; out=pathlib.Path("docs/research/cli-release-sol61-warm-2026-10-18-stopped"); d=json.loads((out/"results.json").read_text()); ids=[i for i in json.loads((out/"manifest.json").read_text()) if i in d and "prism_cli" in d[i].get("cells",{}) and not d[i]["cells"]["prism_cli"].get("agent_error")];
+        for arm in ("native","prism_cli"):
+         ptotal=ototal=n=0
+         for i in ids:
+          p=(out/"cells"/i/arm/"events.jsonl") if arm=="prism_cli" else pathlib.Path("/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells")/i/arm/"events.jsonl"
+          es=[json.loads(s) for s in p.read_text().splitlines() if s.startswith("{")]
+          for e in es:
+           x=e.get("item",{})
+           if e.get("type")!="item.completed" or x.get("type")!="command_execution":continue
+           n+=1; z=len(str(x.get("aggregated_output") or "").encode())
+           if "prism " in str(x.get("command","")): ptotal+=z
+           else: ototal+=z
+         print(arm,n,ptotal,ototal,ptotal+ototal)'
+      at: 2026-10-18T21:16:48.686966Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json, pathlib
+        base=pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')
+        for name in ['usage.json','command.json']:
+         p=base/name; x=json.loads(p.read_text()); print(name, type(x).__name__, list(x)[:30] if isinstance(x,dict) else len(x))
+        for name in ['events.jsonl','rollout.jsonl']:
+         p=base/name; print(name,p.stat().st_size)
+         for line in p.open():
+          x=json.loads(line); print('sample keys',list(x)[:25]); print('sample',str(x)[:900]); break
+        ref=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped')
+        print('native exists',ref.exists()); print('native top', [p.name for p in ref.iterdir()][:30])
+        PY
+      at: 2026-10-18T21:21:20.006688Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib,collections
+        for label,base in [('cli',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('native',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         print('\n',label,'exists',base.exists())
+         if not base.exists(): continue
+         print('files',[p.name for p in base.iterdir()]); u=json.loads((base/'usage.json').read_text()); print('usage', {k:u[k] for k in ['wall_s','returncode','requests','usage','api_calls','observed_api_estimate','tool_calls','prism_calls','prism_commands','prism_command_errors','tool_errors'] if k in u})
+         c=json.loads((base/'command.json').read_text()); print('command sample',c[:2]); print('command last',c[-2:])
+         ev=[json.loads(l) for l in (base/'events.jsonl').open()]; print('event types',collections.Counter(e.get('type') for e in ev)); print('event item subtypes',collections.Counter(e.get('item',{}).get('type') for e in ev if isinstance(e.get('item'),dict)))
+        PY
+      at: 2026-10-18T21:21:23.461133Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        for label,base in [('cli',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('native',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         print('\n'+label)
+         n=0
+         for l in (base/'events.jsonl').open():
+          x=json.loads(l); it=x.get('item',{})
+          if x.get('type')=='item.completed' and it.get('type')=='command_execution':
+           n+=1; cmd=it.get('command','').replace('\n',' '); out=it.get('aggregated_output',''); print(f'{n:02d} {len(out):6d}B exit={it.get("exit_code")} {cmd[:190]}')
+        PY
+      at: 2026-10-18T21:21:28.245154Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib,collections
+        for label,base in [('cli',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('native',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         print('\n',label)
+         es=[json.loads(l) for l in (base/'rollout.jsonl').open()]; print('rollout types',collections.Counter(e['type'] for e in es));
+         for e in es:
+          if e['type'] not in ['session_meta','turn_context','response_item']:
+           print(e['ordinal'],e['type'],str(e['payload'])[:400]);
+           if e['ordinal']>100: break
+        PY
+      at: 2026-10-18T21:21:32.666047Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        for label,base in [('CLI',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('NATIVE',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         print('\n###',label)
+         n=0
+         for l in (base/'rollout.jsonl').open():
+          e=json.loads(l); p=e['payload']; typ=e['type']
+          if typ=='token_usage_record':
+           n+=1; u=p['usage']; cost=(u['input_tokens']-u['cached_input_tokens'])*2/1e6+u['cached_input_tokens']*.1/1e6+u['output_tokens']*10/1e6
+           print(f'R{n:02d} in {u["input_tokens"]:6d} cache {u["cached_input_tokens"]:6d} out {u["output_tokens"]:3d} ${cost:.5f}')
+          elif typ=='event_msg' and p.get('type')=='item_completed':
+           it=p.get('item',{}); t=it.get('type')
+           if t=='CommandExecution':
+            cmd=' '.join(it.get('command',[])).replace('\n',' ')
+            s=it.get('aggregated_output','') or it.get('output','') or ''
+            if not isinstance(s,str): s=str(s)
+            print(f'  CMD {len(s):6d}B {cmd[:105]}')
+           elif t=='AgentMessage':
+            s=' '.join(x.get('text','') for x in it.get('content',[]) if isinstance(x,dict)); print('  MSG',s[:150].replace('\n',' '))
+        PY
+      at: 2026-10-18T21:21:38.830493Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        for label,base in [('CLI',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('NATIVE',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         print('\n###',label)
+         n=0
+         for l in (base/'events.jsonl').open():
+          e=json.loads(l); it=e.get('item',{})
+          if e.get('type')=='item.completed' and it.get('type')=='command_execution':
+           n+=1; cmd=it.get('command','').replace('\n',' ⏎ ')
+           print(f'{n:02d}: {cmd[:450]}'+(' ...' if len(cmd)>450 else ''))
+        PY
+      at: 2026-10-18T21:21:45.562966Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib,re
+        base=pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')
+        cmd=[e['item'] for l in (base/'events.jsonl').open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution']
+        for j in [0,1,6,12,26]:
+         x=cmd[j]; s=x['aggregated_output']; print('\n###',j+1,x['command'][:150],len(s),'chars',len(s.splitlines()),'lines')
+         print('HEADINGS')
+         for n,l in enumerate(s.splitlines(),1):
+          if re.match(r'^(// |## |\*\*|── |```|editSites |callSites |testSites |declarations |overrides |references )',l):
+           print(f'{n:3d}:',l[:200])
+           if n>320: break
+         print('START',s[:650].replace('\n',' | '))
+         print('END',s[-400:].replace('\n',' | '))
+        PY
+      at: 2026-10-18T21:21:51.830415Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli/events.jsonl')
+        cmd=[e['item'] for l in p.open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution']
+        for j in [0,6,12,26]:
+         s=cmd[j]['aggregated_output']; lines=s.splitlines(); print('CMD',j+1,'chars',len(s),'longest',sorted(((len(x),i+1,x[:170]) for i,x in enumerate(lines)),reverse=True)[:7])
+        PY
+      at: 2026-10-18T21:21:55.30894Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        for label,base,nums in [('CLI',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli'),[1,7,8,9,16,25,27,33]),('NATIVE',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'),[2,3,4,5,14,19])]:
+         print('\n###',label)
+         cmds=[e['item'] for l in (base/'events.jsonl').open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution']
+         for n in nums:
+          it=cmds[n-1]; c=it['command']; s=it['aggregated_output']; print('\nCMD',n,'exit',it.get('exit_code'),'command length',len(c),'output',len(s)); print('COMMAND START',c[:700].replace('\n',' ⏎ ')); print('COMMAND END',c[-350:].replace('\n',' ⏎ ')); print('OUTPUT HEAD',s[:400].replace('\n',' | ')); print('OUTPUT END',s[-400:].replace('\n',' | '))
+        PY
+      at: 2026-10-18T21:22:03.17172Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        base=pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')
+        cmd=[e['item'] for l in (base/'events.jsonl').open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution']
+        for n in [12,15,17,19,20,22,23,26,27,29,32,34,35]:
+         x=cmd[n-1];s=x['aggregated_output'];print('\nCMD',n,'len',len(s));print(s[:1600]);
+        PY
+      at: 2026-10-18T21:22:06.37544Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib,collections
+        for label,base in [('CLI',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('NATIVE',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         print('\n',label)
+         es=[json.loads(l) for l in (base/'rollout.jsonl').open()]
+         print('response item subtypes',collections.Counter(e['payload'].get('type') for e in es if e['type']=='response_item'))
+         for e in es:
+          if e['type']=='response_item' and e['payload'].get('type') in ['function_call','custom_tool_call','function_call_output','custom_tool_call_output']:
+           p=e['payload']; s=str(p); print(e['ordinal'],p.get('type'),s[:280].replace('\n',' '))
+           if e['ordinal']>75: break
+        PY
+      at: 2026-10-18T21:22:13.442541Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        for label,base in [('cli',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('native',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         print('\n',label)
+         cmds=[e['item'] for l in (base/'events.jsonl').open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution']
+         if label=='cli':
+          for n in [12,15,17,20,35]:
+           s=cmds[n-1]['aggregated_output']; print('cmd',n,'tail',s[-1100:].replace('\n',' | '))
+         for l in (base/'rollout.jsonl').open():
+          e=json.loads(l)
+          if e['type']=='world_state':
+           s=e['payload'].get('state',{}); print('world keys',list(s)[:20]); print('world env bits',str(s.get('environment_context'))[:900]); break
+        PY
+      at: 2026-10-18T21:22:27.978365Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        for label,base in [('cli',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('native',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         print('\n',label)
+         u=json.loads((base/'usage.json').read_text()); print('runtimes',str(u.get('runtimes'))[:1400]); print('cli args',[x for x in json.loads((base/'command.json').read_text()) if 'MAVEN' in x or 'sandbox' in x][:20])
+         for l in (base/'rollout.jsonl').open():
+          e=json.loads(l)
+          if e['type']=='response_item' and e['payload'].get('type')=='custom_tool_call':
+           s=e['payload'].get('input','')
+           if 'mvn' in s.lower():
+            print('tool input',e['ordinal'],s[:650].replace('\n',' ⏎ '))
+        PY
+      at: 2026-10-18T21:22:31.874386Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        for label,base,ordinal in [('cli',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli'),40),('native',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'),39)]:
+         for l in (base/'rollout.jsonl').open():
+          e=json.loads(l)
+          if e['ordinal']==ordinal:
+           print('\n',label,'len',len(e['payload']['input'])); print(e['payload']['input'][-1500:]); break
+        PY
+      at: 2026-10-18T21:22:34.541874Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        b={'CLI':pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli'),'Native':pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native')}
+        for label,p in b.items():
+         req=json.loads((p/'usage.json').read_text())['requests']; print('\n',label)
+         for a,z in [(1,4),(5,10),(11,16),(17,len(req)),(1,len(req))]:
+          part=req[a-1:z]; inp=sum(x['input_tokens'] for x in part); cache=sum(x['cached_input_tokens'] for x in part); out=sum(x['output_tokens'] for x in part); c=(inp-cache)*2/1e6+cache*.1/1e6+out*10/1e6
+          print(f'R{a}-{z}: input={inp} cache={cache} ordinary={inp-cache} out={out} cost=${c:.6f}')
+        PY
+      at: 2026-10-18T21:22:49.537774Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        for label,p in [('native runner',Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/run.py')),('CLI runner',Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/run.py'))]:
+         s=p.read_text(); print('\n',label)
+         for n,l in enumerate(s.splitlines(),1):
+          if any(t in l for t in ['MAVEN','_agent_env','def cloud','def index','run_cell','E2E_PINNED_PATH']): print(f'{n}: {l[:220]}')
+        PY
+      at: 2026-10-18T21:23:00.948935Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        for label,p in [('native',Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native/rollout.jsonl')),('cli',Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli/rollout.jsonl'))]:
+         s=p.read_text(); print(label,'m2 sibling',s.count('-m2'),'MAVEN_OPTS',s.count('MAVEN_OPTS'),'Operation not permitted',s.count('Operation not permitted'),'nodename nor servname',s.count('nodename nor servname'),'MockMaker',s.count('MockMaker'))
+        PY
+      at: 2026-10-18T21:23:04.916087Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib,re,collections
+        for label,base in [('CLI',pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli')),('native',pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native'))]:
+         tool=[]
+         for l in (base/'rollout.jsonl').open():
+          e=json.loads(l)
+          if e['type']=='response_item' and e['payload'].get('type')=='custom_tool_call': tool.append(e['payload'].get('input',''))
+         cc=collections.Counter()
+         for s in tool:
+          cc['model_tool_calls']+=1
+          cc['exec_command']+=s.count('tools.exec_command(')
+          cc['write_stdin']+=s.count('tools.write_stdin(')
+          cc['prism']+=len(re.findall(r'cmd:"prism ',s))
+          cc['test_invocations']+=len(re.findall(r'cmd:"(?:\./mvnw|mvn) [^\"]*?\btest\b',s))
+          cc['mvn_version']+=s.count('mvn -version')
+         print(label,dict(cc))
+        PY
+      at: 2026-10-18T21:23:17.006059Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        p={'CLI':pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli'),'native':pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native')}
+        for label,stop in [('CLI',4),('native',5)]:
+         r=json.loads((p[label]/'usage.json').read_text())['requests']
+         for phase,part in [('through edit/test launch',r[:stop]),('afterward',r[stop:])]:
+          i=sum(x['input_tokens'] for x in part); c=sum(x['cached_input_tokens'] for x in part); o=sum(x['output_tokens'] for x in part); price=(i-c)*2/1e6+c*.1/1e6+o*10/1e6
+          print(label,phase, 'requests',len(part),'ordinary',i-c,'cached',c,'output',o,'cost',round(price,6))
+        PY
+      at: 2026-10-18T21:23:31.959587Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/Projects/provasign/research/harness/runners/run_e2e.py')
+        s=p.read_text().splitlines()
+        for n,l in enumerate(s,1):
+         if l.startswith('def _agent_env') or 'MAVEN_OPTS' in l or 'maven.repo.local' in l or 'm2-agent-seed' in l:
+          a=max(0,n-4); b=min(len(s),n+16); print('\n'.join(f'{i+1}: {s[i]}' for i in range(a,b))); print()
+        PY
+      at: 2026-10-18T21:23:43.217123Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/codex-mixed16-warm-2026-10-17-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/native/events.jsonl')
+        cmd=[e['item'] for l in p.open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution']
+        for n in [5,6,7,8,14,21]:
+         s=cmd[n-1]['aggregated_output']; print('\nCMD',n,'len',len(s));
+         for x in s.splitlines():
+          if any(t in x for t in ['e2e-run-','m2-agent-seed','maven.repo.local','java.class.path','surefire.test.class.path','BUILD SUCCESS','BUILD FAILURE','Operation not permitted','Tests run: 3895']):
+           print(x[:380])
+        PY
+      at: 2026-10-18T21:23:49.586067Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli/events.jsonl')
+        cmd=[e['item'] for l in p.open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution']
+        for n in [3,5,6]:
+         it=cmd[n-1]; print('\nCMD',n,it['command']); print(it['aggregated_output'][:4200])
+        PY
+      at: 2026-10-18T21:23:57.472257Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-10-18T21:24:04.329704Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib,re,collections
+        p=pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli/events.jsonl')
+        s=next(e['item']['aggregated_output'] for l in p.open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution' and 'prism change-impact SettableBeanProperty.set' in e['item'].get('command',''))
+        for line in s.splitlines():
+         if line.startswith(('comments/docs naming ','code naming another ')):
+          title,items=line.split(': ',1); xs=items.split(', '); d=collections.Counter(x.rsplit('/',1)[0] if '/' in x else '.' for x in xs)
+          print(title,'bytes',len(line.encode()),'file entries',len(xs),'top directories',d.most_common(8))
+          print('sample',items[:440])
+        PY
+      at: 2026-10-18T21:27:11.804811Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli/events.jsonl')
+        s=next(e['item']['aggregated_output'] for l in p.open() if (e:=json.loads(l)).get('type')=='item.completed' and e.get('item',{}).get('type')=='command_execution' and 'prism change-impact SettableBeanProperty.set' in e['item'].get('command',''))
+        prefixes=['src/main/java/com/fasterxml/jackson/databind/','src/test/java/com/fasterxml/jackson/databind/']
+        for line in s.splitlines():
+         if not line.startswith(('comments/docs naming ','code naming another ')): continue
+         title,items=line.split(': ',1); xs=items.split(', ')
+         groups={k:[] for k in prefixes}; rest=[]
+         for item in xs:
+          found=next((p for p in prefixes if item.startswith(p)),None)
+          (groups[found] if found else rest).append(item[len(found):] if found else item)
+         out=title+':\n'
+         for p in prefixes:
+          if groups[p]: out+='  '+p+' '+', '.join(groups[p])+'\n'
+         if rest: out+='  other: '+', '.join(rest)+'\n'
+         print(title,'before',len(line),'after',len(out),'saved',len(line)-len(out),'group counts',[len(groups[p]) for p in prefixes],len(rest))
+        PY
+      at: 2026-10-18T21:27:28.206727Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/cli-release-sol61-warm-2026-10-18-stopped/cells/wide__jackson-databind__SettableBeanProperty_set/prism_cli/rollout.jsonl')
+        for l in p.open():
+         e=json.loads(l)
+         if e['type']=='world_state':
+          s=e['payload']['state']['agents_md']['text']; print(s[:4200]); break
+        PY
+      at: 2026-10-18T21:27:38.965574Z
+      classified: other
+notes:
+    - text: continuation of session 01a14a3c-f3e2-75f3-99af-5ddd12df505a — events captured after its evidence was finalized
+      at: 2026-10-18T17:06:16.059325Z
+redactions: 0
