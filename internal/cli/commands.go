@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -542,7 +543,7 @@ mcp_surface: "compact"
 	// 3. Write steering instructions matching the chosen mode.
 	steering := steeringBlock()
 	if iface == interfaceCLI {
-		steering = cliSteeringInstructions
+		steering = cliSteeringInstructionsForOS(runtime.GOOS)
 	}
 	writeSteeringBlock(abs, harnesses, refresh, steering)
 

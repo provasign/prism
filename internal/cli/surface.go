@@ -233,6 +233,17 @@ Obligations:
 <!-- prism:end -->
 `
 
+// cliSteeringInstructionsForOS adds platform-specific editing guidance only
+// where the shell syntax has caused failed source edits. The note names macOS
+// so a project initialized there remains accurate when opened on another OS.
+func cliSteeringInstructionsForOS(goos string) string {
+	if goos != "darwin" {
+		return cliSteeringInstructions
+	}
+	return strings.Replace(cliSteeringInstructions, "<!-- prism:end -->",
+		"On macOS, use your host's Edit or patch tool for source edits; `sed -i` without a suffix fails.\n\n<!-- prism:end -->", 1)
+}
+
 // allowClaudeBashPrism lets Claude Code run `prism` without a prompt per
 // call, the CLI counterpart of the mcp__prism auto-allow.
 func allowClaudeBashPrism(path string) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -43,6 +44,25 @@ func TestParseInterface(t *testing.T) {
 	}
 }
 
+func TestCLISteeringInstructionsForOS(t *testing.T) {
+	for _, tc := range []struct {
+		goos     string
+		wantNote bool
+	}{
+		{"darwin", true},
+		{"linux", false},
+		{"windows", false},
+	} {
+		got := cliSteeringInstructionsForOS(tc.goos)
+		if strings.Contains(got, "On macOS, use your host's Edit or patch tool") != tc.wantNote {
+			t.Errorf("%s: macOS edit guidance mismatch", tc.goos)
+		}
+		if strings.Count(got, "<!-- prism:end -->") != 1 {
+			t.Errorf("%s: steering marker count = %d", tc.goos, strings.Count(got, "<!-- prism:end -->"))
+		}
+	}
+}
+
 func TestSetPrismYAMLInterfaceKeepsOtherLines(t *testing.T) {
 	in := "version: 2\narch_deny: \"a -> b\"\n"
 	out := setPrismYAMLInterface(in, "cli")
@@ -74,6 +94,9 @@ func TestInitCLIInterfaceRegistersNoMCP(t *testing.T) {
 	claude, _ := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
 	if !strings.Contains(string(claude), "no MCP server is registered") || strings.Contains(string(claude), "mcp__prism__prism") {
 		t.Errorf("CLAUDE.md is not CLI steering:\n%s", claude)
+	}
+	if strings.Contains(string(claude), "On macOS, use your host's Edit or patch tool") != (runtime.GOOS == "darwin") {
+		t.Errorf("CLAUDE.md has wrong OS guidance for %s:\n%s", runtime.GOOS, claude)
 	}
 	settings, _ := os.ReadFile(filepath.Join(dir, ".claude", "settings.json"))
 	if !strings.Contains(string(settings), "Bash(prism:*)") {
