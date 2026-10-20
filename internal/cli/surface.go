@@ -198,17 +198,20 @@ func unregisterMCPTools(projectDir string, harnesses []string) {
 // per session, as the first call, then grep for everything after it (52 of 53
 // Claude sessions, 2026-10-18); naming a command per moment did not change
 // that (steer12 A/B, 1.4 -> 1.3 calls). This version states the rule as MUST.
+// Reads of a known file and range go to the agent's own Read tool: requiring
+// prism read for them cost more requests (route-read12 A/B 2026-10-20: 11 vs
+// 10 solved, 59 vs 76 requests, task cost 0.75x).
 const cliSteeringInstructions = `
 ## Prism — context delivery
 
 Prism is installed as the ` + "`prism`" + ` command; no MCP server is registered.
-You MUST use prism, not grep/rg/find/cat/head/sed -n, whenever you search for or
-read source code in this repository, for the whole session, not only at the start:
+You MUST use prism, not grep/rg/find, whenever you search for source code in this
+repository, for the whole session, not only at the start:
   search for a name or string     -> prism search term [term2 ...] --scope text --format text
-  read a source file or a range   -> prism read path --from N --to M --format text
-                                     (several whole files: prism read a b c --format text)
   read one symbol's body          -> prism lookup Name [Name2 ...] --format text
   callers, implementations, tests -> prism query --terms Name,Other --format text
+Once you know the file and lines you need, read them directly with your Read tool
+(or prism read path --from N --to M --format text); no further search is needed for that.
 Before you change ` + mcp.ImpactRequiredFor + `, you MUST run
 prism change-impact Type.method --format text first.
 After a rename or removal, you MUST run prism verify --removed Type.oldMethod --format text
