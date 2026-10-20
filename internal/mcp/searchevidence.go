@@ -795,6 +795,9 @@ func (h *Handler) renderSearchBodiesUnlessShared(out map[string]any, regions []s
 	for _, region := range regions {
 		others := sharedNameSymbols(out, region)
 		if len(others) == 0 {
+			others = h.indexedSharedName(out, region)
+		}
+		if len(others) == 0 {
 			keep = append(keep, region)
 			continue
 		}
@@ -816,6 +819,47 @@ func (h *Handler) renderSearchBodiesUnlessShared(out map[string]any, regions []s
 		return rendered
 	}
 	return "\n" + strings.Join(notes, "\n") + "\n" + rendered
+}
+
+// indexedSharedName is sharedNameSymbols for an answer that lists no
+// symbols (scope=text): the index's other declarations of a searched name.
+// urfave pr2355 (2026-10-20): `prism search PreParse --scope text` noted five
+// PreParse symbols, then printed BoolWithInverseFlag.PreParse in full while
+// the one the task needed, FlagBase.PreParse, was a single locator line.
+// Only a body whose name is a searched term is checked; a caller's body
+// that merely contains the term is not "the" symbol.
+func (h *Handler) indexedSharedName(out map[string]any, region searchSourceRegion) []string {
+	if h.Grove == nil || !region.hasSymbol || region.symbol.Name == "" || !searchedTerm(out, region.symbol.Name) {
+		return nil
+	}
+	cands, err := h.Grove.Resolve(context.Background(), region.symbol.Name)
+	if err != nil || len(cands) < 2 {
+		return nil
+	}
+	sym := region.symbol
+	var others []string
+	for _, c := range cands {
+		if c.TestDouble || (filepath.ToSlash(c.File) == region.file && c.Line == sym.Span.Start) ||
+			sameTypeAndConstructor(sym.QualifiedName, c.Name, sym.Name) {
+			continue
+		}
+		others = append(others, fmt.Sprintf("%s %s:%d", c.Name, filepath.ToSlash(c.File), c.Line))
+	}
+	return others
+}
+
+// searchedTerm reports whether name is one of the answer's search terms.
+func searchedTerm(out map[string]any, name string) bool {
+	groups := []map[string]any{out}
+	if batch, ok := out["results"].([]map[string]any); ok {
+		groups = append(groups, batch...)
+	}
+	for _, g := range groups {
+		if q, _ := g["query"].(string); strings.TrimSpace(q) == name {
+			return true
+		}
+	}
+	return false
 }
 
 // sharedNameSymbols lists the answer's other exact-name symbols that share

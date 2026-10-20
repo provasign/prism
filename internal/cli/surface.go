@@ -341,6 +341,7 @@ var cliHintReplacer = strings.NewReplacer(
 	"/files_only.", "/--files-only.",
 	"Raise limit=", "Raise --limit",
 	"context=N", "--context N",
+	"Use op=lookup with the qualified name you mean.", "Run prism lookup with the qualified name you mean.",
 )
 
 // looksLikeRegex: escapes and wildcards a literal search almost never wants.
