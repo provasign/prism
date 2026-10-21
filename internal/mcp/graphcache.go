@@ -22,7 +22,9 @@ package mcp
 // only at High confidence that the prior delivery is still inside the
 // agent's attention window — an agent asking a third time has probably
 // lost it, so Prism re-sends rather than pointing at content the model can
-// no longer see.
+// no longer see. A pointer is never followed by another pointer: an
+// identical repeat after a pointer always delivers in full (the graph
+// equivalent of read's force:true, without a public schema change).
 
 import (
 	"context"
@@ -43,6 +45,10 @@ import (
 // introduces costs more than re-sending the result. Small results are never
 // pointered.
 const minGraphPointerTokens = 600
+
+// graphPointerLevel is the session DisclosureLevel recorded for a pointer
+// delivery; graphDedupe never sends two pointers in a row for one key.
+const graphPointerLevel = "sha-pointer"
 
 // refreshIndexBestEffort delta-reindexes before a whole-repo graph tool
 // runs. Best-effort: an index failure must not fail the tool — the result
@@ -139,11 +145,19 @@ func (h *Handler) graphDedupe(name string, args map[string]any, out any) any {
 		// 2nd delivery: always a pointer (the body just went out). 3rd+:
 		// only while demonstrably within the attention window — repeated
 		// re-asking is itself evidence the prior delivery scrolled out.
-		if entry.AccessCount == 1 || conf == session.High {
+		//
+		// Recovery: a pointer is only ever sent right after a FULL delivery.
+		// An identical repeat that follows a pointer is the agent saying it
+		// cannot see the body (compacted, summarized away, never fully
+		// shown), and the compact interface has no force argument for graph
+		// ops — so that repeat delivers in full. Confidence alone cannot
+		// decide this: without host context telemetry it sees only Prism's
+		// own ledger, which stays High while the host compacts.
+		if entry.DisclosureLevel != graphPointerLevel && (entry.AccessCount == 1 || conf == session.High) {
 			// Capture the delivery ordinal BEFORE Record: Lookup returns the
 			// live entry, so Record's increment would otherwise double-count.
 			deliveries := entry.AccessCount + 1
-			h.Session.Record(key, hash, int64(tokens), "sha-pointer")
+			h.Session.Record(key, hash, int64(tokens), graphPointerLevel)
 			h.Session.RecordContextUsed(key, contextUsed)
 			pointer := graphPointerResponse(name, hash, deliveries, out)
 			if pj, err := json.Marshal(pointer); err == nil {
@@ -195,8 +209,9 @@ func graphPointerResponse(name, hash string, seenCount int, out any) map[string]
 		"sha":    short,
 		"seen":   seenCount,
 		"note": fmt.Sprintf("// [prism:cached] %s @sha:%s (seen ×%d, result recomputed just now and is "+
-			"IDENTICAL — prior delivery still in context). This is NOT an error or an empty result: "+
-			"use the copy delivered earlier this session.", name, short, seenCount),
+			"IDENTICAL to the copy delivered earlier this session). This is NOT an error or an empty result: "+
+			"use that copy; if it is no longer available, repeat this identical request and the full "+
+			"result is delivered.", name, short, seenCount),
 	}
 	// Summarize without re-sending: array lengths + identity strings.
 	var m map[string]any
