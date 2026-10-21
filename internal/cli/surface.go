@@ -219,8 +219,6 @@ Once you know the file and lines you need, read them directly with your Read too
 (or prism read path --from N --to M --format text); no further search is needed for that.
 Before you change ` + mcp.ImpactRequiredFor + `, you MUST run
 prism change-impact Type.method --format text first.
-After a rename or removal, you MUST run prism verify --removed Type.oldMethod --format text
-before you finish.
 grep, head and tail stay fine for build, test and log output, never for source code.
 
 Always add ` + "`--format text`" + `. Single-quote names that contain $. Put the terms you
@@ -234,6 +232,9 @@ Obligations:
   - Relay change-impact sites as-is; ` + mcp.ImpactOptionalFor + ` can proceed from
     the source you have read.
   - Report gaps; never narrow scope to fit what was found.
+  - verify is optional: prism verify --removed A,B after a removal, or plain
+    prism verify where a build/typecheck cannot cover the callers. It is never
+    a required closing step.
 
 <!-- prism:end -->
 `

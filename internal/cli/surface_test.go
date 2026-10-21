@@ -63,6 +63,25 @@ func TestCLISteeringInstructionsForOS(t *testing.T) {
 	}
 }
 
+// CLI and MCP steering carry the same verify obligation: optional, never a
+// required closing step (stack audit 2026-10-20, policy drift).
+func TestCLISteeringVerificationOptional(t *testing.T) {
+	got := cliSteeringInstructionsForOS("linux")
+	for _, want := range []string{
+		"verify is optional",
+		"prism verify --removed A,B after a removal",
+		"build/typecheck cannot cover the callers",
+		"It is never\n    a required closing step",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("CLI steering omits %q", want)
+		}
+	}
+	if strings.Contains(got, "you MUST run prism verify") || strings.Contains(got, "before you finish") {
+		t.Error("CLI steering still mandates verification")
+	}
+}
+
 func TestSetPrismYAMLInterfaceKeepsOtherLines(t *testing.T) {
 	in := "version: 2\narch_deny: \"a -> b\"\n"
 	out := setPrismYAMLInterface(in, "cli")
