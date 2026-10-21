@@ -60,10 +60,16 @@ func (h *Handler) refreshIndexBestEffort(ctx context.Context) string {
 	if h.Grove == nil {
 		return ""
 	}
-	if _, err := h.Grove.Index(ctx, h.Root); err != nil {
+	res, err := h.Grove.Index(ctx, h.Root)
+	if err != nil {
 		return "index refresh failed (" + err.Error() + "); this result was computed against a possibly stale index"
 	}
-	return ""
+	if res == nil {
+		return ""
+	}
+	// A nil error does not mean every file indexed: per-file failures come
+	// back in res.Errors, and a file that failed keeps its old facts.
+	return h.indexErrorWarning(ctx, res.Errors)
 }
 
 // freshened runs an index-backed READ tool against a delta-refreshed index.
@@ -94,13 +100,23 @@ func (h *Handler) freshened(ctx context.Context, fn func() (any, error)) (any, e
 }
 
 // attachStaleWarning adds a refresh-failure warning to a tool's map result.
-// Best-effort: non-map results pass through unchanged.
+// Best-effort: map and query results carry it; other shapes pass through.
 func attachStaleWarning(out any, note string) any {
 	if note == "" {
 		return out
 	}
-	if m, ok := out.(map[string]any); ok && m != nil {
-		m["staleWarning"] = note
+	switch v := out.(type) {
+	case map[string]any:
+		if v != nil {
+			v["staleWarning"] = note
+		}
+	case queryResult:
+		v.StaleWarning = note
+		return v
+	case *queryResult:
+		if v != nil {
+			v.StaleWarning = note
+		}
 	}
 	return out
 }
@@ -234,6 +250,10 @@ func graphPointerResponse(name, hash string, seenCount int, out any) map[string]
 				}
 			case string:
 				switch k {
+				case "staleWarning":
+					// Recomputed with this call: a pointer must not hide
+					// that the identical result is still stale.
+					resp[k] = tv
 				case "query", "completeness", "familyCompleteness", "callerCoverage", "callerEvidence", "coverageNote", "newName", "scope", "completenessScope", "scopeBoundary", "relayNote":
 					summary[k] = tv
 				}

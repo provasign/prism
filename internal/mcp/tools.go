@@ -57,6 +57,10 @@ type Handler struct {
 	// recognize a later ranged read of a query window.
 	rangeMu         sync.Mutex
 	deliveredRanges map[string]deliveredFileRanges
+
+	// indexErrs: per-file index failures the previous refresh reported
+	// (indexerrors.go).
+	indexErrs indexErrorTracker
 }
 
 // NewHandler constructs a handler with sensible defaults.
@@ -1043,6 +1047,9 @@ type queryResult struct {
 	// Note explains an empty result so agents can tell "wrong root" or
 	// "term typo" apart from "genuinely no matches" without guessing.
 	Note string `json:"note,omitempty"`
+	// StaleWarning: the pre-answer index refresh failed or left files
+	// unindexed (attachStaleWarning).
+	StaleWarning string `json:"staleWarning,omitempty"`
 }
 
 type rankedSymbol struct {

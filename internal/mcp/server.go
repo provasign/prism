@@ -754,6 +754,16 @@ func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any,
 			text = h.once.applyKnown(text)
 		}
 	}
+	if rendered {
+		// Only the change_impact renderer prints staleWarning; every other
+		// index-backed text answer dropped it, so a result computed on a
+		// stale or partially refreshed index read as fresh.
+		if m, ok := out.(map[string]any); ok {
+			if w, _ := m["staleWarning"].(string); w != "" && !strings.Contains(text, w) {
+				text = "// " + w + "\n" + text
+			}
+		}
+	}
 	return text, rendered
 }
 
