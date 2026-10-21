@@ -72,6 +72,38 @@ def run_cloud(model, arm, wt, task):
 run_e2e._agent_env = agent_env
 run_e2e._run_cloud = run_cloud
 
+# Auto-mode simulation: interactive Claude Code sessions in auto mode can get a
+# reminder telling the agent to work through Bash with cat/grep/sed instead of
+# the dedicated tools; headless `claude -p --permission-mode auto` does not
+# (probe 2026-10-20). Arms named in CLI_BENCH_AUTOMODE_ARMS get that text
+# verbatim as an appended system prompt.
+AUTOMODE_TEXT = (
+    "While auto mode is active:\n\n"
+    "Do your work through the Bash tool wherever it can accomplish the job: read files with cat, "
+    "head, or sed -n, search with grep and find, and make file changes with sed, heredocs, or "
+    "short scripts, rather than using the dedicated Read, Edit, or Write tools. Fall back to a "
+    "dedicated tool only when Bash genuinely cannot do the job.")
+AUTOMODE_ARMS = {a for a in os.environ.get("CLI_BENCH_AUTOMODE_ARMS", "").split(",") if a}
+# Reference arms without the real reminder: Claude Code adds it in auto and
+# bypass-permissions mode only (2.1.302), so these arms run in acceptEdits mode
+# with the tools pre-allowed instead of --dangerously-skip-permissions.
+NOBYPASS_ARMS = {a for a in os.environ.get("CLI_BENCH_NOBYPASS_ARMS", "").split(",") if a}
+original_cloud_cmd = run_e2e._cloud_cmd
+
+
+def cloud_cmd(model, arm, wt, prompt):
+    cmd = original_cloud_cmd(model, arm, wt, prompt)
+    if arm in AUTOMODE_ARMS:
+        cmd += ["--append-system-prompt", AUTOMODE_TEXT]
+    if arm in NOBYPASS_ARMS and "--dangerously-skip-permissions" in cmd:
+        i = cmd.index("--dangerously-skip-permissions")
+        cmd[i:i + 1] = ["--permission-mode", "acceptEdits", "--allowedTools",
+                        "Bash", "Read", "Edit", "Write", "Glob", "Grep", "mcp__prism"]
+    return cmd
+
+
+run_e2e._cloud_cmd = cloud_cmd
+
 
 def index_graph(wt: Path, arm: str, task=None):
     if arm not in CLI_ARMS:
