@@ -20,6 +20,10 @@ type ReadinessIssue struct {
 
 var goMissingModule = regexp.MustCompile(`could not import ([A-Za-z0-9._-]+\.[A-Za-z0-9._/-]+) \(`)
 
+// goImportFailure captures the import path and go/types' reason from a
+// "could not import <path> (<reason>)" diagnostic.
+var goImportFailure = regexp.MustCompile(`could not import (\S+) \((.*)\)\s*$`)
+
 // Readiness reads grove's native-analyzer diagnostics for one index run and
 // names each language that fell back to name-based resolution, with the
 // command that fixes it. Benign skips (nothing changed, previous compiler
@@ -27,13 +31,16 @@ var goMissingModule = regexp.MustCompile(`could not import ([A-Za-z0-9._-]+\.[A-
 func Readiness(root string, native []string) []ReadinessIssue {
 	var out []ReadinessIssue
 	seen := map[string]bool{}
-	add := func(lang, problem, fix string) {
-		if seen[lang] {
+	addKey := func(key, lang, problem, fix string) {
+		if seen[key] {
 			return
 		}
-		seen[lang] = true
+		seen[key] = true
 		out = append(out, ReadinessIssue{Language: lang, Problem: problem, Fix: fix})
 	}
+	add := func(lang, problem, fix string) { addKey(lang, lang, problem, fix) }
+	var goModules []string
+	goModulesRead := false
 	for _, d := range native {
 		switch {
 		case strings.Contains(d, "no changed files in its languages"), strings.Contains(d, "disabled by config"),
@@ -92,6 +99,21 @@ func Readiness(root string, native []string) []ReadinessIssue {
 			}
 		case strings.HasPrefix(d, "go: "):
 			reason := strings.TrimPrefix(d, "go: ")
+			if !goModulesRead {
+				goModules, goModulesRead = goMainModules(root), true
+			}
+			// A failed import inside the project's own module(s) is not a
+			// missing download: the package is local and `go mod download`
+			// cannot change it. go/types reports `invalid package name: ""`
+			// for a package it found but could not load any Go file of (a
+			// cgo-only local package, astkit thirdparty/tsobjc), which is the
+			// same case even when the module path is unknown.
+			if m := goImportFailure.FindStringSubmatch(reason); m != nil &&
+				(goPathInModules(m[1], goModules) || strings.Contains(m[2], `invalid package name: ""`)) {
+				addKey("go-local", "go", "local package "+m[1]+" could not be type-checked ("+m[2]+"); packages importing it are type-checked partially",
+					"no download is needed: the package is part of this project. If `go build ./...` succeeds in "+root+", this is a Go-pass limit (for example a cgo-only package) and those results are partly name-based")
+				continue
+			}
 			if m := goMissingModule.FindStringSubmatch(reason); m != nil && !strings.HasPrefix(m[1], "golang.org/toolchain") {
 				add("go", "Go module dependencies are not downloaded (e.g. "+m[1]+"); packages importing them are type-checked partially",
 					"run `go mod download` in "+root+", then `prism index`")
@@ -124,4 +146,70 @@ func jsInstallCommand(root string) string {
 	default:
 		return "npm install"
 	}
+}
+
+// goMainModules returns the module paths of the project's main module(s):
+// root/go.mod and, with a go.work, each used module's go.mod.
+func goMainModules(root string) []string {
+	var mods []string
+	if m := goModulePath(filepath.Join(root, "go.mod")); m != "" {
+		mods = append(mods, m)
+	}
+	work, err := os.ReadFile(filepath.Join(root, "go.work"))
+	if err != nil {
+		return mods
+	}
+	inUse := false
+	for _, line := range strings.Split(string(work), "\n") {
+		line = strings.TrimSpace(line)
+		if i := strings.Index(line, "//"); i >= 0 {
+			line = strings.TrimSpace(line[:i])
+		}
+		var dir string
+		switch {
+		case inUse && line == ")":
+			inUse = false
+		case inUse:
+			dir = line
+		case line == "use (":
+			inUse = true
+		case strings.HasPrefix(line, "use "):
+			dir = strings.TrimSpace(strings.TrimPrefix(line, "use "))
+		}
+		if dir = strings.Trim(dir, `"`); dir == "" {
+			continue
+		}
+		if !filepath.IsAbs(dir) {
+			dir = filepath.Join(root, dir)
+		}
+		if m := goModulePath(filepath.Join(dir, "go.mod")); m != "" {
+			mods = append(mods, m)
+		}
+	}
+	return mods
+}
+
+// goModulePath reads the module directive of a go.mod file.
+func goModulePath(gomod string) string {
+	data, err := os.ReadFile(gomod)
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[0] == "module" {
+			return strings.Trim(fields[1], `"`)
+		}
+	}
+	return ""
+}
+
+// goPathInModules reports whether an import path belongs to one of mods.
+func goPathInModules(path string, mods []string) bool {
+	for _, m := range mods {
+		if path == m || strings.HasPrefix(path, m+"/") {
+			return true
+		}
+	}
+	return false
 }
