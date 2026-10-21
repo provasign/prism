@@ -362,9 +362,11 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	famSeen := make(map[string]bool)
 
 	for _, seed := range seedSyms {
-		// Expand by qualified name when the symbol has one: bare names
-		// ("Get", "Keys") collide across packages on large repos and drag
-		// unrelated symbols' callers and tests into the result set.
+		// Expand by the seed's identity (identity.go): even qualified names
+		// collide across files and packages ("Target" in left/ and right/)
+		// and drag unrelated symbols' callers and tests into the result
+		// set. seedQuery (qualified name) remains only for the file-scoped
+		// family query below.
 		seedQuery := seed.QualifiedName
 		if seedQuery == "" {
 			seedQuery = seed.Name
@@ -375,7 +377,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			// traverses calls AND uses-type together and erases edge types, which
 			// floods the result with type-mention noise and buries the actual
 			// call chain; CallNeighbors returns exactly the resolved calls edges.
-			if neighbors, err := h.Grove.CallNeighbors(ctx, seedQuery); err == nil {
+			if neighbors, err := h.identityCallNeighbors(ctx, seed); err == nil {
 				for _, nb := range neighbors {
 					directCallIDs[nb.ID] = true
 					if !seenIDs[nb.ID] {
@@ -386,7 +388,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 				// Verified test callers, for the pointer line in
 				// renderAnchorSummary -- NOT added to graphExtra/candidates,
 				// see testCallers' declaration above.
-				if tc, err := h.Grove.InboundCallers(ctx, seedQuery); err == nil {
+				if tc, err := h.identityInboundCallers(ctx, seed); err == nil {
 					for _, caller := range tc {
 						if !isVerifiedTestCaller(caller.FilePath) {
 							continue

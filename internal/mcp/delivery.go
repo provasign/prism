@@ -412,10 +412,12 @@ func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.Symbo
 		if q == "" {
 			q = a.Name
 		}
-		if q == "" || seen[q] {
+		// One line per identity, not per name: namesakes in different files
+		// are different anchors with different callers.
+		if q == "" || seen[a.FilePath+"|"+q] {
 			continue
 		}
-		seen[q] = true
+		seen[a.FilePath+"|"+q] = true
 		// Doc/config symbols have no meaningful call graph.
 		if categorize(a) == ranking.CategoryDoc {
 			continue
@@ -424,7 +426,7 @@ func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.Symbo
 
 		callerFiles := []string{}
 		callerN := 0
-		if edges, err := h.Grove.Edges(ctx, q, "in", []string{"calls"}); err == nil {
+		if edges, err := h.identityEdges(ctx, a, "in", []string{"calls"}); err == nil {
 			seenFile := map[string]bool{}
 			for _, e := range edges {
 				callerN++
