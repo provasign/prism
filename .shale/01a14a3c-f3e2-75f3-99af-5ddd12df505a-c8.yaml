@@ -1,0 +1,220 @@
+shale_version: "0"
+id: 01a14a3c-f3e2-75f3-99af-5ddd12df505a-c8
+created_at: 2026-10-20T23:10:13.956078Z
+finalized_at: 2026-10-21T11:46:58.010753Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/research/stack-audit-2026-10-20/REPORT.md
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-20T23:20:40.460146Z
+    - path: docs/research/stack-audit-2026-10-20/replay.py
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-20T23:20:40.460146Z
+commands:
+    - cmd: prism search 'configChanged' 'mtime' 'sameContent' 'changedLanguages' --path internal/index/indexer.go --scope text --no-bodies --format text
+      at: 2026-10-20T23:10:13.956078Z
+      classified: other
+    - cmd: prism search 'CallSites:' 'func extractJSCall' --path strategies --glob '*.go' --scope text --no-bodies --format text
+      at: 2026-10-20T23:10:13.980019Z
+      classified: other
+    - cmd: /private/tmp/prism-audit-20261020 read internal/native/js_ts.go --from 575 --to 695 --format text
+      at: 2026-10-20T23:10:14.561553Z
+      classified: other
+    - cmd: /private/tmp/prism-audit-20261020 read internal/index/indexer.go --from 380 --to 535 --format text
+      at: 2026-10-20T23:10:29.969539Z
+      classified: other
+    - cmd: prism search 'store.Open' --path internal/index --scope text --no-bodies --format text
+      at: 2026-10-20T23:10:30.057266Z
+      classified: other
+    - cmd: prism lookup MaskFile --format text
+      at: 2026-10-20T23:10:30.409281Z
+      classified: other
+    - cmd: /private/tmp/prism-audit-20261020 read internal/index/indexer.go --from 655 --to 755 --format text
+      at: 2026-10-20T23:10:35.599776Z
+      classified: other
+    - cmd: /private/tmp/prism-audit-20261020 read internal/parser/languages.go --from 1 --to 135 --format text
+      at: 2026-10-20T23:10:35.687227Z
+      classified: other
+    - cmd: /private/tmp/prism-audit-20261020 read internal/native/js_ts.go --from 1 --to 155 --format text
+      at: 2026-10-20T23:11:08.244994Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-10-20T23:11:08.254867Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-10-20T23:11:08.254867Z
+      classified: other
+    - cmd: prism lookup index.New index.Indexer.Index store.Store.Close --format text
+      at: 2026-10-20T23:11:08.336547Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-stack-audit-20261020
+      at: 2026-10-20T23:11:08.498476Z
+      classified: other
+    - cmd: npm root -g
+      at: 2026-10-20T23:11:08.656586Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-stack-audit-20261020"); pairs={"astkit":("/Users/tapabratapal/Projects/provasign/astkit/audit_review_test.go","astkit_audit_test.go"),"grove":("/Users/tapabratapal/Projects/provasign/grove/internal/index/audit_review_test.go","grove_audit_test.go")}; [(p.joinpath(k+"-overlay.json").write_text(json.dumps({"Replace":{dest:str(p/src)}}))) for k,(dest,src) in pairs.items()]'
+      at: 2026-10-20T23:11:29.42597Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/astkit-overlay.json . -run TestAudit -v -count=1
+      at: 2026-10-20T23:11:36.50702Z
+      classified: test
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/grove-overlay.json ./internal/index -run TestAudit -v -count=1
+      at: 2026-10-20T23:11:36.508464Z
+      classified: test
+    - cmd: prism search 'func (e *Engine) ParseFile' 'HasError' 'ERROR' --path internal/parser/engine.go --scope text --no-bodies --format text
+      at: 2026-10-20T23:11:36.710093Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/astkit-overlay.json . -run TestAudit -v -count=1
+      at: 2026-10-20T23:12:02.348631Z
+      classified: test
+    - cmd: python3 -B -c 'from pathlib import Path; print(Path("/opt/homebrew/lib/node_modules/typescript/package.json").is_file())'
+      at: 2026-10-20T23:12:18.166274Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/grove-overlay.json ./internal/index -run TestAudit -v -count=1
+      at: 2026-10-20T23:12:18.1938Z
+      classified: test
+    - cmd: /private/tmp/prism-audit-20261020 read internal/index/testhelpers_test.go --from 1 --to 55 --format text
+      at: 2026-10-20T23:12:31.853752Z
+      classified: other
+    - cmd: /private/tmp/prism-audit-20261020 read internal/index/indexer.go --from 755 --to 810 --format text
+      at: 2026-10-20T23:12:31.853754Z
+      classified: other
+    - cmd: prism search 'typescript' --path internal/native/js_ts_test.go --scope text --no-bodies --format text
+      at: 2026-10-20T23:12:32.086532Z
+      classified: other
+    - cmd: prism search 'MetaNativeComplete' --path internal/index --scope text --files-only --format text
+      at: 2026-10-20T23:12:51.847591Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/grove-overlay.json ./internal/index -run TestAudit -v -count=1
+      at: 2026-10-20T23:13:11.093409Z
+      classified: test
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-stack-audit-20261020"); p.joinpath("prism-overlay.json").write_text(json.dumps({"Replace":{"/Users/tapabratapal/Projects/provasign/prism/internal/mcp/audit_review_test.go":str(p/"prism_audit_test.go")}}))'
+      at: 2026-10-20T23:13:55.712631Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/prism-overlay.json ./internal/mcp -run TestAudit -v -count=1
+      at: 2026-10-20T23:14:19.506951Z
+      classified: test
+    - cmd: go version -m /private/tmp/prism-audit-20261020
+      at: 2026-10-20T23:14:19.557108Z
+      classified: other
+    - cmd: git describe --tags --always
+      at: 2026-10-20T23:14:19.563042Z
+      classified: other
+    - cmd: git describe --tags --always
+      at: 2026-10-20T23:14:19.57948Z
+      classified: other
+    - cmd: git describe --tags --always
+      at: 2026-10-20T23:14:19.587135Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-stack-audit-20261020/cli_probes.py
+      at: 2026-10-20T23:14:19.67513Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/prism-overlay.json ./internal/mcp -run TestAudit -v -count=1
+      at: 2026-10-20T23:14:34.00096Z
+      classified: test
+    - cmd: /private/tmp/prism-audit-20261020 read internal/native/go_importer.go --from 1 --to 205 --format text
+      at: 2026-10-20T23:16:13.267508Z
+      classified: other
+    - cmd: prism lookup tsobjc.GetLanguage --format text
+      at: 2026-10-20T23:16:13.299503Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/prism-overlay.json ./internal/mcp -run TestAudit -v -count=1
+      at: 2026-10-20T23:16:13.343395Z
+      classified: test
+    - cmd: prism lookup goListPackage goProjectImporter.load --format text
+      at: 2026-10-20T23:16:21.027466Z
+      classified: other
+    - cmd: python3 -B -c 'import json,pathlib; p=pathlib.Path("/private/tmp/prism-stack-audit-20261020"); f=p/"grove-overlay.json"; d=json.loads(f.read_text()); d["Replace"]["/Users/tapabratapal/Projects/provasign/grove/internal/native/audit_review_test.go"]=str(p/"grove_native_audit_test.go"); f.write_text(json.dumps(d))'
+      at: 2026-10-20T23:17:03.643742Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/grove-overlay.json ./internal/index ./internal/native -run TestAudit -v -count=1
+      at: 2026-10-20T23:17:31.175726Z
+      classified: test
+    - cmd: git status -sb
+      at: 2026-10-20T23:17:31.270242Z
+      classified: other
+    - cmd: /private/tmp/prism-audit-20261020 read internal/parser/engine.go --from 1 --to 55 --format text
+      at: 2026-10-20T23:18:18.736558Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/prism-stack-audit-20261020/prism-overlay.json ./internal/mcp -run TestAudit -v -count=1
+      at: 2026-10-20T23:18:55.227565Z
+      classified: test
+    - cmd: git branch --show-current
+      at: 2026-10-20T23:18:55.310895Z
+      classified: other
+    - cmd: gofmt -w /private/tmp/prism-stack-audit-20261020/astkit_audit_test.go /private/tmp/prism-stack-audit-20261020/grove_audit_test.go /private/tmp/prism-stack-audit-20261020/grove_native_audit_test.go /private/tmp/prism-stack-audit-20261020/prism_audit_test.go
+      at: 2026-10-20T23:20:58.463882Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        src=Path('/private/tmp/prism-stack-audit-20261020')
+        dst=Path('/Users/tapabratapal/Projects/provasign/prism/docs/research/stack-audit-2026-10-20')
+        for name in ('astkit_audit_test.go','grove_audit_test.go','grove_native_audit_test.go','prism_audit_test.go'):
+            (dst/(name+'.txt')).write_text((src/name).read_text())
+        cli=(src/'cli_probes.py').read_text().replace('import json, pathlib, subprocess, tempfile, time','import json, os, pathlib, subprocess, tempfile, time')
+        cli=cli.replace("BIN = '/private/tmp/prism-audit-20261020'", "BIN = os.environ.get('PRISM_AUDIT_BIN', '/private/tmp/prism-audit-20261020')")
+        cli=cli.replace("OUT = pathlib.Path('/private/tmp/prism-stack-audit-20261020')", "OUT = pathlib.Path(os.environ.get('PRISM_AUDIT_OUT', str(pathlib.Path(__file__).resolve().parent / 'results')))\nOUT.mkdir(parents=True, exist_ok=True)")
+        (dst/'cli_probes.py').write_text(cli)
+        (dst/'results').mkdir(exist_ok=True)
+        (dst/'results'/'baseline.json').write_text(json.dumps({'command':'GOWORK=off go test ./...','observed':{'prism':'passed','grove':'passed','astkit':'passed'},'note':'Existing repository suites ran before the overlay audit probes. Results were observed in this session; optional compiler-test execution is not inferred from package-level pass statuses.'},indent=2)+'\n')
+        PY
+      at: 2026-10-20T23:20:58.569849Z
+      classified: test
+    - cmd: python3 -B docs/research/stack-audit-2026-10-20/replay.py --binary /private/tmp/prism-audit-20261020
+      at: 2026-10-20T23:21:15.248252Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        p=Path('docs/research/stack-audit-2026-10-20/results')
+        f=p/'replay.json'
+        if f.exists():
+         d=json.loads(f.read_text())
+         for name, result in d['probes'].items():
+          log=(p/(name+'.log')).read_text()
+          print(name, 'exit='+str(result['exit_code']), 'sandbox_error='+str('operation not permitted' in log), 'top_level_failures='+str(sum(x.startswith('--- FAIL:') for x in log.splitlines())))
+          if name.endswith('-probes'):
+           for line in log.splitlines():
+            if line.startswith('--- FAIL:') or 'round=' in line or 'refresh warning=' in line or 'initial edges=' in line or 'retry native=' in line or 'imported package name=' in line or 'identity caller count=' in line:
+             print(line)
+        else: print('replay still running')
+        PY
+      at: 2026-10-20T23:21:15.354783Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import re,json
+        report=Path('docs/research/stack-audit-2026-10-20/REPORT.md')
+        missing=[]
+        for target in re.findall(r'\]\(([^)]+)\)',report.read_text()):
+         if '://' not in target and not (report.parent/target.split('#')[0]).exists(): missing.append(target)
+        print('Missing report links:',missing)
+        p=report.parent/'results'/'replay.json';d=json.loads(p.read_text())
+        print('Reviewed commits:',{k:v['commit'][:12] for k,v in d['roots'].items()})
+        print('Saved probe outcomes:',{k:v['exit_code'] for k,v in d['probes'].items()})
+        PY
+      at: 2026-10-20T23:21:46.537853Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-20T23:21:46.62814Z
+      classified: other
+notes:
+    - text: continuation of session 01a14a3c-f3e2-75f3-99af-5ddd12df505a — events captured after its evidence was finalized
+      at: 2026-10-20T23:10:13.956078Z
+redactions: 0
