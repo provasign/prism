@@ -17,21 +17,19 @@ func writeOversized(t *testing.T, root, name string) {
 }
 
 // Audit 2026-10-20 #1: Grove reports a per-file failure in
-// IndexResult.Errors with a nil Go error and keeps the file's old facts.
-// The refresh must say so, on every answer while the failure lasts.
+// IndexResult.Errors with a nil Go error. Since Grove v0.63.25 it also prunes
+// the file's old facts, so the refresh names the file as missing from the
+// result (once while the failure lasts) instead of serving it unlabelled.
 func TestRefreshReportsFileLevelIndexErrors(t *testing.T) {
 	t.Setenv("GROVE_NATIVE", "0")
 	h := evidenceHandler(t, map[string]string{"a.go": "package p\nfunc Target() {}\nfunc Caller() { Target() }\n"})
 	writeOversized(t, h.Root, "a.go")
-	for i := 1; i <= 2; i++ {
-		note := h.refreshIndexBestEffort(context.Background())
-		t.Logf("refresh %d warning=%q", i, note)
-		if !strings.Contains(note, "a.go") || !strings.Contains(note, "exceeds") {
-			t.Fatalf("refresh %d: per-file index error not surfaced: %q", i, note)
-		}
-		if !strings.Contains(note, "stale") {
-			t.Fatalf("refresh %d: retained facts must be labelled stale: %q", i, note)
-		}
+	note := h.refreshIndexBestEffort(context.Background())
+	if !strings.Contains(note, "a.go") || !strings.Contains(note, "exceeds") || !strings.Contains(note, "missing") {
+		t.Fatalf("per-file index error not surfaced as missing: %q", note)
+	}
+	if syms, err := h.Grove.FileSymbols(context.Background(), "a.go"); err == nil && len(syms) > 0 {
+		t.Fatalf("removed Target still indexed after its file failed: %v", syms)
 	}
 	// Fixed on disk: the warning goes away.
 	if err := os.WriteFile(filepath.Join(h.Root, "a.go"), []byte("package p\nfunc Target() {}\n"), 0o600); err != nil {
@@ -84,17 +82,17 @@ func TestIndexErrorWarningIsBounded(t *testing.T) {
 }
 
 // Every index-backed text answer carries the warning, not only
-// change_impact's renderer.
+// change_impact's renderer. Each op is checked as the first answer after a
+// fresh failure, since a missing file is said once per occurrence.
 func TestCompactAnswersCarryIndexErrorWarning(t *testing.T) {
 	t.Setenv("GROVE_NATIVE", "0")
+	good := "package p\nfunc Target() {}\nfunc Caller() { Target() }\n"
 	files := map[string]string{
 		"go.mod": "module p\ngo 1.22\n",
-		"a.go":   "package p\nfunc Target() {}\nfunc Caller() { Target() }\n",
+		"a.go":   good,
 		"b.go":   "package p\nfunc Other() { Target() }\n",
 	}
 	srv := compactFixture(t, files)
-	callCompact(t, srv, "lookup", map[string]any{"name": "Target"}) // index while a.go is good
-	writeOversized(t, srv.handler.Root, "a.go")
 	for _, tc := range []struct {
 		op   string
 		args map[string]any
@@ -104,6 +102,11 @@ func TestCompactAnswersCarryIndexErrorWarning(t *testing.T) {
 		{"query", map[string]any{"terms": []any{"Other"}}},
 		{"change_impact", map[string]any{"name": "Other"}},
 	} {
+		if err := os.WriteFile(filepath.Join(srv.handler.Root, "a.go"), []byte(good), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		callCompact(t, srv, "lookup", map[string]any{"name": "Target"}) // index while a.go is good
+		writeOversized(t, srv.handler.Root, "a.go")
 		text := callCompact(t, srv, tc.op, tc.args)
 		if !strings.Contains(text, "a.go (file exceeds") {
 			t.Errorf("%s answer lacks the index failure warning:\n%.800s", tc.op, text)
