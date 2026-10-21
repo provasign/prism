@@ -3493,18 +3493,25 @@ func invokeToolText(dir, tool string, args map[string]any) (out any, text string
 	return out, text, rendered, nil
 }
 
+// invokeCompactReadText serves a compact read without the graph, as the MCP
+// server does before its first index: a compact read is always a line window
+// read from disk (safePathWithinRoot and the compact budgets still apply), so
+// it neither opens the engine nor builds a missing index. A cold `prism read
+// README.md` used to index the repository first, and an unusable
+// .grove/grove.db failed a readable file with "file is not a database".
 func invokeCompactReadText(dir string, args map[string]any) (out any, text string, rendered bool, err error) {
 	root, sub := cliRoot(dir)
 	rebaseArgs(args, sub)
 	noteRoot(root, sub)
-	cfg, client, err := newClient(root)
+	if err := requireDir(root); err != nil {
+		return nil, "", false, err
+	}
+	cfg, err := config.LoadFromDir(root)
 	if err != nil {
-		return nil, "", false, err
+		return nil, "", false, fmt.Errorf("config: %w", err)
 	}
-	defer client.Shutdown()
-	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
-		return nil, "", false, err
-	}
+	// Never started: the read path does not call it.
+	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root).OneShot()
 	h := mcp.NewHandler(cfg, root, client)
 	return h.InvokeCompactReadText(args)
 }
