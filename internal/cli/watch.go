@@ -38,23 +38,29 @@ func watchIgnoreDir(name string) bool {
 // never wait on a stale-index rebuild. Complements the pull model (each command
 // delta-indexes on demand) for long editor/agent sessions.
 func cmdWatch(args []string) int {
-	dir := "."
+	dir, dirSet := ".", false
 	debounce := 2 * time.Second
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--debounce":
-			if i+1 < len(args) {
-				if d, err := time.ParseDuration(args[i+1]); err == nil && d > 0 {
-					debounce = d
-				}
-				i++
+			v, err := flagValue("watch", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			d, err := time.ParseDuration(v)
+			if err != nil || d <= 0 {
+				return usageError(fmt.Errorf("watch: --debounce wants a positive duration such as 2s, got %q", v))
+			}
+			debounce = d
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("watch", a)
 			}
-			dir = a
+			if err := positionalDir("watch", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 

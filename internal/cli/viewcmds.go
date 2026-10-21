@@ -14,64 +14,66 @@ import (
 // fronts over the prism_map / prism_cycles tools.
 
 func cmdMap(args []string) int {
-	dir := "."
+	dir, dirSet := ".", false
 	jsonOut := false
 	callArgs := map[string]any{}
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--depth", "--max-sites":
-			if i+1 < len(args) {
-				var n int
-				fmt.Sscanf(args[i+1], "%d", &n)
-				callArgs[strings.TrimPrefix(strings.ReplaceAll(a, "-sites", "_sites"), "--")] = n
-				i++
+			n, err := positiveIntFlag("map", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs[strings.TrimPrefix(strings.ReplaceAll(a, "-sites", "_sites"), "--")] = n
+			i++
 		case "--component":
-			if i+1 < len(args) {
-				callArgs["component"] = args[i+1]
-				i++
+			v, err := flagValue("map", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs["component"] = v
+			i++
 		case "--expand":
-			if i+1 < len(args) {
-				from, to, ok := strings.Cut(args[i+1], "->")
-				if !ok {
-					fmt.Fprintln(os.Stderr, "map: --expand wants 'from->to'")
-					return 2
-				}
-				callArgs["from"] = strings.TrimSpace(from)
-				callArgs["to"] = strings.TrimSpace(to)
-				i++
+			v, err := flagValue("map", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			from, to, ok := strings.Cut(v, "->")
+			if !ok || strings.TrimSpace(from) == "" || strings.TrimSpace(to) == "" {
+				fmt.Fprintln(os.Stderr, "map: --expand wants 'from->to'")
+				return 2
+			}
+			callArgs["from"] = strings.TrimSpace(from)
+			callArgs["to"] = strings.TrimSpace(to)
+			i++
 		case "--tests":
 			callArgs["include_tests"] = true
 		case "--removed":
 			// Mid-loop residual check: --removed a,b,c reports remaining
 			// references to each removed identifier instead of the full gate.
-			if i+1 < len(args) {
-				var syms []string
-				for _, s := range strings.Split(args[i+1], ",") {
-					if s = strings.TrimSpace(s); s != "" {
-						syms = append(syms, s)
-					}
-				}
-				if len(syms) > 0 {
-					callArgs["removed_symbols"] = syms
-				}
-				i++
+			syms, err := listFlag("map", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs["removed_symbols"] = syms
+			i++
 		case "--json":
 			jsonOut = true
 		case "--format":
 			// Accept the flag every other command uses; "text" is the default.
-			if i+1 < len(args) {
-				jsonOut = args[i+1] == "json"
-				i++
+			f, err := formatFlag("map", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			jsonOut = f != formatText
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("map", a)
 			}
-			dir = a
+			if err := positionalDir("map", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	out, err := invokeTool(dir, "prism_map", callArgs)
@@ -88,48 +90,46 @@ func cmdMap(args []string) int {
 }
 
 func cmdCycles(args []string) int {
-	dir := "."
+	dir, dirSet := ".", false
 	jsonOut := false
 	callArgs := map[string]any{}
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--depth":
-			if i+1 < len(args) {
-				var n int
-				fmt.Sscanf(args[i+1], "%d", &n)
-				callArgs["depth"] = n
-				i++
+			n, err := positiveIntFlag("cycles", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs["depth"] = n
+			i++
 		case "--tests":
 			callArgs["include_tests"] = true
 		case "--removed":
 			// Mid-loop residual check: --removed a,b,c reports remaining
 			// references to each removed identifier instead of the full gate.
-			if i+1 < len(args) {
-				var syms []string
-				for _, s := range strings.Split(args[i+1], ",") {
-					if s = strings.TrimSpace(s); s != "" {
-						syms = append(syms, s)
-					}
-				}
-				if len(syms) > 0 {
-					callArgs["removed_symbols"] = syms
-				}
-				i++
+			syms, err := listFlag("cycles", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs["removed_symbols"] = syms
+			i++
 		case "--json":
 			jsonOut = true
 		case "--format":
 			// Accept the flag every other command uses; "text" is the default.
-			if i+1 < len(args) {
-				jsonOut = args[i+1] == "json"
-				i++
+			f, err := formatFlag("cycles", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			jsonOut = f != formatText
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("cycles", a)
 			}
-			dir = a
+			if err := positionalDir("cycles", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	out, err := invokeTool(dir, "prism_cycles", callArgs)
@@ -149,24 +149,26 @@ func cmdCycles(args []string) int {
 // Exit codes: 0 = pass (or no rules), 1 = violations found (CI-gateable),
 // 2 = usage/config error.
 func cmdArch(args []string) int {
-	dir := "."
+	dir, dirSet := ".", false
 	jsonOut := false
 	callArgs := map[string]any{}
 	var extraDeny []any
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--depth":
-			if i+1 < len(args) {
-				var n int
-				fmt.Sscanf(args[i+1], "%d", &n)
-				callArgs["depth"] = n
-				i++
+			n, err := positiveIntFlag("arch", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs["depth"] = n
+			i++
 		case "--deny":
-			if i+1 < len(args) {
-				extraDeny = append(extraDeny, args[i+1])
-				i++
+			v, err := flagValue("arch", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			extraDeny = append(extraDeny, v)
+			i++
 		case "--tests":
 			callArgs["include_tests"] = true
 		case "--strict":
@@ -174,31 +176,29 @@ func cmdArch(args []string) int {
 		case "--removed":
 			// Mid-loop residual check: --removed a,b,c reports remaining
 			// references to each removed identifier instead of the full gate.
-			if i+1 < len(args) {
-				var syms []string
-				for _, s := range strings.Split(args[i+1], ",") {
-					if s = strings.TrimSpace(s); s != "" {
-						syms = append(syms, s)
-					}
-				}
-				if len(syms) > 0 {
-					callArgs["removed_symbols"] = syms
-				}
-				i++
+			syms, err := listFlag("arch", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs["removed_symbols"] = syms
+			i++
 		case "--json":
 			jsonOut = true
 		case "--format":
 			// Accept the flag every other command uses; "text" is the default.
-			if i+1 < len(args) {
-				jsonOut = args[i+1] == "json"
-				i++
+			f, err := formatFlag("arch", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			jsonOut = f != formatText
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("arch", a)
 			}
-			dir = a
+			if err := positionalDir("arch", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	if len(extraDeny) > 0 {
@@ -281,53 +281,48 @@ func renderViolations(list []any, label string) {
 // cross-component dependencies, introduced arch violations.
 // Exit codes: 0 = complete/clean, 1 = incomplete (CI-gateable), 2 = error.
 func cmdVerify(args []string) int {
-	dir := "."
+	dir, dirSet := ".", false
 	jsonOut := false
 	callArgs := map[string]any{}
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--base":
-			if i+1 < len(args) {
-				callArgs["base"] = args[i+1]
-				i++
+			v, err := flagValue("verify", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs["base"] = v
+			i++
 		case "--strict":
 			callArgs["strict"] = true
 		case "--removed":
 			// Mid-loop residual check: --removed a,b,c reports exact
 			// identifier mentions instead of running the full diff check.
-			if i+1 < len(args) {
-				var syms []string
-				for _, s := range strings.Split(args[i+1], ",") {
-					if s = strings.TrimSpace(s); s != "" {
-						syms = append(syms, s)
-					}
-				}
-				if len(syms) > 0 {
-					callArgs["removed_symbols"] = syms
-				}
-				i++
+			syms, err := listFlag("verify", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			callArgs["removed_symbols"] = syms
+			i++
 		case "--json":
 			jsonOut = true
 		case "--format":
 			// Every other prism command spells this --format; verify only
 			// understood --json, so the documented flag silently produced
 			// the text view and a script asking for JSON parsed prose.
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatJSON, formatLean:
-					jsonOut = true
-				case formatText:
-					jsonOut = false
-				}
-				i++
+			f, err := formatFlag("verify", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			jsonOut = f != formatText
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("verify", a)
 			}
-			dir = a
+			if err := positionalDir("verify", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	out, text, rendered, err := invokeToolText(dir, "prism_verify", callArgs)

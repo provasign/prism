@@ -352,14 +352,14 @@ func cmdInit(args []string) int {
 			fmt.Fprintln(os.Stderr, "init: --global was removed; Prism MCP configuration is project-local. Use --harness to select clients.")
 			return 2
 		case "--harness":
-			if i+1 >= len(args) {
+			if _, err := flagValue("init", args, i); err != nil {
 				fmt.Fprintln(os.Stderr, "init: --harness requires a comma-separated value")
 				return 2
 			}
 			harnessArgs = append(harnessArgs, args[i+1])
 			i++
 		case "--interface":
-			if i+1 >= len(args) {
+			if _, err := flagValue("init", args, i); err != nil {
 				fmt.Fprintln(os.Stderr, "init: --interface requires mcp or cli")
 				return 2
 			}
@@ -383,10 +383,12 @@ func cmdInit(args []string) int {
 		case "--yes", "-y":
 			yes = true
 		case "--print-config":
-			if i+1 < len(args) {
-				printConfig = args[i+1]
-				i++
+			v, err := flagValue("init", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			printConfig = v
+			i++
 		case "--mode":
 			// Accepted and ignored since v0.38.0. The three modes only ever
 			// chose which steering text was written: they gated no tool, and
@@ -399,10 +401,16 @@ func cmdInit(args []string) int {
 				i++
 			}
 		default:
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("init", a)
+			}
 			filtered = append(filtered, a)
 		}
 	}
 	args = filtered
+	if len(args) > 1 {
+		return usageError(fmt.Errorf("init: takes one directory, got %q and %q", args[0], args[1]))
+	}
 
 	dir := dirArg(args, 0, ".")
 	abs, _ := filepath.Abs(dir)
@@ -2061,17 +2069,11 @@ func containsString(list []any, s string) bool {
 }
 
 func cmdIndex(args []string) int {
-	allowHeuristic := false
-	rest := args[:0:0]
-	for _, a := range args {
-		if a == "--allow-heuristic" {
-			allowHeuristic = true
-			continue
-		}
-		rest = append(rest, a)
+	dir, flags, rc := dirOnlyArgs("index", args, "--allow-heuristic")
+	if rc != 0 {
+		return rc
 	}
-	args = rest
-	dir := dirArg(args, 0, ".")
+	allowHeuristic := flags["--allow-heuristic"]
 	cfg, client, err := newClient(dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -2137,7 +2139,10 @@ func cmdIndex(args []string) int {
 }
 
 func cmdStatus(args []string) int {
-	dir := dirArg(args, 0, ".")
+	dir, _, rc := dirOnlyArgs("status", args)
+	if rc != 0 {
+		return rc
+	}
 	root := mustAbs(dir)
 	if err := requireDir(root); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -2158,7 +2163,10 @@ func cmdStatus(args []string) int {
 }
 
 func cmdDoctor(args []string) int {
-	dir := dirArg(args, 0, ".")
+	dir, _, rc := dirOnlyArgs("doctor", args)
+	if rc != 0 {
+		return rc
+	}
 	root := mustAbs(dir)
 	_, client, err := newClient(root)
 	if err != nil {
@@ -2229,6 +2237,7 @@ func cmdQuery(args []string) int {
 		return 2
 	}
 	dir := "."
+	dirSet := false
 	profile := ""
 	limit := 50
 	maxFiles := 0
@@ -2238,70 +2247,49 @@ func cmdQuery(args []string) int {
 	var include []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
+		var err error
 		switch a {
 		case "--profile":
-			if i+1 < len(args) {
-				profile = args[i+1]
-				i++
-			}
+			profile, err = flagValue("query", args, i)
+			i++
 		case "--limit":
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					limit = n
-				}
-				i++
-			}
+			limit, err = positiveIntFlag("query", args, i)
+			i++
 		case "--terms":
-			if i+1 < len(args) {
-				for _, t := range strings.Split(args[i+1], ",") {
-					if t = strings.TrimSpace(t); t != "" {
-						terms = append(terms, t)
-					}
-				}
-				i++
-			}
+			var more []string
+			more, err = listFlag("query", args, i)
+			terms = append(terms, more...)
+			i++
 		case "--include":
-			if i+1 < len(args) {
-				for _, inc := range strings.Split(args[i+1], ",") {
-					if inc = strings.TrimSpace(inc); inc != "" {
-						include = append(include, inc)
-					}
-				}
-				i++
-			}
+			var more []string
+			more, err = listFlag("query", args, i)
+			include = append(include, more...)
+			i++
 		case "--depth", "--graph-depth":
 			// graph_depth has never been read by any handler; sending it was
 			// a silent no-op. Say so instead of pretending it tunes anything.
 			fmt.Fprintln(os.Stderr, "query: --depth/--graph-depth has no effect and was removed; expansion is a fixed one-hop call neighborhood")
 			return 2
 		case "--delivery":
-			if i+1 < len(args) {
-				switch args[i+1] {
-				case "source", "symbols":
-					delivery = args[i+1]
-				}
-				i++
-			}
+			delivery, err = choiceFlag("query", args, i, "source", "symbols")
+			i++
 		case "--max-files":
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					maxFiles = n
-				}
-				i++
-			}
+			maxFiles, err = positiveIntFlag("query", args, i)
+			i++
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
-			}
+			format, err = formatFlag("query", args, i)
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("query", a)
 			}
-			dir = a
+			if dirSet {
+				return usageError(fmt.Errorf("query: takes one directory, got %q and %q; pass terms with --terms a,b", dir, a))
+			}
+			dir, dirSet = a, true
+		}
+		if err != nil {
+			return usageError(err)
 		}
 	}
 	if len(terms) == 0 {
@@ -2340,6 +2328,9 @@ func cmdRead(args []string) int {
 		return 2
 	}
 	file := args[0]
+	if strings.HasPrefix(file, "-") {
+		return usageError(fmt.Errorf("read: the file comes first: prism read <file> [flags], got %q", file))
+	}
 	dir := "."
 	dirSet := false
 	var extra []string
@@ -2354,53 +2345,52 @@ func cmdRead(args []string) int {
 			args[i] = name
 			a = name
 		}
+		var err error
 		switch a {
 		case "--from", "--to":
 			// The MCP read's own field names (an agent switching from the
 			// tool to the CLI writes these): an inclusive line range.
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					if a == "--from" {
-						from = n
-					} else {
-						to = n
-					}
-				}
-				i++
+			var n int
+			n, err = positiveIntFlag("read", args, i)
+			if a == "--from" {
+				from = n
+			} else {
+				to = n
 			}
+			i++
 		case "--dir":
-			if i+1 < len(args) {
-				dir = args[i+1]
-				dirSet = true
-				i++
-			}
+			dir, err = flagValue("read", args, i)
+			dirSet = true
+			i++
 		case "--offset", "--limit":
 			// Line-window parity with `sed -n A,Bp`, which is a quarter of
 			// every file read agents make.
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					if a == "--offset" {
-						offset = n
-					} else {
-						limit = n
-					}
-				}
-				i++
+			var n int
+			n, err = positiveIntFlag("read", args, i)
+			if a == "--offset" {
+				offset = n
+			} else {
+				limit = n
 			}
+			i++
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
-			}
+			format, err = formatFlag("read", args, i)
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("read", a)
 			}
 			extra = append(extra, a)
 		}
+		if err != nil {
+			return usageError(err)
+		}
+	}
+	if (from > 0 || to > 0) && (offset > 0 || limit > 0) {
+		return usageError(fmt.Errorf("read: use --from/--to or --offset/--limit, not both"))
+	}
+	if from > 0 && to > 0 && to < from {
+		return usageError(fmt.Errorf("read: --to %d is before --from %d; the range is inclusive, so --to must be >= --from", to, from))
 	}
 	// `prism read <file> <dir>` is the legacy form; any other extra argument
 	// is another file. The last path used to be taken as the directory, so
@@ -2507,45 +2497,36 @@ func cmdSearch(args []string) int {
 	var bare []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
+		var err error
 		switch a {
 		case "--dir":
 			// The unambiguous way to say where to search, now that bare
 			// arguments are terms rather than "term then directory".
-			if i+1 < len(args) {
-				dir = args[i+1]
-				i++
-			}
+			dir, err = flagValue("search", args, i)
+			i++
 		case "--scope":
 			// The steering has documented `prism search <t> --scope text` since
 			// v0.37.0 while this parser knew only --limit and --format, so the
 			// flag was dropped and every CLI text search silently returned the
 			// merged symbol view instead. A Bash-only subagent following its own
 			// instructions got the wrong answer shape and no indication why.
-			if i+1 < len(args) {
-				switch args[i+1] {
-				case "text", "symbols", "both":
-					scope = args[i+1]
-				default:
-					fmt.Fprintf(os.Stderr, "search: --scope wants text|symbols|both, got %q\n", args[i+1])
-					return 2
-				}
-				i++
-			}
+			scope, err = choiceFlag("search", args, i, "text", "symbols", "both")
+			i++
 		case "--regex":
 			regex = true
 		case "--path", "--paths":
 			// The grep operand, restored. `prism search alias --path
 			// octodns/manager.py` is what an agent that already knows the
 			// file wants; without it, it uses grep instead.
-			if i+1 < len(args) {
-				paths = append(paths, args[i+1])
-				i++
-			}
+			var p string
+			p, err = flagValue("search", args, i)
+			paths = append(paths, p)
+			i++
 		case "--glob", "--include":
-			if i+1 < len(args) {
-				globs = append(globs, args[i+1])
-				i++
-			}
+			var g string
+			g, err = flagValue("search", args, i)
+			globs = append(globs, g)
+			i++
 		case "--include-bodies":
 			includeBodies = true
 			includeBodiesSet = true
@@ -2560,31 +2541,21 @@ func cmdSearch(args []string) int {
 			rollupOnly = true
 		case "--context", "-C":
 			if i+1 >= len(args) {
-				fmt.Fprintln(os.Stderr, "search: --context requires a non-negative integer")
-				return 2
+				return usageError(fmt.Errorf("search: --context requires a non-negative integer"))
 			}
-			n, err := strconv.Atoi(args[i+1])
-			if err != nil || n < 0 {
-				fmt.Fprintln(os.Stderr, "search: --context requires a non-negative integer")
-				return 2
+			n, convErr := strconv.Atoi(args[i+1])
+			if convErr != nil || n < 0 {
+				return usageError(fmt.Errorf("search: --context requires a non-negative integer, got %q", args[i+1]))
 			}
 			contextLines, contextSet = n, true
 			i++
 		case "--limit":
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					limit, limitSet = n, true
-				}
-				i++
-			}
+			limit, err = positiveIntFlag("search", args, i)
+			limitSet = true
+			i++
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
-			}
+			format, err = formatFlag("search", args, i)
+			i++
 		default:
 			// An unknown flag used to be dropped in silence — the mechanism
 			// behind this whole class of bug. Fail loudly instead.
@@ -2593,6 +2564,9 @@ func cmdSearch(args []string) int {
 				return 2
 			}
 			bare = append(bare, a)
+		}
+		if err != nil {
+			return usageError(err)
 		}
 	}
 	if len(bare) == 0 {
@@ -2717,27 +2691,28 @@ func cmdLookup(args []string) int {
 			explicitDir = args[i+1]
 			i++
 		case "--fields":
-			if i+1 < len(args) {
-				for _, f := range strings.Split(args[i+1], ",") {
-					if f = strings.TrimSpace(f); f != "" {
-						fields = append(fields, f)
-					}
-				}
-				i++
+			items, err := listFlag("lookup", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			for _, item := range items {
+				fields = append(fields, item)
+			}
+			i++
 		case "--file":
-			if i+1 < len(args) {
-				fileHint = args[i+1]
-				i++
+			v, err := flagValue("lookup", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			fileHint = v
+			i++
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
+			f, err := formatFlag("lookup", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("lookup", a)
@@ -2820,30 +2795,33 @@ func cmdNode(args []string) int {
 		return 2
 	}
 	name := args[0]
-	dir := "."
+	dir, dirSet := ".", false
 	format := formatText
 	fileHint := ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--file":
-			if i+1 < len(args) {
-				fileHint = args[i+1]
-				i++
+			v, err := flagValue("node", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			fileHint = v
+			i++
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
+			f, err := formatFlag("node", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("node", a)
 			}
-			dir = a
+			if err := positionalDir("node", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	callArgs := map[string]any{"name": name}
@@ -2865,20 +2843,21 @@ func cmdResolve(args []string) int {
 		return 2
 	}
 	name := args[0]
-	dir := "."
+	dir, dirSet := ".", false
 	format := formatText
 	for i := 1; i < len(args); i++ {
 		a := args[i]
-		if a == "--format" && i+1 < len(args) {
-			switch outputFormat(args[i+1]) {
-			case formatText, formatLean, formatJSON:
-				format = outputFormat(args[i+1])
+		if a == "--format" {
+			f, err := formatFlag("resolve", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
 			i++
 		} else if strings.HasPrefix(a, "-") {
 			return rejectUnknownFlag("resolve", a)
-		} else {
-			dir = a
+		} else if err := positionalDir("resolve", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	out, err := invokeTool(dir, "prism_resolve", map[string]any{"name": name})
@@ -2896,7 +2875,7 @@ func cmdEdges(args []string) int {
 		return 2
 	}
 	name := args[0]
-	dir := "."
+	dir, dirSet := ".", false
 	direction := "both"
 	var kinds []any
 	format := formatText
@@ -2904,32 +2883,35 @@ func cmdEdges(args []string) int {
 		a := args[i]
 		switch a {
 		case "--dir", "--direction":
-			if i+1 < len(args) {
-				direction = args[i+1]
-				i++
+			d, err := choiceFlag("edges", args, i, "out", "in", "both")
+			if err != nil {
+				return usageError(err)
 			}
+			direction = d
+			i++
 		case "--kinds":
-			if i+1 < len(args) {
-				for _, k := range strings.Split(args[i+1], ",") {
-					if k = strings.TrimSpace(k); k != "" {
-						kinds = append(kinds, k)
-					}
-				}
-				i++
+			items, err := listFlag("edges", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			for _, item := range items {
+				kinds = append(kinds, item)
+			}
+			i++
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
+			f, err := formatFlag("edges", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("edges", a)
 			}
-			dir = a
+			if err := positionalDir("edges", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	callArgs := map[string]any{"name": name, "direction": direction}
@@ -2951,24 +2933,25 @@ func cmdReferences(args []string) int {
 		return 2
 	}
 	name := args[0]
-	dir := "."
+	dir, dirSet := ".", false
 	format := formatText
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
+			f, err := formatFlag("references", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("references", a)
 			}
-			dir = a
+			if err := positionalDir("references", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	out, err := invokeTool(dir, "prism_references", map[string]any{"name": name})
@@ -2987,32 +2970,35 @@ func cmdChangeImpact(args []string) int {
 		return 2
 	}
 	query := args[0]
-	dir := "."
+	dir, dirSet := ".", false
 	format := formatJSON
 	file := ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
+			f, err := formatFlag("change-impact", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
+			i++
 		case "--file":
 			// Disambiguate same-named types in different packages: only
 			// types declared in a matching file seed the closure.
-			if i+1 < len(args) {
-				file = args[i+1]
-				i++
+			v, err := flagValue("change-impact", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			file = v
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("change-impact", a)
 			}
-			dir = a
+			if err := positionalDir("change-impact", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	warnShellExpandedName("change-impact", query)
@@ -3036,24 +3022,25 @@ func cmdRenamePlan(args []string) int {
 		return 2
 	}
 	query, newName := args[0], args[1]
-	dir := "."
+	dir, dirSet := ".", false
 	format := formatJSON
 	for i := 2; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
+			f, err := formatFlag("rename-plan", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("rename-plan", a)
 			}
-			dir = a
+			if err := positionalDir("rename-plan", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	out, err := invokeTool(dir, "prism_rename_plan",
@@ -3073,24 +3060,25 @@ func cmdMissingImplementations(args []string) int {
 		return 2
 	}
 	query := args[0]
-	dir := "."
+	dir, dirSet := ".", false
 	format := formatJSON
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
+			f, err := formatFlag("missing-implementations", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("missing-implementations", a)
 			}
-			dir = a
+			if err := positionalDir("missing-implementations", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	out, err := invokeTool(dir, "prism_missing_implementations", map[string]any{"query": query})
@@ -3103,34 +3091,35 @@ func cmdMissingImplementations(args []string) int {
 }
 
 func cmdDeadCode(args []string) int {
-	dir := "."
+	dir, dirSet := ".", false
 	format := formatJSON
 	var roots []any
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--roots":
-			if i+1 < len(args) {
-				for _, r := range strings.Split(args[i+1], ",") {
-					if r = strings.TrimSpace(r); r != "" {
-						roots = append(roots, r)
-					}
-				}
-				i++
+			items, err := listFlag("dead-code", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			for _, item := range items {
+				roots = append(roots, item)
+			}
+			i++
 		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
+			f, err := formatFlag("dead-code", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			format = f
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("dead-code", a)
 			}
-			dir = a
+			if err := positionalDir("dead-code", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 	callArgs := map[string]any{}
@@ -3147,7 +3136,10 @@ func cmdDeadCode(args []string) int {
 }
 
 func cmdCompact(args []string) int {
-	dir := dirArg(args, 0, ".")
+	dir, _, rc := dirOnlyArgs("compact", args)
+	if rc != 0 {
+		return rc
+	}
 	var turns []map[string]any
 	dec := json.NewDecoder(os.Stdin)
 	if err := dec.Decode(&turns); err != nil {
@@ -3168,38 +3160,50 @@ func cmdFeedback(args []string) int {
 	queryID := ""
 	notes := ""
 	rating := -1
-	dir := "."
+	dir, dirSet := ".", false
 
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--tool":
-			if i+1 < len(args) {
-				tool = args[i+1]
-				i++
+			v, err := flagValue("feedback", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			tool = v
+			i++
 		case "--query-id":
-			if i+1 < len(args) {
-				queryID = args[i+1]
-				i++
+			v, err := flagValue("feedback", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			queryID = v
+			i++
 		case "--rating":
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil {
-					rating = n
-				}
-				i++
+			v, err := flagValue("feedback", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			n, convErr := strconv.Atoi(v)
+			if convErr != nil || n < 0 || n > 5 {
+				return usageError(fmt.Errorf("feedback: --rating wants an integer 0-5, got %q", v))
+			}
+			rating = n
+			i++
 		case "--notes":
-			if i+1 < len(args) {
-				notes = args[i+1]
-				i++
+			v, err := flagValue("feedback", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			notes = v
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("feedback", a)
 			}
-			dir = a
+			if err := positionalDir("feedback", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
 
@@ -3226,7 +3230,10 @@ func cmdFeedback(args []string) int {
 }
 
 func cmdDrift(args []string) int {
-	dir := dirArg(args, 0, ".")
+	dir, _, rc := dirOnlyArgs("drift", args)
+	if rc != 0 {
+		return rc
+	}
 	out, err := invokeTool(dir, "prism_drift", nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "drift:", err)
@@ -3237,7 +3244,10 @@ func cmdDrift(args []string) int {
 }
 
 func cmdConfig(args []string) int {
-	dir := dirArg(args, 0, ".")
+	dir, _, rc := dirOnlyArgs("config", args)
+	if rc != 0 {
+		return rc
+	}
 	cfg, err := config.LoadFromDir(mustAbs(dir))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "config:", err)
@@ -3249,18 +3259,28 @@ func cmdConfig(args []string) int {
 
 func cmdServe(args []string) int {
 	port := 0 // resolved after config load: flag > prism.yaml port > 8888
-	rest := args
+	dir, dirSet := ".", false
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--port" && i+1 < len(args) {
-			if p, err := strconv.Atoi(args[i+1]); err == nil {
-				port = p
+		a := args[i]
+		switch {
+		case a == "--port":
+			p, err := positiveIntFlag("serve", args, i)
+			if err == nil && p > 65535 {
+				err = fmt.Errorf("serve: --port must be 1-65535, got %d", p)
 			}
-			rest = append([]string{}, args[:i]...)
-			rest = append(rest, args[i+2:]...)
-			break
+			if err != nil {
+				return usageError(err)
+			}
+			port = p
+			i++
+		case strings.HasPrefix(a, "-"):
+			return rejectUnknownFlag("serve", a)
+		default:
+			if err := positionalDir("serve", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
 		}
 	}
-	dir := dirArg(rest, 0, ".")
 	cfg, client, err := newClient(dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -4402,25 +4422,31 @@ func cmdAssist(args []string) int {
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--model":
-			if i+1 < len(args) {
-				model = args[i+1]
-				i++
+			v, err := flagValue("assist", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			model = v
+			i++
 		case "--apply":
 			apply = true
 		case "--apply-ambiguous":
 			apply = true
 			applyAmbiguous = true
 		case "--verify":
-			if i+1 < len(args) {
-				verify = args[i+1]
-				i++
+			v, err := flagValue("assist", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			verify = v
+			i++
 		case "--dir":
-			if i+1 < len(args) {
-				dir = args[i+1]
-				i++
+			v, err := flagValue("assist", args, i)
+			if err != nil {
+				return usageError(err)
 			}
+			dir = v
+			i++
 		default:
 			taskParts = append(taskParts, a)
 		}
