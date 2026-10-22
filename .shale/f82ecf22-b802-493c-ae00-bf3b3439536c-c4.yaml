@@ -1,0 +1,917 @@
+shale_version: "0"
+id: f82ecf22-b802-493c-ae00-bf3b3439536c-c4
+created_at: 2026-10-22T02:31:13.288598Z
+finalized_at: 2026-10-22T10:52:20.593395Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/benchmarks/prism-v0.87.39-2026-10-21.md
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-22T10:48:18.733251Z
+commands:
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bv2ul1pim.output
+      at: 2026-10-22T02:31:16.969557Z
+      classified: other
+    - cmd: |-
+        cat >> ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_overnight_2026_10_20.md <<'EOF'
+        2026-10-21 eve: CHANGE BED (seeded32, Sonnet, CLI): v0.87.38 vs native 31/31 solved, task 0.85x, tools 0.76x, req 0.82x ($26.49; werkzeug get_headers loss = BSD sed \b no-op, adjudicated). Codex change-impact cost audit -> fixes b4fcbef (staleWarning forced JSON fallback, my v0.87.38 regression), 7d6f812 (multiline signature kept), c2735f7 (CLI known-symbol line). RELEASED v0.87.39: change32 A/B cand 32 solved, task 0.76x native, tools 0.65x, req 0.74x; long session ~22% cheaper. Bug-fix bed (41) stays ~8%. Not done: Codex #3 typed receiver exclusion (grove work).
+        EOF
+        brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism >/dev/null 2>&1; hash -r; prism version
+      at: 2026-10-22T02:31:29.152718Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && git fetch -q && git log --oneline v0.87.39..origin/main; git status --short | grep -v "^??"; for r in grove astkit; do cd ~/Projects/provasign/$r && git fetch -q && echo "$r: $(git describe --tags origin/main) $(git log --oneline $(git describe --tags --abbrev=0 origin/main)..origin/main | wc -l) commits after tag"; done; brew info provasign/shale/prism 2>&1 | head -1'
+      at: 2026-10-22T10:38:43.593691Z
+      classified: other
+    - cmd: gh workflow list -R provasign/homebrew-shale 2>&1 | head -5
+      at: 2026-10-22T10:38:49.478644Z
+      classified: other
+    - cmd: gh workflow run "Refresh formulae" -R provasign/homebrew-shale && sleep 15 && R=$(gh run list -R provasign/homebrew-shale -L 1 --json databaseId -q '.[0].databaseId') && gh run watch $R -R provasign/homebrew-shale --exit-status >/dev/null 2>&1; echo exit=$?; brew update -q >/dev/null 2>&1; brew info provasign/shale/prism 2>&1 | head -1
+      at: 2026-10-22T10:39:16.202393Z
+      classified: other
+    - cmd: cd ~/Projects/provasign && ls provasign.github.io; git -C provasign.github.io log --oneline -3; git -C provasign.github.io status --short | head; ls prism/docs | head -40; ls prism/*.md
+      at: 2026-10-22T10:47:03.577899Z
+      classified: other
+    - cmd: cd ~/Projects/provasign && ls prism/docs/benchmarks prism/docs/research | head -60; wc -l provasign.github.io/benchmarks.md provasign.github.io/prism.md provasign.github.io/grove.md prism/README.md grove/README.md astkit/README.md; grep -n -i "benchmark\|cheaper\|tokens\|resolved\|x native\|×" prism/README.md | head -30
+      at: 2026-10-22T10:47:06.439153Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git status --short | head -5; git status --short | wc -l; ls harness/results | wc -l; ls harness/results | grep -i archive; git ls-files harness/results | cut -d/ -f3 | sort -u | wc -l; git log --oneline -3; du -sh harness/results
+      at: 2026-10-22T10:47:14.685618Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && grep -rn "harness/results/\|results/" .github/ harness/scoring/ci_invariants.py 2>/dev/null | grep -v "^Binary" | head -10; for d in change32-cli-vs-native-2026-10-21 change32-v08739cand-2026-10-21 v0837-vs-native41-2026-10-20; do echo "$d $(du -sh harness/results/$d | cut -f1) tracked=$(git ls-files harness/results/$d | wc -l)"; done; ls harness/results/*.json | wc -l; ls harness/ ; cat README.md | head -40
+      at: 2026-10-22T10:47:31.92569Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re,collections
+        N=json.load(open("results/change32-cli-vs-native-2026-10-21/results.json"))
+        C=json.load(open("results/change32-v08739cand-2026-10-21/results.json"))
+        def kind(t):
+            i=t["instance_id"]; ps=t.get("problem_statement","")
+            if i.startswith("seed__"): return "signature change"
+            if re.search(r"`\w+` (property|option)\b|\bproperty of\b|\boption of\b|internal `?\w+`? hook",ps[:200]): return "property/option rename"
+            return "method rename (shared name)"
+        def tools(c):
+            n=0
+            for l in open(c["transcript"]):
+                x=json.loads(l)
+                if x.get("type")=="assistant": n+=sum(1 for u in x["message"]["content"] if u.get("type")=="tool_use")
+            return n
+        def task(c): p=c["repriced"]["5m"]; return p["usd"]-p["startup_usd"]
+        S=collections.defaultdict(collections.Counter)
+        for k,r in C.items():
+            if k.startswith("_"):continue
+            cand=r["cells"].get("prism_cli_b/nocache"); nat=N[k]["cells"]["native/nocache"]
+            t=json.load(open(f"tasks/e2e/{k}.json"))
+            for g in (kind(t),"lang:"+t["lang"],"ALL"):
+                s=S[g]; s["n"]+=1
+                for lab,c in (("nat",nat),("pri",cand)):
+                    s[lab+"$"]+=task(c); s[lab+"t"]+=tools(c); s[lab+"r"]+=c["api_calls"]-1; s[lab+"s"]+=bool(c["resolved"]); s[lab+"st"]+=c["repriced"]["5m"]["startup_usd"]
+        for g,s in S.items():
+            n=s["n"]; print(f"{g:28s} n={n:2d} solved {s['nats']}/{s['pris']} task {s['pri$']/s['nat$']:.2f}x tools {s['nat'+'t']/n:.1f}->{s['prit']/n:.1f} ({s['prit']/s['natt']:.2f}x) req {s['natr']/n:.1f}->{s['prir']/n:.1f} ({s['prir']/s['natr']:.2f}x)")
+        s=S["ALL"];n=s["n"]
+        print("startup", s["natst"]/n, s["prist"]/n, "task/task", s["nat$"]/n, s["pri$"]/n)
+        EOF
+      at: 2026-10-22T10:47:52.254778Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git log -3 --format='%h %s' -- harness/results/ | head; git ls-files harness/results | cut -d/ -f3 | sort -u | head -100 | tr '\n' ' '
+      at: 2026-10-22T10:48:27.293137Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness/results && KEEP="change32-cli-vs-native-2026-10-21 change32-v08739cand-2026-10-21 v0837-vs-native41-2026-10-20"; n=0; t=0; for d in */; do d=${d%/}; case " $KEEP " in *" $d "*) continue;; esac; case $d in archive-*) continue;; esac; n=$((n+1)); c=$(git ls-files "$d" | wc -l); t=$((t+c)); done; echo "dirs to archive: $n, tracked files in them: $t"; ls *.log 2>/dev/null | wc -l; pgrep -fl "run_ttl\|run_cli_product\|run_e2e" | head -3'
+      at: 2026-10-22T10:48:41.557461Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results && A=archive-2026-10-22 && mkdir -p $A && KEEP="change32-cli-vs-native-2026-10-21 change32-v08739cand-2026-10-21 v0837-vs-native41-2026-10-20" && for d in */; do d=${d%/}; case " $KEEP " in *" $d "*) continue;; esac; case $d in archive-*) continue;; esac; if [ -n "$(git ls-files "$d" | head -1)" ]; then git mv -k "$d" "$A/$d" 2>/dev/null; [ -e "$d" ] && { mkdir -p "$A/$d"; cp -R "$d"/. "$A/$d"/ && rm -rf "$d"; }; else mv "$d" "$A/$d"; fi; done; for f in *.log; do if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then git mv "$f" "$A/$f"; else mv "$f" "$A/$f"; fi; done; ls | grep -v "\.json$" ; ls $A | wc -l
+      at: 2026-10-22T10:48:49.835416Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results && A=archive-2026-10-22 && for f in bench29.sh bench30.sh fix3-done.flag forced30_summary.py forced30-SUMMARY.txt label-done.flag partition-reps-done.flag sessions-ticket-audit.md; do if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then git mv "$f" "$A/$f"; else mv "$f" "$A/$f"; fi; done; cd ~/Projects/provasign/research && git status --short | awk '{print $1}' | sort | uniq -c; git diff --cached --name-status | grep -v "^R" | head
+      at: 2026-10-22T10:48:54.014764Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git status --short | grep "^ M\|^M " | head; git add harness/results/change32-cli-vs-native-2026-10-21 harness/results/change32-v08739cand-2026-10-21 harness/results/v0837-vs-native41-2026-10-20 && git diff --cached --stat | tail -1; find harness/results/change32-cli-vs-native-2026-10-21 -size +5M | head
+      at: 2026-10-22T10:49:00.27405Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && git commit -q -m "harness: archive pre-v0.87.39 runs; keep the three runs the v0.87.39 benchmark cites
+
+        Moved every result folder and log except change32-cli-vs-native-2026-10-21,
+        change32-v08739cand-2026-10-21 and v0837-vs-native41-2026-10-20 (now added)
+        into harness/results/archive-2026-10-22/. Manifests and other root inputs stay.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git log --oneline -1 && grep -rln "harness/results/" --include=*.md . | grep -v archive | head -20
+      at: 2026-10-22T10:49:06.028385Z
+      classified: other
+    - cmd: cat docs/benchmarks/prism-v0.87.39-2026-10-21.md && ls docs docs/benchmarks && ls | head -50 && git log v0.87.37..v0.87.39 --oneline && git tag --sort=-v:refname | head -3
+      at: 2026-10-22T10:49:53.237462Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git status --short | head -30 && git log --oneline -3 && cat ~/Projects/provasign/prism/docs/benchmarks/prism-v0.87.39-2026-10-21.md && ls harness/results/ && ls harness/results/archive-2026-10-22 | wc -l
+      at: 2026-10-22T10:49:53.463446Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd ~/Projects/provasign/grove && git fetch -q origin --tags && git worktree add -b docs/release-2026-10-22 $S/wt-grove-docs origin/main 2>&1 | tail -1
+        cd ~/Projects/provasign/astkit && git fetch -q origin --tags && git worktree add -b docs/release-2026-10-22 $S/wt-astkit-docs origin/main 2>&1 | tail -1
+        cd $S/wt-grove-docs && git log --oneline -3 && git describe --tags && ls
+        cd $S/wt-astkit-docs && git log --oneline -3 && git describe --tags && ls
+      at: 2026-10-22T10:49:55.259867Z
+      classified: other
+    - cmd: cd ~/Projects/provasign; for r in prism grove astkit fuse mason shale; do git -C $r fetch --tags -q 2>&1 | tail -1; echo "$r $(git -C $r describe --tags origin/main 2>&1)"; done; cd provasign.github.io && git status --short && git log --oneline -3 && ls -la && ls _includes _layouts
+      at: 2026-10-22T10:49:55.550542Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git status --short | grep -v '^ M harness/results/archive' ; grep -n "Current evidence" -A 30 README.md; echo ----; head -40 RESULTS.md; wc -l RESULTS.md
+      at: 2026-10-22T10:49:56.509602Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs; grep -n "accuracy\|2026-09-19\|v0\.6[0-9]\.\|COBOL\|JCL\|^#" README.md | head -80; echo ---; head -40 CHANGELOG.md; echo; cat eval/baseline.json | head -150
+      at: 2026-10-22T10:49:57.950602Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/provasign.github.io; cat _config.yml benchmarks.md prism.md grove.md README.md; cat _includes/install.html _includes/site-nav.html
+      at: 2026-10-22T10:49:58.438165Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && grep -n "Current evidence" -A 25 README.md; echo ----; head -30 RESULTS.md; wc -l RESULTS.md
+      at: 2026-10-22T10:49:59.218334Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/provasign.github.io; cat index.html; grep -nE 'v[0-9]+\.[0-9]+\.[0-9]+|VERSION=|[0-9]\.[0-9]+×|recall|0\.40|\$[0-9]' vision.html fuse.md mason.md shale.md _layouts/default.html _includes/*.html | head -80
+      at: 2026-10-22T10:50:01.238052Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs; grep -n "^## " CHANGELOG.md | head; sed -n 15,40p README.md; sed -n 145,235p README.md; grep -rn "v0\.6[0-3]\.[0-9]*" --include=*.md --include=*.sh --include=*.ps1 . | grep -v CHANGELOG | head -30
+      at: 2026-10-22T10:50:01.78148Z
+      classified: other
+    - cmd: ls docs/CHANGELOG* 2>&1; find . -iname 'changelog*' -not -path './node_modules/*' | head; GOWORK=off go build -o /tmp/prism-docs ./cmd/prism && /tmp/prism-docs --version; /tmp/prism-docs init --help 2>&1; /tmp/prism-docs --help 2>&1 | head -60
+      at: 2026-10-22T10:50:02.039772Z
+      classified: build
+    - cmd: 'cd ~/Projects/provasign/research && git ls-files ''*.md'' | grep -v ''harness/results/'' > /tmp/../$TMPDIR/x 2>/dev/null; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; git ls-files ''*.md'' | grep -v ''^harness/results/'' > $S/mdfiles; wc -l < $S/mdfiles; xargs grep -noE ''results/[A-Za-z0-9._/-]+'' < $S/mdfiles | grep -v ''archive-2026-10-22'' > $S/hits; wc -l < $S/hits; cut -d: -f1 $S/hits | sort | uniq -c'
+      at: 2026-10-22T10:50:03.313407Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        grep -n -A40 -i "engine accuracy" ~/Projects/provasign/prism/docs/benchmarks/prism-v0.87.39-2026-10-21.md | head -70
+        cd $S/wt-grove-docs; grep -rn "v0\.[0-9][0-9]*\.[0-9]" README.md install.sh install.ps1 docs/*.md eval/README.md 2>/dev/null | head -30; ls eval docs
+      at: 2026-10-22T10:50:05.671577Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; while IFS=: read f l m; do p=${m#results/}; top=${p%%/*}; st=""; [ -e harness/results/$top ] && st="LIVE"; [ -e harness/results/archive-2026-10-22/$top ] && st="$st ARCH"; [ -e harness/results/archive-2026-10-22/$p ] && st="$st ARCHFULL"; echo "$f:$l $m [$st]"; done < $S/hits; git ls-files ''paper/*'' | head'
+      at: 2026-10-22T10:50:06.799953Z
+      classified: other
+    - cmd: grep -n '11%\|fewer tokens\|resolve rate' internal/cli/readguard.go internal/cli/commands.go | head; grep -n 'VERSION' install.sh | head -5; grep -n 'supportedHarnesses' internal/cli/commands.go | head -3; grep -rnE 'v0\.[0-9]+\.[0-9]+|[0-9]\.[0-9]+×|[0-9.]+x cost|recall [0-9]' docs/*.md | grep -v '^docs/research' | head -60
+      at: 2026-10-22T10:50:09.204457Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs; sed -n 40,100p eval/README.md; grep -rn '"csv"\|csv' eval/restore-corpus.sh Makefile .github/workflows/*.yml 2>/dev/null | head -20
+      at: 2026-10-22T10:50:09.41135Z
+      classified: other
+    - cmd: cd ~/Projects/provasign; git -C grove show origin/main:README.md | sed -n 145,170p; echo ====; grep -rhoiE '"(claude|codex|cursor|copilot|gemini|opencode|windsurf)[a-z-]*"' prism/internal 2>/dev/null | sort | uniq -c | head -20; echo ===; grep -ciE 'prism|grove' provasign.github.io/vision.html
+      at: 2026-10-22T10:50:11.575397Z
+      classified: other
+    - cmd: grep -nE 'v0\.[0-9]+|grove@|astkit|×|0\.40' docs/GO_KIT.md docs/HTTP_API.md docs/prism-feedback-plan.md CONTRIBUTING.md SUPPORT.md AGENTS.md GEMINI.md SECURITY.md 2>/dev/null | head -30; grep -n 'grove\|astkit' go.mod
+      at: 2026-10-22T10:50:12.632672Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research && for n in index.jsonl impact-oracle-reliability-2026-09-07 prism-accuracy-efficiency-2026-09-06 h3-ab guard-hook-ab search-body-ab guard-fix-run ab-agentic prism-compare-2026-09-12 coding-suite-pilot-2026-09-07 product-proof-coding-remaining-2026-09-08 product-proof-impact-pilot-2026-09-08 product-proof-impact-remaining-2026-09-08 four-head-impact-2026-09-07-stopped daytoday-four-head-2026-09-07; do echo "== $n: $(find . -path ./.git -prune -o -name "$n*" -print 2>/dev/null | head -3 | tr ''\n'' '' '') | git: $(git log --all --format=%h -1 -- "*$n*" 2>/dev/null)"; done; grep -n ''results/'' paper/README.md paper/paper.tex | head'
+      at: 2026-10-22T10:50:14.510469Z
+      classified: other
+    - cmd: cd ~/Projects/provasign; grep -niE 'prism|grove|recall|languages' provasign.github.io/vision.html | cut -c1-220 | head -40; echo ----; grep -rlE 'windsurf|opencode' prism/internal prism/cmd 2>/dev/null | head; prism --version 2>/dev/null; ~/bin/prism init --help 2>&1 | grep -iE 'harness|interface' | head
+      at: 2026-10-22T10:50:15.270193Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove; git log --format='%h %s%n%b' v0.63.24..v0.63.25 | grep -v '^Co-Authored\|^Claude-Session\|^$' | head -120; git tag --sort=-v:refname | head -3
+      at: 2026-10-22T10:50:18.034491Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism; grep -nE '"(claude|codex|cursor|copilot|vscode|gemini|opencode|windsurf)"' internal/cli/*.go | grep -v _test | head -20; git show origin/main:internal/cli/commands.go | grep -nE 'rename-plan|"arch"|missing-implementations' | head
+      at: 2026-10-22T10:50:18.113119Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove; git cat-file -t v0.63.24; git log -1 --format=%cs v0.63.25; git log --format='%b' 9d1296b5 -1 | sed -n 8,30p; gh release view v0.63.24 -R provasign/grove --json body -q .body 2>&1 | head -5
+      at: 2026-10-22T10:50:23.535609Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; git ls-files harness/results/archive-2026-09-tainted | head -2; git ls-files harness/results/archive-2026-09-tainted | wc -l; ls harness/results/archive-2026-10-22 | sed 's/\.[a-z]*$//' | sort -u > $S/arch; xargs grep -noF -f $S/arch < $S/mdfiles | head -40
+      at: 2026-10-22T10:50:25.392213Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='README.md'
+        s=open(p).read()
+        start=s.index('## Current result')
+        end=s.index('## Install')
+        new='''## Benchmark
+
+        Reference benchmark: [docs/benchmarks/prism-v0.87.39-2026-10-21.md](docs/benchmarks/prism-v0.87.39-2026-10-21.md)
+        (2026-10-21). Claude Code with Sonnet 5.5, native tools vs Prism through the CLI
+        interface (`prism init --interface cli`). Same tasks, checkouts and tests in both
+        arms. Task cost is everything after the first request of a session, repriced at
+        Sonnet 5.5's 5-minute-cache prices.
+
+        **Change work.** 32 seeded tasks in Python, Java, TypeScript and Go: method
+        renames where the name is shared with unrelated methods, property renames, and
+        signature changes. Prism v0.87.39.
+
+        | | Native | Prism | Prism / native |
+        |---|---:|---:|---:|
+        | Solved | 31 / 32 | 32 / 32 | |
+        | Task cost per task | $0.0646 | $0.0492 | 0.76× |
+        | Tool calls per task | 6.8 | 4.4 | 0.65× |
+        | Startup per session | $0.0607 | $0.0626 | 1.03× |
+
+        **Bug fixes.** 40 GitHub issues filed after the model's training cutoff, in Go,
+        Java, TypeScript and Python projects. Measured on Prism v0.87.37; v0.87.38 and
+        v0.87.39 did not change the bug-fix path.
+
+        | | Native | Prism | Prism / native |
+        |---|---:|---:|---:|
+        | Solved | 23 / 40 | 25 / 40 | |
+        | Task cost per task | $0.0520 | $0.0477 | 0.92× |
+        | Tool calls per task | 6.85 | 5.85 | 0.85× |
+        | Startup per session | $0.0609 | $0.0626 | 1.03× |
+
+        The 25 vs 23 solve difference is within run-to-run noise. Read it as the same
+        result.
+
+        **Over a session.** Startup is paid once per session, task cost once per task.
+        Projected saving of Prism vs native for a session of N tasks of one kind:
+
+        | Tasks in session | Change work | Bug fixes |
+        |---:|---:|---:|
+        | 1 | 11% | 2% |
+        | 10 | 21% | 7% |
+        | 20 | 22% | 8% |
+        | 40 | 23% | 8% |
+
+        The projection does not model context growth within a session or count
+        Prism's one-time indexing. Limits: one model, one agent, one run per cell.
+        The fact sheet has per-language slices, engine accuracy per language, and links
+        to raw records in [provasign/research](https://github.com/provasign/research).
+
+        '''
+        s=s[:start]+new+s[end:]
+        s=s.replace('VERSION=v0.74.1 curl','VERSION=v0.87.39 curl')
+        old='''Installs a hook that denies a native `Read` once prism has already delivered
+        that exact line range earlier in the same session, pointing the agent back
+        at what it already has instead of paying for it twice. Measured (13-task
+        controlled A/B, same tasks run hook-on vs hook-off): ~11% fewer tokens with
+        no change in resolve rate. Claude Code only — hooks are a Claude Code
+        mechanism.'''
+        assert old in s
+        s=s.replace(old,'''Installs a hook that denies a native `Read` once prism has already delivered
+        that exact line range earlier in the same session, pointing the agent back
+        at what it already has instead of paying for it twice. Off by default.
+        Claude Code only; hooks are a Claude Code mechanism. The v0.87.39 benchmark
+        above did not use it.''')
+        old_wf=s[s.index('1. Use `prism_lookup`'):s.index('`prism search --scope text` is a real')]
+        new_wf='''The steps below name MCP operations (`prism(op=...)`); the CLI commands have
+        the same names (`prism lookup`, `prism search`, `prism change-impact`, ...).
+
+        1. Use `lookup` for a known symbol or `search` for an unknown location; batch related names in one call.
+        2. Use `change_impact` when callers, overrides, contracts, or other affected sites need checking; a clearly local body-only edit need not call it. Preserve the returned set when used.
+        3. Use `query` for related source context around explicit anchors, or `read` for a known file or range; inspect omission markers.
+        4. Use exhaustive text search for wide concept removals and other completeness questions.
+        5. Run relevant tests. `verify` is optional in every language. Consider it for Python, unchecked JavaScript, or PHP contract changes; for TypeScript or checked JavaScript, only when affected files lack a complete typecheck. Skip it after a complete build/typecheck of affected Go, Java, Rust, C/C++, or C# targets.
+
+        '''
+        s=s.replace(old_wf,new_wf)
+        open(p,'w').write(s)
+        EOF
+        grep -n 'prism_\|Pin the current' README.md
+      at: 2026-10-22T10:50:29.204195Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; grep -vxE 'e2e|mining' $S/arch > $S/arch2; xargs grep -noF -f $S/arch2 < $S/mdfiles | sort -u | head -40; echo ---; xargs grep -nE 'results/(e2e|mining)|results[^ ]*e2e' < $S/mdfiles | head; grep -n 'e2e\|mining' README.md harness/README.md | head -30
+      at: 2026-10-22T10:50:30.630566Z
+      classified: other
+    - cmd: grep -n 'readGuard\|ReadGuard' internal/cli/commands.go | head -20; grep -n 'Matcher\|matcher\|"Read"\|PostToolUse\|PreToolUse' internal/cli/readguard.go | head -20; grep -n 'Grove\|grove\|astkit' README.md | head
+      at: 2026-10-22T10:50:33.003069Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs && python3 - <<'EOF'
+        p='README.md'; s=open(p).read()
+        s=s.replace("VERSION=v0.45.0 curl","VERSION=v0.63.25 curl",1)
+        start=s.index("Current call-edge accuracy against")
+        end=s.index("The dynamic oracles record only")
+        new='''Current call-edge accuracy against each language's compiler or runtime oracle
+        (pinned corpora, CI-gated floors in `eval/baseline.json`; 2026-10-22, Grove v0.63.25):
+
+        | Language | Corpus | Oracle | Precision | Recall |
+        |---|---|---|---|---|
+        | Go | gin | SSA + VTA | 0.979 | 0.997 |
+        | Java | commons-lang | javac + javap | 1.000 | 1.000 |
+        | C# | Newtonsoft.Json | Roslyn | 0.971 | 0.977 |
+        | TypeScript | socket.io | TypeScript checker | 0.937 | 0.992 |
+        | JavaScript | express | TypeScript checker (`checkJs`) | 0.885 | 1.000 |
+        | Rust | ripgrep | rust-analyzer SCIP | 0.965 | 0.906 |
+        | C | jansson | clang AST | 1.000 | 0.998 |
+        | Swift | SwiftyJSON | SourceKit index | 1.000 | 1.000 |
+        | Kotlin | turtle | kotlinc + javap | 1.000 | 1.000 |
+        | Objective-C | SBJson (json-framework) | clang AST | 1.000 | 1.000 |
+        | Python | flask | pytest trace (dynamic) | 0.896 | 0.787 |
+        | PHP | PHP-Parser | Xdebug trace (dynamic) | 0.922 | 0.683 |
+
+        A second, untuned corpus per language guards against rules that only fit
+        the first (also gated):
+
+        | Language | Second corpus | Precision | Recall |
+        |---|---|---|---|
+        | Go | cobra | 0.995 | 1.000 |
+        | Java | commons-io | 1.000 | 1.000 |
+        | C | cJSON | 0.998 | 0.999 |
+        | Rust | fd | 0.952 | 0.913 |
+        | TypeScript | p-queue | 0.959 | 1.000 |
+        | Swift | Files | 1.000 | 1.000 |
+        | Objective-C | CocoaLumberjack | 0.975 | 0.957 |
+        | PHP | league/csv (dynamic) | 0.947 | 0.837 |
+
+        C#, JavaScript, Kotlin and Python have one scored corpus each.
+
+        COBOL and JCL are supported with a regression-tested graph; their accuracy is
+        not yet independently scored.
+
+        '''
+        s=s[:start]+new+s[end:]
+        open(p,'w').write(s)
+        EOF
+        git diff --stat
+      at: 2026-10-22T10:50:33.687792Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        p='README.md'
+        s=open(p).read()
+        old='Build from source with `make build`'
+        s=s.replace(old,'The current release is v0.87.39. It embeds Grove v0.63.25 (Astkit v0.16.10).\n\n'+old,1)
+        old='For automation, pass a comma-separated list such as'
+        s=s.replace(old,'Harness ids: `claude`, `codex`, `cursor`, `windsurf`, `vscode`, `gemini`, `opencode`.\n'+old,1)
+        open(p,'w').write(s)
+        EOF
+        git mv docs/benchmarks/adaptive-search-phase4-2026-09-09.md docs/benchmarks/archive/ 2>&1 || (mkdir -p docs/benchmarks/archive && git mv docs/benchmarks/adaptive-search-phase4-2026-09-09.md docs/benchmarks/archive/); grep -rn 'adaptive-search-phase4' --include=*.md . 2>/dev/null | grep -v '^./.cache\|^./docs/research' ; git diff --stat; sed -n 60,130p README.md
+      at: 2026-10-22T10:50:39.926614Z
+      classified: build
+    - cmd: mkdir -p docs/benchmarks/archive && git mv docs/benchmarks/adaptive-search-phase4-2026-09-09.md docs/benchmarks/archive/ && grep -rn 'adaptive-search-phase4' README.md docs/*.md docs/benchmarks AGENTS.md CONTRIBUTING.md 2>/dev/null; git add README.md docs/benchmarks/prism-v0.87.39-2026-10-21.md && git status --short | grep -v '^??'
+      at: 2026-10-22T10:50:43.490252Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs && python3 - <<'EOF'
+        p='CHANGELOG.md'; s=open(p).read()
+        entry='''# Changelog
+
+        ## v0.63.25 - 2026-10-21
+
+        Index correctness fixes from the 2026-10-20 stack audit. Call-edge scores
+        are unchanged (gin, cobra, socket.io, flask: identical precision and recall).
+
+        **Fixes (results)**
+        - **Unreadable changed files are pruned**: a file whose stat changed but
+          whose content can no longer be hashed (over the 10 MiB cap, not a regular
+          file, unreadable) kept the symbols of its last readable version, served as
+          current. Its stored symbols are now dropped, as for a changed file that
+          fails to parse. The error stays in `IndexResult.Errors` and is reported on
+          every run until the file indexes. Unreadable directories are unchanged:
+          their files are not seen, so their stored state is kept.
+        - **Compiler inputs are fingerprinted per analyzer**: editing only build
+          configuration (`go.mod`/`go.sum`/`go.work`, `tsconfig*.json`,
+          `jsconfig*.json`, `package.json`, Maven/Gradle files, `Cargo.toml`/
+          `Cargo.lock`, `compile_commands.json`, `*.csproj`/`Directory.Build.props`,
+          `composer.json`, Python project files) used to leave the graph resolved
+          under the old configuration. These files are now content-hashed (even when
+          gitignored); a change gives the analyzer that reads them a full pass and
+          drops only that analyzer's resident worker state. A touch without a content
+          change is not a change.
+        - **cgo files in project packages**: a local Go package whose files all
+          import `"C"` loaded as an empty package. cgo files are now parsed and
+          type-checked with the package (`FakeImportC`), keep positions in the
+          user's source, and no longer mark the package as partially checked.
+        - **Bounded retries for incomplete native analysis**: a no-change index
+          returned before giving an analyzer without a completed pass another run,
+          so installing a missing compiler had no effect until `--force`. An
+          unavailable analyzer is now rechecked after 15s, doubling to at most
+          10 min; a pass that ran and failed is retried after 1 min, doubling to at
+          most 6 h. The no-change message says which analyzer is pending, why, and
+          when the next retry is due.
+        - **One current native verdict per analyzer**: carried-forward verdict lines
+          were re-carried on every run, so one diagnostic grew by two lines per
+          index. Each analyzer's last pass that produced edges is now kept in its
+          own meta key; the stored verdict is that last good pass once plus this
+          run's lines. Line formats are unchanged.
+
+        **Dependencies**
+        - astkit v0.16.10: call columns count characters when multibyte text
+          precedes a call, `Engine.Validate` rejects syntax errors, and `.mts`/`.cts`
+          are detected as TypeScript.
+
+        Entries for v0.62.3 through v0.63.24 are not written up here; see the git
+        history for those releases.
+        '''
+        assert s.startswith('# Changelog\n')
+        s=entry+s[len('# Changelog\n'):]
+        open(p,'w').write(s)
+        EOF
+        sed -n 1,8p CHANGELOG.md; sed -n 55,62p CHANGELOG.md
+      at: 2026-10-22T10:50:45.994219Z
+      classified: build
+    - cmd: 'cd ~/Projects/provasign/research && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; while IFS=: read f l m; do echo "### $f:$l"; sed -n "${l}p" $f | grep -oE ''.{0,60}results/[A-Za-z0-9._/-]+.{0,20}''; done < $S/hits | grep -v ''index.jsonl\|my-run\|issue-bed52'''
+      at: 2026-10-22T10:50:48.857252Z
+      classified: other
+    - cmd: |-
+        git commit -q -F - <<'EOF'
+        docs: README benchmark and pins for v0.87.39; archive old benchmark
+
+        - README results section now comes from docs/benchmarks/prism-v0.87.39-2026-10-21.md
+          (change work 0.76x task cost, 0.65x tool calls, 32/32 vs 31/32; bug fixes
+          0.92x / 0.85x; session projection). Drops the September nine-task table.
+        - Install pin v0.74.1 -> v0.87.39; state Grove v0.63.25 / Astkit v0.16.10.
+        - List harness ids; workflow uses compact gateway op names; verify optional.
+        - Read-guard: drop the ~11% token claim (not in the current benchmark).
+        - Add the v0.87.39 benchmark fact sheet; move the 2026-09-09 adaptive-search
+          benchmark to docs/benchmarks/archive/.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        EOF
+        git log -1 --stat --format=%H
+      at: 2026-10-22T10:50:48.995041Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs && python3 - <<'EOF'
+        p='CHANGELOG.md'; s=open(p).read()
+        s=s.replace("""Index correctness fixes from the 2026-10-20 stack audit. Call-edge scores
+        are unchanged (gin, cobra, socket.io, flask: identical precision and recall).
+        ""","Index correctness fixes from the 2026-10-20 stack audit.\n",1)
+        s=s.replace("""  are detected as TypeScript.
+        ""","""  are detected as TypeScript. Call-edge scores on gin, cobra, socket.io and
+          flask are identical with it.
+        """,1)
+        open(p,'w').write(s)
+        EOF
+        grep -n -B3 "^## v0.62.2" CHANGELOG.md
+      at: 2026-10-22T10:50:51.49198Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign.github.io && python3 - <<'EOF'
+        p='prism.md'; s=open(p).read()
+        old_intro=s[s.index('Prism gives coding agents'):s.index('## Start in one command')]
+        new_intro="""Prism gives coding agents semantic change intelligence before they edit. It combines repository text search with a typed code graph and returns task-shaped answers: the complete method family, resolved callers, edit-ready source, and every known site a diff missed.
+
+        Prism answers questions. It never edits code; the agent makes every change.
+
+        It runs locally as one binary and embeds [Grove]({{ '/grove/' | relative_url }}). Agents reach it one of two ways: as an MCP server, or through the `prism` command in their shell (`prism init --interface cli`).
+
+        """
+        s=s.replace(old_intro,new_intro)
+        s=s.replace("VERSION=v0.80.2","VERSION=v0.87.39")
+        old=s[s.index("`prism init` creates the local"):s.index("## One route")]
+        new="""`prism init` writes `prism.yaml` and agent instructions for the agents you pick: Claude Code, Codex, Cursor, Copilot (VS Code), Gemini CLI, OpenCode, and Windsurf. It asks which interface to use. MCP (the default) registers a project-local server. CLI registers no server; agents run `prism` in their shell. To choose without a prompt:
+
+        ```sh
+        prism init --harness claude,codex --interface cli .
+        ```
+
+        Indexing happens automatically on first use and updates incrementally.
+
+        """
+        s=s.replace(old,new)
+        old=s[s.index("## Current measured result"):s.index("## Designed for reliable use")]
+        new="""## Current measured result
+
+        Prism v0.87.39 against native Claude Code (Sonnet 5.5, CLI interface, one run per cell):
+
+        | | Native | Prism | Prism / native |
+        |---|---:|---:|---:|
+        | Change work, 32 tasks: solved | 31 / 32 | 32 / 32 | |
+        | Change work: task cost | $0.0646 | $0.0492 | 0.76× |
+        | Change work: tool calls | 6.8 | 4.4 | 0.65× |
+        | Bug fixes, 40 issues (v0.87.37): solved | 23 / 40 | 25 / 40 | |
+        | Bug fixes: task cost | $0.0520 | $0.0477 | 0.92× |
+
+        The bug-fix solve difference is within run-to-run noise. Startup cost per session is 1.03× native.
+
+        [See the full tables, setup, and limits.]({{ '/benchmarks/' | relative_url }})
+
+        """
+        s=s.replace(old,new)
+        s=s.replace("Prism indexes Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#, PHP, Swift, Kotlin, Objective-C, COBOL, and JCL (via the embedded Grove engine). Semantic depth depends on language support and the native toolchain available in the repository; COBOL and JCL are structural/heuristic only, with no published accuracy oracle yet.",
+         "Prism indexes Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#, PHP, Swift, Kotlin, Objective-C, COBOL, and JCL through the embedded Grove engine. Semantic depth depends on the language and on the native toolchain available in the repository. COBOL and JCL have a regression-tested graph; their accuracy is not yet independently scored.")
+        s=s.replace("Re-reading an unchanged file through MCP returns a compact content pointer.","Re-reading an unchanged file through MCP returns a short pointer instead of the content.")
+        s=s.replace('description: "Semantic change intelligence for coding agents: complete impact, edit-ready context, and diff verification."','description: "Semantic change intelligence for coding agents: change impact, edit-ready context, and diff verification. Answers questions; never edits code."')
+        open(p,'w').write(s)
+        EOF
+        grep -n "0.80\|0.998\|nine" prism.md
+      at: 2026-10-22T10:50:53.962229Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-astkit-docs; ls *.md; git ls-files | grep -i -E "changelog|\.md$"; cat README.md | wc -l; grep -n -i "validate\|\.mts\|\.ts\b\|\.tsx\|extension\|v0\.1[0-9]\|column\|byte\|go get" README.md doc.go | head -40
+        cd ~/Projects/provasign/astkit; git log --format='%h %s%n%b' v0.16.9..v0.16.10 | grep -v '^Co-Authored\|^Claude-Session\|^$' | head -60
+      at: 2026-10-22T10:50:55.19664Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-astkit-docs; cat README.md; sed -n 1,40p doc.go; grep -n "mts\|cts\|\.ts\"" lang.go | head
+      at: 2026-10-22T10:50:58.281992Z
+      classified: other
+    - cmd: "cd ~/Projects/provasign/research && A=archive-2026-09-tainted; \nsed -i '' -E \"s#results/(impact-oracle-reliability-2026-09-07|prism-accuracy-efficiency-2026-09-06)/#results/$A/\\1/#g\" README.md RESULTS.md\nsed -i '' -E \"s#harness/results/(h3-ab|guard-hook-ab|search-body-ab|guard-fix-run)/#harness/results/$A/\\1/#g\" docs/HANDOFF.md\nsed -i '' -E \"s#harness/results/ab-agentic/#harness/results/$A/ab-agentic/#g\" harness/docs/AB-ENGINE-COMPARISON.md\nsed -i '' -E \"s#\\.\\./results/prism-compare-2026-09-12/#../results/$A/archive-pre-09-20/prism-compare-2026-09-12/#g; s#\\.\\./results/(coding-suite-pilot-2026-09-07|product-proof-coding-remaining-2026-09-08|product-proof-impact-pilot-2026-09-08|product-proof-impact-remaining-2026-09-08|four-head-impact-2026-09-07-stopped)/#../results/$A/\\1/#g\" harness/docs/BASELINE-PRISM-COMPARISON-2026-09-12.md\nsed -i '' -E \"s#harness/results/daytoday-four-head-2026-09-07/#harness/results/$A/daytoday-four-head-2026-09-07/#g\" harness/docs/BENCH.md\ngit diff --stat -- README.md RESULTS.md docs harness/docs\n# verify tracked existence\nfor f in README.md RESULTS.md docs/HANDOFF.md harness/docs/AB-ENGINE-COMPARISON.md harness/docs/BENCH.md harness/docs/BASELINE-PRISM-COMPARISON-2026-09-12.md; do d=$(dirname $f); grep -oE '(\\.\\./|harness/)results/archive-2026-09-tainted/[A-Za-z0-9._/{},-]+' $f | sort -u | while read p; do case $p in ../*) r=$(cd $d && realpath -q ${p%%\\{*} | sed \"s#$PWD/##\") ;; *) r=$p;; esac; r=${r%%\\{*}; r=${r%/}; n=$(git ls-files \"$r\" | wc -l); echo \"$f $p -> tracked=$n\"; done; done"
+      at: 2026-10-22T10:50:58.573617Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git ls-files harness/results/archive-2026-09-tainted/h3-ab | head -3; git ls-files harness/results/archive-2026-09-tainted/h3-ab | wc -l; ls harness/results/archive-2026-09-tainted/h3-ab | head; ls harness/results/archive-2026-09-tainted/guard-fix-run | head -3; git check-ignore -v harness/results/archive-2026-09-tainted/guard-fix-run/x
+      at: 2026-10-22T10:51:02.278655Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-astkit-docs; grep -n "Col\b\|Column\|ErrSyntax" symbol.go engine.go callcolumns.go | head; grep -n "func (e \*Engine) Validate" -B6 engine.go
+      at: 2026-10-22T10:51:03.02638Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git show --stat beeb2e9 | tail -5 && git show beeb2e9 -- README.md | grep "^+" | head -90
+      at: 2026-10-22T10:51:05.380199Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign.github.io && python3 - <<'EOF'
+        p='grove.md'; s=open(p).read()
+        s=s.replace("VERSION=v0.58.1","VERSION=v0.63.25")
+        s=s.replace("Grove supports Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#, and PHP. Tree-sitter provides structural extraction; native analyzers enrich the graph when the repository toolchain is available. Capability and evidence tiers make those differences explicit.",
+        "Grove supports Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#, PHP, Swift, Kotlin, Objective-C, COBOL, and JCL. Tree-sitter provides structural extraction. Native analyzers enrich the graph when the repository toolchain is available. `grove doctor` reports each language's resolution tier and known limits.")
+        old=s[s.index("## Evidence"):s.index("- [GitHub repository]")]
+        new="""## Evidence
+
+        Call-edge accuracy is CI-gated against each language's compiler or runtime ground truth on pinned repositories. Grove v0.63.25, selected rows (precision / recall):
+
+        | Language | Corpus | Ground truth | Precision | Recall |
+        |---|---|---|---:|---:|
+        | Go | gin / cobra | SSA + VTA | 0.979 / 0.995 | 0.997 / 1.000 |
+        | Java | commons-lang / commons-io | javac + javap | 1.000 / 1.000 | 1.000 / 1.000 |
+        | TypeScript | socket.io / p-queue | TypeScript compiler API | 0.937 / 0.959 | 0.992 / 1.000 |
+        | Python | flask | pytest trace (dynamic) | 0.896 | 0.787 |
+        | PHP | PHP-Parser | Xdebug trace (dynamic) | 0.922 | 0.683 |
+
+        COBOL and JCL have a regression-tested graph; their accuracy is not yet independently scored. All twelve scored languages are on the [benchmarks page]({{ '/benchmarks/' | relative_url }}#engine-accuracy-grove-v06325).
+
+        """
+        s=s.replace(old,new)
+        open(p,'w').write(s)
+
+        p='index.html'; s=open(p).read()
+        old=s[s.index('<h2 class="section-title">Measured on complete change sets.</h2>'):s.index('<div class="principle"><strong>Open evidence</strong>')]
+        new='''<h2 class="section-title">Measured against native Claude Code.</h2>
+                <p class="section-lead">Prism v0.87.39 on Sonnet 5.5: 32 of 32 change tasks solved (native 31 of 32) at 0.76× native task cost. On 40 real bug-fix issues it solved the same share as native at 0.92× task cost. The tasks, run records, transcripts, and limits are public.</p>
+                <div class="principles">
+                  <div class="principle"><strong>32 / 32 solved</strong><p>Seeded renames and signature changes in Python, Java, TypeScript, and Go. Native solved 31.</p></div>
+                  <div class="principle"><strong>0.76× task cost</strong><p>Prism task cost relative to native on the same 32 change tasks, with 0.65× the tool calls.</p></div>
+                  '''
+        s=s.replace(old,new)
+        s=s.replace('<p>Ask a change-shaped question and get the declaration, implementations, callers, tests, and concrete edit sites in one deterministic result.</p>',
+         '<p>Ask a change-shaped question and get the declaration, implementations, callers, tests, and concrete edit sites in one deterministic result. Prism answers; the agent edits.</p>')
+        open(p,'w').write(s)
+        EOF
+        grep -n "Open evidence" -B2 -A2 index.html
+      at: 2026-10-22T10:51:05.401287Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        p='README.md'
+        s=open(p).read()
+        old=s[s.index("The latest paired nine-task Sonnet sample"):s.index("See [RESULTS.md](RESULTS.md)")]
+        new="""The current reference benchmark is Prism v0.87.39 (2026-10-21), run with Claude Sonnet 5.5 in Claude Code. One arm used Claude Code's own tools; the other used the Prism CLI. Each task ran once per arm.
+
+        - Change work, 32 tasks (renames and signature changes): Prism solved 32 of 32 and native solved 31 of 32. Prism's task cost was 0.76× native and it made 0.65× as many tool calls.
+        - Bug fixes, 40 GitHub issues: Prism solved 25 and native solved 23. That difference is within run-to-run noise. Prism's task cost was 0.92× native and it made 0.85× as many tool calls.
+
+        The raw runs are in `harness/results/change32-cli-vs-native-2026-10-21/`, `harness/results/change32-v08739cand-2026-10-21/` and `harness/results/v0837-vs-native41-2026-10-20/`. The full numbers, setup and limits are in the [v0.87.39 benchmark fact sheet](https://github.com/provasign/prism/blob/main/docs/benchmarks/prism-v0.87.39-2026-10-21.md). Older runs are in `harness/results/archive-2026-10-22/`.
+
+        """
+        s=s.replace(old,new)
+        s=s.replace("See [RESULTS.md](RESULTS.md) for the full table, repeated-trial evidence, scoring corrections, and limitations.","See [RESULTS.md](RESULTS.md) for the tables and the earlier, historical evidence.")
+        open(p,'w').write(s)
+        EOF
+        sed -n 60,73p RESULTS.md
+      at: 2026-10-22T10:51:09.957765Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-astkit-docs && python3 - <<'EOF'
+        p='README.md'; s=open(p).read()
+        old="""- **Tree-sitter dispatch** — `Engine.Parse` / `Engine.Validate`, one place
+          for every supported grammar, with a parse timeout.
+        """
+        new="""- **Tree-sitter dispatch** — `Engine.Parse` / `Engine.Validate`, one place
+          for every supported grammar, with a parse timeout. `Parse` returns
+          tree-sitter's best-effort tree even for broken source; `Validate`
+          (v0.16.10+) returns an error wrapping `ErrSyntax`, naming the first error's
+          1-based line and column, when that tree contains syntax errors. Languages
+          without a grammar (JSON, YAML, TOML) always validate.
+        """
+        assert old in s; s=s.replace(old,new,1)
+        old2="""| Go, Python, Java, Rust, JavaScript, TypeScript, TSX, C, C++, C#, PHP, Swift, Kotlin, Objective-C, COBOL, JCL | JSON, YAML, TOML |
+        """
+        new2=old2+"""
+        TypeScript detection covers `.ts`, `.mts` and `.cts` (`.mts`/`.cts` since
+        v0.16.10); JavaScript covers `.js`, `.mjs` and `.cjs`.
+        """
+        assert old2 in s; s=s.replace(old2,new2,1)
+        old3="""line spans, declaration signature, receiver/container, and resolved-name
+        `CallSite` records — everything a caller needs to build reference graphs
+        or structural diffs without touching tree-sitter directly.
+        """
+        new3=old3+"""
+        `CallSite.Col` is the 1-based character column of the called name, counted
+        in the original line, so multibyte text before a call (accented letters,
+        emoji in strings or comments) does not shift it (fixed in v0.16.10).
+        """
+        assert old3 in s; s=s.replace(old3,new3,1)
+        open(p,'w').write(s)
+        EOF
+        grep -n '"\.js"\|"\.mjs"\|"\.cjs"\|\.jsx' lang.go | head -3; git diff --stat
+      at: 2026-10-22T10:51:11.328887Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign.github.io && python3 - <<'EOF'
+        p='index.html'; s=open(p).read()
+        s=s.replace('<p>Independent oracles and raw agent records live in the public Research repository.</p>','<p>Tasks, raw agent records, and transcripts live in the public Research repository.</p>')
+        a='<p class="section-lead">Prism turns the multi-step investigations developers and agents repeat every day into task-shaped operations with explicit completeness.</p>'
+        assert a in s
+        s=s.replace(a,'<p class="section-lead">Prism turns the multi-step investigations developers and agents repeat every day into task-shaped operations with explicit completeness. It works with Claude Code, Codex, Cursor, Copilot (VS Code), Gemini CLI, OpenCode, and Windsurf, as an MCP server or as a <code>prism</code> command the agent runs in its shell.</p>')
+        open(p,'w').write(s)
+        EOF
+        which bundle jekyll; git diff --stat
+      at: 2026-10-22T10:51:11.749571Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-astkit-docs; sed -n 115,135p lang.go
+      at: 2026-10-22T10:51:14.724947Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/provasign.github.io && timeout 60 bundle exec jekyll build 2>&1 | tail -3
+      at: 2026-10-22T10:51:15.135576Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/provasign.github.io && bundle exec jekyll build 2>&1 | tail -3
+      at: 2026-10-22T10:51:17.196788Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign.github.io && git add benchmarks.md prism.md grove.md index.html && git commit -q -F - <<'EOF'
+        docs: update site to Prism v0.87.39 / Grove v0.63.25 benchmark
+
+        Rewrite benchmarks around the v0.87.39 fact sheet (32 change tasks,
+        40 bug-fix issues, session projection, limits, Grove engine accuracy);
+        drop the archived nine-task sample. Bump install pins, list supported
+        agents and the MCP/CLI interfaces, state that Prism never edits code,
+        and list all 14 Grove languages with COBOL/JCL accuracy unscored.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        EOF
+        git log --oneline -1; git status --short
+      at: 2026-10-22T10:51:21.16624Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-astkit-docs && python3 - <<'EOF'
+        p='README.md'; s=open(p).read()
+        s=s.replace("""TypeScript detection covers `.ts`, `.mts` and `.cts` (`.mts`/`.cts` since
+        v0.16.10); JavaScript covers `.js`, `.mjs` and `.cjs`.""","""TypeScript detection covers `.ts`, `.mts` and `.cts` (`.mts`/`.cts` since
+        v0.16.10), TSX covers `.tsx`, and JavaScript covers `.js`, `.jsx`, `.mjs`
+        and `.cjs`. Extensions are matched case-insensitively.""")
+        open(p,'w').write(s)
+        EOF
+        git add README.md && git commit -q -F - <<'EOF'
+        docs: README for v0.16.10
+
+        Validate rejects syntax errors (ErrSyntax), .mts/.cts detect as
+        TypeScript, and CallSite.Col counts characters in the original line.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        EOF
+        git log --oneline -1; git status --short
+        cd ../wt-grove-docs && git add README.md CHANGELOG.md && git commit -q -F - <<'EOF'
+        docs: accuracy table, changelog and install pin for v0.63.25
+
+        README call-edge accuracy tables now match eval/baseline.json (2026-10-22,
+        Grove v0.63.25), with a note that COBOL and JCL accuracy is not yet
+        independently scored. The install pin names v0.63.25. CHANGELOG describes
+        v0.63.25.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        EOF
+        git log --oneline -1; git status --short
+      at: 2026-10-22T10:51:21.599992Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        p='RESULTS.md'
+        s=open(p).read()
+        head="""# Current results
+
+        This page is the canonical summary of current Prism-versus-native evidence. Dated reports under `harness/` remain available for reproduction and historical comparison.
+        """
+        assert s.startswith(head)
+        rest=s[len(head):]
+        # demote historical headings one level
+        import re
+        rest=re.sub(r'(?m)^(#{2,5}) ', lambda m: '#'+m.group(1)+' ', rest)
+        rest=rest.replace("- Current accuracy and efficiency campaign:","- 2026-09-06 accuracy and efficiency campaign:")
+        new="""# Results
+
+        This page summarizes Prism-versus-native evidence. The current section is the reference; everything below it is historical.
+
+        ## Current (2026-10-21)
+
+        Source: the [Prism v0.87.39 benchmark fact sheet](https://github.com/provasign/prism/blob/main/docs/benchmarks/prism-v0.87.39-2026-10-21.md). Prism v0.87.39 (Grove v0.63.25, Astkit v0.16.10); Claude Code 2.1.302 with Claude Sonnet 5.5, headless. Arms: **native** (Claude Code's own tools, no Prism) vs **Prism CLI** (`prism init --interface cli`, no MCP server). Same task, checkout and tests in both arms.
+
+        Cost was repriced at Sonnet 5.5's 5-minute-cache prices (input $2, cache write $2.50, cache read $0.10, output $10 per million tokens). **Startup** is the first request of a session; **task cost** is everything after it. Tool calls are the agent's actions (grep, read, edit, test run, `prism` command). Requests are model API calls.
+
+        Raw records, transcripts and tallies:
+
+        - [`harness/results/change32-cli-vs-native-2026-10-21/`](harness/results/change32-cli-vs-native-2026-10-21/)
+        - [`harness/results/change32-v08739cand-2026-10-21/`](harness/results/change32-v08739cand-2026-10-21/)
+        - [`harness/results/v0837-vs-native41-2026-10-20/`](harness/results/v0837-vs-native41-2026-10-20/)
+
+        ### Change work: 32 tasks (renames, signature changes)
+
+        Seeded change tasks in Python (12), Java (7), TypeScript (8) and Go (5): renaming an interface or base-class method that shares its name with unrelated methods (24), renaming a property or option (4), and changing a function's signature (4). Solved means every affected site is changed and the project's tests pass.
+
+        | | Native | Prism v0.87.39 | Prism / native |
+        |---|---:|---:|---:|
+        | Solved | 31 / 32 | **32 / 32** | |
+        | Task cost per task | $0.0646 | $0.0492 | **0.76×** |
+        | Tool calls per task | 6.8 | 4.4 | **0.65×** |
+        | Model requests per task (after startup) | 5.7 | 4.2 | **0.74×** |
+        | Startup per session | $0.0607 | $0.0626 | 1.03× |
+
+        By kind and language (Prism / native):
+
+        | Slice | Tasks | Solved native / Prism | Task cost | Tool calls |
+        |---|---:|---|---:|---:|
+        | Method rename (shared name) | 24 | 23 / 24 | 0.72× | 0.62× |
+        | Signature change | 4 | 4 / 4 | 0.85× | 0.60× |
+        | Property/option rename | 4 | 4 / 4 | 0.92× | 0.83× |
+        | Java | 7 | 7 / 7 | 0.74× | 0.58× |
+        | TypeScript | 8 | 7 / 8 | 0.74× | 0.66× |
+        | Go | 5 | 5 / 5 | 0.78× | 0.64× |
+        | Python | 12 | 12 / 12 | 0.81× | 0.69× |
+
+        Slices with 4-5 tasks show direction, not a precise figure. The Prism arm comes from the v0.87.38-vs-v0.87.39 A/B run; the native arm from the same day's native-vs-v0.87.38 run on the same tasks and setup. v0.87.38 alone measured 31 / 32 solved, 0.84× task cost, 0.76× tool calls against native.
+
+        ### Bug fixes: 40 GitHub issues
+
+        Real issues filed after the model's training cutoff, from gin, chi, echo, urfave/cli, gson, jackson-databind, jackson-dataformat-xml, dubbo, hono, zod, urllib3 and pydantic. Solved means the hidden tests pass. Measured on Prism v0.87.37 (2026-10-20); v0.87.38-v0.87.39 changed change-impact delivery, not the bug-fix path, and were not re-run on this set.
+
+        | | Native | Prism v0.87.37 | Prism / native |
+        |---|---:|---:|---:|
+        | Solved | 23 / 40 | 25 / 40 | |
+        | Task cost per task | $0.0520 | $0.0477 | **0.92×** |
+        | Tool calls per task | 6.85 | 5.85 | **0.85×** |
+        | Model requests per task (after startup) | 5.38 | 4.92 | 0.92× |
+        | Startup per session | $0.0609 | $0.0626 | 1.03× |
+
+        The solve difference (25 vs 23) is within run-to-run noise; read it as the same result. 22 of the 40 are small one-file fixes (Prism 0.87× task cost, 0.88× tool calls); the other slices are too small to quote.
+
+        ### Over a working session
+
+        Startup is paid once per session, task cost once per task. Projected saving of Prism vs native for a session of N tasks of one kind:
+
+        | Tasks in session | Change work | Bug fixes |
+        |---:|---:|---:|
+        | 1 | 11% | 2% |
+        | 10 | 21% | 7% |
+        | 20 | 22% | 8% |
+        | 40 | 23% | 8% |
+
+        The projection does not model context growth within a long session, and does not count Prism's one-time indexing (time, not tokens).
+
+        ### Limits
+
+        - One model (Sonnet 5.5), one agent (Claude Code), one run per cell. Opus was not measured against native.
+        - The change set has 4 signature-change and 4 property-rename tasks; their rows are directional.
+        - Two losses were adjudicated, not dropped: Prism's werkzeug `HTTPException.get_headers` miss in the v0.87.38 run was a macOS `sed` `\\b` substitution that changed nothing (Prism's change-impact listed the right sites); native missed hono `Router.match`.
+        - Claude Code's auto mode with Opus 5.5 adds a reminder to work through Bash with grep/cat. Under it Prism still handled 80% (CLI) / 59% (MCP) of code searches; savings under that reminder were not measured against native.
+
+        ## Historical (before 2026-10-21)
+
+        Everything below predates the v0.87.39 benchmark and is kept for reference. It describes older Prism builds and an older measurement setup (MCP interface, recall/precision scoring of impact answers). The runs from that period were moved to [`harness/results/archive-2026-10-22/`](harness/results/archive-2026-10-22/) (and, for September runs, `harness/results/archive-2026-09-tainted/`). Do not quote these numbers as current.
+        """
+        open(p,'w').write(new+rest)
+        EOF
+        grep -n '^#' RESULTS.md; grep -n 'sed' RESULTS.md | head -3
+      at: 2026-10-22T10:51:31.191727Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && for d in change32-cli-vs-native-2026-10-21 change32-v08739cand-2026-10-21 v0837-vs-native41-2026-10-20 archive-2026-10-22; do echo "$d $(git ls-files harness/results/$d | wc -l)"; done; grep -n 'results' harness/README.md harness/docs/BENCH.md harness/BENCH-MATRIX.md harness/RESULTS-E2E.md THESIS.md 2>/dev/null | head -30
+      at: 2026-10-22T10:51:35.524478Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && sed -n 100,125p harness/README.md; sed -n 92,125p harness/docs/BENCH.md
+      at: 2026-10-22T10:51:37.509127Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        p='harness/README.md'
+        s=open(p).read()
+        o="| `results/` | All scored runs + transcripts (released; layout below) |"
+        assert o in s
+        s=s.replace(o,"| `results/` | Scored runs + transcripts (released; layout below). New runs land here; runs older than the v0.87.39 benchmark (2026-10-21) were moved to `results/archive-2026-10-22/` (September runs: `results/archive-2026-09-tainted/`) |")
+        open(p,'w').write(s)
+        p='harness/docs/BENCH.md'
+        s=open(p).read()
+        o="- `--out DIR` — run directory; default `harness/results/bench-<suite>-<timestamp>`."
+        assert o in s
+        s=s.replace(o,o+"\n  Runs made before 2026-10-21 were moved to `harness/results/archive-2026-10-22/`;\n  `bench.py index` over `harness/results` also scans the archive unless you point\n  `--results-dir` at a single run.")
+        open(p,'w').write(s)
+        EOF
+        grep -n 'results-dir\|rglob\|os.walk' harness/bench.py | head
+      at: 2026-10-22T10:51:42.043988Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs; grep -n -i "sixteen\|languages" README.md | head; ls internal/parser/ | head -40; cat internal/parser/languages.go 2>/dev/null | head -120
+      at: 2026-10-22T10:51:44.767426Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git diff README.md | head -40; git add README.md RESULTS.md docs/HANDOFF.md harness/README.md harness/docs/AB-ENGINE-COMPARISON.md harness/docs/BASELINE-PRISM-COMPARISON-2026-09-12.md harness/docs/BENCH.md && git diff --cached --stat
+      at: 2026-10-22T10:51:45.545212Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs; sed -n 120,175p internal/parser/languages.go
+      at: 2026-10-22T10:51:48.098206Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign && python3 - <<'EOF'
+        import re
+        for p in ["prism/docs/benchmarks/prism-v0.87.39-2026-10-21.md","provasign.github.io/benchmarks.md"]:
+            s=open(p).read()
+            n0=s.count("turtle / csv")
+            s=s.replace("| Kotlin | turtle / csv | kotlinc + javap | 1.000 / 0.947 | 1.000 / 0.837 |","| Kotlin | turtle | kotlinc + javap | 1.000 | 1.000 |")
+            s=s.replace("| PHP | PHP-Parser | Xdebug trace (dynamic) | 0.922 | 0.683 |","| PHP | PHP-Parser / league/csv | Xdebug trace (dynamic) | 0.922 / 0.947 | 0.683 / 0.837 |")
+            open(p,"w").write(s)
+            print(p, "before", n0, "after", s.count("turtle / csv"), "csv rows:", [l for l in s.splitlines() if "csv" in l])
+        EOF
+        grep -rn "csv" provasign.github.io/*.md provasign.github.io/index.html | grep -i kotlin
+      at: 2026-10-22T10:51:49.976424Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && git commit -q -F - <<'EOF'
+        docs: point current evidence at the v0.87.39 benchmark; fix archived result links
+
+        README "Current evidence" and a new RESULTS.md "Current (2026-10-21)" section
+        now summarize the Prism v0.87.39 benchmark (change32 + 40 bug-fix issues) and
+        name the three run folders kept in harness/results/. The old nine-task content
+        stays in RESULTS.md under "Historical", with a pointer to
+        harness/results/archive-2026-10-22/.
+
+        No tracked doc linked a run that 9cc603be moved. Fixed 16 links that were
+        already broken by the earlier September archive move: they now point into
+        harness/results/archive-2026-09-tainted/. harness/README.md and
+        harness/docs/BENCH.md note where pre-2026-10-21 runs now live.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        EOF
+        git log --oneline -1; git status --short | grep -v '^?? \|archive-2026-10-22'
+      at: 2026-10-22T10:51:50.241569Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add docs/benchmarks/prism-v0.87.39-2026-10-21.md && git commit -q -m "docs: csv is the PHP second corpus, not Kotlin
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && cd ~/Projects/provasign/provasign.github.io && git add benchmarks.md && git commit -q -m "benchmarks: csv is the PHP second corpus, not Kotlin
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && echo ok; W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad/wt-grove-docs; git -C $W log --oneline -3; grep -n -i "sixteen\|languages" $W/README.md | head -5
+      at: 2026-10-22T10:51:57.376623Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad
+        cd $S/wt-grove-docs && python3 - <<'EOF'
+        p='README.md'; s=open(p).read()
+        reps=[("Tree-sitter extraction across sixteen languages,","Tree-sitter extraction across fourteen languages (the table under Language support),"),
+        ("| TypeScript / TSX | `.ts`, `.tsx` |","| TypeScript / TSX | `.ts`, `.mts`, `.cts`, `.tsx` |"),
+        ("| C / C++ | `.c`, `.h`, `.cc`, `.cpp`, `.cxx`, `.hh`, `.hpp` |","| C / C++ | `.c`, `.h`, `.cc`, `.cpp`, `.cxx`, `.c++`, `.hh`, `.hpp`, `.hxx` |"),
+        ("| PHP | `.php`, `.phtml` |","| PHP | `.php`, `.php3`, `.php4`, `.php5`, `.phtml` |"),
+        ("| COBOL | `.cbl`, `.cob`, `.cpy` and copybook variants |","| COBOL | `.cbl`, `.cob`, `.cobol`; copybooks `.cpy`, `.ccp`, `.cpb`, `.copy` (any case) |"),
+        ("| JCL | `.jcl`, `.prc` |","| JCL | `.jcl`, `.prc` (any case) |")]
+        for a,b in reps:
+            assert a in s,a; s=s.replace(a,b,1)
+        open(p,'w').write(s)
+        EOF
+        git add README.md && git commit -q --amend -F - <<'EOF'
+        docs: accuracy table, changelog and install pin for v0.63.25
+
+        README call-edge accuracy tables now match eval/baseline.json (2026-10-22,
+        Grove v0.63.25), with a note that COBOL and JCL accuracy is not yet
+        independently scored. The install pin names v0.63.25. The language count
+        matches the 14-row language table, and the table's extensions match
+        internal/parser/languages.go. CHANGELOG describes v0.63.25.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        EOF
+        git log --oneline -1; git status --short; git show --stat HEAD | tail -3
+      at: 2026-10-22T10:52:00.033027Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad/wt-grove-docs; sed -n '/^| Language/,/^$/p' $W/README.md | head -20
+      at: 2026-10-22T10:52:02.843816Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad/wt-grove-docs; cd $W && sed -i '' '9s/across sixteen languages/across the fourteen languages listed below/' README.md && sed -n 9p README.md && git commit -q -a --amend --no-edit && git log --oneline -1
+      at: 2026-10-22T10:52:07.724187Z
+      classified: other
+    - cmd: cd ~/Projects/provasign && grep -n "turtle / csv\|Kotlin.*csv" research/RESULTS.md research/README.md prism/README.md provasign.github.io/*.md 2>/dev/null; for r in prism research provasign.github.io; do echo "== $r"; git -C $r log --oneline origin/main..main; done
+      at: 2026-10-22T10:52:12.064272Z
+      classified: other
+notes:
+    - text: continuation of session f82ecf22-b802-493c-ae00-bf3b3439536c — events captured after its evidence was finalized
+      at: 2026-10-22T02:31:13.288598Z
+redactions: 0
