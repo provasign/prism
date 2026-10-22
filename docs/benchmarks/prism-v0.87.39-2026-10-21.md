@@ -2,6 +2,7 @@
 
 Date: 2026-10-21. Prism v0.87.39 (Grove v0.63.25, Astkit v0.16.10). This is the
 current reference benchmark; earlier benchmark documents are archived.
+Prism v1.0.0 is v0.87.39 plus a CLI help-text change; these results apply to it.
 
 ## Setup
 
