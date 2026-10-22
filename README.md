@@ -73,7 +73,7 @@ to raw records in [provasign/research](https://github.com/provasign/research).
 
 ```sh
 # Homebrew (macOS or Linux)
-brew install provasign/shale/prism
+brew install provasign/tap/prism
 
 # macOS or Linux installer
 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash

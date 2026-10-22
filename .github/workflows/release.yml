@@ -142,7 +142,7 @@ jobs:
             uninstall.sh
             uninstall.ps1
 
-      # The Homebrew formula is NOT published from here. provasign/homebrew-shale
+      # The Homebrew formula is NOT published from here. provasign/homebrew-tap
       # refreshes itself daily (.github/workflows/refresh-formulae.yml): a
       # workflow in the tap writes to its own repository with the built-in
       # GITHUB_TOKEN, so there is no cross-repo push token to provision here and
@@ -152,8 +152,8 @@ jobs:
       # in fact updating itself.
       #
       # The tap therefore lags a tag by up to a day. To publish immediately:
-      #   gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+      #   gh workflow run refresh-formulae.yml -R provasign/homebrew-tap
       - name: Homebrew formula
         run: |
-          echo "Formula publishing is owned by provasign/homebrew-shale (daily refresh)."
-          echo "For an immediate update: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale"
+          echo "Formula publishing is owned by provasign/homebrew-tap (daily refresh)."
+          echo "For an immediate update: gh workflow run refresh-formulae.yml -R provasign/homebrew-tap"
