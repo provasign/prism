@@ -121,10 +121,10 @@ ground truth on pinned repositories, CI-gated (`grove/eval/baseline.json`):
 | Rust | ripgrep / fd | rust-analyzer SCIP | 0.965 / 0.952 | 0.906 / 0.913 |
 | C | jansson / cJSON | clang | 1.000 / 0.998 | 0.998 / 0.999 |
 | Swift | SwiftyJSON / Files | SourceKit | 1.000 / 1.000 | 1.000 / 1.000 |
-| Kotlin | turtle / csv | kotlinc + javap | 1.000 / 0.947 | 1.000 / 0.837 |
+| Kotlin | turtle | kotlinc + javap | 1.000 | 1.000 |
 | Objective-C | json-framework / CocoaLumberjack | clang | 1.000 / 0.975 | 1.000 / 0.957 |
 | Python | flask | pytest trace (dynamic) | 0.896 | 0.787 |
-| PHP | PHP-Parser | Xdebug trace (dynamic) | 0.922 | 0.683 |
+| PHP | PHP-Parser / league/csv | Xdebug trace (dynamic) | 0.922 / 0.947 | 0.683 / 0.837 |
 
 COBOL and JCL are supported with a regression-tested graph; their accuracy is
 not yet independently scored.
