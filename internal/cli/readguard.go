@@ -89,9 +89,10 @@ var readGuardScripts = []string{"prism_read_tracker.py", "prism_read_guard.py"}
 // installReadGuard writes the two hook scripts into projectDir/.claude/hooks
 // and registers them in projectDir/.claude/settings.json. Denies a native
 // Read that substantially overlaps a range prism already delivered this
-// session and whose file is unchanged on disk since -- measured (2026-09-22, 13-task controlled A/B, hook-on vs
-// hook-off on the identical task set) to cut tokens ~11% with no change in
-// resolve rate. Claude Code only: hooks are a Claude Code mechanism, no
+// session and whose file is unchanged on disk since. A 2026-09-22 13-task A/B
+// (hook-on vs hook-off) measured ~11% fewer tokens with no change in resolve
+// rate; it has not been re-measured since, so user-facing text does not
+// quote it. Claude Code only: hooks are a Claude Code mechanism, no
 // other supported harness exposes an equivalent.
 func installReadGuard(projectDir string) error {
 	hooksDir := filepath.Join(projectDir, ".claude", "hooks")

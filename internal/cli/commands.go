@@ -153,10 +153,10 @@ prism init [dir] flags:
                       reach prism (asked interactively; Claude Code only —
                       no other agent exposes a tool-denial setting)
   --read-guard        install a hook that denies a native Read once prism has
-                      already delivered that range this session (measured:
-                      ~11% fewer tokens, no change in resolve rate; Claude
-                      Code only). Writes .claude/hooks/prism_read_*.py and
-                      registers them in .claude/settings.json.
+                      already delivered that range this session (off by
+                      default; Claude Code only). Writes
+                      .claude/hooks/prism_read_*.py and registers them in
+                      .claude/settings.json.
   --no-read-guard     cleanly remove the read-guard hook: its two script
                       files, its settings.json entries (only the ones it
                       owns — any other hook on the same matcher survives),
