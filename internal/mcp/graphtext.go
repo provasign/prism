@@ -161,7 +161,8 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	}
 	// With editSites, the relay inventory, the generic evidence notes and
 	// the declarations' signatures repeat what the edit rows already show
-	// (bench29: ~20% of a change_impact answer).
+	// (bench29: ~20% of a change_impact answer). A signature is still
+	// printed when its edit row holds only part of a multiline header.
 	hasEdits := len(anySlice(out["editSites"])) > 0
 	if hasEdits {
 		if note, _ := out["relayNote"].(string); note != "" && note != impactRelayNote {
@@ -224,6 +225,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	// Call lines editSites already prints with their text are not repeated
 	// as caller evidence (bench29: the same lines twice in every answer).
 	shownInEdits := editSiteTextKeys(out)
+	editRows := editSiteRowTexts(out)
 	repeated := 0
 	for _, sec := range []struct{ key, label string }{
 		{"declarations", "declarations"},
@@ -282,7 +284,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 				fmt.Fprintf(&b, "  [%s]", at)
 			}
 			b.WriteString("\n")
-			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" && !(hasEdits && (sec.key == "declarations" || sec.key == "family")) {
+			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" && !(hasEdits && (sec.key == "declarations" || sec.key == "family") && headerShownInEdits(editRows, m)) {
 				fmt.Fprintf(&b, "%s%s\n", evidenceIndent, compactImpactLine(sig))
 			}
 			for _, raw := range anySlice(m["evidence"]) {

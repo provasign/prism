@@ -308,11 +308,25 @@ func formatEditSitesText(out map[string]any) string {
 // editSiteTextKeys returns "path:line" of each editSites row printed with
 // its text (the full form; the per-file form carries no text).
 func editSiteTextKeys(out map[string]any) map[string]bool {
+	texts := editSiteRowTexts(out)
+	if texts == nil {
+		return nil
+	}
+	keys := make(map[string]bool, len(texts))
+	for k := range texts {
+		keys[k] = true
+	}
+	return keys
+}
+
+// editSiteRowTexts maps "path:line" to the source text of that editSites row,
+// or nil when editSites is absent or truncated.
+func editSiteRowTexts(out map[string]any) map[string]string {
 	rows := anySlice(out["editSites"])
 	if n, _ := out["editSiteCount"].(int); len(rows) == 0 || n > len(rows) {
 		return nil
 	}
-	keys := make(map[string]bool, len(rows))
+	texts := make(map[string]string, len(rows))
 	for _, r := range rows {
 		s, _ := r.(string)
 		path, rest, ok := strings.Cut(s, ":")
@@ -320,9 +334,9 @@ func editSiteTextKeys(out map[string]any) map[string]bool {
 			// path may hold ':' (Windows drive): advance until rest starts "<line>:<col>: ".
 			line, tail, ok2 := strings.Cut(rest, ":")
 			if _, err := strconv.Atoi(line); err == nil && ok2 {
-				if col, _, ok3 := strings.Cut(tail, ": "); ok3 {
+				if col, text, ok3 := strings.Cut(tail, ": "); ok3 {
 					if _, err := strconv.Atoi(col); err == nil {
-						keys[path+":"+line] = true
+						texts[path+":"+line] = text
 						break
 					}
 				}
@@ -332,7 +346,20 @@ func editSiteTextKeys(out map[string]any) map[string]bool {
 			path += ":" + more
 		}
 	}
-	return keys
+	return texts
+}
+
+// headerShownInEdits reports whether the editSites row at a declaration's
+// line already shows its whole header. A multiline declaration's row holds
+// only the opening line ("def redirect("), so its signature must still be
+// printed: the parameters are what a signature change edits.
+func headerShownInEdits(rows map[string]string, decl map[string]any) bool {
+	text, ok := rows[fmt.Sprintf("%v:%v", decl["filePath"], decl["line"])]
+	if !ok {
+		return false
+	}
+	open := strings.Count(text, "(")
+	return open == strings.Count(text, ")") && (open > 0 || !strings.Contains(fmt.Sprint(decl["signature"]), "("))
 }
 
 // parsePosition reads "12:5" (line:col) or "12" (line only).
