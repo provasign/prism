@@ -1,0 +1,1022 @@
+shale_version: "0"
+id: f82ecf22-b802-493c-ae00-bf3b3439536c-c3
+created_at: 2026-10-21T11:53:48.003242Z
+finalized_at: 2026-10-22T02:24:50.366899Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/surface.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-21T19:24:40.784545Z
+commands:
+    - cmd: 'cd ~/Projects/provasign/prism && git tag -a v0.87.38 297a637 -m "prism v0.87.38: stack-audit fixes (symbol identity, index errors, graph recovery, CLI reads/flags, verify optional), grove v0.63.25, astkit v0.16.10" && git push origin v0.87.38 2>&1 | tail -1'
+      at: 2026-10-21T11:53:48.003242Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sleep 15; R=$(gh run list -L 5 --json databaseId,headBranch,name -q '.[] | select(.headBranch=="v0.87.38") | .databaseId' | head -1); echo run=$R; gh run watch $R --exit-status >/dev/null 2>&1; echo exit=$?; gh release view v0.87.38 --json assets -q '.assets | length'
+      at: 2026-10-21T11:53:51.177656Z
+      classified: other
+    - cmd: 'cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bv1f1svnp.output; cd ~/Projects/provasign/research/harness/results && echo "opus: $(grep -c ''nocache: resolved='' automode-opus-disc13-2026-10-20/run.log) cells, $(grep -c ALLDONE automode-opus-disc13-2026-10-20/run.log) done"'
+      at: 2026-10-21T11:56:03.976246Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_overnight_2026_10_20.md <<'EOF'
+
+        UPDATE 2026-10-21 morning: overnight lost to usage limit (all agents stopped ~21:30). Resumed 06:45.
+        RELEASED: astkit v0.16.10 (PR #14, Topo merged), grove v0.63.25 (PR #42, Topo merged, 12/12 CI incl. oracle evals), prism v0.87.38 (297a637; 7 audit commits + deps bump; go test + invariants + CI green).
+        Release A/B results/audit-ab-disc13-2026-10-21 (Sonnet, CLI, v0.87.37 vs new): 13 pairs, solved 6 vs 5, task 0.856x; only diff dubbo pr16395 adjudicated task-inherent (same lookup, model chose union-dedupe vs intersection).
+        Audit items not done as written: #5 first retry waits 15s by design; installed steering refresh in astkit/grove + dev binary on PATH = after release.
+        Auto mode: still open (Opus run automode-opus-disc13 in progress).
+        EOF
+        sed -i '' 's/^- \[Overnight 10-20 handoff\](project_overnight_2026_10_20.md) — .*/- [Overnight 10-20 handoff](project_overnight_2026_10_20.md) — RELEASED astkit v0.16.10, grove v0.63.25, prism v0.87.38 (audit fixes); auto mode still open/' MEMORY.md; head -2 MEMORY.md
+      at: 2026-10-21T11:56:15.744801Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/research/harness/results && until [ $(grep -c ALLDONE automode-opus-disc13-2026-10-20/run.log) -ge 2 ]; do sleep 60; done; grep STOP automode-opus-disc13-2026-10-20/run.log | tail -1 | cut -c1-200; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && python3 discovery.py automode-opus-disc13-2026-10-20:prism_cli:"CLI reminder" automode-opus-disc13-2026-10-20:prism_cli_b:"CLI no reminder" automode-opus-disc13-2026-10-20:prism_init:"MCP reminder"; python3 ~/Projects/provasign/research/harness/results/automode-opus-disc13-2026-10-20/usage.py prism_cli prism_cli_b prism_init
+      at: 2026-10-21T11:56:15.794657Z
+      classified: other
+    - cmd: which -a prism; prism version 2>&1 | head -2; brew list --versions prism 2>/dev/null
+      at: 2026-10-21T11:56:19.60557Z
+      classified: other
+    - cmd: brew update -q >/dev/null 2>&1; brew info provasign/shale/prism 2>&1 | head -3
+      at: 2026-10-21T11:56:31.011681Z
+      classified: other
+    - cmd: brew upgrade provasign/shale/prism 2>&1 | tail -2; hash -r; prism version
+      at: 2026-10-21T11:57:14.64713Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_overnight_2026_10_20.md <<'EOF'
+        Opus real-reminder run (automode-opus-disc13, stopped 08:16 on cell error ~usage limit; 10-11 sessions/arm): CLI+reminder prism 33 / repo-grep 18 / solved 5 / $1.66 per session; CLI no reminder prism 39 / repo-grep 11 / solved 5 / $1.48; MCP+reminder prism 10 / repo-grep 16 / solved 5 / $1.19. Reminder costs prism share 78%->65% on CLI; MCP falls to 38%. No product fix tested yet.
+        EOF
+        echo ok
+      at: 2026-10-21T12:16:28.83536Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && python3 - <<'EOF'
+        import json,os,re,sys
+        sys.path.insert(0,".")
+        from discovery import classify,H
+        d=json.load(open(os.path.join(H,"results/automode-opus-disc13-2026-10-20/results.json")))
+        for arm in ("prism_cli","prism_init"):
+            print("=====",arm)
+            for k,r in d.items():
+                if k.startswith("_"):continue
+                c=r["cells"].get(arm+"/nocache")
+                if not c or not c.get("transcript"):continue
+                for l in open(os.path.join(H,c["transcript"])):
+                    x=json.loads(l)
+                    if x.get("type")!="assistant":continue
+                    for u in x["message"]["content"]:
+                        if u.get("type")=="tool_use" and u["name"]=="Bash":
+                            cmd=u["input"]["command"]
+                            for seg in re.split(r'\n|;|&&|\|\||\|',cmd):
+                                if classify(seg.strip()) in ("repo-search","find"): print(" ",k.split("__")[-1], seg.strip()[:150])
+        EOF
+      at: 2026-10-21T19:23:51.189973Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && cat > codesearch.py <<'EOF'\n# Code discovery only: prism search/lookup/query/change-impact (CLI or MCP, not file-scoped search)\n# vs recursive grep (-r/-R), rg, find, git grep. Greps over command output / single files excluded.\nimport json,os,re,sys,collections\nH=os.path.expanduser(\"~/Projects/provasign/research/harness\")\nREC=re.compile(r'(?:^|[;&|(]\\s*|\\n\\s*)(?:grep\\s+(?:-\\w*[rR]\\w*|--recursive)\\b|rg\\s|find\\s+\\S+.*-name|git\\s+grep\\s)')\ndef tally(res,arm):\n    d=json.load(open(os.path.join(H,\"results\",res,\"results.json\")));t=collections.Counter();n=0;solved=0;bill=0\n    for k,r in d.items():\n        if k.startswith(\"_\"):continue\n        c=r[\"cells\"].get(arm+\"/nocache\")\n        if not c or not c.get(\"transcript\") or c.get(\"resolved\") is None:continue\n        n+=1;solved+=bool(c[\"resolved\"]);bill+=c[\"cost_usd\"] or 0\n        for l in open(os.path.join(H,c[\"transcript\"])):\n            x=json.loads(l)\n            if x.get(\"type\")!=\"assistant\":continue\n            for u in x[\"message\"][\"content\"]:\n                if u.get(\"type\")!=\"tool_use\":continue\n                if \"prism\" in u[\"name\"]:\n                    op=u[\"input\"].get(\"op\",\"\"); \n                    if op!=\"read\": t[\"prism\"]+=1\n                    continue\n                if u[\"name\"]!=\"Bash\":continue\n                cmd=u[\"input\"].get(\"command\",\"\")\n                for m in re.finditer(r'\\bprism (search|lookup|query|change-impact)\\b([^\\n;|&]*)',cmd):\n                    pm=re.search(r'--path\\s+(\\S+)',m.group(2))\n                    if not (m.group(1)==\"search\" and pm and re.search(r'\\.\\w+$',pm.group(1))): t[\"prism\"]+=1\n                t[\"grep-code\"]+=len(REC.findall(cmd))\n    return n,solved,bill,t\nfor spec in sys.argv[1:]:\n    res,arm,label=spec.split(\":\")\n    n,s,b,t=tally(res,arm)\n    tot=t[\"prism\"]+t[\"grep-code\"]\n    print(f\"{label:22s} n={n} solved={s} bill/session=${b/max(n,1):.2f} prism={t['prism']} grep-code={t['grep-code']} prism-share={t['prism']/max(tot,1):.0%}\")\nEOF\npython3 codesearch.py automode-opus-disc13-2026-10-20:prism_cli_b:\"CLI no reminder\" automode-opus-disc13-2026-10-20:prism_cli:\"CLI reminder\" automode-opus-disc13-2026-10-20:prism_init:\"MCP reminder\" automode12-2026-10-20:prism_cli:\"Sonnet A plain\" automode12-2026-10-20:prism_cli_b:\"Sonnet B injected\""
+      at: 2026-10-21T19:24:05.336343Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && prism lookup cliSteeringInstructions --format text 2>&1 | sed -n 1,60p
+      at: 2026-10-21T19:24:16.951656Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && for w in agent-a328f5ee75716890f agent-a4ab3e35df1fb3f58; do git worktree remove --force .claude/worktrees/$w && git branch -D worktree-$w; done 2>&1 | tail -2; git worktree list; git -C ~/Projects/provasign/astkit worktree remove /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad/wt-astkit; git -C ~/Projects/provasign/grove worktree remove /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad/wt-grove; echo cleaned
+      at: 2026-10-21T19:24:32.571959Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git log --oneline -3 && git status --short | grep -v "^??"
+      at: 2026-10-21T19:24:35.163404Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && GOWORK=off go test ./internal/cli/ 2>&1 | tail -3 && GOWORK=off go build -o ~/prism-ab-bins/prism-automode-cand1 ./cmd/prism && d=$(mktemp -d) && cd $d && git init -q && printf 'package p\nfunc A(){}\n' > a.go && ~/prism-ab-bins/prism-automode-cand1 search A --scope text --path . --files-only --format text 2>&1 | head -5
+      at: 2026-10-21T19:24:54.709948Z
+      classified: test
+    - cmd: |-
+        cp ~/prism-ab-bins/prism-main-grove25 ~/prism-ab-bins/prism-v0.87.38; cd ~/Projects/provasign/research/harness && D=results/automode-opus-cand1-2026-10-21 && mkdir -p $D && cat > $D/run.sh <<'EOF'
+        cd ~/Projects/provasign/research/harness
+        # Opus 5.5, real Bash-first reminder in both arms (bypass mode, strict wording). CLI interface.
+        # prism_cli = released v0.87.38; prism_cli_b = candidate steering (test-file row + "prism is a Bash command" line).
+        export PRISM_INIT_BIN=~/prism-ab-bins/prism-v0.87.38 PRISM_CLI_B_BIN=~/prism-ab-bins/prism-automode-cand1 \
+               CLAUDE_CODE_COZY_TEAPOT=strict CLI_BENCH_SPEND_CAP_USD=60
+        python3 ~/Projects/provasign/prism/docs/research/cli-issue42-2026-10-18/run_cli_product.py \
+          --manifest results/disc13-manifest.json --out-dir results/automode-opus-cand1-2026-10-21 \
+          --arms prism_cli,prism_cli_b --model claude-opus-5-5 --no-cache --order-seed automode-opus-cand1
+        echo "ALLDONE rc=$?" >> results/automode-opus-cand1-2026-10-21/run.log
+        EOF
+        nohup bash $D/run.sh > $D/nohup.out 2>&1 & sleep 2; tail -1 $D/run.log
+      at: 2026-10-21T19:25:05.668654Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/automode-opus-cand1-2026-10-21 && until grep -q ALLDONE run.log; do sleep 60; done; grep -E "STOP" run.log | tail -1 | cut -c1-200; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && python3 codesearch.py automode-opus-cand1-2026-10-21:prism_cli:"v0.87.38 reminder" automode-opus-cand1-2026-10-21:prism_cli_b:"cand1 reminder"
+      at: 2026-10-21T19:25:09.380479Z
+      classified: other
+    - cmd: 'pkill -f "automode-opus-cand1" ; sleep 2; pkill -f "claude -p" ; cd ~/Projects/provasign/research/harness/results/automode-opus-cand1-2026-10-21 && echo "STOPPED by user request $(date)" >> run.log; grep -c "nocache: resolved=" run.log'
+      at: 2026-10-21T19:35:26.146107Z
+      classified: other
+    - cmd: |-
+        cat > ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/feedback_no_opus_benchmarks.md <<'EOF'
+        ---
+        name: feedback-no-opus-benchmarks
+        description: Topo 2026-10-21: Opus benchmark runs are too expensive; use Sonnet 5.5 (force the auto-mode reminder with CLAUDE_CODE_THRIFTY_SONIC=1 when needed)
+        metadata:
+          type: feedback
+        ---
+
+        Topo 2026-10-21 "Opus is too expensive" (Opus cells ~$1.5-1.7 uncached vs ~$0.3 Sonnet); I had launched a ~$40 Opus A/B without flagging cost first.
+
+        **Why:** cost; the bench program is about cost.
+
+        **How to apply:** benchmark on Sonnet 5.5. To reproduce Claude Code's Bash-first reminder on Sonnet, set CLAUDE_CODE_THRIFTY_SONIC=1 (forces it ON; measurement only) + CLAUDE_CODE_COZY_TEAPOT=strict in the harness env, with bypass mode. Ask before any Opus run. See [[feedback-never-disable-automode]].
+        EOF
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' '2i\
+        - [No Opus benchmarks](feedback_no_opus_benchmarks.md) — Topo 10-21: Opus too expensive; Sonnet + THRIFTY_SONIC=1 to force the reminder
+        ' MEMORY.md; cd ~/Projects/provasign/research/harness && D=results/automode-sonnet-cand1-2026-10-21 && mkdir -p $D && cat > $D/run.sh <<'EOF'
+        cd ~/Projects/provasign/research/harness
+        # Sonnet 5.5 with Claude Code's real Bash-first reminder forced ON (THRIFTY_SONIC=1, strict wording,
+        # bypass mode) in both arms. CLI interface. prism_cli = released v0.87.38; prism_cli_b = candidate steering.
+        export PRISM_INIT_BIN=~/prism-ab-bins/prism-v0.87.38 PRISM_CLI_B_BIN=~/prism-ab-bins/prism-automode-cand1 \
+               CLAUDE_CODE_THRIFTY_SONIC=1 CLAUDE_CODE_COZY_TEAPOT=strict CLI_BENCH_SPEND_CAP_USD=15
+        python3 ~/Projects/provasign/prism/docs/research/cli-issue42-2026-10-18/run_cli_product.py \
+          --manifest results/disc13-manifest.json --out-dir results/automode-sonnet-cand1-2026-10-21 \
+          --arms prism_cli,prism_cli_b --no-cache --order-seed automode-sonnet-cand1
+        echo "ALLDONE rc=$?" >> results/automode-sonnet-cand1-2026-10-21/run.log
+        EOF
+        nohup bash $D/run.sh > $D/nohup.out 2>&1 & echo launched
+      at: 2026-10-21T19:35:43.728564Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/results/automode-sonnet-cand1-2026-10-21 && until [ "$(grep -c 'nocache: resolved=' run.log 2>/dev/null)" -ge 1 ] || grep -q 'ALLDONE\|STOP' run.log 2>/dev/null; do sleep 20; done; tail -3 run.log | cut -c1-200; python3 - <<'EOF'
+        import json
+        d=json.load(open("results.json"))
+        for k,r in d.items():
+            if k.startswith("_"):continue
+            for cell,c in r["cells"].items():
+                t=c.get("transcript")
+                if t:
+                    s=open("/Users/tapabratapal/Projects/provasign/research/harness/"+t).read()
+                    print(cell,"reminder present:", '"bashFirst": true' in s or '"bashFirst":true' in s, "strict:", "Do your work through the Bash tool" in s)
+        EOF
+      at: 2026-10-21T19:36:47.883159Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/automode-sonnet-cand1-2026-10-21 && until grep -q ALLDONE run.log; do sleep 60; done; grep -E "STOP" run.log | tail -1 | cut -c1-200; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && python3 codesearch.py automode-sonnet-cand1-2026-10-21:prism_cli:"v0.87.38 reminder" automode-sonnet-cand1-2026-10-21:prism_cli_b:"cand1 reminder"
+      at: 2026-10-21T19:36:52.069119Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness/results/automode-sonnet-cand1-2026-10-21 && grep -c "nocache: resolved=" run.log; grep -E "STOP" run.log | tail -1 | cut -c1-150'
+      at: 2026-10-21T19:44:06.225423Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bvp4ui4j2.output; cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open("results/automode-sonnet-cand1-2026-10-21/results.json"))
+        a=b=0;sa=sb=0;n=0
+        for k,r in d.items():
+            if k.startswith("_"):continue
+            ca=r["cells"].get("prism_cli/nocache");cb=r["cells"].get("prism_cli_b/nocache")
+            if not(ca and cb) or ca.get("resolved") is None or cb.get("resolved") is None:continue
+            n+=1;sa+=bool(ca["resolved"]);sb+=bool(cb["resolved"])
+            a+=ca["repriced"]["5m"]["usd"]-ca["repriced"]["5m"]["startup_usd"];b+=cb["repriced"]["5m"]["usd"]-cb["repriced"]["5m"]["startup_usd"]
+            if bool(ca["resolved"])!=bool(cb["resolved"]): print("DIFF",k,ca["resolved"],cb["resolved"])
+        print(f"pairs {n}: solved v0.87.38 {sa} cand {sb}; task@5m ${a:.3f} vs ${b:.3f} = {b/a:.3f}x")
+        EOF
+      at: 2026-10-21T19:47:58.020791Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open("results/automode-sonnet-cand1-2026-10-21/results.json"))
+        r=d["FasterXML__jackson-databind__pr6042"]
+        for arm in ("prism_cli","prism_cli_b"):
+            c=r["cells"][arm+"/nocache"]; print("=====",arm,c["resolved"],c["api_calls"])
+            for l in open(c["transcript"]):
+                x=json.loads(l)
+                if x.get("type")=="assistant":
+                    for u in x["message"]["content"]:
+                        if u.get("type")=="tool_use": print("  TOOL",u["name"],json.dumps(u["input"])[:260])
+                        if u.get("type")=="text": print("  TEXT",u["text"][:250].replace("\n"," "))
+        EOF
+      at: 2026-10-21T19:48:02.23819Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,datetime
+        p="results/automode-sonnet-cand1-2026-10-21/results.json"
+        d=json.load(open(p))
+        d["FasterXML__jackson-databind__pr6042"]["adjudication"]={"ruling":"task-inherent","reason":"both arms located StringCollectionDeserializer via prism and made the same START_ARRAY fix; they differ only in the exact edit","by":"claude","at":datetime.datetime.now().isoformat(timespec="seconds")}
+        json.dump(d,open(p,"w"),indent=1)
+        EOF
+        D=results/automode-sonnet-cand1-2026-10-21; nohup bash $D/run.sh > $D/nohup2.out 2>&1 & echo resumed
+      at: 2026-10-21T19:48:12.209425Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/automode-sonnet-cand1-2026-10-21 && sleep 5; until [ $(grep -c ALLDONE run.log) -ge 2 ]; do sleep 60; done; grep -E "STOP" run.log | tail -1 | cut -c1-200; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad && python3 codesearch.py automode-sonnet-cand1-2026-10-21:prism_cli:"v0.87.38 reminder" automode-sonnet-cand1-2026-10-21:prism_cli_b:"cand1 reminder"
+      at: 2026-10-21T19:48:12.257068Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json
+        tot=0
+        for res in ("automode-opus12-2026-10-20","automode-opus-disc13-2026-10-20","automode-opus-cand1-2026-10-21"):
+            try: d=json.load(open(f"{res}/results.json"))
+            except Exception as e: print(res,"none"); continue
+            per={}
+            for k,r in d.items():
+                if k.startswith("_"):continue
+                for cell,c in r["cells"].items():
+                    a=cell.split("/")[0]; per.setdefault(a,[0,0.0,0]); per[a][0]+=1; per[a][1]+=c.get("cost_usd") or 0; per[a][2]+=bool(c.get("resolved"))
+            s=sum(v[1] for v in per.values()); tot+=s
+            print(res, f"total ${s:.2f}")
+            for a,(n,c,sv) in per.items(): print(f"   {a}: {n} cells, ${c:.2f} (${c/max(n,1):.2f}/cell), solved {sv}")
+        print(f"ALL OPUS ${tot:.2f}")
+        EOF
+      at: 2026-10-21T19:55:20.773145Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bhtr2jsgd.output; cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open("results/automode-sonnet-cand1-2026-10-21/results.json"))
+        a=b=0;sa=sb=0;n=0;ba=bb=0
+        for k,r in d.items():
+            if k.startswith("_"):continue
+            ca=r["cells"].get("prism_cli/nocache");cb=r["cells"].get("prism_cli_b/nocache")
+            if not(ca and cb) or ca.get("resolved") is None or cb.get("resolved") is None:continue
+            n+=1;sa+=bool(ca["resolved"]);sb+=bool(cb["resolved"]);ba+=ca["cost_usd"];bb+=cb["cost_usd"]
+            a+=ca["repriced"]["5m"]["usd"]-ca["repriced"]["5m"]["startup_usd"];b+=cb["repriced"]["5m"]["usd"]-cb["repriced"]["5m"]["startup_usd"]
+            if bool(ca["resolved"])!=bool(cb["resolved"]): print("DIFF",k,ca["resolved"],cb["resolved"])
+        print(f"pairs {n}: solved v0.87.38 {sa} cand {sb}; task@5m ${a:.3f} vs ${b:.3f} = {b/a:.3f}x; bill ${ba+bb:.2f}")
+        EOF
+      at: 2026-10-21T20:00:23.626404Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git checkout internal/cli/surface.go && git status --short | grep -v "^??"; cat >> ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_overnight_2026_10_21.md 2>/dev/null; cat >> ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_overnight_2026_10_20.md <<'EOF'
+        2026-10-21 PM: steering candidate (test-file row + "prism is a Bash command" line) REJECTED. Sonnet with real reminder forced (THRIFTY_SONIC=1): 8 pairs, prism share of code searches 69% vs 71%, solved 6 vs 4, task 1.07x ($7.09). Reverted. Second rewording of the same idea after arm C - don't try a third. Opus spend total ~$52 (no native Opus arm: Prism-vs-native on Opus unknown).
+        EOF
+        echo reverted
+      at: 2026-10-21T20:02:30.444342Z
+      classified: other
+    - cmd: |-
+        pkill -f "project_overnight_2026_10_21.md" ; cd ~/Projects/provasign/prism && git status --short internal/cli/surface.go; rm -f ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_overnight_2026_10_21.md; cat >> ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_overnight_2026_10_20.md <<'EOF'
+        2026-10-21 PM: steering candidate (test-file row + "prism is a Bash command" line) REJECTED. Sonnet with real reminder forced (THRIFTY_SONIC=1): 8 pairs, prism share of code searches 69% vs 71%, solved 6 vs 4, task 1.07x ($7.09). Reverted. Second rewording of the same idea after arm C - don't try a third. Opus spend total ~$52 (no native Opus arm: Prism-vs-native on Opus unknown).
+        EOF
+        tail -1 ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_overnight_2026_10_20.md | cut -c1-80
+      at: 2026-10-21T20:02:35.774944Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git fetch -q && git log --oneline v0.87.38..origin/main; echo ---; git log --oneline origin/main..main; git status --short | grep -v "^??"
+      at: 2026-10-21T20:18:57.331026Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open("results/v0837-vs-native41-2026-10-20/results.json"))
+        n=0;tn=tc=sn=sc=0;rn=rc=0
+        for k,r in d.items():
+            if k.startswith("_"):continue
+            a=r["cells"].get("native/nocache");b=r["cells"].get("prism_cli/nocache")
+            if not(a and b) or a.get("resolved") is None or b.get("resolved") is None:continue
+            n+=1;rn+=bool(a["resolved"]);rc+=bool(b["resolved"])
+            pa=a["repriced"]["5m"];pb=b["repriced"]["5m"]
+            tn+=pa["usd"]-pa["startup_usd"];tc+=pb["usd"]-pb["startup_usd"];sn+=pa["startup_usd"];sc+=pb["startup_usd"]
+        print(f"pairs {n} solved native {rn} prism {rc}")
+        print(f"task/session native ${tn/n:.4f} prism ${tc/n:.4f} ratio {tc/tn:.3f}")
+        print(f"startup native ${sn/n:.4f} prism ${sc/n:.4f}")
+        for N in (1,5,10,20,40,100):
+            nat=sn/n+N*tn/n; pr=sc/n+N*tc/n
+            print(f"N={N:3d}: native ${nat:.3f} prism ${pr:.3f} ratio {pr/nat:.3f} saving {(1-pr/nat)*100:.1f}%")
+        EOF
+      at: 2026-10-21T20:44:22.172887Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open("results/v0837-vs-native41-2026-10-20/results.json"))
+        n=0;S={"native":[0,0,0],"prism_cli":[0,0,0]}
+        for k,r in d.items():
+            if k.startswith("_"):continue
+            a=r["cells"].get("native/nocache");b=r["cells"].get("prism_cli/nocache")
+            if not(a and b) or a.get("resolved") is None or b.get("resolved") is None:continue
+            n+=1
+            for arm,c in (("native",a),("prism_cli",b)):
+                S[arm][0]+=c["api_calls"]
+                tools=0
+                for l in open(c["transcript"]):
+                    x=json.loads(l)
+                    if x.get("type")=="assistant":
+                        tools+=sum(1 for u in x["message"]["content"] if u.get("type")=="tool_use")
+                S[arm][1]+=tools
+        print("pairs",n)
+        for arm,(req,tools,_) in S.items(): print(f"{arm}: requests/session {req/n:.2f} (task {req/n-1:.2f}), tool calls/session {tools/n:.2f}")
+        rn=S["native"][0]/n-1; rp=S["prism_cli"][0]/n-1; tn=S["native"][1]/n; tp=S["prism_cli"][1]/n
+        print(f"task request ratio {rp/rn:.3f}, tool-call ratio {tp/tn:.3f}")
+        for N in (1,10,20,40,100):
+            print(f"N={N}: requests native {1+N*rn:.0f} prism {1+N*rp:.0f} saved {N*(rn-rp):.0f}; tool calls native {N*tn:.0f} prism {N*tp:.0f} saved {N*(tn-tp):.0f}")
+        EOF
+      at: 2026-10-21T20:46:13.40354Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json;t=json.load(open('tasks/e2e/urfave__cli__pr2355.json'));print(list(t.keys()));print({k:(str(v)[:120]) for k,v in t.items() if k in ('category','kind','type','tags','difficulty')})"
+      at: 2026-10-21T20:49:12.156877Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re,collections
+        d=json.load(open("results/v0837-vs-native41-2026-10-20/results.json"))
+        DECL=re.compile(r'^[+-]\s*(?:(?:public|private|protected|static|final|export|async|abstract|override|default|synchronized)\s+)*(?:func\s|def\s|function\s|[\w<>\[\],.? ]+\s+\w+\s*\()')
+        def classify(patch):
+            files=re.findall(r'^diff --git a/(\S+)',patch,re.M)
+            src=[f for f in files if not re.search(r'(test|spec)',f,re.I)]
+            add=sum(1 for l in patch.splitlines() if l.startswith('+') and not l.startswith('+++'))
+            rem=sum(1 for l in patch.splitlines() if l.startswith('-') and not l.startswith('---'))
+            # signature change: a removed declaration line whose name reappears in an added declaration line with different text
+            rems={};adds={}
+            for l in patch.splitlines():
+                if l.startswith(('+++','---')):continue
+                if DECL.match(l) and '(' in l and not re.search(r'^\W*(if|for|while|return|switch|catch|new)\b',l[1:].strip()):
+                    m=re.search(r'(\w+)\s*\(',l)
+                    if m: (rems if l[0]=='-' else adds).setdefault(m.group(1),[]).append(l[1:].strip())
+            sig=any(n in adds and set(rems[n])!=set(adds[n]) for n in rems)
+            ch=add+rem
+            if sig: return "signature change"
+            if len(src)>=3: return "broad change (3+ files)"
+            if len(src)==1 and ch<=12: return "small bug fix (1 file, <=12 lines)"
+            return "medium fix (1-2 files)"
+        S=collections.defaultdict(lambda:[0,0,0,0,0,0,0,0,0])
+        for k,r in d.items():
+            if k.startswith("_"):continue
+            a=r["cells"].get("native/nocache");b=r["cells"].get("prism_cli/nocache")
+            if not(a and b) or a.get("resolved") is None or b.get("resolved") is None:continue
+            t=json.load(open(f"tasks/e2e/{k}.json"))
+            c=classify(t["patch"]); s=S[c]; s[0]+=1
+            for i,cell in ((1,a),(2,b)):
+                p=cell["repriced"]["5m"]; s[i]+=p["usd"]-p["startup_usd"]
+                tools=0
+                for l in open(cell["transcript"]):
+                    x=json.loads(l)
+                    if x.get("type")=="assistant": tools+=sum(1 for u in x["message"]["content"] if u.get("type")=="tool_use")
+                s[2+i]+=tools; s[4+i]+=bool(cell["resolved"])
+            s[7]+=a["repriced"]["5m"]["startup_usd"]; s[8]+=b["repriced"]["5m"]["startup_usd"]
+        for c,s in sorted(S.items()):
+            n=s[0]
+            print(f"{c:36s} n={n:2d} task$ {s[1]/n:.4f} -> {s[2]/n:.4f} ({s[2]/s[1]:.2f}x)  tools {s[3]/n:.1f} -> {s[4]/n:.1f} ({s[4]/s[3]:.2f}x)  solved {s[5]}/{s[6]}")
+        EOF
+      at: 2026-10-21T20:49:24.920216Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git fetch -q --tags && git describe --tags origin/main; git show origin/main:eval/baseline.json | head -80
+      at: 2026-10-21T21:10:01.889429Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git show origin/main:eval/baseline.json | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for k,v in d.items():
+            if isinstance(v,dict) and 'precision' in v:
+                p,r=v['precision'],v['recall']; f=2*p*r/(p+r) if p+r else 0
+                print(f'{k:16s} P {p:.4f}  R {r:.4f}  F1 {f:.4f}  commit {v.get(\"commit\")}')
+        "; git show origin/main:README.md | grep -n -i -A30 "scorecard\|## accuracy" | head -60
+      at: 2026-10-21T21:10:05.270488Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git grep -il cobol origin/main -- . | head -20; git show origin/main:eval/baseline.json | grep -i -A6 cobol; ls docs 2>/dev/null | grep -i main; cat ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_mainframe_arc.md | sed -n 1,40p
+      at: 2026-10-21T21:10:34.944393Z
+      classified: other
+    - cmd: sed -n 40,80p ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_mainframe_arc.md; cd ~/Projects/provasign/grove && git show origin/main:README.md | grep -n -i -B2 -A12 "cobol" | head -50
+      at: 2026-10-21T21:10:37.496776Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && ls results/*manifest*.json | wc -l; ls results/ | grep -i -E "manifest" | grep -i -E "rename|sig|wide|deep|seed|impact|change|refactor" ; ls tasks/ ; ls tasks/e2e | wc -l; ls tasks/e2e | sed -E 's/__pr[0-9]+.*//' | sort | uniq -c | sort -rn | head -5
+      at: 2026-10-21T22:14:47.757918Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && ls tasks/seeded | head; ls tasks/seeded | wc -l; ls tasks/wide | head -3; ls tasks/wide | wc -l; python3 -c "
+        import json,glob
+        f=sorted(glob.glob('tasks/seeded/*.json'))[0]; t=json.load(open(f)); print(f, list(t.keys())); print({k:str(v)[:200] for k,v in t.items() if k not in ('patch','test_patch')})"; grep -l -i "seeded32\|seeded" ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/*.md | head
+      at: 2026-10-21T22:14:51.298289Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json,os,collections
+        m=json.load(open('results/seeded32-manifest.json')); print(len(m), m[:3])
+        kinds=collections.Counter()
+        for i in m:
+            for d in ('tasks/e2e','tasks/seeded','tasks/wide','tasks/e2e-meaningful'):
+                p=f'{d}/{i}.json'
+                if os.path.exists(p): t=json.load(open(p)); kinds[(d,t.get('kind'),t.get('lang'))]+=1; break
+            else: kinds['missing']+=1
+        for k,v in kinds.items(): print(v,k)
+        "; grep -h -i "seeded32" ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_cell_isolation_2026_10_17.md ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_cost_plan_2026_10_17.md | head -8
+      at: 2026-10-21T22:14:56.439184Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        m=json.load(open('results/seeded32-manifest.json'))
+        for i in m:
+            t=json.load(open(f'tasks/e2e/{i}.json'))
+            ps=t.get('problem_statement','').replace('\n',' ')
+            print(i, '|', t.get('lang'), '|', len(t.get('src_files') or []), 'src files |', ps[:110])
+        "; ls results | grep -i seeded32 | head
+      at: 2026-10-21T22:14:59.363783Z
+      classified: other
+    - cmd: "cd ~/Projects/provasign/research/harness && ls results/e2e-seeded32 | head; python3 - <<'EOF'\nimport json,glob,os\nfor f in glob.glob(\"results/e2e-seeded32/results.json\")+glob.glob(\"results/e2e-seeded32/*.json\")[:1]:\n    d=json.load(open(f)); \n    tot=0;n=0;arms={}\n    for k,r in d.items():\n        if k.startswith(\"_\") or not isinstance(r,dict):continue\n        for cell,c in r.get(\"cells\",{}).items():\n            arms.setdefault(cell,[0,0,0]); arms[cell][0]+=1; arms[cell][1]+=c.get(\"cost_usd\") or 0; arms[cell][2]+=bool(c.get(\"resolved\"))\n    print(f); \n    for a,v in arms.items(): print(\" \",a,v[0],f\"${v[1]:.2f}\",f\"${v[1]/max(v[0],1):.2f}/cell\",\"solved\",v[2])\n    break\nEOF"
+      at: 2026-10-21T22:15:07.608569Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,collections
+        arms=collections.defaultdict(lambda:[0,0.0,0,0])
+        for f in glob.glob("results/e2e-seeded32/*.claude-sonnet-5-5.*.json"):
+            c=json.load(open(f)); arm=f.split(".claude-sonnet-5-5.")[1][:-5]
+            a=arms[arm]; a[0]+=1; a[1]+=c.get("cost_usd") or 0; a[2]+=bool(c.get("resolved")); a[3]+=c.get("num_turns") or 0
+        for k,v in arms.items(): print(k, v[0], f"${v[1]:.2f}", f"${v[1]/v[0]:.2f}/cell", "resolved",v[2], "turns/cell", round(v[3]/v[0],1))
+        c=json.load(open(glob.glob("results/e2e-seeded32/*native.json")[0])); print([k for k in c.keys()][:40])
+        EOF
+        python3 -c "import json;print(json.dumps(json.load(open('results/e2e-seeded32/rescore-final.json')),indent=0)[:800])"
+      at: 2026-10-21T22:15:13.52723Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && D=results/change32-cli-vs-native-2026-10-21 && mkdir -p $D && cat > $D/run.sh <<'EOF'
+        cd ~/Projects/provasign/research/harness
+        # Change-impact bed (seeded32: interface-method renames with namesakes, signature changes,
+        # property renames; py/go/ts/java). native vs prism_cli on released v0.87.38, Sonnet 5.5, no-cache repriced.
+        export PRISM_INIT_BIN=~/prism-ab-bins/prism-v0.87.38 CLI_BENCH_SPEND_CAP_USD=35
+        python3 ~/Projects/provasign/prism/docs/research/cli-issue42-2026-10-18/run_cli_product.py \
+          --manifest results/seeded32-manifest.json --out-dir results/change32-cli-vs-native-2026-10-21 \
+          --arms native,prism_cli --no-cache --order-seed change32-cli
+        echo "ALLDONE rc=$?" >> results/change32-cli-vs-native-2026-10-21/run.log
+        EOF
+        nohup bash $D/run.sh > $D/nohup.out 2>&1 & echo launched
+      at: 2026-10-21T22:15:22.088932Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21 && until grep -q "PAIR\|STOP\|ALLDONE" run.log 2>/dev/null; do sleep 20; done; grep -E "resolved=|PAIR|STOP|ERROR" run.log | cut -c1-220 | tail -5
+      at: 2026-10-21T22:18:44.916151Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21 && cat > tally.py <<'EOF'
+        # Per change kind: pairs, solved, task cost @5m, tool calls, requests (native vs prism_cli).
+        import json,os,re,collections
+        H=os.path.expanduser("~/Projects/provasign/research/harness")
+        D=os.path.dirname(os.path.abspath(__file__))
+        d=json.load(open(D+"/results.json"))
+        def kind(t):
+            ps=t.get("problem_statement","")
+            if re.search(r"keyword-only|positional|argument|parameter|takes the|now needs",ps,re.I): return "signature change"
+            if re.search(r"\b(property|option|field)\b",ps.split(".")[0],re.I) or "property" in ps[:120]: return "property/field rename"
+            return "method rename (shared name)"
+        def tools(c):
+            n=0
+            for l in open(os.path.join(H,c["transcript"])):
+                x=json.loads(l)
+                if x.get("type")=="assistant": n+=sum(1 for u in x["message"]["content"] if u.get("type")=="tool_use")
+            return n
+        S=collections.defaultdict(lambda:collections.Counter())
+        for k,r in d.items():
+            if k.startswith("_"):continue
+            a=r["cells"].get("native/nocache");b=r["cells"].get("prism_cli/nocache")
+            if not(a and b) or a.get("resolved") is None or b.get("resolved") is None:continue
+            t=json.load(open(f"{H}/tasks/e2e/{k}.json"))
+            for g in (kind(t),"ALL"):
+                s=S[g];s["n"]+=1
+                for arm,c in (("nat",a),("pri",b)):
+                    p=c["repriced"]["5m"];s[arm+"_task"]+=p["usd"]-p["startup_usd"];s[arm+"_start"]+=p["startup_usd"]
+                    s[arm+"_solved"]+=bool(c["resolved"]);s[arm+"_tools"]+=tools(c);s[arm+"_req"]+=c["api_calls"]-1
+        for g in sorted(S,[REDACTED:env-secret] g:(g=="ALL",g)):
+            s=S[g];n=s["n"]
+            print(f"{g:28s} n={n:2d} solved {s['nat_solved']}/{s['pri_solved']}  task$/task {s['nat_task']/n:.4f}->{s['pri_task']/n:.4f} ({s['pri_task']/s['nat_task']:.2f}x)  tools {s['nat_tools']/n:.1f}->{s['pri_tools']/n:.1f} ({s['pri_tools']/s['nat_tools']:.2f}x)  req {s['nat_req']/n:.1f}->{s['pri_req']/n:.1f}")
+        EOF
+        python3 tally.py
+      at: 2026-10-21T22:18:57.602776Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21 && until grep -q "ALLDONE" run.log; do sleep 60; done; grep -E "STOP" run.log | tail -1 | cut -c1-200; python3 tally.py
+      at: 2026-10-21T22:18:57.661916Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re,collections
+        def kind(t):
+            ps=t.get("problem_statement","")
+            if re.search(r"keyword-only|positional|argument|parameter|takes the|now needs",ps,re.I): return "signature change"
+            if re.search(r"\b(property|option|field)\b",ps.split(".")[0],re.I) or "property" in ps[:120]: return "property/field rename"
+            return "method rename (shared name)"
+        c=collections.Counter()
+        for i in json.load(open("results/seeded32-manifest.json")):
+            k=kind(json.load(open(f"tasks/e2e/{i}.json"))); c[k]+=1; print(f"{k:28s} {i}")
+        print(c)
+        EOF
+      at: 2026-10-21T22:19:05.157254Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21 && python3 - <<'EOF'
+        p="tally.py"; s=open(p).read()
+        old=s[s.index("def kind(t):"):s.index("def tools(c):")]
+        new='''def kind(t):
+            i=t["instance_id"]; ps=t.get("problem_statement","")
+            if i.startswith("seed__"): return "signature change"
+            if re.search(r"`\\w+` (property|option)\\b|\\bproperty of\\b|\\boption of\\b|internal `?\\w+`? hook",ps[:200]): return "property/option rename"
+            return "method rename (shared name)"
+        '''
+        s=s.replace(old,new)
+        s=s.replace('for g in (kind(t),"ALL"):','for g in (kind(t),"lang:"+t.get("lang",""),"ALL"):')
+        open(p,"w").write(s)
+        EOF
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re,collections
+        src=open("results/change32-cli-vs-native-2026-10-21/tally.py").read()
+        k=src[src.index("def kind(t):"):src.index("def tools(c):")]
+        ns={"re":re};exec(k,ns)
+        c=collections.Counter()
+        for i in json.load(open("results/seeded32-manifest.json")):
+            kk=ns["kind"](json.load(open(f"tasks/e2e/{i}.json"))); c[kk]+=1
+            if kk!="method rename (shared name)": print(kk,i)
+        print(c)
+        EOF
+      at: 2026-10-21T22:19:13.589414Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/b302fl3yu.output
+      at: 2026-10-21T22:35:01.288107Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open("results/change32-cli-vs-native-2026-10-21/results.json"))
+        r=d["wide__werkzeug__HTTPException_get_headers"]
+        t=json.load(open("tasks/e2e/wide__werkzeug__HTTPException_get_headers.json"))
+        print(t["problem_statement"][:600]); print("---")
+        for arm in ("native","prism_cli"):
+            c=r["cells"][arm+"/nocache"]; print("=====",arm,c["resolved"],{k:str(v)[:300] for k,v in c.items() if k in ("score","error","scorer","detail")})
+            for l in open(c["transcript"]):
+                x=json.loads(l)
+                if x.get("type")=="assistant":
+                    for u in x["message"]["content"]:
+                        if u.get("type")=="tool_use": print("  TOOL",u["name"],json.dumps(u["input"])[:200])
+                        if u.get("type")=="text": print("  TEXT",u["text"][:400].replace("\n"," "))
+        EOF
+      at: 2026-10-21T22:35:07.102389Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,datetime
+        p="results/change32-cli-vs-native-2026-10-21/results.json"
+        d=json.load(open(p))
+        d["wide__werkzeug__HTTPException_get_headers"]["adjudication"]={"ruling":"agent-command-error","reason":"prism change-impact listed the right sites; the agent's BSD sed 's/\\bget_headers\\b/.../' matched nothing on macOS (no \\b in BSD sed), so no rename happened. Native's sed had no \\b. Not caused by prism's answer.","by":"claude","at":datetime.datetime.now().isoformat(timespec="seconds")}
+        json.dump(d,open(p,"w"),indent=1)
+        EOF
+        D=results/change32-cli-vs-native-2026-10-21; nohup bash $D/run.sh > $D/nohup2.out 2>&1 & echo resumed
+      at: 2026-10-21T22:35:19.157349Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21 && sleep 3; until [ $(grep -c "ALLDONE" run.log) -ge 2 ]; do sleep 60; done; grep -E "STOP" run.log | tail -1 | cut -c1-200; python3 tally.py
+      at: 2026-10-21T22:35:19.21414Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21 && grep -c PAIR run.log; grep -E "STOP" run.log | tail -1 | cut -c1-200; tail -1 run.log | cut -c1-150; python3 tally.py
+      at: 2026-10-21T23:44:34.829666Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && ls docs/research/change-impact-cost-audit-2026-10-21/ && wc -l docs/research/change-impact-cost-audit-2026-10-21/*.md && sed -n 1,60p docs/research/change-impact-cost-audit-2026-10-21/SUMMARY.md
+      at: 2026-10-21T23:58:38.633865Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n -i -B2 -A18 "escaped\|twice\|9.9" docs/research/change-impact-cost-audit-2026-10-21/REPORT.md | head -80
+      at: 2026-10-21T23:58:45.899874Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21 && grep -c ALLDONE run.log; grep STOP run.log | tail -1 | cut -c1-150; python3 tally.py | tail -4; cd ~/Projects/provasign/prism && sed -n 140,160p internal/mcp/lookupbatch.go; sed -n 30,65p internal/mcp/searchtext.go
+      at: 2026-10-21T23:58:51.579571Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "staleWarning" internal/mcp/*.go internal/cli/*.go | grep -v _test | head -20
+      at: 2026-10-21T23:58:55.113787Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 730,790p internal/mcp/server.go
+      at: 2026-10-21T23:58:57.056548Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "func (h \*Handler) RenderToolText\|func RenderToolText" -A25 internal/mcp/server.go | head -40; grep -n "renderLookupBatchAsText\|RenderCompactSearchText(" internal/mcp/*.go internal/cli/*.go | grep -v _test | grep -v "^.*func "
+      at: 2026-10-21T23:59:01.993075Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p="internal/mcp/server.go"; s=open(p).read()
+        old='''	var text string
+        	var rendered bool
+        	if m, ok := out.(map[string]any); ok {
+        		switch tool {'''
+        new='''	var text string
+        	var rendered bool
+        	var stale string
+        	if m, ok := out.(map[string]any); ok {
+        		if tool != "prism_change_impact" {
+        			// Only change_impact's renderer knows staleWarning; the others
+        			// reject an unknown field and fall back to JSON, which for a
+        			// lookup carries the body twice. Render without it, print it once.
+        			m, stale = splitStaleWarning(m)
+        		}
+        		switch tool {'''
+        assert old in s; s=s.replace(old,new)
+        old2='''	if rendered {
+        		// Only the change_impact renderer prints staleWarning; every other
+        		// index-backed text answer dropped it, so a result computed on a
+        		// stale or partially refreshed index read as fresh.
+        		if m, ok := out.(map[string]any); ok {
+        			if w, _ := m["staleWarning"].(string); w != "" && !strings.Contains(text, w) {
+        				text = "// " + w + "\\n" + text
+        			}
+        		}
+        	}
+        	return text, rendered
+        }
+        '''
+        new2='''	if rendered && stale != "" && !strings.Contains(text, stale) {
+        		// The warning was split off above; without it a result computed
+        		// on a stale or partially refreshed index would read as fresh.
+        		text = "// " + stale + "\\n" + text
+        	}
+        	return text, rendered
+        }
+
+        // splitStaleWarning returns out without its staleWarning field (a shallow
+        // copy, so the caller's map is untouched) and the warning itself.
+        func splitStaleWarning(out map[string]any) (map[string]any, string) {
+        	w, _ := out["staleWarning"].(string)
+        	if _, has := out["staleWarning"]; !has {
+        		return out, ""
+        	}
+        	cp := make(map[string]any, len(out))
+        	for k, v := range out {
+        		if k != "staleWarning" {
+        			cp[k] = v
+        		}
+        	}
+        	return cp, w
+        }
+        '''
+        assert old2 in s; s=s.replace(old2,new2)
+        old3='''func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any, args map[string]any) (string, bool) {
+        	text, rendered := renderSearchAsText(out)
+        	if !rendered {
+        		return "", false
+        	}'''
+        new3='''func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any, args map[string]any) (string, bool) {
+        	out, stale := splitStaleWarning(out)
+        	text, rendered := renderSearchAsText(out)
+        	if !rendered {
+        		return "", false
+        	}
+        	if stale != "" {
+        		defer func() {}()
+        	}'''
+        assert old3 in s; s=s.replace(old3,new3)
+        open(p,"w").write(s)
+        EOF
+        grep -n "func (h \*Handler) RenderCompactSearchText" -A30 internal/mcp/server.go | tail -22
+      at: 2026-10-21T23:59:13.035319Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p="internal/mcp/server.go"; s=open(p).read()
+        s=s.replace('''	if stale != "" {
+        		defer func() {}()
+        	}''','',1)
+        old='''			text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
+        		}
+        	}
+        	return h.once.apply(text), true
+        }'''
+        new='''			text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
+        		}
+        	}
+        	text = h.once.apply(text)
+        	if stale != "" {
+        		text = "// " + stale + "\\n" + text
+        	}
+        	return text, true
+        }'''
+        assert old in s; s=s.replace(old,new); open(p,"w").write(s)
+        EOF
+        gofmt -l internal/mcp/server.go; GOWORK=off go build ./... && echo ok
+      at: 2026-10-21T23:59:20.8653Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p="internal/mcp/indexerrors_test.go"; s=open(p).read()
+        old='''		text := callCompact(t, srv, tc.op, tc.args)
+        		if !strings.Contains(text, "a.go (file exceeds") {
+        			t.Errorf("%s answer lacks the index failure warning:\\n%.800s", tc.op, text)
+        		}'''
+        new='''		text := callCompact(t, srv, tc.op, tc.args)
+        		if !strings.Contains(text, "a.go (file exceeds") {
+        			t.Errorf("%s answer lacks the index failure warning:\\n%.800s", tc.op, text)
+        		}
+        		// The warning must not push the answer into the JSON fallback
+        		// (a lookup's JSON carries the body twice): text, warning once.
+        		if strings.Contains(text, `"staleWarning"`) || strings.HasPrefix(strings.TrimSpace(text), "{") {
+        			t.Errorf("%s answer fell back to JSON because of the warning:\\n%.800s", tc.op, text)
+        		}
+        		if n := strings.Count(text, "a.go (file exceeds"); n != 1 {
+        			t.Errorf("%s answer prints the warning %d times:\\n%.800s", tc.op, n, text)
+        		}'''
+        assert old in s; s=s.replace(old,new); open(p,"w").write(s)
+        EOF
+        GOWORK=off go test ./internal/mcp/ -run "CompactAnswersCarryIndexErrorWarning" 2>&1 | tail -15
+      at: 2026-10-21T23:59:32.224919Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && git diff internal/mcp/server.go > /tmp/x.patch 2>/dev/null; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; git diff internal/mcp/server.go > $S/fix.patch && git checkout internal/mcp/server.go && GOWORK=off go test ./internal/mcp/ -run "CompactAnswersCarryIndexErrorWarning" 2>&1 | grep -E "fell back|times|^ok|FAIL" | cut -c1-120 | head -5; git apply $S/fix.patch && git diff --stat
+      at: 2026-10-21T23:59:39.583736Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && grep -n "RenderToolText\|renderLookupAsText\|renderSearchAsText\|renderQuerySourceAsText" internal/cli/*.go | grep -v _test
+      at: 2026-10-21T23:59:43.471604Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 150,175p internal/mcp/graphtext.go; echo ----; sed -n 275,295p internal/mcp/graphtext.go
+      at: 2026-10-21T23:59:46.833681Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "func formatEditSitesText" -A30 internal/mcp/graphtext.go | head -40; grep -n "shownInEdits" internal/mcp/graphtext.go | head -5
+      at: 2026-10-21T23:59:50.609453Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && grep -rn "func editSiteTextKeys\|func formatEditSitesText" internal/mcp/ | head; f=$(grep -rln "func editSiteTextKeys" internal/mcp/); n=$(grep -n "func editSiteTextKeys" $f | cut -d: -f1); sed -n "${n},$((n+30))p" $f; sed -n 220,262p internal/mcp/graphtext.go'
+      at: 2026-10-21T23:59:53.433421Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p="internal/mcp/editsites.go"; s=open(p).read()
+        old=s[s.index("func editSiteTextKeys(out map[string]any) map[string]bool {"):s.index("// parsePosition reads")]
+        new='''func editSiteTextKeys(out map[string]any) map[string]bool {
+        	texts := editSiteRowTexts(out)
+        	if texts == nil {
+        		return nil
+        	}
+        	keys := make(map[string]bool, len(texts))
+        	for k := range texts {
+        		keys[k] = true
+        	}
+        	return keys
+        }
+
+        // editSiteRowTexts maps "path:line" to the source text of that editSites row,
+        // or nil when editSites is absent or truncated.
+        func editSiteRowTexts(out map[string]any) map[string]string {
+        	rows := anySlice(out["editSites"])
+        	if n, _ := out["editSiteCount"].(int); len(rows) == 0 || n > len(rows) {
+        		return nil
+        	}
+        	texts := make(map[string]string, len(rows))
+        	for _, r := range rows {
+        		s, _ := r.(string)
+        		path, rest, ok := strings.Cut(s, ":")
+        		for ok && path != "" {
+        			// path may hold ':' (Windows drive): advance until rest starts "<line>:<col>: ".
+        			line, tail, ok2 := strings.Cut(rest, ":")
+        			if _, err := strconv.Atoi(line); err == nil && ok2 {
+        				if col, text, ok3 := strings.Cut(tail, ": "); ok3 {
+        					if _, err := strconv.Atoi(col); err == nil {
+        						texts[path+":"+line] = text
+        						break
+        					}
+        				}
+        			}
+        			var more string
+        			more, rest, ok = strings.Cut(rest, ":")
+        			path += ":" + more
+        		}
+        	}
+        	return texts
+        }
+
+        // headerShownInEdits reports whether the editSites row at a declaration's
+        // line already shows its whole header. A multiline declaration's row holds
+        // only the opening line ("def redirect("), so its signature must still be
+        // printed: the parameters are what a signature change edits.
+        func headerShownInEdits(rows map[string]string, decl map[string]any) bool {
+        	text, ok := rows[fmt.Sprintf("%v:%v", decl["filePath"], decl["line"])]
+        	if !ok {
+        		return false
+        	}
+        	open := strings.Count(text, "(")
+        	return open == strings.Count(text, ")") && (open > 0 || !strings.Contains(fmt.Sprint(decl["signature"]), "("))
+        }
+
+        '''
+        s=s.replace(old,new)
+        if '"fmt"' not in s.split(")")[0]:
+            s=s.replace('import (\n','import (\n\t"fmt"\n',1)
+        open(p,"w").write(s)
+        p="internal/mcp/graphtext.go"; s=open(p).read()
+        old='''	shownInEdits := editSiteTextKeys(out)
+        '''
+        new='''	shownInEdits := editSiteTextKeys(out)
+        	editRows := editSiteRowTexts(out)
+        '''
+        assert old in s; s=s.replace(old,new)
+        old2='''!(hasEdits && (sec.key == "declarations" || sec.key == "family")) {'''
+        new2='''!(hasEdits && (sec.key == "declarations" || sec.key == "family") && headerShownInEdits(editRows, m)) {'''
+        assert old2 in s; s=s.replace(old2,new2)
+        s=s.replace('''	// With editSites, the relay inventory, the generic evidence notes and
+        	// the declarations' signatures repeat what the edit rows already show
+        	// (bench29: ~20% of a change_impact answer).''','''	// With editSites, the relay inventory, the generic evidence notes and
+        	// the declarations' signatures repeat what the edit rows already show
+        	// (bench29: ~20% of a change_impact answer). A signature is still
+        	// printed when its edit row holds only part of a multiline header.''')
+        open(p,"w").write(s)
+        EOF
+        gofmt -l internal/mcp/; GOWORK=off go build ./... && GOWORK=off go test ./internal/mcp/ 2>&1 | tail -3
+      at: 2026-10-22T00:01:20.935604Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && cat > internal/mcp/multilineheader_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"strings"
+        	"testing"
+        )
+
+        // A multiline declaration's editSites row holds only its opening line
+        // ("def redirect("), so change_impact must still print the signature: the
+        // parameters are what a signature change edits (change-impact cost audit
+        // 2026-10-21, werkzeug redirect).
+        func TestImpactKeepsMultilineSignatureBesideEditRows(t *testing.T) {
+        	t.Setenv("GROVE_NATIVE", "0")
+        	srv := compactFixture(t, map[string]string{
+        		"utils.py": "def redirect(\n    location,\n    code=303,\n    Response=None,\n):\n    return location\n",
+        		"app.py":   "from utils import redirect\n\n\ndef view():\n    return redirect(\"/\", 302)\n",
+        	})
+        	text := callCompact(t, srv, "change_impact", map[string]any{"name": "redirect"})
+        	if !strings.Contains(text, "utils.py:1:5: def redirect(") {
+        		t.Fatalf("fixture no longer yields a partial-header edit row:\n%s", text)
+        	}
+        	if !strings.Contains(text, "Response=None") {
+        		t.Errorf("multiline signature dropped beside its partial edit row:\n%s", text)
+        	}
+        }
+        EOF
+        GOWORK=off go test ./internal/mcp/ -run TestImpactKeepsMultilineSignature -v 2>&1 | tail -25
+      at: 2026-10-22T00:01:31.712896Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; git diff internal/mcp/graphtext.go > $S/sig.patch && git checkout internal/mcp/graphtext.go && GOWORK=off go test ./internal/mcp/ -run TestImpactKeepsMultilineSignature 2>&1 | grep -E "dropped|^ok|FAIL" | head -3; git apply $S/sig.patch && git diff --stat
+      at: 2026-10-22T00:01:37.172265Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add internal/mcp/server.go internal/mcp/indexerrors_test.go && git commit -q -m "text answers: print the index warning once instead of falling back to JSON
+
+        v0.87.38 attached staleWarning to lookup/search/query answers, but only the
+        change_impact renderer knows that field; the others rejected it and printed
+        the whole JSON, which for a lookup carries the body twice (zod
+        \$ZodRegistry lookup + search: 9.9 KB vs 5.5 KB as text, change-impact cost
+        audit 2026-10-21). Split the warning off before rendering and print it once.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git add internal/mcp/editsites.go internal/mcp/graphtext.go internal/mcp/multilineheader_test.go && git commit -q -m "change_impact: keep a multiline declaration's signature beside its edit row
+
+        With editSites present, declaration signatures were hidden as repeats of the
+        edit rows; for a multiline header the row holds only the opening line
+        (\"def redirect(\"), so the parameters a signature change edits were never
+        shown (werkzeug redirect, change-impact cost audit 2026-10-21). Hide the
+        signature only when its edit row holds the whole header.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git log --oneline -3 && GOWORK=off go test ./... 2>&1 | grep -E "^(FAIL|--- FAIL)" | head; echo TESTS_DONE
+      at: 2026-10-22T00:02:52.478401Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && GOWORK=off go build -o ~/prism-ab-bins/prism-main-7d6f812 ./cmd/prism && cd ~/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/prism-ab-bins/prism-main-7d6f812 2>&1 | tail -1; cd ~/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21 && grep -c ALLDONE run.log; tail -2 run.log | cut -c1-160; pgrep -f change32-cli | head -2
+      at: 2026-10-22T00:04:30.346024Z
+      classified: build
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bkfg6x8t9.output; cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open("results/change32-cli-vs-native-2026-10-21/results.json"))
+        n=0;sn=sp=tn=tp=0;bill=0
+        for k,r in d.items():
+            if k.startswith("_"):continue
+            a=r["cells"].get("native/nocache");b=r["cells"].get("prism_cli/nocache")
+            if not(a and b) or a.get("resolved") is None or b.get("resolved") is None:continue
+            n+=1; sn+=a["repriced"]["5m"]["startup_usd"]; sp+=b["repriced"]["5m"]["startup_usd"]
+            tn+=a["repriced"]["5m"]["usd"]-a["repriced"]["5m"]["startup_usd"]; tp+=b["repriced"]["5m"]["usd"]-b["repriced"]["5m"]["startup_usd"]; bill+=a["cost_usd"]+b["cost_usd"]
+            if bool(a["resolved"])!=bool(b["resolved"]): print("DIFF",k,a["resolved"],b["resolved"])
+        print(f"n={n} startup {sn/n:.4f}/{sp/n:.4f} task {tn/n:.4f}/{tp/n:.4f} bill ${bill:.2f}")
+        for N in (1,10,20,40):
+            nat=sn/n+N*tn/n; pr=sp/n+N*tp/n; print(f"N={N}: saving {(1-pr/nat)*100:.1f}%")
+        EOF
+      at: 2026-10-22T00:20:31.785374Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && GOWORK=off go test ./internal/cli/ 2>&1 | tail -2 && GOWORK=off go build -o ~/prism-ab-bins/prism-cand-v08739 ./cmd/prism && cd ~/Projects/provasign/research/harness && D=results/change32-v08739cand-2026-10-21 && mkdir -p $D && cp results/change32-cli-vs-native-2026-10-21/tally.py $D/ && sed -i '' 's#"native/nocache"#"prism_cli/nocache"#; s#"prism_cli/nocache");if#"prism_cli_b/nocache");if#' $D/tally.py && cat > $D/run.sh <<'EOF'
+        cd ~/Projects/provasign/research/harness
+        # Change bed: released v0.87.38 (prism_cli) vs candidate v0.87.39 (prism_cli_b: text renders the
+        # index warning once, multiline signatures kept, CLI "known symbol -> change-impact/lookup" line). Sonnet 5.5.
+        export PRISM_INIT_BIN=~/prism-ab-bins/prism-v0.87.38 PRISM_CLI_B_BIN=~/prism-ab-bins/prism-cand-v08739 CLI_BENCH_SPEND_CAP_USD=35
+        python3 ~/Projects/provasign/prism/docs/research/cli-issue42-2026-10-18/run_cli_product.py \
+          --manifest results/seeded32-manifest.json --out-dir results/change32-v08739cand-2026-10-21 \
+          --arms prism_cli,prism_cli_b --no-cache --order-seed change32-v08739cand
+        echo "ALLDONE rc=$?" >> results/change32-v08739cand-2026-10-21/run.log
+        EOF
+        grep -n 'a=r\["cells"\]' $D/tally.py; nohup bash $D/run.sh > $D/nohup.out 2>&1 & echo launched
+      at: 2026-10-22T00:20:58.128638Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-v08739cand-2026-10-21 && sed -i '' '20s#b=r\["cells"\].get("prism_cli/nocache")#b=r["cells"].get("prism_cli_b/nocache")#' tally.py && sed -n 20p tally.py
+      at: 2026-10-22T00:21:02.703475Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-v08739cand-2026-10-21 && until grep -q "ALLDONE" run.log 2>/dev/null; do sleep 60; done; grep -E "STOP" run.log | tail -1 | cut -c1-200; python3 tally.py | sed 's/nat/v0.87.38/g'
+      at: 2026-10-22T00:21:02.782863Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-v08739cand-2026-10-21 && grep -c PAIR run.log; grep -E "STOP" run.log | tail -1 | cut -c1-200; python3 tally.py | grep -E "^(ALL|signature|method|property)"
+      at: 2026-10-22T00:36:17.539828Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-v08739cand-2026-10-21 && grep -c PAIR run.log; grep -c ALLDONE run.log; grep -E "STOP" run.log | tail -1 | cut -c1-200; python3 tally.py | grep -E "^(ALL|signature|method|property)"
+      at: 2026-10-22T01:15:33.743923Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,os,collections
+        N=json.load(open("results/change32-cli-vs-native-2026-10-21/results.json"))
+        C=json.load(open("results/change32-v08739cand-2026-10-21/results.json"))
+        def tools(c):
+            n=0
+            for l in open(c["transcript"]):
+                x=json.loads(l)
+                if x.get("type")=="assistant": n+=sum(1 for u in x["message"]["content"] if u.get("type")=="tool_use")
+            return n
+        def task(c): p=c["repriced"]["5m"]; return p["usd"]-p["startup_usd"]
+        rows=collections.Counter(); n=0
+        for k,r in C.items():
+            if k.startswith("_"):continue
+            cand=r["cells"].get("prism_cli_b/nocache"); old=r["cells"].get("prism_cli/nocache")
+            nat=N.get(k,{}).get("cells",{}).get("native/nocache")
+            if not(cand and nat and old) or cand.get("resolved") is None: continue
+            n+=1
+            for lab,c in (("native",nat),("v0.87.38",old),("cand",cand)):
+                rows[lab+"_cost"]+=task(c); rows[lab+"_tools"]+=tools(c); rows[lab+"_req"]+=c["api_calls"]-1; rows[lab+"_solved"]+=bool(c["resolved"]); rows[lab+"_start"]+=c["repriced"]["5m"]["startup_usd"]
+        print("tasks",n)
+        for lab in ("native","v0.87.38","cand"):
+            print(f"{lab:9s} solved {rows[lab+'_solved']:2d}  task$ {rows[lab+'_cost']/n:.4f} ({rows[lab+'_cost']/rows['native_cost']:.2f}x)  tools {rows[lab+'_tools']/n:.1f} ({rows[lab+'_tools']/rows['native_tools']:.2f}x)  req {rows[lab+'_req']/n:.1f} ({rows[lab+'_req']/rows['native_req']:.2f}x)")
+        sn=rows["native_start"]/n; sc=rows["cand_start"]/n; tn=rows["native_cost"]/n; tc=rows["cand_cost"]/n
+        for k in (1,10,20,40): print(f"session {k} tasks: cand saving vs native {(1-(sc+k*tc)/(sn+k*tn))*100:.1f}%")
+        EOF
+      at: 2026-10-22T01:16:36.464Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness/results/change32-v08739cand-2026-10-21 && grep -c PAIR run.log; grep -c ALLDONE run.log; grep -E "STOP" run.log | tail -1 | cut -c1-200; pgrep -f change32-v08739cand | wc -l
+      at: 2026-10-22T01:54:51.942359Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,collections
+        N=json.load(open("results/change32-cli-vs-native-2026-10-21/results.json"))
+        C=json.load(open("results/change32-v08739cand-2026-10-21/results.json"))
+        def tools(c):
+            n=0
+            for l in open(c["transcript"]):
+                x=json.loads(l)
+                if x.get("type")=="assistant": n+=sum(1 for u in x["message"]["content"] if u.get("type")=="tool_use")
+            return n
+        def task(c): p=c["repriced"]["5m"]; return p["usd"]-p["startup_usd"]
+        rows=collections.Counter(); n=0
+        for k,r in C.items():
+            if k.startswith("_"):continue
+            cand=r["cells"].get("prism_cli_b/nocache"); old=r["cells"].get("prism_cli/nocache")
+            nat=N.get(k,{}).get("cells",{}).get("native/nocache")
+            if not(cand and nat and old) or cand.get("resolved") is None: continue
+            n+=1
+            for lab,c in (("native",nat),("v0.87.38",old),("cand",cand)):
+                rows[lab+"_cost"]+=task(c); rows[lab+"_tools"]+=tools(c); rows[lab+"_req"]+=c["api_calls"]-1; rows[lab+"_solved"]+=bool(c["resolved"])
+        print("tasks",n)
+        for lab in ("native","v0.87.38","cand"):
+            print(f"{lab:9s} solved {rows[lab+'_solved']:2d}  task$ {rows[lab+'_cost']/n:.4f} ({rows[lab+'_cost']/rows['native_cost']:.2f}x)  tools {rows[lab+'_tools']/n:.1f} ({rows[lab+'_tools']/rows['native_tools']:.2f}x)  req {rows[lab+'_req']/n:.1f} ({rows[lab+'_req']/rows['native_req']:.2f}x)")
+        EOF
+      at: 2026-10-22T01:54:58.153872Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bjcxuftoh.output | head -3; cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,collections
+        N=json.load(open("results/change32-cli-vs-native-2026-10-21/results.json"))
+        C=json.load(open("results/change32-v08739cand-2026-10-21/results.json"))
+        def tools(c):
+            n=0
+            for l in open(c["transcript"]):
+                x=json.loads(l)
+                if x.get("type")=="assistant": n+=sum(1 for u in x["message"]["content"] if u.get("type")=="tool_use")
+            return n
+        def task(c): p=c["repriced"]["5m"]; return p["usd"]-p["startup_usd"]
+        rows=collections.Counter(); n=0; bill=0
+        for k,r in C.items():
+            if k.startswith("_"):continue
+            cand=r["cells"].get("prism_cli_b/nocache"); old=r["cells"].get("prism_cli/nocache")
+            nat=N.get(k,{}).get("cells",{}).get("native/nocache")
+            if not(cand and nat and old) or cand.get("resolved") is None: continue
+            n+=1; bill+=cand["cost_usd"]+old["cost_usd"]
+            for lab,c in (("native",nat),("v0.87.38",old),("cand",cand)):
+                rows[lab+"_cost"]+=task(c); rows[lab+"_tools"]+=tools(c); rows[lab+"_req"]+=c["api_calls"]-1; rows[lab+"_solved"]+=bool(c["resolved"]); rows[lab+"_start"]+=c["repriced"]["5m"]["startup_usd"]
+            if bool(cand["resolved"])!=bool(nat["resolved"]): print("DIFF vs native",k,nat["resolved"],cand["resolved"])
+        print("tasks",n,"bill this run",round(bill,2))
+        for lab in ("native","v0.87.38","cand"):
+            print(f"{lab:9s} solved {rows[lab+'_solved']:2d}  task$ {rows[lab+'_cost']/n:.4f} ({rows[lab+'_cost']/rows['native_cost']:.2f}x)  tools {rows[lab+'_tools']/n:.1f} ({rows[lab+'_tools']/rows['native_tools']:.2f}x)  req {rows[lab+'_req']/n:.1f} ({rows[lab+'_req']/rows['native_req']:.2f}x)")
+        sn=rows["native_start"]/n; sc=rows["cand_start"]/n; tn=rows["native_cost"]/n; tc=rows["cand_cost"]/n
+        for k in (1,10,20,40): print(f"session {k}: {(1-(sc+k*tc)/(sn+k*tn))*100:.1f}%")
+        EOF
+      at: 2026-10-22T02:23:15.825955Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add internal/cli/surface.go && git commit -q -m "cli steering: a known symbol goes straight to change-impact or lookup
+
+        The MCP steering already says so; the CLI block did not, and on rename
+        targets agents ran a name search alongside change-impact before reading
+        either (change-impact cost audit 2026-10-21). With the two renderer fixes,
+        change32 A/B (Sonnet 5.5): v0.87.38 vs candidate solved 31 vs 32, task
+        cost 0.84x vs 0.76x of native, tool calls 0.76x vs 0.65x.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && GOWORK=off go test ./... 2>&1 | grep -E "^(FAIL|--- FAIL)" | head; echo TESTS_DONE; GOWORK=off go build -o ~/prism-ab-bins/prism-v0.87.39 ./cmd/prism && cd ~/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/prism-ab-bins/prism-v0.87.39 2>&1 | tail -1
+      at: 2026-10-22T02:24:46.617849Z
+      classified: test
+notes:
+    - text: continuation of session f82ecf22-b802-493c-ae00-bf3b3439536c — events captured after its evidence was finalized
+      at: 2026-10-21T11:53:48.003242Z
+redactions: 1

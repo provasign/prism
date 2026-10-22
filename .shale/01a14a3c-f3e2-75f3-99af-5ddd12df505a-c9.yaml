@@ -1,0 +1,407 @@
+shale_version: "0"
+id: 01a14a3c-f3e2-75f3-99af-5ddd12df505a-c9
+created_at: 2026-10-21T23:46:15.220754Z
+finalized_at: 2026-10-22T02:24:50.366899Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/research/change-impact-cost-audit-2026-10-21/analyze.py
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-21T23:47:56.944665Z
+    - path: docs/research/change-impact-cost-audit-2026-10-21/renderer_replay_test.go.txt
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-21T23:52:04.210275Z
+    - path: docs/research/change-impact-cost-audit-2026-10-21/replay_renderers.py
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-21T23:54:45.125307Z
+    - path: docs/research/change-impact-cost-audit-2026-10-21/REPORT.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-21T23:56:40.459835Z
+commands:
+    - cmd: git status -sb
+      at: 2026-10-21T23:46:21.126076Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import subprocess
+        s=subprocess.check_output(['ps','-axo','pid,ppid,etime,command'],text=True)
+        for x in s.splitlines():
+         if any(v in x for v in ('run_ttl.py','run_cli_product.py','run_overnight.py','nocache','wide32','impact32','bench.py','coding_suite.py')) and not any(v in x for v in ('python3 -B -','ps -axo')): print(x[:1200])
+        PY
+      at: 2026-10-21T23:46:37.382417Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        from datetime import datetime
+        p=Path('/Users/tapabratapal/Projects/provasign/research/harness/results')
+        a=sorted((x for x in p.iterdir() if x.is_dir()),[REDACTED:env-secret] x:x.stat().st_mtime,reverse=True)
+        for x in a[:24]:
+         f=x/'results.json'; print(datetime.fromtimestamp(x.stat().st_mtime).isoformat(timespec='seconds'),x.name,'results='+str(f.exists()),'result_time='+str(datetime.fromtimestamp(f.stat().st_mtime).isoformat(timespec='seconds') if f.exists() else ''))
+        PY
+      at: 2026-10-21T23:46:37.400949Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        p=Path('/Users/tapabratapal/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21')
+        print('RUN FILES',[(x.name,x.stat().st_size) for x in p.iterdir() if x.is_file()])
+        d=json.loads((p/'results.json').read_text())
+        print('ROOT KEYS',list(d))
+        for k in ('_meta','_reused','_last_cell_end'):
+         if k in d: print(k,json.dumps(d[k])[:12000])
+        for k,v in d.items():
+         if not k.startswith('_'):
+          print('SAMPLE',k,json.dumps(v)[:13000]);break
+        PY
+      at: 2026-10-21T23:46:47.093943Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json,hashlib,datetime
+        src=Path('/Users/tapabratapal/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21')
+        out=Path('docs/research/change-impact-cost-audit-2026-10-21');out.mkdir(parents=True,exist_ok=True)
+        raw=(src/'results.json').read_bytes();(out/'results.snapshot.json').write_bytes(raw)
+        for name in ('SUMMARY.md','run.log'):
+         if (src/name).exists(): (out/(name+'.snapshot')).write_bytes((src/name).read_bytes())
+        d=json.loads(raw)
+        meta={'captured_local':datetime.datetime.now().astimezone().isoformat(timespec='seconds'),'source':str(src),'results_sha256':hashlib.sha256(raw).hexdigest(),'last_cell_end':d.get('_last_cell_end')};(out/'snapshot-meta.json').write_text(json.dumps(meta,indent=2)+'\n')
+        print('SNAPSHOT',meta)
+        print('SAVED SUMMARY\n'+(src/'SUMMARY.md').read_text())
+        rows=[];incomplete=[]
+        for k,v in d.items():
+         if k.startswith('_'):continue
+         c=v.get('cells',{});n=c.get('native/nocache');p=c.get('prism_cli/nocache')
+         if not n or not p:incomplete.append((k,list(c)));continue
+         def cost(x):
+          r=x['repriced']['5m'];return r['usd']-r['startup_usd']
+         nc,pc=cost(n),cost(p)
+         rows.append((pc-nc,k,nc,pc,pc/nc if nc else None,n.get('api_calls'),p.get('api_calls'),n['resolved'],p['resolved'],n.get('error'),p.get('error')))
+        print('COMPLETE',len(rows),'INCOMPLETE',incomplete)
+        print('SUM task5m',sum(x[2] for x in rows),sum(x[3] for x in rows),'ratio',sum(x[3] for x in rows)/sum(x[2] for x in rows))
+        print('SUM requests',sum(x[5] for x in rows),sum(x[6] for x in rows),'SOLVES',sum(bool(x[7]) for x in rows),sum(bool(x[8]) for x in rows))
+        print('MORE EXPENSIVE',sum(x[0]>0 for x in rows))
+        for row in sorted(rows,reverse=True): print(json.dumps(row))
+        PY
+      at: 2026-10-21T23:47:02.977212Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        root=Path('/Users/tapabratapal/Projects/provasign/research/harness')
+        r=Path('docs/research/change-impact-cost-audit-2026-10-21/results.snapshot.json');d=json.loads(r.read_text())
+        for task in ['seed__werkzeug__redirect_kwonly','wide__click__ClickException_format_message']:
+         for arm in ['native','prism_cli']:
+          c=d[task]['cells'][arm+'/nocache'];f=root/c['transcript'];print('FILE',f)
+          a=[json.loads(x) for x in f.read_text().splitlines() if x.strip()]
+          print('EVENT TYPES',[(x.get('type'),x.get('subtype')) for x in a[:8]])
+          for x in a:
+           if x.get('type')=='assistant':print('ASSISTANT SAMPLE',json.dumps(x)[:2700]);break
+        print('LOG START\n'+'\n'.join((root/'results/change32-cli-vs-native-2026-10-21/run.log').read_text().splitlines()[:12]))
+        print('LOG TAIL\n'+'\n'.join((root/'results/change32-cli-vs-native-2026-10-21/run.log').read_text().splitlines()[-32:]))
+        PY
+      at: 2026-10-21T23:47:24.196468Z
+      classified: other
+    - cmd: python3 -B docs/research/change-impact-cost-audit-2026-10-21/analyze.py --tasks seed__werkzeug__redirect_kwonly wide__click__ClickException_format_message wide__echo__HTTPStatusCoder_StatusCode --show-results
+      at: 2026-10-21T23:47:57.112793Z
+      classified: other
+    - cmd: python3 -B docs/research/change-impact-cost-audit-2026-10-21/analyze.py --tasks wide__werkzeug__Response_get_data wide__hono__SetHeadersOptions_append wide__jackson-databind__TypeDeserializer_getTypeInclusion --show-results
+      at: 2026-10-21T23:48:11.042992Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21/audit.full.json');d=json.loads(p.read_text());row=next(x for x in d['pairs'] if x['task']=='seed__werkzeug__redirect_kwonly')
+        r=row['cells']['prism_cli']['transcript']['requests']
+        print('REDIRECT INITIAL TOOL OUTPUT\n'+r[0]['tools'][0]['result'])
+        print('FIRST EDIT COMMAND\n'+r[1]['tools'][0]['input']['command'])
+        PY
+      at: 2026-10-21T23:48:11.145554Z
+      classified: other
+    - cmd: python3 -B docs/research/change-impact-cost-audit-2026-10-21/analyze.py --tasks wide__werkzeug__BaseConverter_to_url wide__zod__ZodRegistry_get wide__werkzeug__HTTPException_get_headers --show-results
+      at: 2026-10-21T23:48:17.918916Z
+      classified: other
+    - cmd: python3 -B docs/research/change-impact-cost-audit-2026-10-21/analyze.py --tasks seed__werkzeug__run_simple_app_first wide__click__Group_get_command wide__gin__ResponseWriter_Status --show-results
+      at: 2026-10-21T23:48:36.896715Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21/audit.full.json');d=json.loads(p.read_text())
+        for task in ['wide__werkzeug__HTTPException_get_headers','wide__zod__ZodRegistry_get','wide__jackson-databind__TypeDeserializer_getTypeInclusion']:
+         x=next(x for x in d['pairs'] if x['task']==task)
+         print('\nTASK',task,'PROMPT',x['cells']['prism_cli']['transcript']['prompt'][:2300])
+         r=x['cells']['prism_cli']['transcript']['requests'][0]
+         for t in r['tools']:
+          print('COMMAND',t['input'].get('command'))
+          if task.endswith('ZodRegistry_get'): print('OUTPUT',t['result'][:12000])
+          elif task.endswith('get_headers'):print('OUTPUT',t['result'])
+        PY
+      at: 2026-10-21T23:48:49.365503Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,re
+        from pathlib import Path
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21');d=json.loads((p/'audit.full.json').read_text());loss=[x for x in d['pairs'] if x['delta']>0]
+        print('LOSS COUNTS',{'more_requests':sum(x['cells']['prism_cli']['requests']>x['cells']['native']['requests'] for x in loss),'same_requests':sum(x['cells']['prism_cli']['requests']==x['cells']['native']['requests'] for x in loss),'fewer_requests':sum(x['cells']['prism_cli']['requests']<x['cells']['native']['requests'] for x in loss),'gross_premium':sum(x['delta'] for x in loss),'output_component':sum(x['output_cost_delta'] for x in loss)})
+        print('JSON/WARNING OUTPUTS')
+        for pair in d['pairs']:
+         for arm,c in pair['cells'].items():
+          if arm!='prism_cli':continue
+          for r in c['transcript']['requests']:
+           for t in r['tools']:
+            cmd=t['input'].get('command','');out=t['result']
+            if 'prism ' in cmd and (out.lstrip().startswith('{') or 'staleWarning' in out):print(pair['task'],'R'+str(r['request']),len(out.encode()),cmd[:130],out[:100])
+        print('PRISM COUNTS')
+        for pair in loss:
+         calls=[]
+         for r in pair['cells']['prism_cli']['transcript']['requests']:
+          for t in r['tools']:
+           cmd=t['input'].get('command','')
+           if 'prism ' in cmd:calls.append((r['request'],cmd,t['result_bytes']))
+         print(pair['task'],calls)
+        x=next(x for x in d['pairs'] if x['task']=='wide__zod__ZodRegistry_get')['cells']['prism_cli']['transcript']['requests'][0]['tools'][0]['result']
+        Path('/private/tmp/change32-zod-render-responses.json').write_text(json.dumps([json.loads(line) for line in x.splitlines() if line.startswith('{')]))
+        PY
+      at: 2026-10-21T23:49:33.627876Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21');d=json.loads((p/'audit.full.json').read_text())
+        for task in ['wide__jackson-databind__TypeDeserializer_getTypeInclusion','wide__werkzeug__Response_get_data','wide__hono__SetHeadersOptions_append']:
+         x=next(x for x in d['pairs'] if x['task']==task)
+         print('\nTASK',task)
+         for r in x['cells']['prism_cli']['transcript']['requests']:
+          for t in r['tools']:
+           if 'prism change-impact' in t['input'].get('command',''):
+            out=t['result'];print(out[:9500] if task.endswith('getTypeInclusion') else out[:7200])
+        PY
+      at: 2026-10-21T23:49:47.714127Z
+      classified: other
+    - cmd: go version -m /Users/tapabratapal/prism-ab-bins/prism-v0.87.38
+      at: 2026-10-21T23:50:08.530563Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-10-21T23:50:08.530559Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json,datetime
+        p=Path('/Users/tapabratapal/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21/results.json');d=json.loads(p.read_text());rows=[(k,v) for k,v in d.items() if not k.startswith('_')];complete=[(k,v) for k,v in rows if len(v.get('cells',{}))==2];print('complete',len(complete),'last end',datetime.datetime.fromtimestamp(d['_last_cell_end']).isoformat(),'latest task names',[k for k,v in rows[-7:]])
+        old=json.loads(Path('docs/research/change-impact-cost-audit-2026-10-21/results.snapshot.json').read_text())
+        for k,v in complete:
+         if k not in old:
+          a=v['cells'];n=a['native/nocache'];p=a['prism_cli/nocache'];nc=n['repriced']['5m']['usd']-n['repriced']['5m']['startup_usd'];pc=p['repriced']['5m']['usd']-p['repriced']['5m']['startup_usd'];print(k,'ratio',pc/nc,'delta',pc-nc,'requests',n['api_calls'],p['api_calls'],'solved',n['resolved'],p['resolved'])
+        PY
+      at: 2026-10-21T23:50:08.551656Z
+      classified: other
+    - cmd: prism search AmbiguousAccesses --path internal/graph --scope text --files-only --format text
+      at: 2026-10-21T23:50:08.61304Z
+      classified: other
+    - cmd: git diff --stat 0cb13b22d3126bd0a297a580def88dc59840906f HEAD -- internal/mcp/graphtext.go internal/mcp/lookupbatch.go internal/mcp/searchtext.go internal/cli/surface.go
+      at: 2026-10-21T23:50:37.873465Z
+      classified: other
+    - cmd: prism search 'MemberAccess' 'members.push' 'outsideRoot' --path internal/native/js_ts.go --scope text --no-bodies --format text --limit 20
+      at: 2026-10-21T23:50:37.952898Z
+      classified: other
+    - cmd: prism search 'native' 'ambiguous' 'External' --path internal/graph/memberimpact.go --scope text --no-bodies --format text --limit 25
+      at: 2026-10-21T23:50:38.077269Z
+      classified: other
+    - cmd: prism read internal/native/js_ts.go --from 947 --to 1007 --format text
+      at: 2026-10-21T23:50:51.201814Z
+      classified: other
+    - cmd: prism read internal/graph/memberimpact.go --from 425 --to 482 --format text
+      at: 2026-10-21T23:50:51.290996Z
+      classified: other
+    - cmd: prism read internal/native/js_ts.go --from 1006 --to 1059 --format text
+      at: 2026-10-21T23:51:01.166183Z
+      classified: other
+    - cmd: prism lookup memberClassifier --format text
+      at: 2026-10-21T23:51:01.353811Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        p=Path('/Users/tapabratapal/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21/results.json');d=json.loads(p.read_text());k='wide__echo__Router_Route';x=d[k]['cells'];print('NEW CASE',k)
+        for a,c in x.items():
+         print(a,c['api_calls'],c['tokens'],c['tokens_out'],c['transcript'])
+        print('PAIR COUNT',sum(not k.startswith('_') and len(v.get('cells',{}))==2 for k,v in d.items()))
+        PY
+      at: 2026-10-21T23:51:01.466898Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json,datetime,hashlib,subprocess
+        src=Path('/Users/tapabratapal/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21');out=Path('docs/research/change-impact-cost-audit-2026-10-21');raw=(src/'results.json').read_bytes();(out/'results.snapshot.json').write_bytes(raw);d=json.loads(raw)
+        (out/'snapshot-meta.json').write_text(json.dumps({'captured_local':datetime.datetime.now().astimezone().isoformat(timespec='seconds'),'source':str(src),'results_sha256':hashlib.sha256(raw).hexdigest(),'last_cell_end':d.get('_last_cell_end'),'note':'Live run; SUMMARY.md is stale at seven pairs. Snapshot contains completed cells only as recorded.'},indent=2)+'\n')
+        (out/'binary-metadata.txt').write_text(subprocess.check_output(['go','version','-m','/Users/tapabratapal/prism-ab-bins/prism-v0.87.38'],text=True))
+        print('frozen completed pairs',sum(not k.startswith('_') and len(v.get('cells',{}))==2 for k,v in d.items()))
+        print('log tail\n'+'\n'.join((src/'run.log').read_text().splitlines()[-7:]))
+        PY
+      at: 2026-10-21T23:51:13.870679Z
+      classified: other
+    - cmd: python3 -B docs/research/change-impact-cost-audit-2026-10-21/analyze.py --tasks wide__echo__Router_Route --show-results
+      at: 2026-10-21T23:51:14.044311Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        src=Path('docs/research/change-impact-cost-audit-2026-10-21/renderer_replay_test.go.txt').resolve();tmp=Path('/private/tmp/change32-renderer-replay.go');tmp.write_text(src.read_text());Path('/private/tmp/change32-renderer-overlay.json').write_text(json.dumps({'Replace':{str(Path('internal/mcp/change32_cost_audit_test.go').resolve()):str(tmp)}}))
+        PY
+      at: 2026-10-21T23:52:04.32583Z
+      classified: other
+    - cmd: GOWORK=off go test -overlay /private/tmp/change32-renderer-overlay.json ./internal/mcp -run TestChange32CostAudit -v -count=1
+      at: 2026-10-21T23:52:28.331048Z
+      classified: test
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21');d=json.loads((p/'audit.full.json').read_text());rows=d['pairs'];tot={}
+        for arm in ('native','prism_cli'):
+         tot[arm]={k:sum(x['cells'][arm][k] for x in rows) for k in ('task_usd','startup_usd','total_usd','requests','turns','input','output','observed_usd','wall_s')};tot[arm]['solves']=sum(x['cells'][arm]['resolved'] is True for x in rows)
+        print('TOTALS',json.dumps(tot,indent=2));print('ratios',{k:tot['prism_cli'][k]/tot['native'][k] for k in ('task_usd','total_usd','requests','input','output','observed_usd','wall_s')})
+        loss=[x for x in rows if x['delta']>0];print('LOSERS',len(loss),'gross premium',sum(x['delta'] for x in loss),'output contribution',sum(x['output_cost_delta'] for x in loss))
+        for x in loss:
+         n=x['cells']['native'];q=x['cells']['prism_cli'];print(x['task'],round(x['ratio'],4),round(x['delta'],6),n['requests'],q['requests'],q['input']-n['input'],q['output']-n['output'])
+        print('usage reconciles',all(abs(x['cells'][a]['observed_usd']-(x['cells'][a]['input']*2+x['cells'][a]['output']*10)/1e6)<1e-6 for x in rows for a in ('native','prism_cli')))
+        PY
+      at: 2026-10-21T23:52:28.441705Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21');d=json.loads((p/'audit.full.json').read_text())
+        x=next(x for x in d['pairs'] if x['task']=='wide__gin__ResponseWriter_Status')['cells']['prism_cli']['transcript']['requests']
+        print('GIN SECOND REQUEST COMMAND\n'+x[1]['tools'][0]['input']['command'])
+        print('GIN FIRST ANSWER COMMENT REFERENCES')
+        for line in x[0]['tools'][0]['result'].splitlines():
+         if 'Status returns' in line or 'response_writer.go:29' in line or 'response_writer.go:30' in line:print(line)
+        print('SOURCE-STAGE SIZES')
+        for pair in d['pairs']:
+         if pair['delta']<=0:continue
+         out=[]
+         for arm in ('native','prism_cli'):
+          cell=pair['cells'][arm];r=cell['transcript']['requests'][0];out.append(sum(t['result_bytes'] for t in r['tools']))
+         print(pair['task'],*out)
+        PY
+      at: 2026-10-21T23:53:00.675795Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json,datetime
+        src=Path('/Users/tapabratapal/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21/results.json');d=json.loads(src.read_text());print('completed',sum(not k.startswith('_') and len(v.get('cells',{}))==2 for k,v in d.items()),'last',datetime.datetime.fromtimestamp(d['_last_cell_end']).isoformat());print('latest task keys',[k for k in d if not k.startswith('_')][-5:])
+        f=Path('docs/research/change-impact-cost-audit-2026-10-21/audit.full.json');a=json.loads(f.read_text());bad=[]
+        for row in a['pairs']:
+         for arm,c in row['cells'].items():
+          reqs=c['transcript']['requests'];summed=sum((r['usage'] or {}).get('input_uncached',0) for r in reqs)
+          if len(reqs)!=c['requests'] or summed!=c['input']:bad.append((row['task'],arm,len(reqs),c['requests'],summed,c['input']))
+        print('usage/request mismatches',bad)
+        PY
+      at: 2026-10-21T23:53:28.044226Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json,datetime,hashlib
+        src=Path('/Users/tapabratapal/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21');out=Path('docs/research/change-impact-cost-audit-2026-10-21');raw=(src/'results.json').read_bytes();d=json.loads(raw)
+        (out/'results.snapshot.json').write_bytes(raw);(out/'run.log.snapshot').write_bytes((src/'run.log').read_bytes())
+        (out/'snapshot-meta.json').write_text(json.dumps({'captured_local':datetime.datetime.now().astimezone().isoformat(timespec='seconds'),'source':str(src),'results_sha256':hashlib.sha256(raw).hexdigest(),'last_cell_end':d.get('_last_cell_end'),'note':'Partial live run; SUMMARY.md is stale at seven pairs. Use results.snapshot.json.'},indent=2)+'\n')
+        k='wide__zod__ZodTypeInternals_parse';x=d[k]['cells']
+        for arm,c in x.items():r=c['repriced']['5m'];print(arm,'task',r['usd']-r['startup_usd'],'requests',c['api_calls'],'solved',c['resolved'])
+        PY
+      at: 2026-10-21T23:53:35.124823Z
+      classified: other
+    - cmd: python3 -B docs/research/change-impact-cost-audit-2026-10-21/analyze.py --tasks wide__zod__ZodTypeInternals_parse --show-results
+      at: 2026-10-21T23:53:35.294444Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        x=next(x for x in json.loads(Path('docs/research/change-impact-cost-audit-2026-10-21/audit.full.json').read_text())['pairs'] if x['task']=='wide__zod__ZodTypeInternals_parse')['cells']['prism_cli']['transcript']['requests'][0]['tools'][0]['result']
+        print('lines',len(x.splitlines()),'bytes',len(x.encode()))
+        for line in x.splitlines():
+         if not line.startswith('  '):print(line[:850])
+        print('TAIL\n'+'\n'.join(x.splitlines()[-12:]))
+        PY
+      at: 2026-10-21T23:53:47.994067Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21');(p/'renderer-inputs.json').write_bytes(Path('/private/tmp/change32-zod-render-responses.json').read_bytes())
+        PY
+      at: 2026-10-21T23:54:45.235441Z
+      classified: other
+    - cmd: python3 -B docs/research/change-impact-cost-audit-2026-10-21/analyze.py --tasks _none_
+      at: 2026-10-21T23:55:17.615124Z
+      classified: other
+    - cmd: python3 -B docs/research/change-impact-cost-audit-2026-10-21/replay_renderers.py
+      at: 2026-10-21T23:55:17.647166Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21');d=json.loads((p/'stats.json').read_text());print(json.dumps(d,indent=2));print('ratios',{k:d['totals']['prism_cli'][k]/d['totals']['native'][k] for k in ('task_usd','total_usd','requests','input','output')})
+        PY
+      at: 2026-10-21T23:55:30.75757Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json,re
+        p=Path('docs/research/change-impact-cost-audit-2026-10-21');missing=[]
+        for name in ('REPORT.md','SUMMARY.md'):
+         f=p/name
+         for target in re.findall(r'\]\(([^)]+)\)',f.read_text()):
+          if '://' not in target and not (f.parent/target.split('#')[0]).exists():missing.append((name,target))
+        d=json.loads((p/'audit.full.json').read_text());mismatches=[]
+        for row in d['pairs']:
+         for arm,c in row['cells'].items():
+          req=c['transcript']['requests']
+          if len(req)!=c['requests'] or sum((r['usage'] or {}).get('input_uncached',0) for r in req)!=c['input']:mismatches.append((row['task'],arm))
+        print('Missing links:',missing,'Usage mismatches:',mismatches)
+        print('Snapshot:',json.loads((p/'snapshot-meta.json').read_text())['captured_local'])
+        print('Renderer replay passed:',(p/'renderer-replay.log').read_text().rstrip().endswith('0.317s'))
+        print('Audited pairs:',len(d['pairs']),'More expensive:',sum(x['delta']>0 for x in d['pairs']))
+        PY
+      at: 2026-10-21T23:57:03.737982Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-21T23:57:03.822338Z
+      classified: other
+notes:
+    - text: continuation of session 01a14a3c-f3e2-75f3-99af-5ddd12df505a — events captured after its evidence was finalized
+      at: 2026-10-21T23:46:15.220754Z
+redactions: 1
