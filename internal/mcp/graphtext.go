@@ -700,7 +700,7 @@ func renderRemovedSymbolsAsText(out map[string]any) (string, bool) {
 			return "", false
 		}
 		for k := range r {
-			if k != "symbol" && k != "count" && k != "sites" {
+			if k != "symbol" && k != "count" && k != "sites" && k != "matchedAs" {
 				return "", false
 			}
 		}
@@ -708,7 +708,11 @@ func renderRemovedSymbolsAsText(out map[string]any) (string, bool) {
 			fmt.Fprintf(&b, "  %v: clean\n", r["symbol"])
 			continue
 		}
-		fmt.Fprintf(&b, "  %v: %v mention(s)\n", r["symbol"], r["count"])
+		if as, _ := r["matchedAs"].(string); as != "" {
+			fmt.Fprintf(&b, "  %v: %v mention(s) of %s (matched by its final identifier; some may name another %s)\n", r["symbol"], r["count"], as, as)
+		} else {
+			fmt.Fprintf(&b, "  %v: %v mention(s)\n", r["symbol"], r["count"])
+		}
 		for _, item := range anySlice(r["sites"]) {
 			s, ok := item.(map[string]any)
 			if !ok {

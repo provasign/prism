@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/textsearch"
@@ -1351,9 +1352,10 @@ func stripCommentsAndStringsLine(s string) string {
 // A bounded or interrupted scan must not claim that a removed name is clean.
 func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any, error) {
 	type residual struct {
-		Symbol string           `json:"symbol"`
-		Count  int              `json:"count"`
-		Sites  []map[string]any `json:"sites,omitempty"`
+		Symbol    string           `json:"symbol"`
+		MatchedAs string           `json:"matchedAs,omitempty"`
+		Count     int              `json:"count"`
+		Sites     []map[string]any `json:"sites,omitempty"`
 	}
 	const perSymbolSiteCap = 20
 	var out []residual
@@ -1362,7 +1364,13 @@ func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any,
 		if strings.TrimSpace(s) == "" {
 			return nil, fmt.Errorf("removed_symbols contains an empty identifier")
 		}
-		r := textsearch.Search(ctx, h.Root, s, textsearch.Options{Exhaustive: true})
+		// A qualified name (Type.method) never appears at a call site, which
+		// reads x.method(): matching it literally reported "clean" while every
+		// caller remained (gin ResponseWriter.Status, 2026-10-22). Match the
+		// final identifier instead and say so; some of its lines may name a
+		// different symbol of the same name.
+		needle := removedSymbolIdentifier(s)
+		r := textsearch.Search(ctx, h.Root, needle, textsearch.Options{Exhaustive: true})
 		// Exhaustive search still has a 10,000-hit per-file cap, a 100,000-hit
 		// total cap, and a deadline. A file at the per-file cap may hide an
 		// exact mention after thousands of longer-name matches.
@@ -1374,8 +1382,11 @@ func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any,
 		// docs, without treating a surviving longer name as a removed symbol.
 		// Search previews long lines; read the full line before applying the
 		// boundary rule so a mention past the preview is not missed.
-		identifier := regexp.MustCompile(`(^|[^\pL\pN\pM_$])` + regexp.QuoteMeta(s) + `($|[^\pL\pN\pM_$])`)
+		identifier := regexp.MustCompile(`(^|[^\pL\pN\pM_$])` + regexp.QuoteMeta(needle) + `($|[^\pL\pN\pM_$])`)
 		res := residual{Symbol: s}
+		if needle != s {
+			res.MatchedAs = needle
+		}
 		linesByFile := map[string][]string{}
 		for _, hit := range r.Hits {
 			lines, ok := linesByFile[hit.File]
@@ -1439,6 +1450,23 @@ func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any,
 			"Mentions are not proof of live code references; inspect reported sites. Full verify is optional when " +
 			"build/typecheck does not cover affected callers.",
 	}, nil
+}
+
+// removedSymbolIdentifier returns the identifier a removed symbol is written
+// as at its use sites: the final segment of a qualified name ("Type.method",
+// "pkg::Type::method", "Type#method"), or the name itself.
+func removedSymbolIdentifier(s string) string {
+	i := strings.LastIndexAny(s, ".:#")
+	if i < 0 || i == len(s)-1 {
+		return s
+	}
+	last := s[i+1:]
+	for _, r := range last {
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '$') {
+			return s
+		}
+	}
+	return last
 }
 
 // prismOwnedFile reports files prism init writes into a repository.
