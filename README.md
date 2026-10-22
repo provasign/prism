@@ -82,7 +82,7 @@ curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | b
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
 # Pin the current release
-VERSION=v1.0.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+VERSION=v1.0.1 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
@@ -94,7 +94,7 @@ configuration model. After changing installation methods or upgrading Homebrew, 
 `prism cleanup-global`, run `prism init` in each project, choose the harnesses to configure,
 and restart the coding agent so pinned MCP paths and long-running servers refresh.
 
-The current release is v1.0.0. It embeds Grove v0.63.25 (Astkit v0.16.10).
+The current release is v1.0.1. It embeds Grove v0.63.25 (Astkit v0.16.10).
 
 Build from source with `make build`; run the full test suite with `make test`.
 
