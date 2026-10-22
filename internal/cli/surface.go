@@ -219,6 +219,7 @@ Once you know the file and lines you need, read them directly with your Read too
 (or prism read path --from N --to M --format text); no further search is needed for that.
 Before you change ` + mcp.ImpactRequiredFor + `, you MUST run
 prism change-impact Type.method --format text first.
+Known symbol: run change-impact or lookup on it directly, not a search for its name.
 grep, head and tail stay fine for build, test and log output, never for source code.
 
 Always add ` + "`--format text`" + `. Single-quote names that contain $. Put the terms you
