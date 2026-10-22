@@ -714,7 +714,14 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any, out any) (string, bool) {
 	var text string
 	var rendered bool
+	var stale string
 	if m, ok := out.(map[string]any); ok {
+		if tool != "prism_change_impact" {
+			// Only change_impact's renderer knows staleWarning; the others
+			// reject an unknown field and fall back to JSON, which for a
+			// lookup carries the body twice. Render without it, print it once.
+			m, stale = splitStaleWarning(m)
+		}
 		switch tool {
 		case "prism_search":
 			if compact {
@@ -754,17 +761,28 @@ func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any,
 			text = h.once.applyKnown(text)
 		}
 	}
-	if rendered {
-		// Only the change_impact renderer prints staleWarning; every other
-		// index-backed text answer dropped it, so a result computed on a
-		// stale or partially refreshed index read as fresh.
-		if m, ok := out.(map[string]any); ok {
-			if w, _ := m["staleWarning"].(string); w != "" && !strings.Contains(text, w) {
-				text = "// " + w + "\n" + text
-			}
-		}
+	if rendered && stale != "" && !strings.Contains(text, stale) {
+		// The warning was split off above; without it a result computed
+		// on a stale or partially refreshed index would read as fresh.
+		text = "// " + stale + "\n" + text
 	}
 	return text, rendered
+}
+
+// splitStaleWarning returns out without its staleWarning field (a shallow
+// copy, so the caller's map is untouched) and the warning itself.
+func splitStaleWarning(out map[string]any) (map[string]any, string) {
+	w, _ := out["staleWarning"].(string)
+	if _, has := out["staleWarning"]; !has {
+		return out, ""
+	}
+	cp := make(map[string]any, len(out))
+	for k, v := range out {
+		if k != "staleWarning" {
+			cp[k] = v
+		}
+	}
+	return cp, w
 }
 
 func legacyMCPTool(name string) bool {
@@ -780,10 +798,12 @@ func legacyMCPTool(name string) bool {
 // MCP and CLI. Bodies were attached by the search itself (attachSearchBodies);
 // this only renders. The ctx and args parameters are kept for the callers.
 func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any, args map[string]any) (string, bool) {
+	out, stale := splitStaleWarning(out)
 	text, rendered := renderSearchAsText(out)
 	if !rendered {
 		return "", false
 	}
+
 	text = rewriteCompactGuidance(text)
 	if grepShapeEnabled() {
 		text = grepShapeSearchText(text, args)
@@ -795,7 +815,11 @@ func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any,
 			text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
 		}
 	}
-	return h.once.apply(text), true
+	text = h.once.apply(text)
+	if stale != "" {
+		text = "// " + stale + "\n" + text
+	}
+	return text, true
 }
 
 // compactSearchBodiesPicked is the small-result pick: a complete, small

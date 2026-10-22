@@ -111,5 +111,13 @@ func TestCompactAnswersCarryIndexErrorWarning(t *testing.T) {
 		if !strings.Contains(text, "a.go (file exceeds") {
 			t.Errorf("%s answer lacks the index failure warning:\n%.800s", tc.op, text)
 		}
+		// The warning must not push the answer into the JSON fallback
+		// (a lookup's JSON carries the body twice): text, warning once.
+		if strings.Contains(text, `"staleWarning"`) || strings.HasPrefix(strings.TrimSpace(text), "{") {
+			t.Errorf("%s answer fell back to JSON because of the warning:\n%.800s", tc.op, text)
+		}
+		if n := strings.Count(text, "a.go (file exceeds"); n != 1 {
+			t.Errorf("%s answer prints the warning %d times:\n%.800s", tc.op, n, text)
+		}
 	}
 }
