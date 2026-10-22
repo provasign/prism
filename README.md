@@ -21,20 +21,53 @@ Text search is excellent for locating a name. It cannot reliably distinguish ref
 
 Structural results report indexed coverage and known stale, partial, or heuristic evidence. A closed indexed result does not prove that every runtime caller or required edit is known.
 
-## Current result
+## Benchmark
 
-A September 2026 paired Sonnet sample compared native search/read tools with Prism on nine change-impact tasks in Go, Java, TypeScript, and Python. Each cell below is one fresh run, so this table is a release-gate snapshot rather than a variance estimate.
+Reference benchmark: [docs/benchmarks/prism-v0.87.39-2026-10-21.md](docs/benchmarks/prism-v0.87.39-2026-10-21.md)
+(2026-10-21). Claude Code with Sonnet 5.5, native tools vs Prism through the CLI
+interface (`prism init --interface cli`). Same tasks, checkouts and tests in both
+arms. Task cost is everything after the first request of a session, repriced at
+Sonnet 5.5's 5-minute-cache prices.
 
-| Nine-task aggregate | Native tools | Prism |
-|---|---:|---:|
-| Mean recall | 0.683 | **0.998** |
-| Mean precision | 0.770 | **0.955** |
-| Total estimated cost | $3.23 | **$1.28** |
-| Cost relative to native | 1.00× | **0.40×** |
+**Change work.** 32 seeded tasks in Python, Java, TypeScript and Go: method
+renames where the name is shared with unrelated methods, property renames, and
+signature changes. Prism v0.87.39.
 
-Prism matched or improved recall and cost less in every task in this sample. The largest structural case was Grafana's externally declared `QueryData` interface: Prism found the complete 70-site local family in a deterministic call. Three fresh agent trials all reached 1.0 recall; precision ranged from 0.933 to 0.959.
+| | Native | Prism | Prism / native |
+|---|---:|---:|---:|
+| Solved | 31 / 32 | 32 / 32 | |
+| Task cost per task | $0.0646 | $0.0492 | 0.76× |
+| Tool calls per task | 6.8 | 4.4 | 0.65× |
+| Startup per session | $0.0607 | $0.0626 | 1.03× |
 
-Repeated trials matter because agent runs vary. The published evidence also includes three paired Jackson `JsonNode.get` trials: native tools averaged 0.625 recall, 30 turns, and $0.404; Prism averaged 1.0 recall, 8.3 turns, and $0.205. Full per-task results, raw records, oracles, scoring rules, and limitations live in [provasign/research](https://github.com/provasign/research).
+**Bug fixes.** 40 GitHub issues filed after the model's training cutoff, in Go,
+Java, TypeScript and Python projects. Measured on Prism v0.87.37; v0.87.38 and
+v0.87.39 did not change the bug-fix path.
+
+| | Native | Prism | Prism / native |
+|---|---:|---:|---:|
+| Solved | 23 / 40 | 25 / 40 | |
+| Task cost per task | $0.0520 | $0.0477 | 0.92× |
+| Tool calls per task | 6.85 | 5.85 | 0.85× |
+| Startup per session | $0.0609 | $0.0626 | 1.03× |
+
+The 25 vs 23 solve difference is within run-to-run noise. Read it as the same
+result.
+
+**Over a session.** Startup is paid once per session, task cost once per task.
+Projected saving of Prism vs native for a session of N tasks of one kind:
+
+| Tasks in session | Change work | Bug fixes |
+|---:|---:|---:|
+| 1 | 11% | 2% |
+| 10 | 21% | 7% |
+| 20 | 22% | 8% |
+| 40 | 23% | 8% |
+
+The projection does not model context growth within a session or count
+Prism's one-time indexing. Limits: one model, one agent, one run per cell.
+The fact sheet has per-language slices, engine accuracy per language, and links
+to raw records in [provasign/research](https://github.com/provasign/research).
 
 ## Install
 
@@ -49,7 +82,7 @@ curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | b
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
 # Pin the current release
-VERSION=v0.74.1 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+VERSION=v0.87.39 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
@@ -60,6 +93,8 @@ verifies the installed version, and removes Prism registrations left by the old 
 configuration model. After changing installation methods or upgrading Homebrew, run
 `prism cleanup-global`, run `prism init` in each project, choose the harnesses to configure,
 and restart the coding agent so pinned MCP paths and long-running servers refresh.
+
+The current release is v0.87.39. It embeds Grove v0.63.25 (Astkit v0.16.10).
 
 Build from source with `make build`; run the full test suite with `make test`.
 
@@ -80,6 +115,7 @@ own MCP registration from the selected harnesses' project configs if present.
 The interactive prompt gives a source-file-size hint: CLI suits occasional calls,
 while a resident MCP server is faster for repeated discovery, especially in a
 large repository. It does not change the default or claim a model-cost saving.
+Harness ids: `claude`, `codex`, `cursor`, `windsurf`, `vscode`, `gemini`, `opencode`.
 For automation, pass a comma-separated list such as
 `prism init --harness claude,codex .`; a first-time non-interactive init never assumes
 all harnesses. Later runs can use `prism init --yes .` to reuse the selection recorded
@@ -134,10 +170,9 @@ prism init --no-read-guard .   # uninstall
 
 Installs a hook that denies a native `Read` once prism has already delivered
 that exact line range earlier in the same session, pointing the agent back
-at what it already has instead of paying for it twice. Measured (13-task
-controlled A/B, same tasks run hook-on vs hook-off): ~11% fewer tokens with
-no change in resolve rate. Claude Code only — hooks are a Claude Code
-mechanism.
+at what it already has instead of paying for it twice. Off by default.
+Claude Code only; hooks are a Claude Code mechanism. The v0.87.39 benchmark
+above did not use it.
 
 A delivered range stops counting as soon as its file may have changed: an
 `Edit`/`Write`/`MultiEdit`/`NotebookEdit` of the file drops its ranges, a
@@ -164,11 +199,14 @@ harnesses or otherwise running the rest of `init`.
 
 ## Workflow for coding agents
 
-1. Use `prism_lookup` for a known symbol or `prism_search` for an unknown location; batch related names.
-2. Use `prism_change_impact` when callers, overrides, contracts, or other affected sites need checking; a clearly local body-only edit need not call it. Preserve the returned set when used.
-3. Use `prism_query` for related source context or `prism_lookup` for a known symbol body; inspect omission markers.
+The steps below name MCP operations (`prism(op=...)`); the CLI commands have
+the same names (`prism lookup`, `prism search`, `prism change-impact`, ...).
+
+1. Use `lookup` for a known symbol or `search` for an unknown location; batch related names in one call.
+2. Use `change_impact` when callers, overrides, contracts, or other affected sites need checking; a clearly local body-only edit need not call it. Preserve the returned set when used.
+3. Use `query` for related source context around explicit anchors, or `read` for a known file or range; inspect omission markers.
 4. Use exhaustive text search for wide concept removals and other completeness questions.
-5. Run relevant tests. Consider `prism_verify` for Python, unchecked JavaScript, or PHP contract changes; for TypeScript or checked JavaScript, use it only when affected files lack a complete typecheck. Skip it after a complete build/typecheck of affected Go, Java, Rust, C/C++, or C# targets. It is optional in every language.
+5. Run relevant tests. `verify` is optional in every language. Consider it for Python, unchecked JavaScript, or PHP contract changes; for TypeScript or checked JavaScript, only when affected files lack a complete typecheck. Skip it after a complete build/typecheck of affected Go, Java, Rust, C/C++, or C# targets.
 
 `prism search --scope text` is a real repository text search. The graph adds value after location: callers, implementations, type relationships, tests, architectural edges, and completeness checks.
 
