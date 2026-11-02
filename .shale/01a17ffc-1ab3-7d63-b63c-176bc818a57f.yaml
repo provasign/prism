@@ -1,0 +1,1674 @@
+shale_version: "0"
+id: 01a17ffc-1ab3-7d63-b63c-176bc818a57f
+created_at: 2026-10-28T00:52:25.957354Z
+finalized_at: 2026-11-02T13:15:11.522284Z
+agent:
+    tool: codex
+    model: gpt-6-astra
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/testplan.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:04:47.943768Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:05:14.548753Z
+    - path: internal/mcp/compactargs.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:05:14.548753Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:05:14.548753Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:05:14.548753Z
+    - path: internal/cli/surface.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:05:14.548753Z
+    - path: internal/cli/testplan.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-28T01:05:14.548753Z
+    - path: internal/mcp/testplan_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:05:50.019909Z
+    - path: internal/mcp/mcp_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:06:09.206862Z
+    - path: internal/cli/testplan_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:07:20.645603Z
+    - path: internal/cli/flagvalues_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:07:20.645603Z
+    - path: internal/mcp/compact_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:07:42.508983Z
+    - path: internal/mcp/indexerrors_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:14:04.908056Z
+    - path: docs/research/test-plan-sonnet8-2026-10-27/manifest.json
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-28T01:18:25.549467Z
+    - path: docs/research/test-plan-sonnet8-2026-10-27/run_benchmark.py
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-28T01:18:25.549467Z
+    - path: docs/research/test-plan-sonnet8-2026-10-27/analyze.py
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:19:44.728188Z
+    - path: docs/research/test-plan-steering-sonnet3-2026-10-27/manifest.json
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-28T01:40:14.934365Z
+    - path: docs/research/test-plan-steering-sonnet3-2026-10-27/run_benchmark.py
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-28T01:40:14.934365Z
+    - path: docs/research/test-plan-steering-sonnet3-2026-10-27/analyze.py
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-28T01:40:14.934365Z
+    - path: docs/research/test-plan-steering-sonnet3-2026-10-27/audit_adoption.py
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-28T01:41:15.582537Z
+commands:
+    - cmd: git status -sb
+      at: 2026-10-28T00:52:28.526833Z
+      classified: other
+    - cmd: prism search 'impacted tests' 'test selection' 'test impact' --scope text --format text
+      at: 2026-10-28T00:52:29.244182Z
+      classified: other
+    - cmd: prism search testFiles affectedTests test_files --scope text --format text
+      at: 2026-10-28T00:52:30.814283Z
+      classified: other
+    - cmd: prism search affected_tests impacted_tests '"tests"' --scope text --path internal --format text
+      at: 2026-10-28T00:52:32.627208Z
+      classified: other
+    - cmd: prism read internal/grove/client.go --from 510 --to 550 --format text
+      at: 2026-10-28T00:52:34.922964Z
+      classified: other
+    - cmd: prism query --help
+      at: 2026-10-28T00:52:34.991256Z
+      classified: other
+    - cmd: prism lookup relatedTestPathAffinity --format text
+      at: 2026-10-28T00:52:35.154338Z
+      classified: other
+    - cmd: prism search relatedTestPathAffinity --scope text --path internal/mcp/selection.go --format text
+      at: 2026-10-28T00:52:38.19642Z
+      classified: other
+    - cmd: prism change-impact relatedTestPathAffinity --format text
+      at: 2026-10-28T00:52:38.2051Z
+      classified: other
+    - cmd: prism read internal/mcp/selection.go --from 585 --to 660 --format text
+      at: 2026-10-28T00:52:41.160486Z
+      classified: other
+    - cmd: prism lookup Client.Impact --format text
+      at: 2026-10-28T00:55:04.211302Z
+      classified: other
+    - cmd: prism search 'test-plan' 'changed-files' 'base-ref' --scope text --format text
+      at: 2026-10-28T00:55:04.296824Z
+      classified: other
+    - cmd: prism search 'change-impact' 'affectedTests' --scope text --path internal/cli --format text
+      at: 2026-10-28T00:55:04.296827Z
+      classified: other
+    - cmd: prism read internal/mcp/impactplus.go --from 1 --to 180 --format text
+      at: 2026-10-28T00:55:06.131018Z
+      classified: other
+    - cmd: prism search 'git diff' --scope text --path internal --format text
+      at: 2026-10-28T00:55:06.228735Z
+      classified: other
+    - cmd: prism lookup Handler.impactEditSites --format text
+      at: 2026-10-28T00:55:06.254425Z
+      classified: other
+    - cmd: prism read internal/grove/types.go --from 1 --to 150 --format text
+      at: 2026-10-28T00:55:08.423396Z
+      classified: other
+    - cmd: prism read internal/mcp/verify.go --from 1 --to 160 --format text
+      at: 2026-10-28T00:55:08.423395Z
+      classified: other
+    - cmd: prism search 'go test' --scope text --path prism.yaml --format text
+      at: 2026-10-28T00:55:08.509433Z
+      classified: test
+    - cmd: prism search 'changedRanges' 'gitChangedRanges' 'isVerifiedTestCaller' --scope text --path internal/mcp --format text
+      at: 2026-10-28T00:55:08.521017Z
+      classified: other
+    - cmd: prism read go.mod --from 1 --to 65 --format text
+      at: 2026-10-28T00:58:28.820332Z
+      classified: other
+    - cmd: prism search TestDouble 'test-coverage' 'EdgeTests' 'InboundCallers' --scope text --path internal/grove --format text
+      at: 2026-10-28T00:58:28.929213Z
+      classified: other
+    - cmd: prism lookup Client.Edges --format text
+      at: 2026-10-28T00:58:28.943009Z
+      classified: other
+    - cmd: prism read internal/grove/client.go --from 427 --to 488 --format text
+      at: 2026-10-28T00:58:30.192515Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-28T00:59:49.460154Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --from 210 --to 275 --format text
+      at: 2026-10-28T00:59:49.470246Z
+      classified: other
+    - cmd: prism lookup Client.InboundCallers isVerifiedTestCaller --format text
+      at: 2026-10-28T00:59:49.583314Z
+      classified: other
+    - cmd: prism search 'test runner' pytest surefire vitest --scope text --path internal --format text
+      at: 2026-10-28T00:59:49.665514Z
+      classified: test
+    - cmd: prism read internal/cli/commands.go --from 2960 --to 3035 --format text
+      at: 2026-10-28T01:01:24.464961Z
+      classified: other
+    - cmd: prism search 'Snapshot' 'DiffFile' 'SymbolsInFile' --scope text --path internal/grove --format text
+      at: 2026-10-28T01:01:24.581103Z
+      classified: other
+    - cmd: prism search 'completenessScope' 'safeToClaimComplete' --scope text --path internal/mcp --format text
+      at: 2026-10-28T01:01:24.584178Z
+      classified: other
+    - cmd: prism read internal/mcp/verify.go --from 235 --to 330 --format text
+      at: 2026-10-28T01:02:17.259907Z
+      classified: other
+    - cmd: prism search 'baseEngine' 'IndexContent' 'ParseFile' --scope text --path internal --format text
+      at: 2026-10-28T01:02:17.360851Z
+      classified: other
+    - cmd: prism lookup isTestFilePath --format text
+      at: 2026-10-28T01:02:17.385165Z
+      classified: other
+    - cmd: prism lookup Client.SnapshotGraph Client.DiffFileContent --format text
+      at: 2026-10-28T01:02:17.415204Z
+      classified: other
+    - cmd: prism read internal/mcp/verify.go --from 340 --to 395 --format text
+      at: 2026-10-28T01:02:54.732789Z
+      classified: other
+    - cmd: prism read internal/mcp/verify.go --from 450 --to 515 --format text
+      at: 2026-10-28T01:02:54.732857Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --from 3640 --to 3685 --format text
+      at: 2026-10-28T01:02:54.73279Z
+      classified: other
+    - cmd: prism search 'ParseContent' 'FileSymbols' 'ParseSymbols' --scope text --path internal/grove --format text
+      at: 2026-10-28T01:02:54.987902Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-28T01:03:49.132808Z
+      classified: other
+    - cmd: prism lookup Handler.CallTool Client.FileSymbols Client.PreviewFileSymbols --format text
+      at: 2026-10-28T01:03:49.325605Z
+      classified: other
+    - cmd: prism search prism_verify --scope text --path internal/mcp --format text
+      at: 2026-10-28T01:03:49.512825Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --from 130 --to 315 --format text
+      at: 2026-10-28T01:03:51.772174Z
+      classified: other
+    - cmd: prism read internal/mcp/verify_untracked_test.go --from 1 --to 110 --format text
+      at: 2026-10-28T01:03:51.772041Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 175 --to 225 --format text
+      at: 2026-10-28T01:03:51.772229Z
+      classified: other
+    - cmd: prism search '"prism_verify"' --scope text --path internal/mcp/tools.go --format text
+      at: 2026-10-28T01:03:51.877493Z
+      classified: other
+    - cmd: prism lookup cmdVerify --format text
+      at: 2026-10-28T01:03:51.902518Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --from 315 --to 355 --format text
+      at: 2026-10-28T01:03:54.647919Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --from 275 --to 330 --format text
+      at: 2026-10-28T01:03:54.648192Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --from 770 --to 810 --format text
+      at: 2026-10-28T01:03:54.647785Z
+      classified: other
+    - cmd: prism read internal/mcp/verify_test.go --from 1 --to 110 --format text
+      at: 2026-10-28T01:03:54.647809Z
+      classified: other
+    - cmd: prism search FormatVerifyText --scope text --path internal --format text
+      at: 2026-10-28T01:03:54.682367Z
+      classified: other
+    - cmd: prism search 'compactFields' 'prism_verify' --scope text --path internal/mcp/server.go --format text
+      at: 2026-10-28T01:03:54.761745Z
+      classified: other
+    - cmd: prism read internal/cli/surface.go --from 205 --to 255 --format text
+      at: 2026-10-28T01:03:59.61197Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 715 --to 805 --format text
+      at: 2026-10-28T01:03:59.611978Z
+      classified: other
+    - cmd: prism search compactFields compactOutputLayout --scope text --path internal/mcp --format text
+      at: 2026-10-28T01:03:59.727064Z
+      classified: other
+    - cmd: prism search 'func printToolResult' 'formatToolText' --scope text --path internal/cli --format text
+      at: 2026-10-28T01:03:59.727106Z
+      classified: other
+    - cmd: prism search 'case "verify"' --scope text --path internal --format text
+      at: 2026-10-28T01:03:59.757379Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --from 82 --to 118 --format text
+      at: 2026-10-28T01:04:04.177792Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 112 --to 144 --format text
+      at: 2026-10-28T01:04:04.177913Z
+      classified: other
+    - cmd: prism read internal/cli/surface.go --from 290 --to 340 --format text
+      at: 2026-10-28T01:04:04.177614Z
+      classified: other
+    - cmd: prism read internal/mcp/coverage_test.go --from 1 --to 145 --format text
+      at: 2026-10-28T01:04:04.177797Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 320 --to 460 --format text
+      at: 2026-10-28T01:04:04.177616Z
+      classified: other
+    - cmd: prism read internal/mcp/compactargs.go --from 1 --to 90 --format text
+      at: 2026-10-28T01:04:04.177658Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --from 968 --to 991 --format text
+      at: 2026-10-28T01:04:04.180115Z
+      classified: other
+    - cmd: prism lookup uniqueSorted CompactToolSchemas --format text
+      at: 2026-10-28T01:04:53.801429Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 565 --to 630 --format text
+      at: 2026-10-28T01:04:53.885677Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --from 685 --to 735 --format text
+      at: 2026-10-28T01:04:53.952865Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go internal/mcp/tools.go internal/mcp/compactargs.go internal/mcp/server.go internal/cli/testplan.go internal/cli/commands.go internal/cli/surface.go
+      at: 2026-10-28T01:05:14.681437Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan.go --from 120 --to 270 --format text
+      at: 2026-10-28T01:05:18.736197Z
+      classified: other
+    - cmd: prism search 'fitMCP' 'maxResponse' 'compactImpactTextTo' --scope text --path internal/mcp/server.go --format text
+      at: 2026-10-28T01:05:20.600984Z
+      classified: other
+    - cmd: prism search 'tool count' 'len(tools)' 'len(schemas)' --scope text --path internal/mcp --format text
+      at: 2026-10-28T01:05:20.829232Z
+      classified: other
+    - cmd: go test ./internal/mcp ./internal/cli -run 'TestNonexistent' -count=1
+      at: 2026-10-28T01:05:20.852337Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/testplan_test.go
+      at: 2026-10-28T01:05:50.085982Z
+      classified: other
+    - cmd: go test ./internal/mcp -run TestTestPlan -count=1
+      at: 2026-10-28T01:05:58.496433Z
+      classified: test
+    - cmd: prism read internal/mcp/testplan.go --from 264 --to 385 --format text
+      at: 2026-10-28T01:05:58.586934Z
+      classified: other
+    - cmd: prism read internal/mcp/mcp_test.go --from 234 --to 272 --format text
+      at: 2026-10-28T01:05:58.655795Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 630 --to 710 --format text
+      at: 2026-10-28T01:05:58.723084Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go internal/mcp/mcp_test.go
+      at: 2026-10-28T01:06:09.273976Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go
+      at: 2026-10-28T01:06:18.49062Z
+      classified: other
+    - cmd: go test ./internal/mcp -run TestTestPlan -count=1
+      at: 2026-10-28T01:06:18.516338Z
+      classified: test
+    - cmd: prism search 'ReadinessIssue' --scope text --path internal/grove/types.go --format text
+      at: 2026-10-28T01:06:41.038337Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan.go --from 275 --to 330 --format text
+      at: 2026-10-28T01:06:41.105117Z
+      classified: other
+    - cmd: prism lookup invokeToolText --format text
+      at: 2026-10-28T01:06:41.26283Z
+      classified: other
+    - cmd: prism read internal/mcp/compactargs.go --from 220 --to 285 --format text
+      at: 2026-10-28T01:06:43.725205Z
+      classified: other
+    - cmd: prism read internal/cli/flagvalues_test.go --from 1 --to 110 --format text
+      at: 2026-10-28T01:06:43.72521Z
+      classified: other
+    - cmd: prism read internal/cli/help_test.go --from 1 --to 100 --format text
+      at: 2026-10-28T01:06:43.725206Z
+      classified: other
+    - cmd: prism read internal/mcp/compact_test.go --from 225 --to 285 --format text
+      at: 2026-10-28T01:06:43.725381Z
+      classified: other
+    - cmd: prism lookup ReadinessIssue --format text
+      at: 2026-10-28T01:06:43.827638Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-10-28T01:06:57.965995Z
+      classified: other
+    - cmd: prism lookup cliHintSpelling --format text
+      at: 2026-10-28T01:07:01.299577Z
+      classified: other
+    - cmd: prism search 'test_plan' --scope text --path internal/mcp/tools.go --format text
+      at: 2026-10-28T01:07:01.469083Z
+      classified: other
+    - cmd: prism read internal/cli/verify_cli_test.go --from 1 --to 95 --format text
+      at: 2026-10-28T01:07:01.535857Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go internal/mcp/testplan_test.go internal/cli/testplan_test.go internal/cli/flagvalues_test.go
+      at: 2026-10-28T01:07:20.72721Z
+      classified: other
+    - cmd: go test ./internal/mcp ./internal/cli -count=1
+      at: 2026-10-28T01:07:23.696599Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-10-28T01:07:23.784168Z
+      classified: other
+    - cmd: go test ./internal/mcp -run '^$' -bench BenchmarkTestPlanInventory -benchtime=3x -count=1
+      at: 2026-10-28T01:07:24.858132Z
+      classified: test
+    - cmd: go test ./internal/mcp ./internal/cli -run 'TestTestPlan|TestMalformedFlagValuesAreUsageErrors' -count=1
+      at: 2026-10-28T01:07:33.141226Z
+      classified: test
+    - cmd: prism read internal/cli/steeringdelivery_test.go --from 1 --to 75 --format text
+      at: 2026-10-28T01:07:33.231029Z
+      classified: other
+    - cmd: prism read internal/mcp/compact_test.go --from 1 --to 72 --format text
+      at: 2026-10-28T01:07:33.301683Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --from 695 --to 742 --format text
+      at: 2026-10-28T01:07:33.370186Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/mcp/compact_test.go
+      at: 2026-10-28T01:07:42.581458Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib,subprocess
+        root=pathlib.Path.cwd()
+        out=pathlib.Path('/private/tmp/prism-testplan-baseline')
+        out.mkdir(exist_ok=True)
+        paths=['internal/mcp/tools.go','internal/mcp/server.go','internal/mcp/compactargs.go','internal/mcp/mcp_test.go','internal/mcp/compact_test.go','internal/cli/commands.go','internal/cli/surface.go','internal/cli/flagvalues_test.go']
+        replace={}
+        for n,p in enumerate(paths):
+            target=out/str(n)
+            target.write_bytes(subprocess.check_output(['git','show','HEAD:'+p]))
+            replace[str(root/p)]=str(target)
+        for p in ['internal/mcp/testplan.go','internal/mcp/testplan_test.go','internal/cli/testplan.go','internal/cli/testplan_test.go']:
+            replace[str(root/p)]=''
+        (out/'overlay.json').write_text(json.dumps({'Replace':replace}))
+        print(out/'overlay.json')
+        PY
+      at: 2026-10-28T01:07:51.50905Z
+      classified: other
+    - cmd: go test ./internal/cli -run 'TestSteering|TestTestPlan' -count=1
+      at: 2026-10-28T01:07:52.688112Z
+      classified: test
+    - cmd: go test ./internal/mcp -run 'TestTestPlan|TestCompactToolSchemas' -count=1
+      at: 2026-10-28T01:07:52.713808Z
+      classified: test
+    - cmd: prism read internal/cli/init_test.go --from 392 --to 415 --format text
+      at: 2026-10-28T01:07:55.224036Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan.go --from 410 --to 470 --format text
+      at: 2026-10-28T01:07:55.298946Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan.go --from 1 --to 115 --format text
+      at: 2026-10-28T01:07:55.367922Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/mcp/testplan.go
+      at: 2026-10-28T01:08:11.651447Z
+      classified: other
+    - cmd: go test -overlay /private/tmp/prism-testplan-baseline/overlay.json ./internal/mcp -run '^TestRefreshReportsFileLevelIndexErrors$' -count=1
+      at: 2026-10-28T01:08:11.674847Z
+      classified: test
+    - cmd: prism read internal/mcp/testplan.go --from 115 --to 260 --format text
+      at: 2026-10-28T01:08:19.961594Z
+      classified: other
+    - cmd: git diff -- internal/mcp/tools.go internal/mcp/server.go internal/mcp/compactargs.go internal/mcp/mcp_test.go internal/mcp/compact_test.go internal/cli/commands.go internal/cli/surface.go internal/cli/flagvalues_test.go
+      at: 2026-10-28T01:08:19.976809Z
+      classified: other
+    - cmd: prism search 'func main' --scope text --path cmd --format text
+      at: 2026-10-28T01:08:21.727167Z
+      classified: other
+    - cmd: prism lookup rejectUnknownArgs --format text
+      at: 2026-10-28T01:08:35.602981Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('/private/tmp/prism-testplan-tests.jsonl')
+        rows=[json.loads(x) for x in p.read_text().splitlines()]
+        for r in rows:
+            if r.get('Action')=='fail':
+                print(r['Package'],r.get('Test','PACKAGE'),r.get('Elapsed'))
+        print('package passes',sum(r.get('Action')=='pass' and not r.get('Test') for r in rows))
+        PY
+      at: 2026-10-28T01:08:36.85036Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-tests.jsonl').read_text().splitlines()]
+        failed={(r['Package'],r.get('Test')) for r in rows if r.get('Action')=='fail' and r.get('Test')}
+        for r in rows:
+            if (r['Package'],r.get('Test')) in failed and r.get('Action')=='output': print(r.get('Output',''),end='')
+        PY
+      at: 2026-10-28T01:08:40.819976Z
+      classified: other
+    - cmd: go test -json ./... > /private/tmp/prism-testplan-tests.jsonl
+      at: 2026-10-28T01:08:40.846753Z
+      classified: test
+    - cmd: go build -o /private/tmp/prism-testplan ./cmd/prism
+      at: 2026-10-28T01:08:40.869065Z
+      classified: build
+    - cmd: /private/tmp/prism-testplan test-plan --help
+      at: 2026-10-28T01:09:41.746615Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan.go --from 340 --to 423 --format text
+      at: 2026-10-28T01:10:00.284223Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('/private/tmp/prism-testplan-tests-unrestricted.jsonl')
+        rows=[json.loads(x) for x in p.read_text().splitlines()]
+        for r in rows:
+            if r.get('Action')=='fail':print(r['Package'],r.get('Test','PACKAGE'))
+        print('package passes',sum(r.get('Action')=='pass' and not r.get('Test') for r in rows))
+        PY
+      at: 2026-10-28T01:10:00.38783Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go internal/mcp/testplan_test.go internal/cli/surface.go
+      at: 2026-10-28T01:10:19.546654Z
+      classified: other
+    - cmd: go test ./internal/mcp ./internal/cli -run 'TestTestPlan|TestCompact|TestSteering|TestMalformedFlagValuesAreUsageErrors|TestToolSchemas' -count=1
+      at: 2026-10-28T01:10:33.889519Z
+      classified: test
+    - cmd: go test -json ./... > /private/tmp/prism-testplan-tests-unrestricted.jsonl
+      at: 2026-10-28T01:10:38.923008Z
+      classified: test
+    - cmd: go test ./internal/mcp -run '^$' -bench BenchmarkTestPlanInventory -benchtime=3x -count=1
+      at: 2026-10-28T01:10:39.980754Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-10-28T01:10:40.064988Z
+      classified: other
+    - cmd: prism lookup Client.Status --format text
+      at: 2026-10-28T01:10:43.694439Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-tests-unrestricted.jsonl').read_text().splitlines()]
+        for r in rows:
+            if r.get('Action')=='fail':print(r['Package'],r.get('Test','PACKAGE'))
+        print('package passes',sum(r.get('Action')=='pass' and not r.get('Test') for r in rows))
+        PY
+      at: 2026-10-28T01:10:43.795428Z
+      classified: other
+    - cmd: prism lookup Client.Index --format text
+      at: 2026-10-28T01:10:50.868596Z
+      classified: other
+    - cmd: prism lookup Readiness --format text
+      at: 2026-10-28T01:10:53.399456Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go internal/mcp/testplan_test.go
+      at: 2026-10-28T01:11:02.34341Z
+      classified: other
+    - cmd: go test ./internal/mcp ./internal/cli -run 'TestTestPlan|TestCompact|TestSteering|TestMalformedFlagValuesAreUsageErrors|TestToolSchemas' -count=1
+      at: 2026-10-28T01:11:16.804172Z
+      classified: test
+    - cmd: git status -sb
+      at: 2026-10-28T01:11:16.89753Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go internal/mcp/testplan_test.go
+      at: 2026-10-28T01:11:32.147213Z
+      classified: other
+    - cmd: prism read internal/cli/surface.go --from 350 --to 390 --format text
+      at: 2026-10-28T01:11:48.191697Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 150 --to 175 --format text
+      at: 2026-10-28T01:11:48.270006Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-final-tests.jsonl').read_text().splitlines()]
+        for r in rows:
+            if r.get('Action')=='fail': print(r['Package'],r.get('Test','PACKAGE'))
+        print('package passes',sum(r.get('Action')=='pass' and not r.get('Test') for r in rows))
+        PY
+      at: 2026-10-28T01:11:48.373658Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/testplan_test.go
+      at: 2026-10-28T01:11:54.541022Z
+      classified: other
+    - cmd: go test ./internal/mcp ./internal/cli -run 'TestTestPlan|TestCompact|TestSteering|TestMalformedFlagValuesAreUsageErrors|TestToolSchemas' -count=1
+      at: 2026-10-28T01:12:04.856904Z
+      classified: test
+    - cmd: go build -o /private/tmp/prism-testplan ./cmd/prism
+      at: 2026-10-28T01:12:04.88316Z
+      classified: build
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        for name in ['prism-testplan-final-tests.jsonl','prism-testplan-tests-unrestricted.jsonl']:
+            rows=[json.loads(x) for x in pathlib.Path('/private/tmp',name).read_text().splitlines()]
+            print(name)
+            for r in rows:
+                if r.get('Action')=='fail': print('FAIL',r['Package'],r.get('Test','PACKAGE'))
+            print('package passes',sum(r.get('Action')=='pass' and not r.get('Test') for r in rows),'test passes',sum(r.get('Action')=='pass' and bool(r.get('Test')) for r in rows))
+        PY
+      at: 2026-10-28T01:12:04.99679Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T01:12:13.226945Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-final-tests.jsonl').read_text().splitlines()]
+        for r in rows[-4:]:
+            print(r.get('Action'),r.get('Package'),r.get('Test'),r.get('Output','').strip()[:200])
+        PY
+      at: 2026-10-28T01:12:13.342402Z
+      classified: other
+    - cmd: go test ./internal/mcp -run '^$' -bench BenchmarkTestPlanInventory -benchtime=3x -count=1
+      at: 2026-10-28T01:12:32.087405Z
+      classified: test
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-final-tests.jsonl').read_text().splitlines()]
+        for r in rows:
+            if r.get('Action') in ['pass','fail'] and not r.get('Test'):
+                print(r['Action'],r['Package'],r.get('Elapsed'))
+            elif r.get('Action')=='fail':
+                print('FAIL',r.get('Test'))
+        PY
+      at: 2026-10-28T01:12:32.189277Z
+      classified: other
+    - cmd: prism lookup TestSearchShapeRowsEndToEnd --format text
+      at: 2026-10-28T01:12:36.353019Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-28T01:12:36.441496Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import subprocess,json,pathlib
+        out=subprocess.check_output(['ps','-axo','pid,ppid,etime,pcpu,command'],text=True)
+        for l in out.splitlines():
+            if ('/mcp.test ' in l or 'go test -json' in l or 'javac ' in l) and 'python3' not in l:print(l[:400])
+        for r in map(json.loads,pathlib.Path('/private/tmp/prism-testplan-tests-unrestricted.jsonl').read_text().splitlines()):
+            if r.get('Action')=='fail' and not r.get('Test'):print('previous package',r.get('Elapsed'))
+        PY
+      at: 2026-10-28T01:12:41.608161Z
+      classified: test
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib,datetime
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-final-tests.jsonl').read_text().splitlines()]
+        for r in rows[-3:]:print(r['Time'],r.get('Action'),r.get('Test'),r.get('Output','').strip()[:180])
+        for r in map(json.loads,pathlib.Path('/private/tmp/prism-testplan-tests-unrestricted.jsonl').read_text().splitlines()):
+            if r.get('Action')=='fail' and not r.get('Test'):print('previous package runtime',r.get('Elapsed'))
+        PY
+      at: 2026-10-28T01:12:51.805996Z
+      classified: other
+    - cmd: go test -json ./internal/mcp ./internal/cli -skip '^TestRefreshReportsFileLevelIndexErrors$' -count=1 > /private/tmp/prism-testplan-final-tests.jsonl
+      at: 2026-10-28T01:12:51.830881Z
+      classified: test
+    - cmd: prism read internal/mcp/indexerrors_test.go --from 1 --to 65 --format text
+      at: 2026-10-28T01:13:33.159713Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('/private/tmp/prism-testplan-tests-unrestricted.jsonl')
+        for line in p.read_text().splitlines():
+            r=json.loads(line)
+            if r.get('Test')=='TestRefreshReportsFileLevelIndexErrors' and r.get('Action')=='output':print(r.get('Output',''),end='')
+        PY
+      at: 2026-10-28T01:13:33.26249Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-28T01:13:55.974875Z
+      classified: other
+    - cmd: prism lookup Handler.refreshIndexBestEffort --format text
+      at: 2026-10-28T01:13:56.286332Z
+      classified: other
+    - cmd: prism read internal/mcp/indexerrors_test.go --from 1 --to 145 --format text
+      at: 2026-10-28T01:13:56.349831Z
+      classified: other
+    - cmd: prism read internal/mcp/graphcache.go --from 1 --to 160 --format text
+      at: 2026-10-28T01:13:58.412074Z
+      classified: other
+    - cmd: prism lookup Handler.indexErrorWarning --format text
+      at: 2026-10-28T01:13:58.512079Z
+      classified: other
+    - cmd: prism lookup evidenceHandler --format text
+      at: 2026-10-28T01:13:58.536689Z
+      classified: other
+    - cmd: prism read internal/mcp/indexerrors.go --from 1 --to 155 --format text
+      at: 2026-10-28T01:14:06.133174Z
+      classified: other
+    - cmd: go test ./internal/mcp -run '^TestRefreshReportsFileLevelIndexErrors$' -count=1 -v
+      at: 2026-10-28T01:14:08.528081Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/indexerrors_test.go
+      at: 2026-10-28T01:14:19.574154Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T01:14:20.815176Z
+      classified: other
+    - cmd: go test ./internal/mcp -run 'TestRefreshReports|TestIndexErrorWarningIsBounded|TestCompactAnswersCarryIndexErrorWarning' -count=1
+      at: 2026-10-28T01:14:27.507378Z
+      classified: test
+    - cmd: git diff -- internal/mcp/indexerrors_test.go
+      at: 2026-10-28T01:14:30.847432Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T01:14:30.942479Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-10-28T01:14:31.015098Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-tests-unrestricted.jsonl').read_text().splitlines()]
+        for r in rows:
+            if r.get('Action')=='fail':print('FAIL',r['Package'],r.get('Test','PACKAGE'))
+        print('package passes',sum(r.get('Action')=='pass' and not r.get('Test') for r in rows))
+        PY
+      at: 2026-10-28T01:14:38.765936Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-tests-unrestricted.jsonl').read_text().splitlines()]
+        for r in rows:
+            if r.get('Action')=='fail':print('FAIL',r['Package'],r.get('Test','PACKAGE'))
+        print('package passes',sum(r.get('Action')=='pass' and not r.get('Test') for r in rows),'test passes',sum(r.get('Action')=='pass' and bool(r.get('Test')) for r in rows))
+        PY
+      at: 2026-10-28T01:15:05.33241Z
+      classified: other
+    - cmd: go test -json ./... > /private/tmp/prism-testplan-tests-unrestricted.jsonl
+      at: 2026-10-28T01:15:31.425779Z
+      classified: test
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        rows=[json.loads(x) for x in pathlib.Path('/private/tmp/prism-testplan-tests-unrestricted.jsonl').read_text().splitlines()]
+        for r in rows:
+            if r.get('Action')=='fail':print('FAIL',r['Package'],r.get('Test','PACKAGE'))
+        print('package passes',sum(r.get('Action')=='pass' and not r.get('Test') for r in rows),'test passes',sum(r.get('Action')=='pass' and bool(r.get('Test')) for r in rows))
+        PY
+      at: 2026-10-28T01:15:31.529737Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-28T01:16:53.488952Z
+      classified: other
+    - cmd: prism search sonnet 'claude -p' --scope text --path harness --format text
+      at: 2026-10-28T01:16:54.702025Z
+      classified: other
+    - cmd: prism search '2026-10-21' '2026-10-20' --scope text --path docs/research --format text
+      at: 2026-10-28T01:16:54.893528Z
+      classified: other
+    - cmd: ls -lt docs/research
+      at: 2026-10-28T01:16:54.961619Z
+      classified: other
+    - cmd: prism read docs/research/change-impact-cost-audit-2026-10-21/REPORT.md --from 1 --to 155 --format text
+      at: 2026-10-28T01:16:57.666711Z
+      classified: other
+    - cmd: ls -lt research/harness
+      at: 2026-10-28T01:16:57.736519Z
+      classified: other
+    - cmd: command -v claude
+      at: 2026-10-28T01:16:57.793236Z
+      classified: other
+    - cmd: prism read docs/research/cli-issue42-2026-10-18/run_cli_product.py --from 1 --to 156 --format text
+      at: 2026-10-28T01:16:57.85964Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/research/AGENTS.md
+      at: 2026-10-28T01:17:03.121959Z
+      classified: other
+    - cmd: prism read docs/research/change-impact-cost-audit-2026-10-21/snapshot-meta.json --from 1 --to 95 --format text
+      at: 2026-10-28T01:17:03.124831Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/harness
+      at: 2026-10-28T01:17:03.126916Z
+      classified: other
+    - cmd: ls -lt /Users/tapabratapal/Projects/provasign/research/harness/results
+      at: 2026-10-28T01:17:03.16715Z
+      classified: other
+    - cmd: claude --version
+      at: 2026-10-28T01:17:03.194442Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        root=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness')
+        for name in ['change32-v08739cand-2026-10-21','change32-cli-vs-native-2026-10-21','v0837-vs-native41-2026-10-20']:
+         p=root/'results'/name/'results.json'
+         if not p.exists():print(name,'no results');continue
+         d=json.loads(p.read_text());print(name);print(json.dumps(d.get('_meta',{}),indent=2)[:3500]);print('tasks',len([k for k in d if not k.startswith('_')]));print('first task',next(((k,list(v.get('cells',{}))) for k,v in d.items() if not k.startswith('_')),None))
+        print('seeded32 manifest', (root/'results/seeded32-manifest.json').read_text())
+        PY
+      at: 2026-10-28T01:17:14.15321Z
+      classified: other
+    - cmd: prism read harness/runners/run_ttl.py /Users/tapabratapal/Projects/provasign/research --from 1 --to 200 --format text
+      at: 2026-10-28T01:17:14.221472Z
+      classified: other
+    - cmd: prism search _run_cloud _cloud_cmd _prepare_worktree --scope text --dir /Users/tapabratapal/Projects/provasign/research --path harness/runners/run_e2e.py --format text
+      at: 2026-10-28T01:17:14.591568Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py /Users/tapabratapal/Projects/provasign/research --from 770 --to 893 --format text
+      at: 2026-10-28T01:17:25.760199Z
+      classified: other
+    - cmd: prism read harness/runners/run_ttl.py /Users/tapabratapal/Projects/provasign/research --from 200 --to 339 --format text
+      at: 2026-10-28T01:17:25.760097Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py /Users/tapabratapal/Projects/provasign/research --from 1 --to 180 --format text
+      at: 2026-10-28T01:17:25.760095Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py /Users/tapabratapal/Projects/provasign/research --from 1000 --to 1210 --format text
+      at: 2026-10-28T01:17:25.760164Z
+      classified: other
+    - cmd: prism read harness/runners/ab_endtoend_arms.py /Users/tapabratapal/Projects/provasign/research --from 1 --to 190 --format text
+      at: 2026-10-28T01:17:39.445477Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        root=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness')
+        ids=['wide__echo__Router_Route','wide__gin__Binding_Name','wide__werkzeug__HTTPException_get_headers','wide__werkzeug__Response_get_data','wide__hono__Router_match','wide__zod__ZodTypeInternals_parse','wide__jackson-databind__ContextualDeserializer_createContextual','wide__jackson-databind__TypeDeserializer_getTypeInclusion']
+        for iid in ids:
+         d=json.loads((root/'tasks/e2e'/f'{iid}.json').read_text())
+         print(iid, 'lang=',d.get('lang'),'invalid=',d.get('invalid_reason'),'kind=',d.get('kind'),'patch chars=',len(d.get('patch','')))
+        PY
+      at: 2026-10-28T01:17:39.470588Z
+      classified: other
+    - cmd: prism search _worktree _remove_worktree _upstream_guard_settings --scope text --dir /Users/tapabratapal/Projects/provasign/research --path harness/runners/run_e2e.py --format text
+      at: 2026-10-28T01:17:39.526982Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py /Users/tapabratapal/Projects/provasign/research --from 191 --to 260 --format text
+      at: 2026-10-28T01:17:51.880838Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py /Users/tapabratapal/Projects/provasign/research --from 735 --to 770 --format text
+      at: 2026-10-28T01:17:51.950781Z
+      classified: other
+    - cmd: prism search E2E_OUT E2E_TAIL PRISM_INIT_BIN --scope text --path docs/research/change-impact-cost-audit-2026-10-21/run.log.snapshot --format text
+      at: 2026-10-28T01:17:52.058242Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py /Users/tapabratapal/Projects/provasign/research --from 290 --to 415 --format text
+      at: 2026-10-28T01:17:52.124335Z
+      classified: other
+    - cmd: docker info --format '{{.ServerVersion}}'
+      at: 2026-10-28T01:17:52.148142Z
+      classified: other
+    - cmd: open -a Docker
+      at: 2026-10-28T01:18:04.900648Z
+      classified: other
+    - cmd: mkdir -p docs/research/test-plan-sonnet8-2026-10-27
+      at: 2026-10-28T01:18:04.967929Z
+      classified: other
+    - cmd: docker info --format '{{.ServerVersion}}'
+      at: 2026-10-28T01:18:25.684824Z
+      classified: other
+    - cmd: go build -o docs/research/test-plan-sonnet8-2026-10-27/prism-candidate ./cmd/prism
+      at: 2026-10-28T01:18:25.708202Z
+      classified: build
+    - cmd: |-
+        python3 -B - <<'PY'
+        import ast,pathlib
+        p=pathlib.Path('docs/research/test-plan-sonnet8-2026-10-27/run_benchmark.py')
+        ast.parse(p.read_text())
+        print('runner syntax valid; repository root:',p.resolve().parent.parents[2])
+        PY
+      at: 2026-10-28T01:18:25.798464Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/test-plan-sonnet8-2026-10-27')
+        print('metadata saved:',(p/'build-metadata.json').exists())
+        if (p/'results/results.json').exists():
+         d=json.loads((p/'results/results.json').read_text())
+         for task,row in d.items():
+          if not task.startswith('_'):
+           for arm,c in row.get('cells',{}).items():print(task,arm,c.get('resolved'),c.get('tokens'),c.get('turns'),c.get('api_calls'))
+        PY
+      at: 2026-10-28T01:18:49.091381Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T01:18:49.17655Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('/Users/tapabratapal/Projects/provasign/research/harness/results/change32-cli-vs-native-2026-10-21/results.json')
+        d=json.loads(p.read_text());row=next(v for k,v in d.items() if not k.startswith('_'));cell=next(iter(row['cells'].values()))
+        print('cell keys',sorted(cell))
+        print('request example',json.dumps(cell.get('usage',{}).get('transcript',{}).get('per_request',[{}])[0],indent=2)[:1800])
+        print('tool_usage keys',cell.get('tool_usage'))
+        PY
+      at: 2026-10-28T01:19:10.649637Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py /Users/tapabratapal/Projects/provasign/research --from 425 --to 450 --format text
+      at: 2026-10-28T01:19:10.731Z
+      classified: other
+    - cmd: ls docs/research/test-plan-sonnet8-2026-10-27/raw-cells
+      at: 2026-10-28T01:19:18.921124Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import ast,pathlib
+        ast.parse(pathlib.Path('docs/research/test-plan-sonnet8-2026-10-27/analyze.py').read_text())
+        print('analysis syntax valid')
+        PY
+      at: 2026-10-28T01:19:44.824857Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib,runpy
+        root=pathlib.Path('docs/research/test-plan-sonnet8-2026-10-27')
+        d=json.loads((root/'results/results.json').read_text())
+        fn=runpy.run_path(str(root/'analyze.py'))['transcript_stats']
+        for task,row in d.items():
+         if task.startswith('_'):continue
+         for arm,c in row['cells'].items():
+          s=fn(c.get('transcript'))
+          print(task,arm,'input',c.get('tokens'),'turns',c.get('turns'),'requests',c.get('api_calls'),'test commands',len(s['test_commands']),'prism commands',len(s['prism_commands']))
+          for cmd in s['test_commands']:print('test command:',cmd[:350])
+        PY
+      at: 2026-10-28T01:20:02.075413Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-sonnet8-2026-10-27/analyze.py
+      at: 2026-10-28T01:20:19.052066Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-28T01:20:34.946349Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/test-plan-sonnet8-2026-10-27/results/results.json')
+        d=json.loads(p.read_text())
+        for task,row in d.items():
+         if task.startswith('_'):continue
+         for arm,c in row['cells'].items(): print(task,arm,'solved',c.get('resolved'),'turns',c.get('turns'),'requests',c.get('api_calls'))
+        PY
+      at: 2026-10-28T01:22:08.548113Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-28T01:22:15.876559Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-28T01:22:22.243586Z
+      classified: other
+    - cmd: prism read internal/cli/surface.go --from 210 --to 245 --format text
+      at: 2026-10-28T01:22:30.035277Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 128 --to 143 --format text
+      at: 2026-10-28T01:22:30.103184Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-28T01:25:49.77059Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-28T01:28:14.004274Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-sonnet8-2026-10-27/analyze.py
+      at: 2026-10-28T01:29:06.044732Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-sonnet8-2026-10-27/analyze.py
+      at: 2026-10-28T01:31:16.62161Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import hashlib,json,pathlib
+        p=pathlib.Path('docs/research/test-plan-sonnet8-2026-10-27')
+        m=json.loads((p/'build-metadata.json').read_text())
+        print('binary hash matches:',hashlib.sha256((p/'prism-candidate').read_bytes()).hexdigest()==m['binary_sha256'])
+        raws=list((p/'raw-cells').glob('*.json'))
+        for f in raws:
+         d=json.loads(f.read_text())
+         print(d.get('task'),d.get('arm'),d.get('model'),'scorer',d.get('score',{}).get('resolved'))
+        PY
+      at: 2026-10-28T01:31:16.77652Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-sonnet8-2026-10-27/analyze.py
+      at: 2026-10-28T01:33:09.694436Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-28T01:35:05.776411Z
+      classified: other
+    - cmd: kill -TERM 68740 55019
+      at: 2026-10-28T01:35:57.965019Z
+      classified: other
+    - cmd: python3 -B -u /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-sonnet8-2026-10-27/run_benchmark.py
+      at: 2026-10-28T01:35:57.991081Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-sonnet8-2026-10-27/analyze.py
+      at: 2026-10-28T01:35:58.098793Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib,runpy
+        root=pathlib.Path('docs/research/test-plan-sonnet8-2026-10-27')
+        d=json.loads((root/'comparison.json').read_text())
+        for pair in d['pairs']:
+         print('\nTASK',pair['task'])
+         for arm in ['native/nocache','prism_cli/nocache']:
+          stats=pair['arms'][arm]['transcript_stats']
+          print(arm)
+          for cmd in stats['test_commands']:print(cmd)
+        PY
+      at: 2026-10-28T01:36:12.657169Z
+      classified: other
+    - cmd: prism read harness/runners/run_e2e.py /Users/tapabratapal/Projects/provasign/research --from 445 --to 486 --format text
+      at: 2026-10-28T01:36:12.750311Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import datetime,json,pathlib,re
+        root=pathlib.Path('docs/research/test-plan-sonnet8-2026-10-27')
+        comparison=json.loads((root/'comparison.json').read_text())
+        results=json.loads((root/'results/results.json').read_text())
+        audit=[]
+        for pair in comparison['pairs']:
+         task=pair['task'];cell=results[task]['cells']['native/nocache']
+         wanted=set(pair['arms']['native/nocache']['transcript_stats']['test_commands'])
+         calls={};items=[]
+         for line in pathlib.Path(cell['transcript']).read_text().splitlines():
+          try:e=json.loads(line)
+          except ValueError:continue
+          for b in (e.get('message') or {}).get('content',[]) or []:
+           if not isinstance(b,dict):continue
+           if b.get('type')=='tool_use' and (b.get('input') or {}).get('command') in wanted:
+            calls[b['id']]=(b.get('input') or {})['command']
+           if b.get('type')=='tool_result' and b.get('tool_use_id') in calls:
+            c=b.get('content','');out=c if isinstance(c,str) else json.dumps(c,ensure_ascii=False)
+            useful=[l for l in out.splitlines() if re.search(r'passed|failed|FAIL|ERROR|BUILD|Tests run:|Test Files|Tests\s|^ok\s|Exit code',l,re.I)]
+            items.append({'command':calls[b['tool_use_id']],'result_excerpt':'\n'.join(useful)[-2500:],'output_bytes':len(out.encode()),'is_error':b.get('is_error',False)})
+         audit.append({'task':task,'agent_called_tests':bool(items),'commands':items,'transcript':cell['transcript']})
+        print('Native agents with actual test tool results:',sum(x['agent_called_tests'] for x in audit),'/',len(audit))
+        for x in audit:
+         print('\n'+x['task'])
+         for i in x['commands']:print(i['result_excerpt'][-1300:])
+        (root/'native-test-audit.json').write_text(json.dumps(audit,indent=2)+'\n')
+        (root/'STOPPED.json').write_text(json.dumps({'reason':'User requested stopping to inspect native test execution','stopped_at':datetime.datetime.now().astimezone().isoformat(),'completed_pairs':comparison['complete_pairs'],'planned_pairs':comparison['planned_pairs'],'incomplete':comparison['incomplete'],'note':'Metrics cover completed pairs only; the interrupted Zod native session is excluded.'},indent=2)+'\n')
+        PY
+      at: 2026-10-28T01:36:40.191461Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-10-28T01:36:40.281031Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-28T01:38:07.173144Z
+      classified: other
+    - cmd: prism read internal/cli/surface.go --from 207 --to 246 --format text
+      at: 2026-10-28T01:38:07.243151Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --from 696 --to 744 --format text
+      at: 2026-10-28T01:38:07.311794Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --from 122 --to 143 --format text
+      at: 2026-10-28T01:38:07.382135Z
+      classified: other
+    - cmd: prism read docs/research/test-plan-sonnet8-2026-10-27/run_benchmark.py --from 1 --to 120 --format text
+      at: 2026-10-28T01:38:07.448829Z
+      classified: other
+    - cmd: prism read internal/cli/testplan_test.go --from 1 --to 130 --format text
+      at: 2026-10-28T01:38:31.659711Z
+      classified: other
+    - cmd: prism read internal/cli/steeringdelivery_test.go --from 1 --to 58 --format text
+      at: 2026-10-28T01:38:31.731208Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan_test.go --from 250 --to 375 --format text
+      at: 2026-10-28T01:38:31.798437Z
+      classified: other
+    - cmd: gofmt -w internal/cli/testplan_test.go internal/mcp/testplan_test.go
+      at: 2026-10-28T01:38:54.06709Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering|TestCompactToolSchemas' -count=1
+      at: 2026-10-28T01:38:59.585015Z
+      classified: test
+    - cmd: mkdir -p docs/research/test-plan-steering-sonnet3-2026-10-27
+      at: 2026-10-28T01:38:59.680877Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T01:38:59.772508Z
+      classified: other
+    - cmd: prism search 'positional terms' 'prism search alpha beta' --scope text --path internal/cli --format text
+      at: 2026-10-28T01:39:15.405052Z
+      classified: other
+    - cmd: prism read internal/cli/init_test.go --from 415 --to 440 --format text
+      at: 2026-10-28T01:39:20.081105Z
+      classified: other
+    - cmd: prism search 'one lookup you did' 'reads several windows' --scope text --path internal/cli --format text
+      at: 2026-10-28T01:39:20.652568Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering|TestCompactToolSchemas' -count=1
+      at: 2026-10-28T01:40:14.816297Z
+      classified: test
+    - cmd: go build -o docs/research/test-plan-steering-sonnet3-2026-10-27/prism-candidate ./cmd/prism
+      at: 2026-10-28T01:40:14.850439Z
+      classified: build
+    - cmd: |-
+        python3 -B - <<'PY'
+        import ast,pathlib
+        for name in ['run_benchmark.py','analyze.py']:
+         ast.parse((pathlib.Path('docs/research/test-plan-steering-sonnet3-2026-10-27')/name).read_text())
+        print('benchmark scripts parse')
+        PY
+      at: 2026-10-28T01:40:15.045493Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import ast,pathlib
+        p=pathlib.Path('docs/research/test-plan-steering-sonnet3-2026-10-27/audit_adoption.py')
+        ast.parse(p.read_text());print('adoption audit syntax valid')
+        PY
+      at: 2026-10-28T01:41:15.688184Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T01:41:24.758268Z
+      classified: other
+    - cmd: ls docs/research/test-plan-steering-sonnet3-2026-10-27/setup
+      at: 2026-10-28T01:41:24.826568Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-steering-sonnet3-2026-10-27/audit_adoption.py
+      at: 2026-10-28T01:41:46.824129Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/test-plan-steering-sonnet3-2026-10-27')
+        d=json.loads((p/'adoption-audit.json').read_text())
+        for row in d:
+         print(row['task'])
+         for c in row['plans']:
+          print('PLAN',c['command'],'bytes',c.get('result_bytes'),'gaps',len(c.get('gaps',[])))
+          print(pathlib.Path(c['output_path']).read_text()[:2400])
+         for c in row['tests']:print('TEST',c['command'][:1400])
+        PY
+      at: 2026-10-28T01:41:46.908116Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-steering-sonnet3-2026-10-27/analyze.py
+      at: 2026-10-28T01:42:48.107884Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-steering-sonnet3-2026-10-27/audit_adoption.py
+      at: 2026-10-28T01:42:48.189904Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T01:42:48.270367Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-steering-sonnet3-2026-10-27/audit_adoption.py
+      at: 2026-10-28T01:43:57.815428Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/test-plan-steering-sonnet3-2026-10-27')
+        for row in json.loads((p/'adoption-audit.json').read_text()):
+         print(row['task'])
+         for c in row['plans']:
+          print('PLAN',c['command'],'bytes',c.get('result_bytes'))
+          text=pathlib.Path(c['output_path']).read_text()
+          print('\n'.join(text.splitlines()[:3])); print('returned gap lines:',len(c.get('gaps',[])))
+         for c in row['tests']: print('TEST',c['command'][:450])
+        PY
+      at: 2026-10-28T01:43:57.911447Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib,re
+        p=pathlib.Path('docs/research/test-plan-steering-sonnet3-2026-10-27')
+        for row in json.loads((p/'adoption-audit.json').read_text()):
+         for c in row['plans']:
+          text=pathlib.Path(c['output_path']).read_text()
+          m=re.search(r'\d+ changed files, \d+ changed symbols, \d+ symbol candidates, \d+ file targets',text)
+          print(row['task'],m.group(0) if m else 'header unavailable')
+        PY
+      at: 2026-10-28T01:44:13.36628Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-steering-sonnet3-2026-10-27/analyze.py
+      at: 2026-10-28T01:45:54.673416Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib
+        p=pathlib.Path('docs/research/test-plan-steering-sonnet3-2026-10-27/raw-cells/wide__hono__Router_match.native.json')
+        d=json.loads(p.read_text());s=d.get('score',{})
+        print('scorer keys:',list(s))
+        for k,v in s.items():
+         if k not in ['stdout','stderr','output','log','test_output','tests']:
+          print(k,str(v)[:1800])
+        print('test result keys:',list((s.get('tests') or {}).keys()))
+        PY
+      at: 2026-10-28T01:45:54.771375Z
+      classified: other
+    - cmd: python3 -B -u /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-steering-sonnet3-2026-10-27/run_benchmark.py
+      at: 2026-10-28T01:47:41.014477Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-steering-sonnet3-2026-10-27/analyze.py
+      at: 2026-10-28T01:47:44.917366Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-steering-sonnet3-2026-10-27/audit_adoption.py
+      at: 2026-10-28T01:47:45.006546Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json,pathlib,re
+        p=pathlib.Path('docs/research/test-plan-steering-sonnet3-2026-10-27')
+        for row in json.loads((p/'adoption-audit.json').read_text()):
+         print(row['task'])
+         for c in row['plans']:
+          text=pathlib.Path(c['output_path']).read_text()
+          m=re.search(r'\d+ changed files, \d+ changed symbols, \d+ symbol candidates, \d+ file targets',text)
+          print('PLAN',c['command'],'bytes',c.get('result_bytes'));print(m.group(0) if m else 'no header')
+         for c in row['tests']:print('TEST',c['command'][:1600])
+        PY
+      at: 2026-10-28T01:47:45.096995Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T01:47:45.192378Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-10-28T01:52:26.913267Z
+      classified: other
+    - cmd: prism lookup planTraverse renderTestPlan Handler.toolTestPlan --format text
+      at: 2026-10-28T01:52:28.152751Z
+      classified: other
+    - cmd: cat docs/research/test-plan-steering-sonnet3-2026-10-27/adoption-audit.json
+      at: 2026-10-28T01:52:28.220019Z
+      classified: other
+    - cmd: prism lookup renderTestPlanAsText --format text
+      at: 2026-10-28T01:52:30.013026Z
+      classified: other
+    - cmd: cat docs/research/test-plan-steering-sonnet3-2026-10-27/run_benchmark.py
+      at: 2026-10-28T01:52:30.083148Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan.go --from 1 --to 80 --format text
+      at: 2026-10-28T01:52:30.1523Z
+      classified: other
+    - cmd: prism search 'origins:' 'file target' 'boundary:' --scope text --path internal/mcp/testplan_test.go --format text
+      at: 2026-10-28T01:52:32.792076Z
+      classified: other
+    - cmd: prism read internal/cli/testplan_test.go --from 1 --to 180 --format text
+      at: 2026-10-28T01:52:32.861867Z
+      classified: other
+    - cmd: cat docs/research/test-plan-steering-sonnet3-2026-10-27/manifest.json
+      at: 2026-10-28T01:52:32.933791Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan_test.go --from 280 --to 310 --format text
+      at: 2026-10-28T01:52:38.167238Z
+      classified: other
+    - cmd: prism search 'Inspect its output' --scope text --path internal/cli/surface.go --format text
+      at: 2026-10-28T01:52:38.34112Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go
+      at: 2026-10-28T01:52:47.161236Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan_test.go
+      at: 2026-10-28T01:52:54.957301Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering|TestCompactToolSchemas' -count=1
+      at: 2026-10-28T01:52:54.980873Z
+      classified: test
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        import json
+        old=Path('docs/research/test-plan-steering-sonnet3-2026-10-27')
+        new=Path('docs/research/test-plan-response-sonnet1-2026-10-27')
+        new.mkdir(exist_ok=True)
+        for name in ('run_benchmark.py','analyze.py','audit_adoption.py'):
+            (new/name).write_text((old/name).read_text().replace('three previously completed tasks: Go, Python, TypeScript','one previously completed Python task; compact decision-first response').replace('test-plan-steering-sonnet3-2026-10-27','test-plan-response-sonnet1-2026-10-27'))
+        (new/'manifest.json').write_text(json.dumps(['wide__werkzeug__Response_get_data'])+'\n')
+        PY
+      at: 2026-10-28T01:52:55.086398Z
+      classified: other
+    - cmd: go build -o docs/research/test-plan-response-sonnet1-2026-10-27/prism-candidate ./cmd/prism
+      at: 2026-10-28T01:52:58.56137Z
+      classified: build
+    - cmd: cat docs/research/test-plan-steering-sonnet3-2026-10-27/raw-cells/wide__werkzeug__Response_get_data.prism_cli.json
+      at: 2026-10-28T01:53:03.68317Z
+      classified: other
+    - cmd: go test ./internal/mcp -run TestTestPlanTextPrioritizesDecisions -count=1
+      at: 2026-10-28T01:53:03.719218Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-10-28T01:53:03.807114Z
+      classified: other
+    - cmd: prism read docs/research/test-plan-steering-sonnet3-2026-10-27/audit_adoption.py --from 1 --to 180 --format text
+      at: 2026-10-28T01:53:03.873763Z
+      classified: other
+    - cmd: prism lookup writePlanEvidence --format text
+      at: 2026-10-28T01:53:11.637217Z
+      classified: other
+    - cmd: prism read docs/research/test-plan-response-sonnet1-2026-10-27/analyze.py --from 1 --to 70 --format text
+      at: 2026-10-28T01:53:14.549951Z
+      classified: other
+    - cmd: ls docs/research/test-plan-response-sonnet1-2026-10-27/cells
+      at: 2026-10-28T01:53:21.442399Z
+      classified: other
+    - cmd: cat docs/research/test-plan-response-sonnet1-2026-10-27/results/run.log
+      at: 2026-10-28T01:53:21.510042Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command
+      at: 2026-10-28T01:53:24.107827Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering|TestCompactToolSchemas' -count=1
+      at: 2026-10-28T01:53:40.422864Z
+      classified: test
+    - cmd: python3 -B docs/research/test-plan-response-sonnet1-2026-10-27/audit_adoption.py
+      at: 2026-10-28T01:54:09.464535Z
+      classified: other
+    - cmd: cat docs/research/test-plan-response-sonnet1-2026-10-27/adoption-audit.json
+      at: 2026-10-28T01:54:09.531907Z
+      classified: other
+    - cmd: cat docs/research/test-plan-response-sonnet1-2026-10-27/plan-outputs/wide__werkzeug__Response_get_data.0.txt
+      at: 2026-10-28T01:54:09.598512Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('docs/research/test-plan-response-sonnet1-2026-10-27/raw-cells/wide__werkzeug__Response_get_data.prism_cli.json')
+        r=json.loads(p.read_text()); print(r['usage']['transcript']['transcript'])
+        f=Path(r['usage']['transcript']['transcript'])
+        for l in f.read_text().splitlines():
+         e=json.loads(l)
+         if e.get('cwd'): print(e['cwd']);break
+        PY
+      at: 2026-10-28T01:54:21.417744Z
+      classified: other
+    - cmd: prism lookup testPlanMap --format text
+      at: 2026-10-28T01:54:21.649162Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go
+      at: 2026-10-28T01:54:30.550814Z
+      classified: other
+    - cmd: ls /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-5herzjz8
+      at: 2026-10-28T01:54:39.15776Z
+      classified: other
+    - cmd: prism read internal/mcp/testplan_test.go --from 209 --to 253 --format text
+      at: 2026-10-28T01:54:39.225869Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan_test.go
+      at: 2026-10-28T01:54:47.92151Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering' -count=1
+      at: 2026-10-28T01:54:47.94584Z
+      classified: test
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        old=Path('docs/research/test-plan-response-sonnet1-2026-10-27');new=Path('docs/research/test-plan-response2-sonnet1-2026-10-27');new.mkdir(exist_ok=True)
+        for name in ('run_benchmark.py','analyze.py','audit_adoption.py','manifest.json'):
+         (new/name).write_text((old/name).read_text().replace('test-plan-response-sonnet1-2026-10-27','test-plan-response2-sonnet1-2026-10-27'))
+        PY
+      at: 2026-10-28T01:54:48.035201Z
+      classified: other
+    - cmd: python3 -B -u /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-response-sonnet1-2026-10-27/run_benchmark.py
+      at: 2026-10-28T01:54:49.214942Z
+      classified: other
+    - cmd: go build -o docs/research/test-plan-response2-sonnet1-2026-10-27/prism-candidate ./cmd/prism
+      at: 2026-10-28T01:54:51.932856Z
+      classified: build
+    - cmd: python3 -B docs/research/test-plan-response-sonnet1-2026-10-27/analyze.py
+      at: 2026-10-28T01:54:54.345613Z
+      classified: other
+    - cmd: prism lookup Client.DiffFileContent --format text
+      at: 2026-10-28T01:55:00.025267Z
+      classified: other
+    - cmd: go test ./internal/mcp -run TestTestPlanSeparatesImportFallback -count=1
+      at: 2026-10-28T01:55:00.050253Z
+      classified: test
+    - cmd: git diff --stat
+      at: 2026-10-28T01:55:28.994772Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan_test.go
+      at: 2026-10-28T01:56:33.133914Z
+      classified: other
+    - cmd: python3 -B -u /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-response2-sonnet1-2026-10-27/run_benchmark.py
+      at: 2026-10-28T01:56:52.219599Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-response2-sonnet1-2026-10-27/audit_adoption.py
+      at: 2026-10-28T01:56:54.693357Z
+      classified: other
+    - cmd: cat docs/research/test-plan-response2-sonnet1-2026-10-27/adoption-audit.json
+      at: 2026-10-28T01:56:54.76078Z
+      classified: other
+    - cmd: cat docs/research/test-plan-response2-sonnet1-2026-10-27/plan-outputs/wide__werkzeug__Response_get_data.0.txt
+      at: 2026-10-28T01:56:54.827204Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-response2-sonnet1-2026-10-27/analyze.py
+      at: 2026-10-28T01:56:54.907674Z
+      classified: other
+    - cmd: prism search 'corpus' 'worktree' --scope text --path docs/research/cli-issue42-2026-10-18/run_cli_product.py --format text
+      at: 2026-10-28T01:56:59.286956Z
+      classified: other
+    - cmd: ls docs/research/test-plan-response2-sonnet1-2026-10-27/cells
+      at: 2026-10-28T01:56:59.352555Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/corpus
+      at: 2026-10-28T01:56:59.418584Z
+      classified: other
+    - cmd: prism search CORPUS --scope text --dir /Users/tapabratapal/Projects/provasign/research --path harness/runners/run_e2e.py --format text
+      at: 2026-10-28T01:57:01.873815Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/harness
+      at: 2026-10-28T01:57:01.942892Z
+      classified: other
+    - cmd: prism lookup _repo_dir --dir /Users/tapabratapal/Projects/provasign/research --format text
+      at: 2026-10-28T01:57:03.953411Z
+      classified: other
+    - cmd: prism search wide__werkzeug__Response_get_data --scope text --dir /Users/tapabratapal/Projects/provasign/research --path harness/tasks --format text
+      at: 2026-10-28T01:57:04.118005Z
+      classified: other
+    - cmd: prism search CLONE_ROOT --scope text --dir /Users/tapabratapal/Projects/provasign/research --path harness/scoring/docker_eval.py --format text
+      at: 2026-10-28T01:57:06.176724Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/gvg-corpus
+      at: 2026-10-28T01:57:06.246221Z
+      classified: other
+    - cmd: git clone --quiet --no-hardlinks /Users/tapabratapal/gvg-corpus/e2e-2026/pallets__werkzeug /private/tmp/prism-testplan-response-audit
+      at: 2026-10-28T01:57:09.951986Z
+      classified: other
+    - cmd: git checkout --quiet --detach 1b00618e787f40dfb21eba29caf8f8be7c8e1d93
+      at: 2026-10-28T01:57:12.46529Z
+      classified: other
+    - cmd: git apply /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-response2-sonnet1-2026-10-27/cells/wide__werkzeug__Response_get_data.claude-sonnet-5-5.prism_cli.diff
+      at: 2026-10-28T01:57:12.557631Z
+      classified: other
+    - cmd: /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-response2-sonnet1-2026-10-27/prism-candidate test-plan /private/tmp/prism-testplan-response-audit --format json > /private/tmp/prism-testplan-response-audit.json
+      at: 2026-10-28T01:57:17.096561Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json
+        r=json.load(open('/private/tmp/prism-testplan-response-audit.json'))
+        print(r.keys())
+        print(json.dumps(r.get('changedSymbols'),indent=2)[:12000])
+        for t in r.get('fileTargets',[]):
+         if t['file'] in ('tests/test_datastructures.py','tests/test_routing.py','tests/sansio/test_multipart.py'):
+          print(json.dumps(t,indent=2)[:7000])
+        PY
+      at: 2026-10-28T01:57:17.196799Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go
+      at: 2026-10-28T01:57:27.809358Z
+      classified: other
+    - cmd: go build -o /private/tmp/prism-testplan-response3 ./cmd/prism
+      at: 2026-10-28T01:57:32.293076Z
+      classified: build
+    - cmd: /private/tmp/prism-testplan-response3 test-plan /private/tmp/prism-testplan-response-audit --format json > /private/tmp/prism-testplan-response3.json
+      at: 2026-10-28T01:57:33.203217Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json
+        r=json.load(open('/private/tmp/prism-testplan-response3.json'))
+        for t in r['fileTargets']: print(t['classification'],t['file'])
+        PY
+      at: 2026-10-28T01:57:35.182788Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go internal/mcp/testplan_test.go
+      at: 2026-10-28T01:57:45.603569Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering' -count=1
+      at: 2026-10-28T01:57:45.856575Z
+      classified: test
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        old=Path('docs/research/test-plan-response2-sonnet1-2026-10-27');new=Path('docs/research/test-plan-response3-sonnet1-2026-10-27');new.mkdir(exist_ok=True)
+        for name in ('run_benchmark.py','analyze.py','audit_adoption.py','manifest.json'):
+         (new/name).write_text((old/name).read_text().replace('test-plan-response2-sonnet1-2026-10-27','test-plan-response3-sonnet1-2026-10-27'))
+        PY
+      at: 2026-10-28T01:57:45.93798Z
+      classified: other
+    - cmd: go build -o docs/research/test-plan-response3-sonnet1-2026-10-27/prism-candidate ./cmd/prism
+      at: 2026-10-28T01:57:46.180538Z
+      classified: build
+    - cmd: prism read internal/mcp/testplan.go --from 470 --to 500 --format text
+      at: 2026-10-28T01:57:49.54516Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go internal/mcp/testplan_test.go
+      at: 2026-10-28T01:57:52.676088Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering' -count=1
+      at: 2026-10-28T01:57:57.198162Z
+      classified: test
+    - cmd: go build -o docs/research/test-plan-response3-sonnet1-2026-10-27/prism-candidate ./cmd/prism
+      at: 2026-10-28T01:57:57.236186Z
+      classified: build
+    - cmd: git diff --check
+      at: 2026-10-28T01:58:31.73982Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json
+        from pathlib import Path
+        before=json.loads(Path('/private/tmp/prism-testplan-response-audit.json').read_text())
+        after=json.loads(Path('/private/tmp/prism-testplan-response3.json').read_text())
+        files=['tests/test_datastructures.py','tests/sansio/test_multipart.py']
+        report={'reproduction':'Latest saved Sonnet patch applied to isolated Werkzeug base 1b00618e787f40dfb21eba29caf8f8be7c8e1d93; local product graph, no model run.', 'findings':['Original text buried targets and gaps behind changed-symbol IDs and repetitive evidence.', 'Import separation alone left 29 focused files.', 'Structural diff seeds enclosing classes and top-level bodies for nested edits; heuristic call paths expand reachability.', 'Focused pass now uses innermost changed seeds and excludes heuristic/import edges; full fallback inventory retained.'], 'before_focused_files':[t['file'] for t in before['fileTargets'] if t['classification']=='focused file'], 'after_focused_files':[t['file'] for t in after['fileTargets'] if t['classification']=='focused file'], 'before_evidence_examples':[t for t in before['fileTargets'] if t['file'] in files], 'limitations':['Focused priority is not a safe-to-skip verdict.', 'A parent declaration change and nested edit together remain in broad fallback inventory.', 'Renames still report unavailable base-graph edges.']}
+        Path('docs/research/test-plan-response3-sonnet1-2026-10-27/investigation.json').write_text(json.dumps(report,indent=2)+'\n')
+        PY
+      at: 2026-10-28T01:58:39.816579Z
+      classified: other
+    - cmd: python3 -B -u /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-response3-sonnet1-2026-10-27/run_benchmark.py
+      at: 2026-10-28T01:59:41.586302Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-response3-sonnet1-2026-10-27/audit_adoption.py
+      at: 2026-10-28T01:59:43.698898Z
+      classified: other
+    - cmd: cat docs/research/test-plan-response3-sonnet1-2026-10-27/adoption-audit.json
+      at: 2026-10-28T01:59:43.777687Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-response3-sonnet1-2026-10-27/analyze.py
+      at: 2026-10-28T01:59:43.866292Z
+      classified: other
+    - cmd: prism search 'PreToolUse' 'test-plan' --scope text --path internal/cli --format text
+      at: 2026-10-28T01:59:49.305203Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        old=Path('docs/research/test-plan-response3-sonnet1-2026-10-27');new=Path('docs/research/test-plan-response4-sonnet1-2026-10-27');new.mkdir(exist_ok=True)
+        for name in ('run_benchmark.py','analyze.py','audit_adoption.py','manifest.json'):
+         text=(old/name).read_text().replace('test-plan-response3-sonnet1-2026-10-27','test-plan-response4-sonnet1-2026-10-27')
+         text=text.replace('prism test-plan --format text."','prism test-plan --format text in a separate call"')
+         (new/name).write_text(text)
+        PY
+      at: 2026-10-28T01:59:59.420874Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering' -count=1
+      at: 2026-10-28T02:00:04.142703Z
+      classified: test
+    - cmd: go build -o docs/research/test-plan-response4-sonnet1-2026-10-27/prism-candidate ./cmd/prism
+      at: 2026-10-28T02:00:04.19125Z
+      classified: build
+    - cmd: python3 -B docs/research/test-plan-response4-sonnet1-2026-10-27/audit_adoption.py
+      at: 2026-10-28T02:01:36.881602Z
+      classified: other
+    - cmd: cat docs/research/test-plan-response4-sonnet1-2026-10-27/adoption-audit.json
+      at: 2026-10-28T02:01:36.947413Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json
+        from pathlib import Path
+        r=json.loads(Path('docs/research/test-plan-response4-sonnet1-2026-10-27/results/results.json').read_text())
+        p=Path(r['wide__werkzeug__Response_get_data']['cells']['prism_cli/nocache']['transcript'])
+        for l in p.read_text().splitlines():
+         e=json.loads(l)
+         for b in (e.get('message') or {}).get('content',[]) or []:
+          if isinstance(b,dict) and b.get('type')=='text' and e.get('type')=='assistant': print(b.get('text','')[:2500])
+        PY
+      at: 2026-10-28T02:01:39.8609Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/testplan.go
+      at: 2026-10-28T02:02:02.905874Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        from pathlib import Path
+        old=Path('docs/research/test-plan-response4-sonnet1-2026-10-27');new=Path('docs/research/test-plan-response5-sonnet1-2026-10-27');new.mkdir(exist_ok=True)
+        for name in ('run_benchmark.py','analyze.py','audit_adoption.py','manifest.json'):
+         (new/name).write_text((old/name).read_text().replace('test-plan-response4-sonnet1-2026-10-27','test-plan-response5-sonnet1-2026-10-27'))
+        PY
+      at: 2026-10-28T02:02:04.234207Z
+      classified: other
+    - cmd: python3 -B -u /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-response4-sonnet1-2026-10-27/run_benchmark.py
+      at: 2026-10-28T02:02:05.415572Z
+      classified: other
+    - cmd: go test ./internal/cli ./internal/mcp -run 'TestTestPlan|TestSteering' -count=1
+      at: 2026-10-28T02:02:08.608937Z
+      classified: test
+    - cmd: go build -o docs/research/test-plan-response5-sonnet1-2026-10-27/prism-candidate ./cmd/prism
+      at: 2026-10-28T02:02:08.646367Z
+      classified: build
+    - cmd: python3 -B docs/research/test-plan-response4-sonnet1-2026-10-27/analyze.py
+      at: 2026-10-28T02:02:09.883547Z
+      classified: other
+    - cmd: docs/research/test-plan-steering-sonnet3-2026-10-27/prism-candidate test-plan /private/tmp/prism-testplan-response-audit --format text > /private/tmp/prism-testplan-original.txt
+      at: 2026-10-28T02:02:45.693568Z
+      classified: other
+    - cmd: docs/research/test-plan-response5-sonnet1-2026-10-27/prism-candidate test-plan /private/tmp/prism-testplan-response-audit --format text > /private/tmp/prism-testplan-final.txt
+      at: 2026-10-28T02:02:46.237079Z
+      classified: other
+    - cmd: wc -lc /private/tmp/prism-testplan-original.txt /private/tmp/prism-testplan-final.txt
+      at: 2026-10-28T02:02:47.775955Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-response5-sonnet1-2026-10-27/audit_adoption.py
+      at: 2026-10-28T02:02:54.455072Z
+      classified: other
+    - cmd: cat docs/research/test-plan-response5-sonnet1-2026-10-27/adoption-audit.json
+      at: 2026-10-28T02:02:54.533324Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json
+        from pathlib import Path
+        root=Path('docs/research/test-plan-response5-sonnet1-2026-10-27')
+        r=json.loads((root/'results/results.json').read_text())
+        p=Path(r['wide__werkzeug__Response_get_data']['cells']['prism_cli/nocache']['transcript'])
+        for l in p.read_text().splitlines():
+         e=json.loads(l)
+         for b in (e.get('message') or {}).get('content',[]) or []:
+          if not isinstance(b,dict): continue
+          if b.get('type')=='text' and e.get('type')=='assistant': print(b.get('text','')[:3500])
+          if b.get('type')=='tool_result' and b.get('tool_use_id')=='toolu_013sF5b26pLXhu6q7aAJfd3a':print(b.get('content',''))
+        PY
+      at: 2026-10-28T02:02:59.464709Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T02:02:59.557602Z
+      classified: other
+    - cmd: gofmt -w internal/cli/testplan_test.go
+      at: 2026-10-28T02:03:28.837819Z
+      classified: other
+    - cmd: python3 -B -u /Users/tapabratapal/Projects/provasign/prism/docs/research/test-plan-response5-sonnet1-2026-10-27/run_benchmark.py
+      at: 2026-10-28T02:03:29.471151Z
+      classified: other
+    - cmd: python3 -B docs/research/test-plan-response5-sonnet1-2026-10-27/analyze.py
+      at: 2026-10-28T02:03:33.161955Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import json
+        from pathlib import Path
+        root=Path('docs/research')
+        rows=[]
+        for n in range(1,6):
+         d=root/(f'test-plan-response{n if n>1 else ""}-sonnet1-2026-10-27')
+         cells={}
+         for arm in ('native','prism_cli'):
+          r=json.loads((d/f'raw-cells/wide__werkzeug__Response_get_data.{arm}.json').read_text())
+          cells[arm]={k:r.get(k) for k in ('resolved','tokens_request','tokens_out','turns','api_calls','wall_s')}
+         audit=json.loads((d/'adoption-audit.json').read_text())[0]
+         rows.append({'iteration':n,'directory':str(d),'cells':cells,'plan_calls':len(audit['plans']),'plan_before_tests':audit['plan_before_first_test'],'selective_testing':n==5})
+        out=root/'test-plan-response5-sonnet1-2026-10-27'
+        invest=json.loads((root/'test-plan-response3-sonnet1-2026-10-27/investigation.json').read_text())
+        invest.update({'iterations':rows,'same_patch_text_bytes':{'original':Path('/private/tmp/prism-testplan-original.txt').stat().st_size,'final':Path('/private/tmp/prism-testplan-final.txt').stat().st_size},'final_agent_tests':{'passed':570,'seconds':1.79,'whole_suite':False,'checkout_import_verified':True},'conclusion':'Observed selective testing on iteration 5, both arms solved. Final paired run used MORE total input tokens and turns. No net token-saving claim; one trial per build is not a causal estimate or adoption reliability measurement.'})
+        (out/'investigation.json').write_text(json.dumps(invest,indent=2)+'\n')
+        PY
+      at: 2026-10-28T02:03:49.367312Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-28T02:03:49.465526Z
+      classified: other
+    - cmd: tail -15 /private/tmp/prism-testplan-response-final-tests.log
+      at: 2026-10-28T02:04:24.688837Z
+      classified: other
+    - cmd: go test ./... > /private/tmp/prism-testplan-response-final-tests.log
+      at: 2026-10-28T02:04:45.40259Z
+      classified: test
+    - cmd: tail -15 /private/tmp/prism-testplan-response-final-tests.log
+      at: 2026-10-28T02:04:45.483779Z
+      classified: other
+    - cmd: prism lookup serverInstructions compactServerInstructions --format text
+      at: 2026-10-28T02:04:48.672927Z
+      classified: other
+    - cmd: go test ./internal/mcp -run 'TestDispatch_Initialize|TestInitializeStatesProjectScope|TestTestPlanSteering' -count=1
+      at: 2026-10-28T02:05:01.421403Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-10-28T02:05:02.708611Z
+      classified: other
+    - cmd: go test ./... > /private/tmp/prism-testplan-response-final-tests.log
+      at: 2026-10-28T02:06:01.71142Z
+      classified: test
+    - cmd: tail -8 /private/tmp/prism-testplan-response-final-tests.log
+      at: 2026-10-28T02:06:01.78282Z
+      classified: other
+notes: []
+redactions: 0

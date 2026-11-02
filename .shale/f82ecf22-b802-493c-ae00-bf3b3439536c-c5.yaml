@@ -1,0 +1,118 @@
+shale_version: "0"
+id: f82ecf22-b802-493c-ae00-bf3b3439536c-c5
+created_at: 2026-10-22T13:27:52.625592Z
+finalized_at: 2026-11-02T13:15:11.522284Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign && for spec in prism:README.md provasign.github.io:prism.md research:.github/workflows/engine-invariants.yml; do r=${spec%%:*}; f=${spec#*:}; (cd $r && git diff --stat -- $f | tail -1 && git commit -q -m "pin Prism v1.0.1
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" -- $f && git push -q origin main 2>&1 | grep -v "^remote:"; echo "$r $(git log --oneline -1)"); done
+      at: 2026-10-22T13:27:52.625592Z
+      classified: other
+    - cmd: |-
+        cat >> ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_overnight_2026_10_20.md <<'EOF'
+        2026-10-22: PRISM v1.0.1 RELEASED (23fcd46): verify --removed matched qualified names literally -> false "clean" (gin ResponseWriter.Status, 12 callers); now matches final identifier with a note. Benchmarks unaffected: 0 verify calls in any of the 3 cited runs. Site home: clickable ops terminal with real gin output (lookup/search/read/query/change-impact/verify). Pins v1.0.1 in prism README, site, research CI. Tap serves 1.0.1 (refresh must run AFTER the release build finishes).
+        EOF
+        echo ok
+      at: 2026-10-22T13:27:56.929094Z
+      classified: other
+    - cmd: 'for p in shale:18 fuse:1 mason:1; do r=${p%%:*}; n=${p##*:}; echo "== $r #$n $(gh pr view $n -R provasign/$r --json state,mergeable -q ''.state+" "+.mergeable'')"; gh pr checks $n -R provasign/$r 2>&1 | awk -F''\t'' ''{print "   ",$1,$2}''; done'
+      at: 2026-10-22T13:29:50.864005Z
+      classified: other
+    - cmd: id=$(gh run list -R provasign/mason -L 10 --json databaseId,name,headBranch -q '.[] | select(.headBranch=="docs/homebrew-tap") | "\(.databaseId) \(.name)"' | head -5); echo "$id"; rid=$(gh run list -R provasign/mason -L 10 --json databaseId,headBranch,name -q '.[] | select(.headBranch=="docs/homebrew-tap" and (.name|test("[Vv]erify|[Ss]elf|CI"))) | .databaseId' | head -1); gh run view $rid -R provasign/mason --log-failed 2>&1 | grep -v "^\s*$" | tail -30 | cut -c1-220
+      at: 2026-10-22T13:37:41.140336Z
+      classified: other
+    - cmd: gh run list -R provasign/mason -b main -L 8 --json databaseId,conclusion,createdAt,headSha -q '.[] | "\(.databaseId) \(.conclusion) \(.createdAt[:10]) \(.headSha[:7])"'; for id in $(gh run list -R provasign/mason -b main -L 6 --json databaseId -q '.[].databaseId'); do gh run view $id -R provasign/mason --json jobs -q '.jobs[] | select(.name|test("verify")) | "\(.name) \(.conclusion)"' 2>/dev/null | sed "s/^/$id /"; done; cd ~/Projects/provasign/mason && git fetch -q && git show origin/main:go.mod | grep -E "provasign|^go "; git show origin/main:.github/workflows/ci.yml | grep -n -B3 -A12 "verify (self" | head -40
+      at: 2026-10-22T13:37:55.763043Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && git show origin/main:.github/workflows/ci.yml | sed -n 43,80p; grep -n "INSTALL_DIR\|PREFIX" ~/Projects/provasign/prism/install.sh | head -5; grep -rn "provasign/prism" --include=*.go . | grep -v _test | head -5
+      at: 2026-10-22T13:38:03.064337Z
+      classified: other
+    - cmd: "S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; git -C ~/Projects/provasign/mason worktree remove --force $S/wt-mason-tap 2>/dev/null; git -C ~/Projects/provasign/mason worktree add -q $S/wt-mason-ci -b ci/verify-prism-release origin/main && cd $S/wt-mason-ci && python3 - <<'EOF'\np=\".github/workflows/ci.yml\"; s=open(p).read()\nold='''      - name: build prism (pinned dep)\n        run: go build -o /tmp/prism github.com/provasign/prism/cmd/prism'''\nnew='''      - name: install prism (release)\n        # A released binary, not a build of mason's go.mod pin: that pin\n        # (v0.55.11) no longer builds standalone (missing go.sum entries).\n        run: curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | VERSION=v1.0.1 INSTALL_DIR=/tmp bash'''\nassert old in s; s=s.replace(old,new); open(p,\"w\").write(s)\nEOF\ngit commit -q -a -m \"ci: verify job installs a released prism instead of building mason's pin\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB\" && git push -q -u origin ci/verify-prism-release 2>&1 | grep -v \"^remote:\"; gh pr create --base main --head ci/verify-prism-release --title \"ci: verify job installs released prism v1.0.1\" --body \"The non-blocking \\\"verify (self, reporting)\\\" job built prism from mason's go.mod pin (v0.55.11), which no longer builds standalone (missing go.sum entry), so it failed on every PR. It now installs the released v1.0.1 binary with prism's install.sh.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB\" 2>&1 | tail -1"
+      at: 2026-10-22T13:38:17.821649Z
+      classified: build
+    - cmd: until gh pr checks 2 -R provasign/mason 2>&1 | grep -q "verify (self" && ! gh pr checks 2 -R provasign/mason 2>&1 | grep -q pending; do sleep 20; done; gh pr checks 2 -R provasign/mason 2>&1 | awk -F'\t' '{print $1, $2}'; rid=$(gh run list -R provasign/mason -b ci/verify-prism-release -L 1 --json databaseId -q '.[0].databaseId'); gh run view $rid -R provasign/mason --log 2>/dev/null | grep -E "verify diff vs base" -A40 | grep -E "prism verify|verify:|clean|Version|error" | head -8 | cut -c1-200
+      at: 2026-10-22T13:40:37.955628Z
+      classified: other
+    - cmd: gh pr view 1 -R provasign/fuse --json state -q .state; gh pr view 2 -R provasign/mason --json state -q .state; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f82ecf22-b802-493c-ae00-bf3b3439536c/scratchpad; for r in shale fuse mason; do for w in $S/wt-$r-tap $S/wt-$r-ci; do [ -d $w ] && git -C ~/Projects/provasign/$r worktree remove --force $w; done; done; git -C ~/Projects/provasign/mason worktree prune; echo cleaned
+      at: 2026-10-22T13:41:51.12926Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob
+        n=0
+        for f in glob.glob("**/results.json",recursive=True):
+            try: d=json.load(open(f))
+            except Exception: continue
+            if isinstance(d,dict):
+                for k,r in d.items():
+                    if isinstance(r,dict) and "cells" in r: n+=len(r["cells"])
+        per=len(glob.glob("**/*.claude-*.json",recursive=True))
+        tr=len(glob.glob("**/*.jsonl",recursive=True))
+        print("cells in results.json",n,"| per-cell json",per,"| transcript files",tr)
+        EOF
+      at: 2026-10-22T14:12:15.278992Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/provasign.github.io && sed -n 1,12p index.html; grep -n -i "og:\|twitter:\|og-image\|title:\|description:" _config.yml _includes/*.html _layouts/*.html index.html | head -20; head -40 assets/images/og-image.svg | grep -o '<text[^>]*>[^<]*' | head
+      at: 2026-10-22T14:18:33.729975Z
+      classified: other
+    - cmd: which rsvg-convert magick convert inkscape 2>/dev/null; ls "/Applications/Google Chrome.app" 2>/dev/null | head -1; cd ~/Projects/provasign/provasign.github.io && grep -rn "og-image" --include=*.html --include=*.md --include=*.yml . | head; head -c 600 assets/images/og-image.svg; echo; head -c 400 assets/images/logo-icon.svg
+      at: 2026-10-22T14:18:43.955555Z
+      classified: other
+    - cmd: find ~/Projects/provasign/prism ~/Projects/provasign/provasign.github.io -iname "*prism*.svg" -o -iname "*logo*.svg" 2>/dev/null | grep -v node_modules | head; grep -n "accent2\|--accent:" ~/Projects/provasign/provasign.github.io/index.html | head -3
+      at: 2026-10-22T14:18:47.199664Z
+      classified: other
+    - cmd: grep -n -E "\-\-(accent|accent2|bg|panel|text|muted|line):" ~/Projects/provasign/provasign.github.io/index.html | head
+      at: 2026-10-22T14:18:51.063703Z
+      classified: other
+    - cmd: 'grep -o -E "\-\-[a-z0-9]+: ?#[0-9a-fA-F]{3,8}" ~/Projects/provasign/provasign.github.io/index.html | sort -u | head -12'
+      at: 2026-10-22T14:18:53.419885Z
+      classified: other
+    - cmd: grep -rho -E "\-\-(accent2?|bg|panel|text|muted|line|dim):[^;]+" ~/Projects/provasign/provasign.github.io/index.html ~/Projects/provasign/provasign.github.io/assets/css/site.css ~/Projects/provasign/provasign.github.io/_includes 2>/dev/null | sort -u | head -12
+      at: 2026-10-22T14:18:56.279342Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/provasign.github.io/assets/images && "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars --window-size=1200,630 --screenshot="$PWD/og-provasign.png" "file://$PWD/og-provasign.svg" 2>/dev/null; ls -la og-provasign.png; sips -g pixelWidth -g pixelHeight og-provasign.png | tail -2
+      at: 2026-10-22T14:19:09.188149Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign.github.io && python3 - <<'EOF'
+        p="index.html"; s=open(p).read()
+        def rep(a,b):
+            global s
+            assert a in s, a; s=s.replace(a,b,1)
+        rep('<title>Provasign — every AI-written change should explain itself</title>','<title>Provasign — Prism 1.0 and Shale: take the guesswork out of your coding agent</title>')
+        rep('<meta name="description" content="Prism explains what a change can affect before the edit. Shale carries intent, checks, and gaps into the pull request. Mason is the reference agent built on both.">','<meta name="description" content="Prism gives your coding agent the compiler\'s map of what a change affects: 32/32 change tasks solved at 24% lower cost. Shale puts intent, checks and gaps on the pull request.">')
+        rep('<meta property="og:title" content="Every AI-written change should explain itself">','<meta property="og:title" content="Prism 1.0 and Shale: take the guesswork out of your coding agent">')
+        rep('<meta property="og:description" content="Prism before the edit. Shale after it. Mason proves the loop.">','''<meta property="og:description" content="Prism gives your coding agent the compiler's map of what a change affects. Shale puts intent, checks and gaps on the pull request.">
+          <meta property="og:image" content="{{ '/assets/images/og-provasign.png' | absolute_url }}">
+          <meta property="og:image:width" content="1200">
+          <meta property="og:image:height" content="630">
+          <meta property="og:image:alt" content="Prism 1.0 and Shale: take the guesswork out of your coding agent">''')
+        rep('<meta name="twitter:card" content="summary">','''<meta name="twitter:card" content="summary_large_image">
+          <meta name="twitter:image" content="{{ '/assets/images/og-provasign.png' | absolute_url }}">''')
+        open(p,"w").write(s)
+        EOF
+        grep -n "url:\|baseurl" _config.yml | head -3; git add index.html assets/images/og-provasign.svg assets/images/og-provasign.png && git commit -q -m "home: Prism + Shale share image, title and description for link previews
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_011Ai1qs5rPZ1cXyu74s4cdB" && git push -q origin main && H=$(git rev-parse HEAD) && until id=$(gh run list -L 5 --json databaseId,headSha -q ".[] | select(.headSha==\"$H\") | .databaseId" | head -1); [ -n "$id" ]; do sleep 10; done; gh run watch $id --exit-status >/dev/null 2>&1; gh run view $id --json conclusion -q .conclusion; curl -s https://provasign.dev/ | grep -E 'og:(title|image)"' | head -3
+      at: 2026-10-22T14:29:21.488151Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bicl5epnf.output; cd ~/Projects/provasign/provasign.github.io && git log --oneline -1 origin/main; gh run list -L 3 --json name,status,conclusion,headSha -q '.[] | "\(.name) \(.status) \(.conclusion) \(.headSha[:7])"'
+      at: 2026-10-22T14:29:26.725567Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6d247fda-ac94-4f87-9366-af737e5ef9bf/tasks/bicl5epnf.output; curl -s https://provasign.dev/ | grep -E 'og:(title|image)"' | head -3; curl -sI https://provasign.dev/assets/images/og-provasign.png | head -1
+      at: 2026-10-22T14:32:44.541368Z
+      classified: other
+notes:
+    - text: continuation of session f82ecf22-b802-493c-ae00-bf3b3439536c — events captured after its evidence was finalized
+      at: 2026-10-22T13:27:52.625592Z
+redactions: 0
