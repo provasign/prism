@@ -160,5 +160,15 @@ if [ -n "${PROJECT:-}" ]; then
   )
 fi
 
-printf '\n%s %s installed. Open a new terminal or run:\n  export PATH="%s:$PATH"\n\nAI tool note:\n  MCP configuration is project-local. Restart or reload your coding agent / IDE after running init.\n  For Claude Code, approve the .mcp.json servers if prompted, then verify with: claude mcp list\n\nNext: cd /your/project && prism init && prism index\n' \
-  "$PRODUCT" "$VERSION" "$INSTALL_DIR"
+# ── What it is for, and the next steps ──────────────────────────────────────
+n=0; step() { n=$((n+1)); printf '  %d. %s\n' "$n" "$1"; }
+printf '\n%s %s installed: context before the edit.\n' "$PRODUCT" "$VERSION"
+printf 'Prism gives your coding agent every caller, implementation and test a change\naffects, resolved by the compiler, not grep.\n\nNext steps:\n'
+step "Open a new terminal, or run:  export PATH=\"${INSTALL_DIR}:\$PATH\""
+step "cd your-repo"
+step "prism init       choose your coding agents and how they reach Prism (MCP or CLI)"
+step "prism index      build the code graph"
+step "Restart or reload your coding agent. MCP configuration is project-local: in"
+printf '     Claude Code, approve the .mcp.json servers if asked, then check: claude mcp list\n'
+step "Commit what init writes, so every clone's agent works the same way"
+printf '\nUsing Shale or Stele too? `provasign init` sets them up together.\n'
