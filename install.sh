@@ -171,4 +171,3 @@ step "prism index      build the code graph"
 step "Restart or reload your coding agent. MCP configuration is project-local: in"
 printf '     Claude Code, approve the .mcp.json servers if asked, then check: claude mcp list\n'
 step "Commit what init writes, so every clone's agent works the same way"
-printf '\nUsing Shale or Stele too? `provasign init` sets them up together.\n'
