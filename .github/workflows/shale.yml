@@ -16,4 +16,4 @@ jobs:
       # permission to write to this repo. v1 is ours, but "ours" is not the
       # property that matters when a tag can be moved.
       # v1 = 058e7e22496beb5d32214ec27e30ca043ce3a945
-      - uses: provasign/shale-action@058e7e22496beb5d32214ec27e30ca043ce3a945   # no actions/checkout — everything via API
+      - uses: provasign/shale-action@2c7c1660b6e3a569e7f271fcb8805b595983d2bb   # no actions/checkout — everything via API
