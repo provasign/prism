@@ -2664,8 +2664,13 @@ func invokeSearchWithCompactRendering(dir string, args map[string]any, renderTex
 		return nil, "", false, err
 	}
 	defer client.Shutdown()
-	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
-		return nil, "", false, err
+	// A text search is a pure grep (searchOne): it reads no graph, so it
+	// must not build one first. On a large repository the first build takes
+	// minutes, and a documented-as-instant text search waited for it.
+	if args["scope"] != "text" {
+		if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
+			return nil, "", false, err
+		}
 	}
 	h := mcp.NewHandler(cfg, root, client)
 	out, err := h.Invoke("prism_search", args)

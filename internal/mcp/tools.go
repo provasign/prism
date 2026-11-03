@@ -230,6 +230,9 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 			return h.toolQueryScoped(ctx, args, searchScope{paths: stringsArg(args, "paths"), glob: stringsArg(args, "glob")})
 		})
 	case "prism_search":
+		if stringArg(args, "scope", "both") == "text" {
+			return h.freshenedWithin(ctx, textRefreshBudget, func() (any, error) { return h.toolSearch(ctx, args) })
+		}
 		return h.freshened(ctx, func() (any, error) { return h.toolSearch(ctx, args) })
 	case "prism_lookup":
 		return h.freshened(ctx, func() (any, error) { return h.toolLookup(ctx, args) })

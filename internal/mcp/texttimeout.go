@@ -15,7 +15,12 @@ import (
 // text — data exports, vendored copies — that the project can exclude.
 func textTimeoutWarning(r textsearch.Result) string {
 	msg := "INCOMPLETE text scan: deadline reached; absence is not established."
-	if r.Backend == "native" {
+	switch {
+	case r.Backend == "native" && detectedEngine() != "native":
+		// The engine was found but failed or ran out of time, and the
+		// built-in scanner took over: installing it again fixes nothing.
+		msg += fmt.Sprintf(" %s did not finish, so the slower built-in scanner ran instead.", detectedEngine())
+	case r.Backend == "native":
 		msg += " The built-in scanner is in use because neither ripgrep nor grep was found on PATH; installing ripgrep makes text search much faster."
 	}
 	if len(r.HeavyDirs) > 0 {
@@ -28,6 +33,9 @@ func textTimeoutWarning(r textsearch.Result) string {
 	}
 	return msg
 }
+
+// detectedEngine is the text engine found on this machine; tests replace it.
+var detectedEngine = textsearch.Backend
 
 func humanBytes(n int64) string {
 	switch {

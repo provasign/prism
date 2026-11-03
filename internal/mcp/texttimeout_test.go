@@ -20,8 +20,17 @@ func TestTextTimeoutWarningNamesHeavyDirsAndRightCause(t *testing.T) {
 	if strings.Contains(rg, "installing ripgrep") {
 		t.Fatalf("rg timeout blamed a missing ripgrep:\n%s", rg)
 	}
+	defer func(f func() string) { detectedEngine = f }(detectedEngine)
+	detectedEngine = func() string { return "native" }
 	native := textTimeoutWarning(textsearch.Result{Backend: "native", TimedOut: true})
 	if !strings.Contains(native, "installing ripgrep") || strings.Contains(native, ".groveignore") {
 		t.Fatalf("native warning:\n%s", native)
+	}
+	// ripgrep is installed but failed, and the built-in scanner took over:
+	// the advice must not be to install it (2026-11-02).
+	detectedEngine = func() string { return "rg" }
+	fellBack := textTimeoutWarning(textsearch.Result{Backend: "native", TimedOut: true})
+	if strings.Contains(fellBack, "installing ripgrep") || !strings.Contains(fellBack, "rg did not finish") {
+		t.Fatalf("fallback warning:\n%s", fellBack)
 	}
 }

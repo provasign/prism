@@ -30,6 +30,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/ranking"
@@ -92,6 +93,31 @@ func (h *Handler) refreshIndexBestEffort(ctx context.Context) string {
 // where the answer comes out of the index.
 func (h *Handler) freshened(ctx context.Context, fn func() (any, error)) (any, error) {
 	stale := h.refreshIndexBestEffort(ctx)
+	out, err := fn()
+	if err != nil {
+		return nil, err
+	}
+	return attachStaleWarning(out, stale), nil
+}
+
+// textRefreshBudget bounds the index refresh before a text search. Its
+// matches come from the files on disk; the index adds only the enclosing
+// bodies. A refresh is 0.01-0.12s and a small repository's first build fits
+// easily, but the first build of a large one takes minutes (a 10,000-file
+// Python project, 2026-11-02), and it used to take the text scan's whole
+// deadline with it: the scan then failed over to the slow built-in scanner
+// and returned nothing.
+const textRefreshBudget = 10 * time.Second
+
+// freshenedWithin is freshened with the refresh cut off after budget.
+func (h *Handler) freshenedWithin(ctx context.Context, budget time.Duration, fn func() (any, error)) (any, error) {
+	rctx, cancel := context.WithTimeout(ctx, budget)
+	stale := h.refreshIndexBestEffort(rctx)
+	timedOut := rctx.Err() != nil
+	cancel()
+	if stale != "" && timedOut {
+		stale = fmt.Sprintf("the index was not ready within %s: matches come from the files on disk, with fewer enclosing bodies until it is built (prism index)", budget)
+	}
 	out, err := fn()
 	if err != nil {
 		return nil, err

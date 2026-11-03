@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func writeOversized(t *testing.T, root, name string) {
@@ -119,5 +120,24 @@ func TestCompactAnswersCarryIndexErrorWarning(t *testing.T) {
 		if n := strings.Count(text, "a.go (file exceeds"); n != 1 {
 			t.Errorf("%s answer prints the warning %d times:\n%.800s", tc.op, n, text)
 		}
+	}
+}
+
+// A refresh that cannot finish within its budget leaves the tool to run
+// anyway, with a note saying the bodies are limited: a text search must not
+// wait out a first build of a large repository (2026-11-02).
+func TestFreshenedWithinCutsOffTheRefresh(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{"a.go": "package p\nfunc Target() {}\n"})
+	ran := false
+	out, err := h.freshenedWithin(context.Background(), time.Nanosecond, func() (any, error) {
+		ran = true
+		return map[string]any{}, nil
+	})
+	if err != nil || !ran {
+		t.Fatalf("tool did not run: %v", err)
+	}
+	note, _ := out.(map[string]any)["staleWarning"].(string)
+	if !strings.Contains(note, "not ready within 1ns") {
+		t.Fatalf("note = %q", note)
 	}
 }
