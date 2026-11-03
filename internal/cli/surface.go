@@ -8,6 +8,7 @@ import (
 	"github.com/provasign/prism/internal/mcp"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -254,34 +255,111 @@ func cliSteeringInstructionsForOS(goos string) string {
 // allowClaudeBashPrism lets Claude Code run `prism` without a prompt per
 // call, the CLI counterpart of the mcp__prism auto-allow.
 func allowClaudeBashPrism(path string) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return
-	}
-	var doc map[string]any
-	if raw, err := os.ReadFile(path); err == nil {
-		if json.Unmarshal(raw, &doc) != nil {
-			return // not ours to rewrite
+	allowLocally(path, "Bash(prism:*)")
+}
+
+// allowLocally grants a Claude Code permission rule in the user's own
+// .claude/settings.local.json beside the project's shared settings.json, and
+// takes it out of the shared file where an earlier prism wrote it. A rule in
+// the committed file pre-approves the tool for everyone who clones the
+// repository, and Claude Code warns about that when they first open it; the
+// local file is the user's, and kept out of git.
+func allowLocally(shared, rule string) bool {
+	local := filepath.Join(filepath.Dir(shared), "settings.local.json")
+	added := editSettings(local, true, func(doc map[string]any) bool {
+		perms, _ := doc["permissions"].(map[string]any)
+		if perms == nil {
+			perms = map[string]any{}
 		}
+		allow, _ := perms["allow"].([]any)
+		if containsString(allow, rule) {
+			return false
+		}
+		perms["allow"] = append(allow, rule)
+		doc["permissions"] = perms
+		return true
+	})
+	editSettings(shared, false, func(doc map[string]any) bool { return dropAllow(doc, rule) })
+	ignoreLocally(filepath.Dir(filepath.Dir(shared)), local)
+	return added
+}
+
+// dropAllow removes rule from a settings document's permissions.allow.
+func dropAllow(doc map[string]any, rule string) bool {
+	perms, _ := doc["permissions"].(map[string]any)
+	allow, _ := perms["allow"].([]any)
+	if !containsString(allow, rule) {
+		return false
+	}
+	kept := make([]any, 0, len(allow))
+	for _, v := range allow {
+		if str, _ := v.(string); str != rule {
+			kept = append(kept, v)
+		}
+	}
+	if len(kept) == 0 {
+		delete(perms, "allow")
+	} else {
+		perms["allow"] = kept
+	}
+	if len(perms) == 0 {
+		delete(doc, "permissions")
+	}
+	return true
+}
+
+// editSettings applies edit to a JSON settings file and writes it back when
+// edit changed it. A file that is not valid JSON is not ours to rewrite; a
+// missing one is created only when create is set.
+func editSettings(path string, create bool, edit func(map[string]any) bool) bool {
+	var doc map[string]any
+	raw, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		if json.Unmarshal(raw, &doc) != nil {
+			return false
+		}
+	case !create:
+		return false
 	}
 	if doc == nil {
 		doc = map[string]any{}
 	}
-	perms, _ := doc["permissions"].(map[string]any)
-	if perms == nil {
-		perms = map[string]any{}
+	if !edit(doc) {
+		return false
 	}
-	allow, _ := perms["allow"].([]any)
-	const rule = "Bash(prism:*)"
-	if containsString(allow, rule) {
-		return
-	}
-	perms["allow"] = append(allow, rule)
-	doc["permissions"] = perms
 	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil || os.MkdirAll(filepath.Dir(path), 0o755) != nil {
+		return false
+	}
+	return os.WriteFile(path, append(out, '\n'), 0o644) == nil
+}
+
+// ignoreLocally keeps the local settings file out of git: Claude Code
+// ignores the files it creates itself, but not one prism creates.
+func ignoreLocally(projectDir, local string) {
+	if exec.Command("git", "-C", projectDir, "rev-parse", "--git-dir").Run() != nil {
+		return // not a repository
+	}
+	if exec.Command("git", "-C", projectDir, "check-ignore", "-q", local).Run() == nil {
+		return // already ignored
+	}
+	rel, err := filepath.Rel(projectDir, local)
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(path, append(out, '\n'), 0o644)
+	gi := filepath.Join(projectDir, ".gitignore")
+	prev, _ := os.ReadFile(gi)
+	line := "/" + filepath.ToSlash(rel) + "\n"
+	if len(prev) > 0 && prev[len(prev)-1] != '\n' {
+		line = "\n" + line
+	}
+	f, err := os.OpenFile(gi, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	f.WriteString("# Claude Code settings of your own (prism init)\n" + line) //nolint:errcheck
 }
 
 // claudeShellOutputBudget keeps a CLI answer under Claude Code's Bash output

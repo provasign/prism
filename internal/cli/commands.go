@@ -147,7 +147,8 @@ prism init [dir] flags:
   --global            removed: MCP configuration is project-local only
   --mode <any>        accepted and IGNORED (since v0.38.0 one steering template
                       covers MCP tools and the CLI together)
-  --no-permissions    skip the Claude Code tool auto-allow entry
+  --no-permissions    skip the Claude Code tool auto-allow entry (written to your
+                      own .claude/settings.local.json, never the shared file)
   --deny-builtin-search
                       deny Claude Code's Grep/Bash(grep|rg) so agents actually
                       reach prism (asked interactively; Claude Code only —
@@ -1999,18 +2000,18 @@ func ensureClaudeCodeApproval(path, serverName string, allowTools, denyBuiltinSe
 	// 2. Tool auto-allow. Note this runs even when the server was already
 	// trusted — the two settings are independent, and an earlier prism
 	// version wrote only the trust entry.
+	// The rule goes to the user's own settings.local.json, not this shared
+	// file: see allowLocally. One an earlier prism wrote here is moved.
 	rule := "mcp__" + serverName
 	if allowTools {
+		if dropAllow(doc, rule) {
+			changed = true
+		}
 		perms, _ := doc["permissions"].(map[string]any)
 		if perms == nil {
 			perms = map[string]any{}
 		}
 		allow, _ := perms["allow"].([]any)
-		if !containsString(allow, rule) {
-			perms["allow"] = append(allow, rule)
-			doc["permissions"] = perms
-			changed = true
-		}
 		// Deny the built-in text search. Steering does not route tool
 		// selection: observed on a correctly installed machine, an agent
 		// listed prism's tools, said its CLAUDE.md directed it to use them,
@@ -2034,8 +2035,17 @@ func ensureClaudeCodeApproval(path, serverName string, allowTools, denyBuiltinSe
 		}
 	}
 
+	if allowTools {
+		defer allowLocally(path, rule)
+	}
 	if !changed {
+		if allowTools {
+			fmt.Printf("approved %s in Claude Code (trusted; %s auto-allowed in your own .claude/settings.local.json)\n", serverName, rule)
+		}
 		return
+	}
+	if p, _ := doc["permissions"].(map[string]any); p != nil && len(p) == 0 {
+		delete(doc, "permissions")
 	}
 	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
@@ -2052,7 +2062,7 @@ func ensureClaudeCodeApproval(path, serverName string, allowTools, denyBuiltinSe
 		return
 	}
 	if allowTools {
-		fmt.Printf("approved %s in Claude Code (trusted + %s auto-allowed)\n", serverName, rule)
+		fmt.Printf("approved %s in Claude Code (trusted; %s auto-allowed in your own .claude/settings.local.json)\n", serverName, rule)
 	} else {
 		fmt.Printf("approved %s in Claude Code MCP settings\n", serverName)
 	}

@@ -34,10 +34,12 @@ func TestInitProjectScopeTouchesNothingGlobal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("project .claude/settings.json not written: %v", err)
 	}
-	for _, want := range []string{"enabledMcpjsonServers", "mcp__prism"} {
-		if !strings.Contains(string(raw), want) {
-			t.Errorf("project settings missing %s: %s", want, raw)
-		}
+	if !strings.Contains(string(raw), "enabledMcpjsonServers") || strings.Contains(string(raw), "mcp__prism") {
+		t.Errorf("project settings want server trust and no shared auto-allow: %s", raw)
+	}
+	local, _ := os.ReadFile(filepath.Join(project, ".claude", "settings.local.json"))
+	if !strings.Contains(string(local), "mcp__prism") {
+		t.Errorf("own settings.local.json missing mcp__prism: %s", local)
 	}
 	codexRaw, err := os.ReadFile(filepath.Join(project, ".codex", "config.toml"))
 	if err != nil {

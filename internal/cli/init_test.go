@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -492,11 +493,12 @@ func TestEnsureClaudeCodeApproval_WritesPermissionsAllow(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(raw)
-	if !strings.Contains(got, `"mcp__prism"`) {
-		t.Errorf("permissions.allow missing mcp__prism: %s", got)
+	local, _ := os.ReadFile(filepath.Join(filepath.Dir(settings), "settings.local.json"))
+	if strings.Contains(got, "mcp__prism") {
+		t.Errorf("the shared settings pre-approve mcp__prism: %s", got)
 	}
-	if strings.Count(got, `"mcp__prism"`) != 1 {
-		t.Errorf("mcp__prism duplicated on re-run: %s", got)
+	if strings.Count(string(local), `"mcp__prism"`) != 1 {
+		t.Errorf("settings.local.json wants mcp__prism once: %s", local)
 	}
 	if !strings.Contains(got, `"theme"`) {
 		t.Errorf("unrelated setting clobbered: %s", got)
@@ -539,9 +541,32 @@ func TestEnsureClaudeCodeApproval_UpgradesTrustOnlyConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	ensureClaudeCodeApproval(settings, "prism", true, false)
-	raw, _ := os.ReadFile(settings)
-	if !strings.Contains(string(raw), "mcp__prism") {
-		t.Errorf("allow rule not added to a trust-only config: %s", raw)
+	local, _ := os.ReadFile(filepath.Join(filepath.Dir(settings), "settings.local.json"))
+	if !strings.Contains(string(local), "mcp__prism") {
+		t.Errorf("allow rule not added for a trust-only config: %s", local)
+	}
+}
+
+// An allow rule an earlier prism wrote into the shared settings moves to the
+// user's own file, and the local file is kept out of git.
+func TestEnsureClaudeCodeApproval_MovesSharedAllow(t *testing.T) {
+	project := t.TempDir()
+	if out, err := exec.Command("git", "-C", project, "init", "-q").CombinedOutput(); err != nil {
+		t.Skipf("git: %v %s", err, out)
+	}
+	settings := filepath.Join(project, ".claude", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(settings), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(settings, []byte(`{"enabledMcpjsonServers":["prism"],"permissions":{"allow":["mcp__prism","Bash(make:*)"]}}`), 0o644)
+	ensureClaudeCodeApproval(settings, "prism", true, false)
+	shared, _ := os.ReadFile(settings)
+	local, _ := os.ReadFile(filepath.Join(project, ".claude", "settings.local.json"))
+	if strings.Contains(string(shared), "mcp__prism") || !strings.Contains(string(shared), "Bash(make:*)") || !strings.Contains(string(local), "mcp__prism") {
+		t.Fatalf("shared = %s\nlocal = %s", shared, local)
+	}
+	if err := exec.Command("git", "-C", project, "check-ignore", "-q", ".claude/settings.local.json").Run(); err != nil {
+		t.Errorf("settings.local.json is not ignored by git: %v", err)
 	}
 }
 

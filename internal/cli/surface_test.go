@@ -117,9 +117,9 @@ func TestInitCLIInterfaceRegistersNoMCP(t *testing.T) {
 	if strings.Contains(string(claude), "On macOS, use your host's Edit or patch tool") != (runtime.GOOS == "darwin") {
 		t.Errorf("CLAUDE.md has wrong OS guidance for %s:\n%s", runtime.GOOS, claude)
 	}
-	settings, _ := os.ReadFile(filepath.Join(dir, ".claude", "settings.json"))
+	settings, _ := os.ReadFile(filepath.Join(dir, ".claude", "settings.local.json"))
 	if !strings.Contains(string(settings), "Bash(prism:*)") {
-		t.Errorf("settings = %s", settings)
+		t.Errorf("settings.local.json = %s", settings)
 	}
 	if got := readRecordedInterface(filepath.Join(dir, "prism.yaml")); got != "cli" {
 		t.Errorf("recorded interface = %q", got)
