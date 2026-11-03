@@ -18,8 +18,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/provasign/astkit v0.16.10 h1:KqLxccJByRASIBm+wOHTnd3F9Xs0+qnbUfJns37xqUE=
 github.com/provasign/astkit v0.16.10/go.mod h1:uSQxIxw3dVpK/6KmHvqIE8+DK/nhxDuPklKv7g96Jr4=
-github.com/provasign/grove v0.63.25 h1:5fexkhmPnvpxKkNMyEUPgDQl9Xv7ljJJ560Q7K8Qdqk=
-github.com/provasign/grove v0.63.25/go.mod h1:2GHyld5Ir4I5Ppccu2qMlgD3aCUSPX3QhZzqDV8HclI=
+github.com/provasign/grove v0.63.26 h1:MRZCLNgotc/voocHfge80xxIlfNLL58Y7RjbKNTSYlQ=
+github.com/provasign/grove v0.63.26/go.mod h1:2GHyld5Ir4I5Ppccu2qMlgD3aCUSPX3QhZzqDV8HclI=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82 h1:6C8qej6f1bStuePVkLSFxoU22XBS165D3klxlzRg8F4=
