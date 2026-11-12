@@ -2,6 +2,41 @@
 
 Date: 2026-11-12. Status: proposal, nothing built. Baseline: prism v1.2.0, grove v0.63.27, astkit v0.16.10.
 
+## Status (2026-11-12)
+
+Built on the `multi-repo` branches (local commits, not pushed), binary `provasign-mr/bin/prism-mr`:
+
+| Step | State |
+|---|---|
+| 0 worktrees, separate go.work and binary | done |
+| 1 `workspace_repo` config, `prism workspace` (status, add, remove), cross-repo `read`, root-resolution fix | done |
+| 2 `lookup` fallback to linked repositories, `search --repo` and the count line | done, CLI; the MCP search op is unchanged |
+| 3 manifest reading and `prism workspace discover` | done for go.mod, go.work, package.json; no registry, no init prompt yet |
+| 4 Go calls into other modules recorded in the index | done for calls; value references and type uses are not recorded |
+| 5 cross-repo `change-impact` | done for Go; `verify` and `test-plan` not started |
+| 4b, 6, 7, 8, 9 | not started |
+
+Differences from the design below, decided while building:
+
+- No `extrefs` table. External references are stored as a per-caller marker record
+  (`external-ref`, same mechanism as `resolved-calls`), so the existing incremental re-index
+  handles them. Lookup scans the marker rows; measured 0.16 s end to end for `change-impact`
+  across grove and prism. Move to an indexed table if a large repository shows it is slow.
+- No `packages` table or `file_index.namespace` yet. A Go declaration's key is derived at
+  query time from the nearest go.mod.
+- The resolver version is bumped (v43), not the extractor version: existing indexes re-resolve once.
+
+Known gaps found by running it on grove and prism:
+
+1. Grove type-checks a Go repository with `GOWORK=off`, so a consumer is checked against the
+   version its go.mod pins, from the module cache, not against the linked checkout. A function
+   that exists only in the checkout (grove's `OpenReader`, called by prism on this branch) is
+   reported as "no calls recorded". The answer shows the pin, but the miss is real. Fix: when
+   the repository is a member of a go.work, type-check with it.
+2. A linked repository's index is used as last written. No HEAD or staleness check yet (step 4b).
+3. `go list` fails on a `.git` that is not a real repository (VCS stamping of a main package);
+   only seen with a fake `.git` in a test fixture.
+
 Contents
 
 1. Context and what exists today
