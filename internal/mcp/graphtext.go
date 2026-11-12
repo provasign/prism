@@ -135,6 +135,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true, "callPositionsNote": true,
 		"reExports": true, "related": true, "degradedAnalysis": true,
 		"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
+		"workspaceConsumers": true, "workspaceScope": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -327,7 +328,24 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "// wider anchor: %v (%v sites, %v) — %v\n",
 			wa["qualifiedName"], wa["totalSites"], wa["completeness"], wa["note"])
 	}
+	b.WriteString(FormatWorkspaceConsumersText(out))
 	return b.String(), true
+}
+
+// FormatWorkspaceConsumersText renders the linked-repository section of a
+// change-impact answer: the call sites found there, then what was searched.
+func FormatWorkspaceConsumersText(out map[string]any) string {
+	var b strings.Builder
+	if lines := anySlice(out["workspaceConsumers"]); len(lines) > 0 {
+		b.WriteString("consumers in linked repositories (compiler-resolved calls):\n")
+		for _, l := range lines {
+			fmt.Fprintf(&b, "%v\n", l)
+		}
+	}
+	if scope, _ := out["workspaceScope"].(string); scope != "" {
+		fmt.Fprintf(&b, "workspaceScope: %s\n", scope)
+	}
+	return b.String()
 }
 
 // FormatImpactRelaySitesText renders the canonical bounded site inventory for

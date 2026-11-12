@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -244,5 +245,52 @@ func TestWorkspaceDiscoverFromManifests(t *testing.T) {
 	after, _ := os.ReadFile(filepath.Join(app, "prism.yaml"))
 	if !strings.Contains(string(after), "workspace_repo: other=../other") || strings.Count(string(after), "lib=") != 1 {
 		t.Fatalf("--link should add other and leave lib linked once:\n%s", after)
+	}
+}
+
+// The headline case: change a library function, see its callers in the
+// application repository that has its own index.
+func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go toolchain not available")
+	}
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib, app, idle := filepath.Join(parent, "lib"), filepath.Join(parent, "app"), filepath.Join(parent, "idle")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Helper() int { return 1 }\n\nfunc inside() int { return Helper() }\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\nworkspace_repo: idle=../idle\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() {\n\tprintln(lib.Helper())\n}\n")
+	writeCLIFile(t, parent, "idle/go.mod", "module example.com/idle\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "idle/idle.go", "package idle\n\nfunc Idle() {}\n")
+	// No fake .git directories here: `go list` stamps VCS state for a main
+	// package and fails on a .git that is not a real repository.
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	t.Chdir(lib)
+	out := captureStdout(func() {
+		if rc := cmdChangeImpact([]string{"Helper", "--format", "text"}); rc != 0 {
+			t.Fatalf("change-impact rc=%d", rc)
+		}
+	})
+	for _, want := range []string{
+		"consumers in linked repositories",
+		"// repo app  ../app  requires example.com/lib v0.3.0",
+		"../app/main.go:6:14: println(lib.Helper())  [in main]",
+		"// repo idle  ../idle  NOT SEARCHED: no index there",
+		"1 call site(s) in 1 of 2 linked repositories searched",
+		"not searched (no index): idle",
+		"repositories that are not linked are not covered",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("change-impact output missing %q:\n%s", want, out)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(idle, ".grove")); err == nil {
+		t.Fatal("change-impact from lib created an index in a linked repository")
 	}
 }

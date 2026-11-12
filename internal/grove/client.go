@@ -866,3 +866,33 @@ func ReadSymbolsNamed(ctx context.Context, root string, names []string) ([]Symbo
 	}
 	return convertSymbols(syms), nil
 }
+
+// ExternalRef is a call site in a repository whose compiler-resolved target
+// another module declares.
+type ExternalRef = groveeng.ExternalRef
+
+// GoSymbolKey is the key other repositories record when they call s, a Go
+// function or method declared under root.
+func GoSymbolKey(root string, s SymbolRecord) (string, bool) {
+	if s.Language != "go" || (s.Kind != "function" && s.Kind != "method") {
+		return "", false
+	}
+	return groveeng.GoKey(root, s.FilePath, s.QualifiedName)
+}
+
+// ReadExternalRefs lists, from another repository's existing index, its
+// call sites whose target is one of keys. Nothing is written under root.
+func ReadExternalRefs(ctx context.Context, root string, keys []string) ([]ExternalRef, error) {
+	r, err := groveeng.OpenReader(root)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return r.ExternalRefs(ctx, keys)
+}
+
+// ManifestRequires returns what the repository at root declares it depends
+// on, from its build manifests.
+func ManifestRequires(root string) []groveeng.ManifestRequire {
+	return groveeng.ScanManifests(root).Requires
+}

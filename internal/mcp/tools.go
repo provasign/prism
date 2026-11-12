@@ -3591,6 +3591,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	h.addUnindexedNote(ctx, out, targetLeaf)
 	markNameMatchedSites(out, r)
 	h.attachEditSites(ctx, out, r, h.impactEditSites(r, callPositions, memberPositions), targetLeaf, nil)
+	h.addWorkspaceConsumers(ctx, out, r)
 	if familyPickNote == "" {
 		familyPickNote = h.sameFileNamesakesNote(ctx, query, stringArg(args, "file", ""), r)
 	}
