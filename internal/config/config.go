@@ -26,6 +26,18 @@ type Config struct {
 	// Validated by prism arch / prism_arch_check against the induced
 	// component view; every violation cites concrete file:line sites.
 	ArchDeny []string
+	// WorkspaceRepos lists other repositories linked to this one, one per
+	// `workspace_repo: <id>=<path>` line. Path is as written: relative to the
+	// directory holding this prism.yaml, or absolute.
+	WorkspaceRepos []WorkspaceRepo
+	// WorkspaceServer is the shared link server, from `workspace_server:`.
+	WorkspaceServer string
+}
+
+// WorkspaceRepo is one `workspace_repo:` entry.
+type WorkspaceRepo struct {
+	ID   string
+	Path string
 }
 
 // Default returns config values with environment overrides applied.
@@ -89,6 +101,25 @@ func LoadFromDir(dir string) (*Config, error) {
 			if v != "" {
 				c.ArchDeny = append(c.ArchDeny, v)
 			}
+		case "workspace_repo":
+			// Repeatable: `<id>=<path>`, or a bare path whose last element is
+			// the id. Inline comments allowed after " #".
+			if j := strings.Index(v, " #"); j >= 0 {
+				v = strings.Trim(strings.TrimSpace(v[:j]), `"'`)
+			}
+			id, p := "", v
+			if j := strings.IndexByte(v, '='); j >= 0 {
+				id, p = strings.TrimSpace(v[:j]), strings.TrimSpace(v[j+1:])
+			}
+			if p == "" {
+				continue
+			}
+			if id == "" {
+				id = filepath.Base(filepath.Clean(p))
+			}
+			c.WorkspaceRepos = append(c.WorkspaceRepos, WorkspaceRepo{ID: id, Path: p})
+		case "workspace_server":
+			c.WorkspaceServer = v
 		}
 	}
 	return c, nil

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 // cliRoot picks the project root for an information command. An explicit
@@ -15,26 +16,49 @@ import (
 // grove.db in its diff that failed the task (chi pr1158, 2026-10-18). MCP never
 // hit this because its server starts at the repository root.
 //
-// Markers, nearest first within each kind: prism.yaml (written by init), then
-// the git work tree root, then an existing .grove. A stray .grove in a
-// subdirectory therefore cannot capture the root. sub is the working
-// directory relative to the root ("" when they are the same).
+// Markers: the nearest prism.yaml (written by init), then the git work tree
+// root, then an existing .grove. A stray .grove in a subdirectory therefore
+// cannot capture the root. One exception: a prism.yaml in a plain folder
+// above the git work tree (a parent folder holding several checkouts) does
+// not capture the repositories below it. It used to, which answered a
+// question asked inside one checkout from a single index over all of them;
+// that file now only declares the workspace (workspace.Load reads it). sub
+// is the working directory relative to the root ("" when they are the same).
 func cliRoot(dir string) (root, sub string) {
 	abs := mustAbs(dir)
 	if dir != "" && dir != "." {
 		return abs, ""
 	}
 	root = abs
-	for _, marker := range []string{"prism.yaml", ".git", ".grove"} {
-		if found, ok := nearestAncestorWith(abs, marker); ok {
+	cfgDir, hasCfg := nearestAncestorWith(abs, "prism.yaml")
+	gitDir, hasGit := nearestAncestorWith(abs, ".git")
+	switch {
+	case hasCfg && hasGit && cfgDir != gitDir && isWithin(cfgDir, gitDir) && !inGitWorkTree(cfgDir):
+		root = gitDir
+	case hasCfg:
+		root = cfgDir
+	case hasGit:
+		root = gitDir
+	default:
+		if found, ok := nearestAncestorWith(abs, ".grove"); ok {
 			root = found
-			break
 		}
 	}
 	if rel, err := filepath.Rel(root, abs); err == nil && rel != "." {
 		sub = filepath.ToSlash(rel)
 	}
 	return root, sub
+}
+
+// isWithin reports whether child is parent or a directory below it.
+func isWithin(parent, child string) bool {
+	rel, err := filepath.Rel(parent, child)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func inGitWorkTree(dir string) bool {
+	_, ok := nearestAncestorWith(dir, ".git")
+	return ok
 }
 
 func nearestAncestorWith(start, marker string) (string, bool) {

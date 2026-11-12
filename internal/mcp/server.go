@@ -605,6 +605,9 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			instructions = compactServerInstructions
 		}
 		instructions += " " + scopeInstruction(s.handler.Root)
+		if ws := s.handler.Workspace; ws != nil && len(ws.Linked()) > 0 {
+			instructions += " Linked repositories, readable by path from that root: " + ws.Describe() + "."
+		}
 		if warning := legacyProjectWarning(s.handler.Root); warning != "" {
 			instructions += " " + warning
 		}

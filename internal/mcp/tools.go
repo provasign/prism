@@ -20,6 +20,7 @@ import (
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/session"
 	"github.com/provasign/prism/internal/textsearch"
+	"github.com/provasign/prism/internal/workspace"
 	"regexp"
 )
 
@@ -30,6 +31,8 @@ type Handler struct {
 	Grove   *grove.Client
 	Session *session.Tracker
 	Ledger  *session.Ledger
+	// Workspace is the set of other repositories linked to Root, or nil.
+	Workspace *workspace.Workspace
 
 	// driftBase records the symbols delivered with each full file read this
 	// session, so prism_drift can diff structurally (renames, breaking
@@ -90,6 +93,7 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 		Session:   tr,
 		Ledger:    ledger,
 		driftBase: map[string][]grove.SymbolRecord{},
+		Workspace: workspace.Load(root, cfg),
 	}
 	return h
 }
@@ -1371,7 +1375,7 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 		return nil, errors.New("file is required")
 	}
 	task := stringArg(args, "task", "")
-	abs, sessionPath, err := safePathWithinRoot(h.Root, path)
+	abs, sessionPath, err := h.safeReadPath(path)
 	if err != nil {
 		return nil, err
 	}
@@ -1522,7 +1526,7 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 		}
 		r := entry.(map[string]any)
 		path := r["file"].(string)
-		abs, sessionPath, err := safePathWithinRoot(h.Root, path)
+		abs, sessionPath, err := h.safeReadPath(path)
 		if err != nil {
 			return nil, err
 		}
@@ -4307,6 +4311,28 @@ func safePathWithinRoot(root, p string) (abs string, sessionPath string, err err
 	}
 
 	return candidate, normalizePath(rel), nil
+}
+
+// safeReadPath resolves a path a read may open: inside the primary root, or
+// inside a repository linked to it in the workspace. A file in a linked
+// repository keeps its path relative to the primary root ("../grove/x.go"),
+// the form the agent's own file tools accept. Each root applies the same
+// symlink containment as the primary; anything else is rejected.
+func (h *Handler) safeReadPath(p string) (abs string, sessionPath string, err error) {
+	abs, sessionPath, err = safePathWithinRoot(h.Root, p)
+	if err == nil || h.Workspace == nil {
+		return abs, sessionPath, err
+	}
+	candidate := p
+	if !filepath.IsAbs(candidate) {
+		candidate = filepath.Join(h.Workspace.Primary, filepath.FromSlash(p))
+	}
+	for _, r := range h.Workspace.Linked() {
+		if a, _, e := safePathWithinRoot(r.Path, candidate); e == nil {
+			return a, h.Workspace.RelPath(a), nil
+		}
+	}
+	return "", "", fmt.Errorf("%w; linked repositories: %s", err, h.Workspace.Describe())
 }
 
 func normalizePath(p string) string {

@@ -117,6 +117,9 @@ Usage:
                                   --base <ref>  Compare working tree with ref (default: HEAD)
                                   --format text|json  Output format (default: text)
                                   Construct runner commands; judge broader validation from gaps
+  prism workspace                Linked repositories: path, branch, commit, index, how linked
+                                  add <path> [--id <name>]  Link a local checkout (written to prism.yaml)
+                                  remove <id>               Unlink; the checkout is not touched
   prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
 	                                  declaration(s), override/implementation family (subtype
 	                                  closure), super-declarations, and indexed callers.
@@ -241,6 +244,8 @@ func Run(args []string) int {
 		return cmdVerify(rest)
 	case "test-plan":
 		return cmdTestPlan(rest)
+	case "workspace":
+		return cmdWorkspace(rest)
 	case "query":
 		return cmdQuery(rest)
 	case "read":
