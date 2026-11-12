@@ -19,8 +19,10 @@ func cmdWorkspace(args []string) int {
 			return workspaceAdd(args[1:])
 		case "remove", "rm":
 			return workspaceRemove(args[1:])
+		case "discover":
+			return workspaceDiscover(args[1:])
 		default:
-			fmt.Fprintln(os.Stderr, "usage: prism workspace [add <path> [--id <name>] | remove <id>]")
+			fmt.Fprintln(os.Stderr, "usage: prism workspace [add <path> [--id <name>] | remove <id> | discover [--link]]")
 			return 2
 		}
 	}
@@ -198,4 +200,56 @@ func workspaceLineID(line string) string {
 		return strings.TrimSpace(v[:j])
 	}
 	return filepath.Base(filepath.Clean(v))
+}
+
+// workspaceDiscover lists repositories on disk that the manifests relate to
+// this one. With --link it adds the ones not yet linked.
+func workspaceDiscover(args []string) int {
+	link := false
+	for _, a := range args {
+		if a != "--link" {
+			return rejectUnknownFlag("workspace discover", a)
+		}
+		link = true
+	}
+	root, _ := cliRoot("")
+	cfg, err := config.LoadFromDir(root)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "workspace discover:", err)
+		return 1
+	}
+	ws := workspace.Load(root, cfg)
+	cands := workspace.Discover(root, ws)
+	if len(cands) == 0 {
+		fmt.Println("// no related repositories found: no manifest here points at a directory, and no sibling directory declares or requires a matching package")
+		return 0
+	}
+	tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "REPOSITORY\tRELATION\tPACKAGE\tSTATE\tEVIDENCE")
+	for _, c := range cands {
+		state := "not linked"
+		if c.Linked {
+			state = "linked"
+		}
+		rel, _ := filepath.Rel(root, c.Path)
+		kind := c.Relation
+		if c.Explicit {
+			kind += " (build points here)"
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", filepath.ToSlash(rel), kind, c.Package, state, c.Evidence)
+	}
+	tw.Flush()
+	if !link {
+		return 0
+	}
+	rc := 0
+	for _, c := range cands {
+		if c.Linked {
+			continue
+		}
+		if r := workspaceAdd([]string{c.Path}); r != 0 {
+			rc = r
+		}
+	}
+	return rc
 }

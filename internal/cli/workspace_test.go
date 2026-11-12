@@ -213,3 +213,36 @@ func TestWorkspaceSearchLinkedRepositories(t *testing.T) {
 		t.Fatal("--repo accepted a repository that is not linked")
 	}
 }
+
+func TestWorkspaceDiscoverFromManifests(t *testing.T) {
+	parent, app := workspaceFixture(t)
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\nrequire example.com/lib v1.2.0\n")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n")
+	writeCLIFile(t, parent, "other/go.mod", "module example.com/other\n\nrequire example.com/app v0.9.0\n")
+	writeCLIFile(t, parent, "unrelated/go.mod", "module example.com/unrelated\n")
+	t.Chdir(app)
+	out := captureStdout(func() {
+		if rc := workspaceDiscover(nil); rc != 0 {
+			t.Fatalf("discover rc=%d", rc)
+		}
+	})
+	for _, want := range []string{"../lib", "depends on", "require example.com/lib v1.2.0", "../other", "used by", "other/go.mod requires example.com/app v0.9.0"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("discover output missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "unrelated") {
+		t.Fatalf("a sibling with no shared package was reported:\n%s", out)
+	}
+	before, _ := os.ReadFile(filepath.Join(app, "prism.yaml"))
+	if strings.Contains(string(before), "other") {
+		t.Fatal("discover linked a repository without --link")
+	}
+	if rc := workspaceDiscover([]string{"--link"}); rc != 0 {
+		t.Fatalf("discover --link rc=%d", rc)
+	}
+	after, _ := os.ReadFile(filepath.Join(app, "prism.yaml"))
+	if !strings.Contains(string(after), "workspace_repo: other=../other") || strings.Count(string(after), "lib=") != 1 {
+		t.Fatalf("--link should add other and leave lib linked once:\n%s", after)
+	}
+}

@@ -121,6 +121,7 @@ Usage:
   prism workspace                Linked repositories: path, branch, commit, index, how linked
                                   add <path> [--id <name>]  Link a local checkout (written to prism.yaml)
                                   remove <id>               Unlink; the checkout is not touched
+                                  discover [--link]         Related checkouts found in manifests
   prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
 	                                  declaration(s), override/implementation family (subtype
 	                                  closure), super-declarations, and indexed callers.
