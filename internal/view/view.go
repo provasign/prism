@@ -60,6 +60,9 @@ func tierOf(source string) string {
 	}
 }
 
+// TierOf is tierOf for other packages that present edge evidence.
+func TierOf(source string) string { return tierOf(source) }
+
 // MinTier returns the weakest tier present in a tier-count distribution —
 // the tier of the derived claim built on that evidence.
 func MinTier(tiers map[string]int) string {

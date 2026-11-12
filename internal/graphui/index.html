@@ -1,0 +1,1299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prism graph</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 27H3z' fill='%234f46e5'/%3E%3Cpath d='M16 3 21 27H11z' fill='%23818cf8'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f7f8fa; --canvas: #fbfbfd; --grid: #e6e8ee; --surface: #ffffff; --surface-2: #f3f4f7; --line: #e3e6ec; --line-strong: #d0d5de;
+  --text: #0f172a; --text-2: #475569; --muted: #8590a2;
+  --accent: #4f46e5; --accent-2: #eef0ff;
+  --edge: #b7bfcc; --in: #ea580c; --out: #4f46e5;
+  --ok: #059669; --ok-bg: #ecfdf5; --warn: #b45309; --warn-bg: #fffbeb;
+  --r-target: #e11d48; --r-family: #9333ea; --r-site: #ea580c; --r-trans: #d4a017;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.08);
+  --shadow-md: 0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.05);
+  --shadow-lg: 0 24px 60px rgba(15,23,42,.18), 0 6px 18px rgba(15,23,42,.10);
+  --label-halo: rgba(251,251,253,.92); --code-bg: #f7f8fb;
+  --font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0d12; --canvas: #0d1016; --grid: #1a1f29; --surface: #12161e; --surface-2: #181d27; --line: #232a36; --line-strong: #2f3846;
+    --text: #e8ecf3; --text-2: #b4bfcf; --muted: #7c8799;
+    --accent: #818cf8; --accent-2: #1e1f3d;
+    --edge: #465063; --in: #fb923c; --out: #818cf8;
+    --ok: #34d399; --ok-bg: #0c2a20; --warn: #fbbf24; --warn-bg: #2b2108;
+    --r-target: #fb7185; --r-family: #c084fc; --r-site: #fb923c; --r-trans: #facc15;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4); --shadow-md: 0 4px 14px rgba(0,0,0,.45); --shadow-lg: 0 24px 60px rgba(0,0,0,.6);
+    --label-halo: rgba(13,16,22,.9); --code-bg: #0f131a;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 13px/1.5 var(--font); display: flex; flex-direction: column; overflow: hidden; -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.topbar { height: 52px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.logo { display: flex; align-items: center; gap: 9px; font-weight: 650; font-size: 14.5px; letter-spacing: -.01em; white-space: nowrap; }
+.logo svg { width: 22px; height: 22px; }
+.logo small { font-weight: 500; color: var(--muted); font-size: 12px; padding: 1px 7px; border: 1px solid var(--line); border-radius: 999px; margin-left: 2px; }
+.vsep { width: 1px; height: 22px; background: var(--line); flex: none; }
+.repo { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.repo b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.repo .stat { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.cmdk { margin-left: auto; display: flex; align-items: center; gap: 8px; width: min(380px, 34vw); height: 34px; padding: 0 8px 0 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); color: var(--muted); text-align: left; transition: border-color .15s, background .15s; }
+.cmdk:hover { border-color: var(--line-strong); background: var(--surface); }
+.cmdk span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+kbd { font: 11px/1 var(--font); color: var(--text-2); border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 5px; padding: 3px 5px; background: var(--surface); }
+.iconbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--text-2); font-weight: 500; white-space: nowrap; transition: border-color .15s, color .15s; }
+.iconbtn:hover { border-color: var(--line-strong); color: var(--text); }
+.iconbtn:disabled { opacity: .5; cursor: default; }
+.iconbtn.spin svg { animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.subbar { height: 46px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+#crumbs { display: flex; align-items: center; gap: 1px; min-width: 0; flex: 1 1 auto; overflow: hidden; white-space: nowrap; }
+#crumbs button { background: none; border: 0; padding: 4px 7px; border-radius: 6px; color: var(--text-2); max-width: 240px; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+#crumbs button:hover { background: var(--surface-2); color: var(--text); }
+#crumbs button.cur { color: var(--text); font-weight: 600; cursor: default; background: none; }
+#crumbs .sep { color: var(--line-strong); padding: 0 1px; }
+#crumbs .home { display: inline-flex; align-items: center; gap: 6px; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; flex: none; }
+.seg[hidden] { display: none; }
+.seg button { border: 0; background: none; padding: 4px 11px; border-radius: 6px; color: var(--text-2); font-weight: 500; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.seg button:hover:not(:disabled) { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.seg button:disabled { opacity: .45; cursor: default; }
+.seg button .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--r-target); }
+.switch { display: inline-flex; align-items: center; gap: 7px; color: var(--text-2); font-weight: 500; background: none; border: 0; padding: 4px 2px; white-space: nowrap; }
+.switch .track { width: 28px; height: 16px; border-radius: 999px; background: var(--line-strong); position: relative; transition: background .15s; flex: none; }
+.switch .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+.switch[aria-checked="true"] .track { background: var(--accent); }
+.switch[aria-checked="true"] .track::after { transform: translateX(12px); }
+.switch:disabled { opacity: .45; cursor: default; }
+.ctl-group { display: flex; align-items: center; gap: 14px; flex: none; }
+
+main { flex: 1; display: flex; min-height: 0; }
+#stage { position: relative; flex: 1; min-width: 0; background: var(--canvas); background-image: radial-gradient(var(--grid) 1px, transparent 1px); background-size: 22px 22px; }
+#c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#c.drag { cursor: grabbing; }
+#c.point { cursor: pointer; }
+.float { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; box-shadow: var(--shadow-md); }
+#legend { left: 14px; bottom: 14px; padding: 8px; min-width: 172px; max-height: calc(100% - 80px); overflow: auto; }
+#legend h4 { margin: 2px 6px 6px; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+#legend button { display: flex; width: 100%; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 6px; border-radius: 6px; text-align: left; color: var(--text); }
+#legend button:hover { background: var(--surface-2); }
+#legend button.off { opacity: .4; }
+#legend button.off .lbl { text-decoration: line-through; }
+#legend .sw { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+#legend .sw.sq { border-radius: 3px; }
+#legend .sw.ring { background: transparent !important; border: 2px dashed; }
+#legend .n { color: var(--muted); margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; font-size: 12px; }
+#legend .note { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11.5px; padding: 5px 6px 2px; border-top: 1px solid var(--line); margin-top: 5px; }
+#legend .note i { width: 18px; border-top: 2px dashed var(--muted); flex: none; }
+#zoom { right: 14px; bottom: 14px; display: flex; flex-direction: column; padding: 3px; }
+#zoom button { width: 30px; height: 30px; border: 0; background: none; border-radius: 7px; color: var(--text-2); display: flex; align-items: center; justify-content: center; }
+#zoom button:hover { background: var(--surface-2); color: var(--text); }
+#zoom hr { border: 0; border-top: 1px solid var(--line); margin: 2px 4px; }
+#minimap { right: 62px; bottom: 14px; width: 172px; height: 116px; overflow: hidden; cursor: pointer; }
+#minimap canvas { width: 100%; height: 100%; display: block; }
+#status { position: absolute; left: 50%; transform: translateX(-50%); top: 12px; padding: 5px 12px; font-size: 12px; color: var(--text-2); white-space: nowrap; max-width: calc(100% - 28px); overflow: hidden; text-overflow: ellipsis; border-radius: 999px; }
+#status:empty { display: none; }
+#tip { position: absolute; pointer-events: none; display: none; padding: 8px 10px; font-size: 12px; max-width: 360px; z-index: 5; border-radius: 9px; }
+#tip b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+#tip span { color: var(--text-2); display: block; overflow-wrap: anywhere; }
+#tip em { color: var(--muted); font-style: normal; display: block; margin-top: 3px; font-size: 11.5px; }
+#tip em:empty { display: none; }
+#overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; padding: 24px; background: color-mix(in srgb, var(--canvas) 70%, transparent); z-index: 6; }
+#overlay.on { display: flex; }
+#overlay .card { max-width: 440px; padding: 22px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-md); }
+#overlay .card h3 { margin: 10px 0 6px; font-size: 15px; }
+#overlay .card p { margin: 0 0 14px; color: var(--text-2); overflow-wrap: anywhere; }
+#overlay .badge { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: var(--warn-bg); color: var(--warn); }
+.spinner { width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid var(--line-strong); border-top-color: var(--accent); animation: spin .8s linear infinite; display: inline-block; }
+
+aside { width: 404px; flex: none; background: var(--surface); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.insp-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
+.insp-title { display: flex; gap: 11px; align-items: flex-start; }
+.kbadge { width: 34px; height: 34px; border-radius: 9px; flex: none; display: flex; align-items: center; justify-content: center; font: 600 14px/1 var(--mono); color: #fff; }
+.insp-title h2 { margin: 0; font-size: 15.5px; font-weight: 650; letter-spacing: -.01em; overflow-wrap: anywhere; line-height: 1.3; }
+.insp-title .path { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+.copy { border: 0; background: none; color: var(--muted); padding: 2px; border-radius: 4px; display: inline-flex; }
+.copy:hover { color: var(--text); background: var(--surface-2); }
+.copy svg { width: 13px; height: 13px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 11.5px; color: var(--text-2); white-space: nowrap; font-weight: 500; }
+.chip i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-weight: 500; white-space: nowrap; font-size: 12.5px; transition: border-color .15s, background .15s; }
+.btn:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.impact { background: var(--r-target); border-color: var(--r-target); color: #fff; }
+.btn.primary:hover, .btn.impact:hover { filter: brightness(1.08); }
+.btn.primary:hover { background: var(--accent); } .btn.impact:hover { background: var(--r-target); }
+.btn svg { width: 14px; height: 14px; }
+.tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); flex: none; }
+.tabs button { border: 0; background: none; padding: 10px 8px; margin-bottom: -1px; color: var(--muted); font-weight: 550; border-bottom: 2px solid transparent; display: inline-flex; gap: 6px; align-items: center; }
+.tabs button:hover { color: var(--text); }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.tabs .count { font-size: 11px; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 0 6px; }
+.insp-body { flex: 1; overflow: auto; padding: 14px 18px 22px; }
+.sec { margin-bottom: 18px; }
+.sec h3 { display: flex; align-items: center; gap: 8px; font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 8px; }
+.sec h3 .n { margin-left: auto; letter-spacing: 0; font-weight: 500; text-transform: none; font-size: 11.5px; }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }
+.tile { border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: var(--surface); }
+.tile .v { font-size: 20px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.tile .k { color: var(--muted); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+.tile .k i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
+.verdict { display: flex; gap: 10px; border-radius: 10px; padding: 10px 12px; border: 1px solid; margin-bottom: 14px; }
+.verdict.ok { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.verdict.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.verdict svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.verdict.ok svg { color: var(--ok); }
+.verdict.warn svg { color: var(--warn); }
+.verdict b { display: block; font-weight: 600; }
+.verdict span { color: var(--text-2); font-size: 12px; display: block; overflow-wrap: anywhere; }
+.verdict details { margin-top: 4px; font-size: 12px; color: var(--text-2); }
+.verdict summary { cursor: pointer; color: var(--muted); }
+.sig { font: 12px/1.55 var(--mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; overflow-wrap: anywhere; color: var(--text); }
+.doc { color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+ul.list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+ul.list li { display: flex; gap: 9px; align-items: center; padding: 7px 10px; cursor: pointer; border-top: 1px solid var(--line); }
+ul.list li:first-child { border-top: 0; }
+ul.list li:hover { background: var(--surface-2); }
+.gl { width: 20px; height: 20px; border-radius: 6px; flex: none; display: flex; align-items: center; justify-content: center; font: 600 10.5px/1 var(--mono); color: #fff; }
+ul.list .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+ul.list .nm small { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+ul.list .w { color: var(--muted); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.more { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.filegroup { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+.filegroup header { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--surface-2); font-weight: 550; font-size: 12px; }
+.filegroup header svg { width: 14px; height: 14px; color: var(--muted); }
+.filegroup header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; flex: 1; min-width: 0; }
+.filegroup header em { font-style: normal; color: var(--muted); font-weight: 500; flex: none; }
+.site { display: grid; grid-template-columns: 42px 1fr; gap: 0 8px; padding: 6px 10px; border-top: 1px solid var(--line); cursor: pointer; align-items: baseline; }
+.site:hover { background: var(--surface-2); }
+.site .ln { font: 11.5px var(--mono); color: var(--muted); text-align: right; }
+.site .who { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 500; }
+.site .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site .who i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.site .tag { font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; flex: none; }
+.site code { grid-column: 2; font: 11.5px/1.5 var(--mono); color: var(--text-2); white-space: pre; overflow: hidden; text-overflow: ellipsis; display: block; }
+pre.code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 0; margin: 0; overflow: auto; font: 12px/1.6 var(--mono); tab-size: 4; }
+pre.code div { display: flex; }
+pre.code .ln { flex: none; width: 50px; padding-right: 12px; text-align: right; color: var(--muted); user-select: none; }
+pre.code .tx { white-space: pre; padding-right: 12px; }
+.hint { color: var(--muted); font-size: 12px; line-height: 1.8; }
+.hint kbd { font-size: 10.5px; padding: 2px 4px; }
+.empty { color: var(--muted); padding: 6px 0; margin: 0; }
+
+#palette { position: fixed; inset: 0; z-index: 30; display: none; align-items: flex-start; justify-content: center; padding-top: 12vh; background: rgba(15,23,42,.32); backdrop-filter: blur(2px); }
+#palette.open { display: flex; }
+.pal { width: min(640px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); overflow: hidden; }
+.pal-in { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); }
+.pal-in svg { color: var(--muted); width: 18px; height: 18px; }
+#q { flex: 1; height: 52px; border: 0; outline: none; background: none; font-size: 15px; }
+#hits { list-style: none; margin: 0; padding: 6px; max-height: 56vh; overflow: auto; }
+#hits .grp { padding: 8px 10px 4px; font-size: 10.5px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+#hits .hit { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+#hits .hit.on { background: var(--accent-2); }
+#hits .gl { width: 22px; height: 22px; font-size: 11px; }
+#hits .name { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+#hits .where { color: var(--muted); font-size: 12px; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; flex: 0 20 auto; min-width: 60px; }
+#hits .none { padding: 18px 10px; color: var(--muted); text-align: center; }
+.pal-foot { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; background: var(--surface-2); flex-wrap: wrap; }
+.pal-foot span { display: inline-flex; gap: 5px; align-items: center; }
+
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; transition: opacity .2s, transform .2s; background: var(--text); color: var(--surface); padding: 8px 14px; border-radius: 9px; font-weight: 500; z-index: 40; pointer-events: none; box-shadow: var(--shadow-md); }
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 1100px) { .repo .stat { display: none; } aside { width: 340px; } }
+@media (max-width: 860px) { .logo small { display: none; } #minimap { display: none; } }
+@media (max-width: 700px) {
+  main { flex-direction: column; } aside { width: auto; border-left: 0; border-top: 1px solid var(--line); height: 44%; }
+  .subbar { height: auto; flex-wrap: wrap; padding: 6px 12px; } #crumbs { flex-basis: 100%; }
+  .repo, .vsep, #reload span { display: none; } .cmdk { width: auto; flex: 1; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h9"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-graph" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="9" cy="18" r="2.5"/><path d="M8.2 7.2 15.8 7.6M7 8.3l1.4 7.3M16.6 10l-5.8 6.3"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.01"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+</svg>
+
+<div class="topbar">
+  <div class="logo">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 29 27H3z" fill="#4f46e5"/><path d="M16 3 21 27H11z" fill="#818cf8"/><path d="M16 3 18.2 27h-4.4z" fill="#c7d2fe"/></svg>
+    Prism <small>Graph</small>
+  </div>
+  <div class="vsep"></div>
+  <div class="repo"><b id="repo-name">…</b><span class="stat" id="repo-stat"></span></div>
+  <button class="cmdk" id="open-search" title="Search the index">
+    <svg class="i"><use href="#i-search"/></svg><span>Search symbols, files, packages…</span><kbd>⌘K</kbd>
+  </button>
+  <button class="iconbtn" id="reload" title="Re-index changed files and reload"><svg class="i"><use href="#i-refresh"/></svg><span>Re-index</span></button>
+</div>
+
+<div class="subbar">
+  <nav id="crumbs" aria-label="Scope"></nav>
+  <div class="seg" role="group" aria-label="View">
+    <button id="mode-deps" aria-pressed="true" title="Dependencies between the things in this scope"><svg class="i"><use href="#i-graph"/></svg>Dependencies</button>
+    <button id="mode-impact" aria-pressed="false" title="What a change to this symbol touches (i)"><span class="dot"></span>Change impact</button>
+  </div>
+  <div class="ctl-group">
+    <div class="seg" id="depth" role="group" aria-label="Impact depth" hidden>
+      <button data-d="1" title="Edit sites only">Direct</button>
+      <button data-d="2" title="Also the callers of the edit sites">+1 hop</button>
+      <button data-d="3" title="Two hops upstream of the edit sites">+2 hops</button>
+    </div>
+    <button class="switch" id="flat" role="switch" aria-checked="false" title="At the repository root: every package, not just top-level folders"><span class="track"></span>Packages</button>
+    <button class="switch" id="tests" role="switch" aria-checked="false" title="Include test files"><span class="track"></span>Tests</button>
+  </div>
+</div>
+
+<main>
+  <div id="stage">
+    <canvas id="c" aria-label="Code graph"></canvas>
+    <div id="status" class="float"></div>
+    <div id="legend" class="float"></div>
+    <div id="minimap" class="float" title="Click or drag to move the view"><canvas id="mm"></canvas></div>
+    <div id="zoom" class="float">
+      <button id="zin" title="Zoom in (+)"><svg class="i"><use href="#i-plus"/></svg></button>
+      <button id="zout" title="Zoom out (−)"><svg class="i"><use href="#i-minus"/></svg></button>
+      <hr>
+      <button id="fit" title="Fit to screen (f)"><svg class="i"><use href="#i-fit"/></svg></button>
+    </div>
+    <div id="tip" class="float"></div>
+    <div id="overlay"><div class="card"></div></div>
+  </div>
+  <aside id="panel">
+    <div class="insp-head" id="insp-head"></div>
+    <div class="tabs" id="insp-tabs" role="tablist"></div>
+    <div class="insp-body" id="insp-body"></div>
+  </aside>
+</main>
+
+<div id="palette" role="dialog" aria-modal="true" aria-label="Search">
+  <div class="pal">
+    <div class="pal-in"><svg class="i"><use href="#i-search"/></svg><input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="Search symbols, files and packages"><kbd>esc</kbd></div>
+    <ul id="hits" role="listbox"></ul>
+    <div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> open</span><span><kbd>⇧</kbd><kbd>↵</kbd> change impact</span></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const canvas = $("c"), ctx = canvas.getContext("2d"), stage = $("stage");
+const mm = $("mm"), mctx = mm.getContext("2d");
+const FONT = getComputedStyle(document.body).fontFamily;
+const MONO = getComputedStyle(document.documentElement).getPropertyValue("--mono").trim() || "monospace";
+
+const KIND = {
+  dir:         { c: "#6366f1", g: "" },  file:      { c: "#10b981", g: "" },
+  function:    { c: "#3b82f6", g: "ƒ" }, method:    { c: "#06b6d4", g: "m" }, constructor: { c: "#8b5cf6", g: "c" },
+  struct:      { c: "#f59e0b", g: "S" }, class:     { c: "#f59e0b", g: "C" }, interface:   { c: "#ec4899", g: "I" },
+  trait:       { c: "#ec4899", g: "T" }, type:      { c: "#eab308", g: "T" }, enum:        { c: "#eab308", g: "E" },
+  const:       { c: "#64748b", g: "K" }, variable:  { c: "#84cc16", g: "v" }, field:       { c: "#94a3b8", g: "f" },
+  module:      { c: "#14b8a6", g: "M" }, namespace: { c: "#14b8a6", g: "N" },
+};
+const kindOf = n => n.type === "symbol" ? (n.kind || "symbol") : n.type;
+const colorOf = n => (KIND[kindOf(n)] || { c: "#94a3b8" }).c;
+const LANG = { go: "go", typescript: "ts", tsx: "tsx", javascript: "js", python: "py", java: "jv", rust: "rs", csharp: "c#", c: "c", cpp: "c++", php: "php", kotlin: "kt", swift: "sw", ruby: "rb" };
+function glyphOf(n) {
+  if (n.type === "file") return LANG[n.kind] || (n.path || "").split(".").pop().slice(0, 3);
+  if (n.type === "dir") return "";
+  return (KIND[n.kind] || { g: "•" }).g;
+}
+const ROLES = [
+  ["target", "Changed declaration"], ["family", "Changes with it"],
+  ["caller", "Edit site · caller"], ["access", "Edit site · access"],
+  ["transitive", "Reached, not an edit site"],
+];
+const ROLE_RING = { target: 0, family: 1, caller: 2, access: 2, transitive: 3 };
+const ROLE_VAR = { target: "r-target", family: "r-family", caller: "r-site", access: "r-site", transitive: "r-trans" };
+
+const S = {
+  scope: "", mode: "deps", depth: 1, tests: false, flat: null, meta: null,
+  data: null, nodes: [], links: [], byId: new Map(), adj: new Map(),
+  sel: null, hover: null, hidden: new Set(), tab: "overview",
+  view: { x: 0, y: 0, k: 1 }, alpha: 0, raf: 0, anim: null, dirty: true, w: 0, h: 0, css: {}, rings: null,
+};
+
+/* ---------- small DOM helpers: text is always set as text ---------- */
+function el(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "style") e.style.cssText = v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return e;
+}
+function icon(name) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("class", "i");
+  const u = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  u.setAttribute("href", "#i-" + name); s.append(u); return s;
+}
+const fmt = n => (n || 0).toLocaleString();
+const plural = (n, w) => `${fmt(n)} ${n === 1 ? w : w.endsWith("y") ? w.slice(0, -1) + "ies" : w + "s"}`;
+const kindsText = kinds => Object.entries(kinds || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${v} ${k}`).join(", ");
+const glyphEl = n => el("span", { class: "gl", style: `background:${colorOf(n)}` }, glyphOf(n) || (n.type === "dir" ? "▤" : ""));
+const roleColor = r => S.css[ROLE_VAR[r]] || "#888";
+const roleLabel = r => (ROLES.find(x => x[0] === r) || [, r])[1];
+let toastT = 0;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 1800); }
+async function copy(text, what) {
+  try { await navigator.clipboard.writeText(text); toast(`Copied ${what}`); }
+  catch { toast("Copy failed: the browser blocked clipboard access"); }
+}
+
+/* ---------- state <-> URL ---------- */
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  S.scope = p.get("s") || "";
+  S.tests = p.get("t") === "1";
+  S.flat = p.has("m") ? p.get("m") === "flat" : null;
+  S.mode = p.get("v") === "impact" && S.scope.startsWith("s:") ? "impact" : "deps";
+  S.depth = Math.min(3, Math.max(1, +p.get("d") || 1));
+}
+function writeHash(push) {
+  const p = new URLSearchParams();
+  if (S.scope) p.set("s", S.scope);
+  if (S.mode === "impact") { p.set("v", "impact"); if (S.depth > 1) p.set("d", S.depth); }
+  if (S.tests) p.set("t", "1");
+  if (S.flat !== null) p.set("m", S.flat ? "flat" : "tree");
+  const h = "#" + p.toString();
+  if (h === (location.hash || "#")) return false;
+  if (push) location.hash = h; else history.replaceState(null, "", h);
+  return push;
+}
+function go(scope, mode) {
+  S.scope = scope || "";
+  S.mode = mode === "impact" && S.scope.startsWith("s:") ? "impact" : "deps";
+  if (!writeHash(true)) load();
+}
+const impactOf = id => go(id, "impact");
+window.addEventListener("hashchange", () => { readHash(); load(); });
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || `${r.status} ${r.statusText}`);
+  return body;
+}
+const isFlat = () => S.flat !== null ? S.flat : !!(S.meta && S.meta.dirs <= 60);
+
+/* ---------- loading ---------- */
+let loadSeq = 0;
+async function load() {
+  const seq = ++loadSeq;
+  syncTools();
+  const slow = setTimeout(() => { if (seq === loadSeq) overlay("loading", S.mode === "impact" ? "Computing change impact…" : "Loading graph…"); }, 160);
+  let d;
+  try {
+    if (S.mode === "impact") {
+      const p = new URLSearchParams({ id: S.scope, depth: S.depth });
+      if (S.tests) p.set("tests", "1");
+      d = await api("/api/impact?" + p);
+    } else {
+      const p = new URLSearchParams({ scope: S.scope });
+      if (S.tests) p.set("tests", "1");
+      if (isFlat()) p.set("flat", "1");
+      d = await api("/api/graph?" + p);
+    }
+  } catch (e) {
+    clearTimeout(slow);
+    if (seq !== loadSeq) return;
+    S.data = null; S.nodes = []; S.links = []; S.rings = null; S.sel = null; kick(0);
+    if (S.mode === "impact") overlay("error", "No change impact for this symbol", e.message, [["Show its dependencies", () => go(S.scope)]]);
+    else overlay("error", "Nothing to show", e.message, [["Go to the repository root", () => go("")]]);
+    renderCrumbs(); renderLegend(); renderStatus(); renderPanel();
+    return;
+  }
+  clearTimeout(slow);
+  if (seq !== loadSeq) return;
+  overlay(null);
+  if (S.mode === "impact") { d.scope = d.target; S.tab = "impact"; } else if (S.tab === "impact" || S.tab === "sites") S.tab = "overview";
+  S.data = d; S.sel = null; S.hover = null; hideTip();
+  build(d);
+  renderCrumbs(); renderLegend(); renderStatus(); renderPanel(); syncTools();
+  document.title = `${d.scope.label}${S.mode === "impact" ? " · change impact" : ""} — Prism`;
+}
+
+function overlay(kind, title, text, actions) {
+  const box = $("overlay"), card = box.firstElementChild;
+  card.replaceChildren();
+  if (!kind) { box.classList.remove("on"); return; }
+  if (kind === "loading") card.append(el("div", { class: "spinner" }), el("h3", null, title));
+  else {
+    card.append(el("div", { class: "badge" }, icon("alert")), el("h3", null, title), el("p", null, text));
+    for (const [label, fn] of actions || []) card.append(el("button", { class: "btn primary", onclick: fn }, label));
+  }
+  box.classList.add("on");
+}
+
+/* ---------- build + layout ---------- */
+function radius(n) {
+  if (S.mode === "impact") {
+    if (n.focus) return 22;
+    if (n.id.startsWith("g:")) return Math.max(11, Math.min(26, 9 + 2.4 * Math.sqrt(n.symbols || 1)));
+    return n.role === "transitive" ? 9 : Math.max(11, Math.min(18, 10 + 1.3 * Math.sqrt(n.in + n.out)));
+  }
+  if (n.type === "symbol") return Math.max(n.focus ? 18 : 9, Math.min(26, 8 + 1.8 * Math.sqrt(n.in + n.out)));
+  return Math.max(11, Math.min(n.outside ? 22 : 38, 10 + 1.6 * Math.sqrt(n.symbols || 0)));
+}
+function build(g) {
+  S.byId = new Map(); S.adj = new Map(); S.rings = null;
+  const isSym = S.mode === "deps" && g.scope.type === "symbol";
+  S.nodes = g.nodes.map(n => ({ ...n, x: 0, y: 0, vx: 0, vy: 0, side: 0, deg: 0 }));
+  for (const n of S.nodes) { n.r = radius(n); S.byId.set(n.id, n); S.adj.set(n.id, new Set()); }
+  S.links = [];
+  for (const l of g.links) {
+    const a = S.byId.get(l.from), b = S.byId.get(l.to);
+    if (!a || !b) continue;
+    const ks = Object.keys(l.kinds || {});
+    const contains = ks.length === 1 && ks[0] === "contains";
+    const synthetic = ks.length === 1 && (ks[0] === "same-change" || ks[0] === "accesses");
+    S.links.push({ ...l, a, b, contains, synthetic, key: l.from + "→" + l.to });
+    S.adj.get(a.id).add(b.id); S.adj.get(b.id).add(a.id);
+    a.deg++; b.deg++;
+  }
+  if (S.mode === "impact") layoutRings();
+  else layoutForce(isSym);
+  fit(false);
+  kick(0);
+}
+
+// Impact layout: concentric rings with the change at the centre; each ring
+// is sorted by path so one package's sites sit together.
+function layoutRings() {
+  const rings = [[], [], [], []];
+  for (const n of S.nodes) rings[n.focus ? 0 : (ROLE_RING[n.role] ?? 3)].push(n);
+  rings[1].push(...rings[0].filter(n => !n.focus)); rings[0] = rings[0].filter(n => n.focus);
+  const radii = [0];
+  let r = 0;
+  for (let i = 1; i < 4; i++) {
+    const ns = rings[i];
+    if (!ns.length) { radii.push(r); continue; }
+    const need = ns.reduce((s, n) => s + n.r * 2 + 40, 0) / (2 * Math.PI - 0.9);
+    r = Math.max(r + (i === 3 ? 170 : 140), need, 130);
+    radii.push(r);
+    ns.sort((a, b) => (a.path || "").localeCompare(b.path || "") || (a.line || 0) - (b.line || 0));
+    // Leave a gap at 12 o'clock for the ring's label; a lone node sits at 6.
+    const gapA = Math.min(0.9, 240 / r), span = Math.PI * 2 - gapA;
+    ns.forEach((n, j) => {
+      const a = ns.length === 1 ? Math.PI / 2 : -Math.PI / 2 + gapA / 2 + (j + 0.5) * span / ns.length;
+      n.x = r * Math.cos(a); n.y = r * Math.sin(a);
+    });
+  }
+  for (const n of rings[0]) { n.x = 0; n.y = 0; }
+  S.rings = [1, 2, 3].filter(i => rings[i].length).map(i => ({ r: radii[i], label: i === 1 ? "Changes with it" : i === 2 ? "Edit sites" : "Reached" }));
+  S.alpha = 0;
+}
+
+function layoutForce(isSym) {
+  const focus = S.nodes.find(n => n.focus);
+  if (isSym && focus) for (const l of S.links) {
+    if (l.contains) continue;
+    if (l.b === focus) l.a.side -= 1;
+    if (l.a === focus) l.b.side += 1;
+  }
+  const inside = S.nodes.filter(n => !n.outside), outside = S.nodes.filter(n => n.outside);
+  const conn = inside.filter(n => n.deg || n.focus), iso = inside.filter(n => !n.deg && !n.focus);
+  for (const n of iso) n.iso = true;
+  S.ring = 95 * Math.sqrt(conn.length) + 170;
+  conn.forEach((n, i) => {
+    const a = i * 2.39996323, d = 34 * Math.sqrt(i + 0.5);
+    n.x = d * Math.cos(a); n.y = d * Math.sin(a);
+    if (isSym && !n.focus) { n.x += Math.sign(n.side) * 220; if (n.member) n.y += 200; }
+    if (n.focus) { n.x = 0; n.y = 0; }
+  });
+  outside.forEach((n, i) => { const a = (i / outside.length) * Math.PI * 2 - Math.PI / 2; n.x = S.ring * Math.cos(a); n.y = S.ring * Math.sin(a); });
+  S.isSym = isSym;
+  S.alpha = 1;
+  for (let i = 0; i < 300 && S.alpha > 0.012; i++) step();
+  if (iso.length) {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const n of S.nodes) if (!n.iso) { x0 = Math.min(x0, n.x - n.r); x1 = Math.max(x1, n.x + n.r); y0 = Math.min(y0, n.y - n.r); y1 = Math.max(y1, n.y + n.r); }
+    const none = x0 === Infinity;
+    if (none) { x0 = x1 = y0 = y1 = 0; }
+    const cw = 190, rmax = Math.max(...iso.map(n => n.r)), ch = rmax * 2 + 44;
+    iso.sort((a, b) => a.label.localeCompare(b.label));
+    if (!none && S.w > S.h * 1.1) {
+      const rows = Math.max(4, Math.floor((y1 - y0) / ch)), cols = Math.ceil(iso.length / rows);
+      const top = (y0 + y1) / 2 - (Math.min(rows, iso.length) - 1) * ch / 2;
+      iso.forEach((n, i) => { n.x = x1 + 150 + (i % cols) * cw; n.y = top + Math.floor(i / cols) * ch; });
+    } else {
+      const cols = Math.max(1, Math.min(iso.length, Math.max(4, Math.floor((x1 - x0) / cw))));
+      const left = (x0 + x1) / 2 - (cols - 1) * cw / 2, top = none ? -Math.floor((iso.length - 1) / cols) * ch / 2 : y1 + 90 + rmax;
+      iso.forEach((n, i) => { n.x = left + (i % cols) * cw; n.y = top + Math.floor(i / cols) * ch; });
+    }
+  }
+}
+
+function step() {
+  const ns = S.nodes, a = S.alpha, n = ns.length;
+  for (let i = 0; i < n; i++) {
+    const p = ns[i];
+    if (p.iso) continue;
+    for (let j = i + 1; j < n; j++) {
+      const q = ns[j];
+      if (q.iso) continue;
+      let dx = q.x - p.x, dy = q.y - p.y, d2 = dx * dx + dy * dy;
+      if (d2 < 0.01) { dx = (i % 7) - 3 + 0.5; dy = (j % 5) - 2 + 0.5; d2 = dx * dx + dy * dy; }
+      const d = Math.sqrt(d2), min = p.r + q.r + 26;
+      let f = 260 * a / d2;
+      if (d < min) f += (min - d) * 0.5 / d;
+      dx *= f; dy *= f;
+      p.vx -= dx; p.vy -= dy; q.vx += dx; q.vy += dy;
+    }
+  }
+  for (const l of S.links) {
+    const p = l.a, q = l.b;
+    const dx = q.x - p.x, dy = q.y - p.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+    const want = 95 + p.r + q.r + (p.outside || q.outside ? 50 : 0);
+    const k = (p.outside || q.outside ? 0.03 : 0.09) * a / Math.min(Math.max(1, Math.min(p.deg, q.deg)), 6);
+    const f = (d - want) * k / d;
+    p.vx += dx * f; p.vy += dy * f; q.vx -= dx * f; q.vy -= dy * f;
+  }
+  for (const p of ns) {
+    if (p.iso) continue;
+    if (p.outside) {
+      const d = Math.sqrt(p.x * p.x + p.y * p.y) || 1, f = (S.ring - d) * 0.14 * a / d;
+      p.vx += p.x * f; p.vy += p.y * f;
+    } else {
+      const g = (p.deg ? 0.014 : 0.03) * a;
+      p.vx -= p.x * g; p.vy -= p.y * g;
+      if (S.isSym && !p.focus) {
+        if (p.side) p.vx += (Math.sign(p.side) * 260 - p.x) * 0.05 * a;
+        if (p.member && !p.side) p.vy += (220 - p.y) * 0.05 * a;
+      }
+    }
+    if (p.pin || (S.isSym && p.focus)) { p.vx = 0; p.vy = 0; if (p.focus && !p.pin) { p.x = 0; p.y = 0; } continue; }
+    p.vx *= 0.58; p.vy *= 0.58;
+    const sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    if (sp > 60) { p.vx *= 60 / sp; p.vy *= 60 / sp; }
+    p.x += p.vx; p.y += p.vy;
+  }
+  S.alpha *= 0.985;
+}
+function kick(alpha) {
+  if (alpha && S.mode !== "impact") S.alpha = Math.max(S.alpha, alpha);
+  S.dirty = true;
+  if (!S.raf) S.raf = requestAnimationFrame(frame);
+}
+function frame(t) {
+  S.raf = 0;
+  let more = false;
+  if (S.anim) {
+    const a = S.anim, u = Math.min(1, (t - a.t0) / a.ms), e = 1 - Math.pow(1 - u, 3);
+    S.view.x = a.from.x + (a.to.x - a.from.x) * e; S.view.y = a.from.y + (a.to.y - a.from.y) * e; S.view.k = a.from.k + (a.to.k - a.from.k) * e;
+    S.dirty = true; if (u < 1) more = true; else S.anim = null;
+  }
+  if (S.alpha > 0.012) { step(); S.dirty = true; more = true; }
+  if (S.dirty) { S.dirty = false; draw(); }
+  if (more) S.raf = requestAnimationFrame(frame);
+}
+
+/* ---------- view transform ---------- */
+const visible = n => !S.hidden.has(S.mode === "impact" ? n.role : kindOf(n));
+function bounds(ns) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const n of ns) { x0 = Math.min(x0, n.x - n.r); y0 = Math.min(y0, n.y - n.r); x1 = Math.max(x1, n.x + n.r); y1 = Math.max(y1, n.y + n.r + 22); }
+  if (S.rings) for (const r of S.rings) { x0 = Math.min(x0, -r.r); x1 = Math.max(x1, r.r); y0 = Math.min(y0, -r.r - 24); y1 = Math.max(y1, r.r + 24); }
+  return [x0, y0, x1, y1];
+}
+function fitView() {
+  const ns = S.nodes.filter(visible);
+  if (!ns.length || !S.w) return null;
+  const [x0, y0, x1, y1] = bounds(ns), pad = 70;
+  const k = Math.max(0.06, Math.min(1.5, (S.w - pad * 2) / Math.max(1, x1 - x0), (S.h - pad * 2) / Math.max(1, y1 - y0)));
+  return { k, x: S.w / 2 - k * (x0 + x1) / 2, y: S.h / 2 - k * (y0 + y1) / 2 };
+}
+function animateTo(to, ms = 380) { S.anim = { from: { ...S.view }, to, t0: performance.now(), ms }; kick(0); }
+function fit(animate) { const v = fitView(); if (!v) return; if (animate) animateTo(v); else { S.view = v; S.dirty = true; } }
+function centerOn(n) { const k = Math.max(S.view.k, 0.8); animateTo({ k, x: S.w / 2 - n.x * k, y: S.h / 2 - n.y * k }); }
+function zoomBy(f) { const k = Math.max(0.05, Math.min(5, S.view.k * f)), cx = S.w / 2, cy = S.h / 2; const [wx, wy] = toWorld(cx, cy); animateTo({ k, x: cx - wx * k, y: cy - wy * k }, 200); }
+const toWorld = (sx, sy) => [(sx - S.view.x) / S.view.k, (sy - S.view.y) / S.view.k];
+
+function resize() {
+  const r = stage.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const first = !S.w;
+  S.w = r.width; S.h = r.height;
+  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+  const mr = mm.getBoundingClientRect(); mm.width = Math.round(mr.width * dpr); mm.height = Math.round(mr.height * dpr);
+  if (first) fit(false);
+  kick(0);
+}
+new ResizeObserver(resize).observe(stage);
+function readCss() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ["canvas", "surface", "text", "text-2", "muted", "edge", "in", "out", "accent", "label-halo", "line", "line-strong", "r-target", "r-family", "r-site", "r-trans"]) S.css[k] = cs.getPropertyValue("--" + k).trim();
+}
+readCss();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readCss(); renderLegend(); renderPanel(); kick(0); });
+
+/* ---------- drawing ---------- */
+function curve(l) {
+  const { a, b } = l, dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+  const off = Math.min(46, d * 0.14), cx = (a.x + b.x) / 2 - dy / d * off, cy = (a.y + b.y) / 2 + dx / d * off;
+  let ex = b.x - cx, ey = b.y - cy; const ed = Math.sqrt(ex * ex + ey * ey) || 1; ex /= ed; ey /= ed;
+  let sx = cx - a.x, sy = cy - a.y; const sd = Math.sqrt(sx * sx + sy * sy) || 1; sx /= sd; sy /= sd;
+  const ga = a.halo || 0, gb = b.halo || 0;
+  return { x0: a.x + sx * (a.r + ga), y0: a.y + sy * (a.r + ga), cx, cy, x1: b.x - ex * (b.r + gb + 3), y1: b.y - ey * (b.r + gb + 3), ex, ey };
+}
+const linkWidth = l => Math.min(6, 1 + Math.log2(1 + l.weight) * 0.55);
+function shorten(s, max) { return s.length <= max ? s : s.slice(0, Math.ceil(max / 2) - 1) + "…" + s.slice(-(Math.floor(max / 2) - 1)); }
+function roundRect(c, x, y, w, h, r) {
+  c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function nodePath(n, grow) {
+  const r = n.r + (grow || 0);
+  ctx.beginPath();
+  if (n.type === "dir") roundRect(ctx, n.x - r, n.y - r, r * 2, r * 2, Math.min(9, r * 0.32));
+  else if (n.type === "file") roundRect(ctx, n.x - r, n.y - r, r * 2, r * 2, r * 0.62);
+  else ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+}
+
+function draw() {
+  const dpr = window.devicePixelRatio || 1, { x, y, k } = S.view, css = S.css, impact = S.mode === "impact";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, S.w, S.h);
+  ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * x, dpr * y);
+  const px = 1 / k, lw = Math.max(px, 0.7);
+  for (const n of S.nodes) n.halo = impact && n.role ? 5 * lw : 0;
+
+  if (S.rings) {
+    ctx.font = `600 ${10.5 * px}px ${FONT}`;
+    ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    for (const r of S.rings) {
+      ctx.beginPath(); ctx.arc(0, 0, r.r, 0, Math.PI * 2);
+      ctx.strokeStyle = css["line-strong"]; ctx.lineWidth = px; ctx.setLineDash([4 * px, 5 * px]); ctx.globalAlpha = 0.9; ctx.stroke(); ctx.setLineDash([]);
+      const t = r.label.toUpperCase(), tw = ctx.measureText(t).width;
+      ctx.globalAlpha = 1; ctx.fillStyle = css.canvas; ctx.fillRect(-tw / 2 - 6 * px, -r.r - 8 * px, tw + 12 * px, 16 * px);
+      ctx.fillStyle = css.muted; ctx.textBaseline = "middle"; ctx.fillText(t, 0, -r.r);
+    }
+  }
+
+  const active = S.hover || S.sel;
+  let hot = null, hotLink = null;
+  if (active && active.a) { hotLink = active; hot = new Set([active.a.id, active.b.id]); }
+  else if (active) { hot = new Set(S.adj.get(active.id)); hot.add(active.id); }
+  const baseAlpha = S.links.length > 150 ? 0.32 : 0.6;
+
+  for (const l of S.links) {
+    if (!visible(l.a) || !visible(l.b)) continue;
+    const c = curve(l);
+    let color = css.edge, alpha = hot ? 0.1 : baseAlpha, w = linkWidth(l);
+    if (impact && !hot) {
+      // Colour a link by the role of its source when it points into the change.
+      const into = l.b.role === "target" || l.b.role === "family" || (l.a.role === "transitive" && l.b.role !== "transitive");
+      if (into && l.a.role !== "target") { color = roleColor(l.a.role); alpha = l.a.role === "transitive" ? 0.5 : 0.75; }
+      else alpha = 0.3;
+    }
+    if (hotLink === l) { color = css.accent; alpha = 1; w += 1; }
+    else if (active && !active.a && (l.a === active || l.b === active)) { color = l.a === active ? css.out : css.in; alpha = 0.95; }
+    ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = w * lw;
+    ctx.setLineDash(l.contains || l.synthetic ? [5 * px, 4 * px] : []);
+    ctx.beginPath(); ctx.moveTo(c.x0, c.y0); ctx.quadraticCurveTo(c.cx, c.cy, c.x1, c.y1); ctx.stroke();
+    ctx.setLineDash([]);
+    if (!l.contains) {
+      const s = (5 + w * 1.3) * lw;
+      ctx.beginPath();
+      ctx.moveTo(c.x1 + c.ex * 3, c.y1 + c.ey * 3);
+      ctx.lineTo(c.x1 - c.ex * s - c.ey * s * 0.5, c.y1 - c.ey * s + c.ex * s * 0.5);
+      ctx.lineTo(c.x1 - c.ex * s + c.ey * s * 0.5, c.y1 - c.ey * s - c.ex * s * 0.5);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  const shadows = S.nodes.length < 160;
+  for (const n of S.nodes) {
+    if (!visible(n)) continue;
+    const dim = hot && !hot.has(n.id), col = colorOf(n), base = dim ? 0.16 : 1;
+    if (n.halo) {
+      // Impact role: a tinted halo ringed in the role colour.
+      nodePath(n, n.halo);
+      ctx.fillStyle = roleColor(n.role); ctx.globalAlpha = base * (n.focus ? 0.26 : 0.18); ctx.fill();
+      ctx.globalAlpha = base; ctx.lineWidth = 2 * lw; ctx.strokeStyle = roleColor(n.role);
+      if (n.role === "transitive") ctx.setLineDash([3 * px, 3 * px]);
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.globalAlpha = base;
+    nodePath(n);
+    if (shadows && !dim) { ctx.shadowColor = "rgba(15,23,42,.18)"; ctx.shadowBlur = 6 * k; ctx.shadowOffsetY = 1.5 * k; }
+    if (n.outside) { ctx.fillStyle = css.surface; ctx.fill(); ctx.shadowColor = "transparent"; ctx.globalAlpha = base * 0.3; ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = base; }
+    else { ctx.fillStyle = col; ctx.fill(); }
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.lineWidth = 1.5 * px; ctx.strokeStyle = n.outside ? col : css.surface;
+    if (n.outside) ctx.setLineDash([4 * px, 3 * px]);
+    else if (n.test) ctx.setLineDash([2 * px, 2 * px]);
+    ctx.stroke(); ctx.setLineDash([]);
+    const g = glyphOf(n);
+    if (g && n.r * k >= 9) {
+      ctx.fillStyle = n.outside ? col : "#fff";
+      ctx.font = `600 ${n.type === "file" ? n.r * 0.68 : n.r * 0.95}px ${MONO}`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(g, n.x, n.y + 0.5 * px);
+    }
+    if (n === S.sel || (n.focus && !impact)) {
+      nodePath(n, (n.halo || 0) + 3.5 * lw);
+      ctx.strokeStyle = n === S.sel ? css.accent : css.text; ctx.lineWidth = 2 * lw; ctx.stroke();
+    }
+  }
+
+  // Labels: emphasised first, then biggest; skip any that would overlap.
+  ctx.globalAlpha = 1;
+  const fs = 11.5 * px, placed = [];
+  ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.lineJoin = "round";
+  const order = S.nodes.filter(visible).sort((p, q) => (hot ? (hot.has(q.id) - hot.has(p.id)) : 0) || ((q === S.sel) - (p === S.sel)) || (!!q.focus - !!p.focus) || (ROLE_RING[p.role] ?? 9) - (ROLE_RING[q.role] ?? 9) || q.r - p.r);
+  for (const n of order) {
+    const forced = n === S.sel || n.focus || n === active;
+    const emph = forced || (hot && hot.has(n.id));
+    if (hot && !hot.has(n.id)) continue;
+    if (!emph && k < 0.2) continue;
+    const text = shorten(n.label, emph ? 60 : n.iso ? 22 : 28);
+    ctx.font = `${forced ? 600 : 500} ${fs}px ${FONT}`;
+    const tw = ctx.measureText(text).width;
+    const bx = n.x - tw / 2 - 5 * px, by = n.y + n.r + (n.halo || 0) + 4 * px, bw = tw + 10 * px, bh = fs + 6 * px;
+    if (!forced && placed.some(b => bx < b[0] + b[2] && bx + bw > b[0] && by < b[1] + b[3] && by + bh > b[1])) continue;
+    placed.push([bx, by, bw, bh]);
+    if (forced) {
+      ctx.beginPath(); roundRect(ctx, bx, by, bw, bh, 5 * px);
+      ctx.fillStyle = css.surface; ctx.fill(); ctx.strokeStyle = css["line-strong"]; ctx.lineWidth = px; ctx.stroke();
+      ctx.fillStyle = css.text; ctx.fillText(text, n.x, by + 3 * px);
+    } else {
+      ctx.strokeStyle = css["label-halo"]; ctx.lineWidth = 4 * px; ctx.strokeText(text, n.x, by + 3 * px);
+      ctx.fillStyle = n.outside || n.role === "transitive" ? css.muted : css["text-2"]; ctx.fillText(text, n.x, by + 3 * px);
+    }
+  }
+  drawMinimap();
+}
+
+function drawMinimap() {
+  const dpr = window.devicePixelRatio || 1, W = mm.width / dpr, H = mm.height / dpr, ns = S.nodes.filter(visible);
+  mctx.setTransform(dpr, 0, 0, dpr, 0, 0); mctx.clearRect(0, 0, W, H);
+  if (!ns.length || !W) { S.mm = null; return; }
+  const [x0, y0, x1, y1] = bounds(ns), pad = 8;
+  const k = Math.min((W - pad * 2) / Math.max(1, x1 - x0), (H - pad * 2) / Math.max(1, y1 - y0));
+  const ox = W / 2 - k * (x0 + x1) / 2, oy = H / 2 - k * (y0 + y1) / 2;
+  S.mm = { k, ox, oy };
+  mctx.globalAlpha = 0.35; mctx.strokeStyle = S.css.edge; mctx.lineWidth = 0.6;
+  mctx.beginPath();
+  for (const l of S.links) if (visible(l.a) && visible(l.b)) { mctx.moveTo(ox + l.a.x * k, oy + l.a.y * k); mctx.lineTo(ox + l.b.x * k, oy + l.b.y * k); }
+  mctx.stroke(); mctx.globalAlpha = 1;
+  for (const n of ns) { mctx.fillStyle = S.mode === "impact" && n.role ? roleColor(n.role) : colorOf(n); mctx.beginPath(); mctx.arc(ox + n.x * k, oy + n.y * k, Math.max(1.4, n.r * k), 0, 7); mctx.fill(); }
+  const [vx0, vy0] = toWorld(0, 0), [vx1, vy1] = toWorld(S.w, S.h);
+  mctx.fillStyle = S.css.accent; mctx.globalAlpha = 0.08;
+  mctx.fillRect(ox + vx0 * k, oy + vy0 * k, (vx1 - vx0) * k, (vy1 - vy0) * k); mctx.globalAlpha = 1;
+  mctx.strokeStyle = S.css.accent; mctx.lineWidth = 1.5;
+  mctx.strokeRect(ox + vx0 * k, oy + vy0 * k, (vx1 - vx0) * k, (vy1 - vy0) * k);
+}
+function minimapPan(e) {
+  if (!S.mm) return;
+  const r = mm.getBoundingClientRect(), wx = (e.clientX - r.left - S.mm.ox) / S.mm.k, wy = (e.clientY - r.top - S.mm.oy) / S.mm.k;
+  S.anim = null; S.view.x = S.w / 2 - wx * S.view.k; S.view.y = S.h / 2 - wy * S.view.k; kick(0);
+}
+let mmDrag = false;
+$("minimap").addEventListener("pointerdown", e => { mmDrag = true; $("minimap").setPointerCapture(e.pointerId); minimapPan(e); });
+$("minimap").addEventListener("pointermove", e => { if (mmDrag) minimapPan(e); });
+$("minimap").addEventListener("pointerup", () => { mmDrag = false; });
+
+/* ---------- hit testing ---------- */
+function nodeAt(wx, wy) {
+  for (let i = S.nodes.length - 1; i >= 0; i--) {
+    const n = S.nodes[i];
+    if (!visible(n)) continue;
+    const dx = wx - n.x, dy = wy - n.y, r = n.r + (n.halo || 0) + 3 / S.view.k;
+    if (dx * dx + dy * dy <= r * r) return n;
+  }
+  return null;
+}
+function linkAt(wx, wy) {
+  const tol = 6 / S.view.k; let best = null, bd = tol * tol;
+  for (const l of S.links) {
+    if (!visible(l.a) || !visible(l.b)) continue;
+    const c = curve(l);
+    for (let t = 0; t <= 1.0001; t += 1 / 18) {
+      const u = 1 - t, px = u * u * c.x0 + 2 * u * t * c.cx + t * t * c.x1, py = u * u * c.y0 + 2 * u * t * c.cy + t * t * c.y1;
+      const d = (px - wx) ** 2 + (py - wy) ** 2;
+      if (d < bd) { bd = d; best = l; }
+    }
+  }
+  return best;
+}
+
+/* ---------- pointer ---------- */
+let drag = null;
+canvas.addEventListener("pointerdown", e => {
+  const [wx, wy] = toWorld(e.offsetX, e.offsetY), n = nodeAt(wx, wy);
+  S.anim = null;
+  drag = { sx: e.offsetX, sy: e.offsetY, moved: false, node: n, ox: S.view.x, oy: S.view.y, dx: n ? n.x - wx : 0, dy: n ? n.y - wy : 0 };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener("pointermove", e => {
+  if (drag) {
+    if (!drag.moved && Math.hypot(e.offsetX - drag.sx, e.offsetY - drag.sy) < 4) return;
+    drag.moved = true; canvas.classList.add("drag"); hideTip();
+    if (drag.node) {
+      const [wx, wy] = toWorld(e.offsetX, e.offsetY);
+      drag.node.pin = true; drag.node.x = wx + drag.dx; drag.node.y = wy + drag.dy;
+      kick(0.25);
+    } else { S.view.x = drag.ox + e.offsetX - drag.sx; S.view.y = drag.oy + e.offsetY - drag.sy; kick(0); }
+    return;
+  }
+  const [wx, wy] = toWorld(e.offsetX, e.offsetY), h = nodeAt(wx, wy) || linkAt(wx, wy);
+  if (h !== S.hover) { S.hover = h; kick(0); }
+  canvas.classList.toggle("point", !!h);
+  if (h) showTip(h, e.offsetX, e.offsetY); else hideTip();
+});
+canvas.addEventListener("pointerup", e => {
+  const d = drag; drag = null; canvas.classList.remove("drag");
+  if (!d) return;
+  if (d.node) d.node.pin = false;
+  if (d.moved) return;
+  const [wx, wy] = toWorld(e.offsetX, e.offsetY);
+  select(nodeAt(wx, wy) || linkAt(wx, wy));
+});
+canvas.addEventListener("pointerleave", () => { if (S.hover) { S.hover = null; kick(0); } hideTip(); });
+canvas.addEventListener("dblclick", e => {
+  const [wx, wy] = toWorld(e.offsetX, e.offsetY), n = nodeAt(wx, wy);
+  if (!n || n.focus) return;
+  if (S.mode === "impact") { if (n.id.startsWith("s:")) impactOf(n.id); }
+  else go(n.id);
+});
+canvas.addEventListener("wheel", e => {
+  e.preventDefault(); S.anim = null;
+  const f = Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0016)), k = Math.max(0.05, Math.min(5, S.view.k * f));
+  const [wx, wy] = toWorld(e.offsetX, e.offsetY);
+  S.view.k = k; S.view.x = e.offsetX - wx * k; S.view.y = e.offsetY - wy * k;
+  hideTip(); kick(0);
+}, { passive: false });
+
+function select(x, center) {
+  S.sel = x || null;
+  if (center && S.sel && !S.sel.a) centerOn(S.sel);
+  renderPanel(); kick(0);
+}
+
+const tip = $("tip");
+function showTip(h, x, y) {
+  tip.replaceChildren();
+  if (h.a) tip.append(el("b", null, `${h.a.label} → ${h.b.label}`), el("span", null, kindsText(h.kinds)));
+  else {
+    tip.append(el("b", null, h.label), el("span", null, describe(h)));
+    if (h.type === "symbol" && h.path) tip.append(el("span", null, `${h.path}:${h.line}`));
+    if (!h.focus) tip.append(el("em", null, S.mode === "impact" ? (h.id.startsWith("s:") ? "Double-click for its own change impact" : "") : "Double-click to open"));
+  }
+  tip.style.display = "block";
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  tip.style.left = Math.max(6, Math.min(S.w - tw - 6, x + 16)) + "px";
+  tip.style.top = Math.max(6, Math.min(S.h - th - 6, y + 16)) + "px";
+}
+function hideTip() { tip.style.display = "none"; }
+function describe(n) {
+  const bits = [];
+  if (n.role) bits.push(roleLabel(n.role));
+  if (n.id && n.id.startsWith("g:")) bits.push(plural(n.symbols || 0, "declaration") + " in this file");
+  else if (n.type === "dir") bits.push("package", plural(n.files || 0, "file"), plural(n.symbols || 0, "symbol"));
+  else if (n.type === "file") bits.push(n.kind ? `${n.kind} file` : "file", plural(n.symbols || 0, "symbol"));
+  else bits.push(n.kind || "symbol");
+  if (n.test) bits.push("test");
+  if (n.outside) bits.push("outside this scope");
+  return bits.join(" · ");
+}
+
+/* ---------- header ---------- */
+function renderCrumbs() {
+  const nav = $("crumbs"), cs = S.data ? S.data.crumbs : [{ id: "", label: S.meta?.name || "" }]; nav.replaceChildren();
+  cs.forEach((c, i) => {
+    if (i) nav.append(el("span", { class: "sep" }, "/"));
+    const last = i === cs.length - 1;
+    const b = el("button", { class: (last ? "cur" : "") + (i === 0 ? " home" : ""), title: c.id.slice(2) || S.meta?.root || "", onclick: last ? null : () => go(c.id) });
+    if (i === 0) b.append(icon("home"));
+    b.append(c.label);
+    nav.append(b);
+  });
+  nav.scrollLeft = nav.scrollWidth;
+}
+function parentScope() { const cs = S.data?.crumbs || []; return cs.length > 1 ? cs[cs.length - 2].id : null; }
+function syncTools() {
+  const atRoot = !S.scope, isSym = S.scope.startsWith("s:");
+  $("flat").disabled = !atRoot || S.mode === "impact";
+  $("flat").setAttribute("aria-checked", String(atRoot && isFlat()));
+  $("tests").setAttribute("aria-checked", String(S.data ? !!S.data.includeTests : S.tests));
+  $("mode-deps").setAttribute("aria-pressed", String(S.mode === "deps"));
+  $("mode-impact").setAttribute("aria-pressed", String(S.mode === "impact"));
+  $("mode-impact").disabled = !isSym || !!(S.meta && !S.meta.canImpact);
+  $("mode-impact").title = isSym ? "What a change to this symbol touches (i)" : "Open a symbol to see its change impact";
+  $("depth").hidden = S.mode !== "impact";
+  for (const b of $("depth").children) b.setAttribute("aria-pressed", String(+b.dataset.d === S.depth));
+}
+$("mode-deps").onclick = () => { if (S.mode !== "deps") go(S.scope, "deps"); };
+$("mode-impact").onclick = () => { if (S.mode !== "impact") impactOf(S.scope); };
+for (const b of $("depth").children) b.onclick = () => { S.depth = +b.dataset.d; writeHash(false); load(); };
+$("flat").onclick = () => { S.flat = !isFlat(); writeHash(false); load(); };
+$("tests").onclick = () => { S.tests = !(S.data ? S.data.includeTests : S.tests); writeHash(false); load(); };
+$("fit").onclick = () => fit(true);
+$("zin").onclick = () => zoomBy(1.35);
+$("zout").onclick = () => zoomBy(1 / 1.35);
+$("reload").onclick = async () => {
+  const b = $("reload"), lbl = b.querySelector("span"); b.disabled = true; b.classList.add("spin"); lbl.textContent = "Indexing…";
+  try { S.meta = await api("/api/reload", { method: "POST", headers: { "X-Prism-Graph": "1" } }); renderRepo(); await load(); toast("Index up to date"); }
+  catch (e) { toast("Re-index failed: " + e.message); }
+  b.disabled = false; b.classList.remove("spin"); lbl.textContent = "Re-index";
+};
+function renderRepo() {
+  $("repo-name").textContent = S.meta.name;
+  $("repo-name").title = S.meta.root;
+  $("repo-stat").textContent = `${fmt(S.meta.files)} files · ${fmt(S.meta.symbols)} symbols · ${fmt(S.meta.edges)} edges`;
+}
+
+function renderLegend() {
+  const box = $("legend"); box.replaceChildren();
+  if (!S.nodes.length) { box.style.display = "none"; return; }
+  box.style.display = "";
+  const impact = S.mode === "impact", counts = new Map();
+  for (const n of S.nodes) { const k = impact ? n.role : kindOf(n); counts.set(k, (counts.get(k) || 0) + 1); }
+  for (const k of [...S.hidden]) if (!counts.has(k)) S.hidden.delete(k);
+  box.append(el("h4", null, impact ? "Change impact" : "Legend"));
+  const entries = impact
+    ? ROLES.filter(r => counts.has(r[0])).map(([k, label]) => [k, label, roleColor(k), k === "transitive"])
+    : [...counts.keys()].sort((a, b) => (["dir", "file"].indexOf(a) + 9) % 9 - (["dir", "file"].indexOf(b) + 9) % 9 || counts.get(b) - counts.get(a))
+        .map(k => [k, k === "dir" ? "package" : k, (KIND[k] || { c: "#94a3b8" }).c, false]);
+  for (const [k, label, color, dashed] of entries) {
+    const sw = el("span", { class: "sw" + (k === "dir" || k === "file" ? " sq" : "") + (dashed ? " ring" : ""), style: dashed ? `border-color:${color}` : `background:${color}` });
+    box.append(el("button", { class: S.hidden.has(k) ? "off" : "", title: "Show or hide", onclick: () => { S.hidden.has(k) ? S.hidden.delete(k) : S.hidden.add(k); if (S.sel && !S.sel.a && !visible(S.sel)) S.sel = null; renderLegend(); renderPanel(); kick(0); } },
+      sw, el("span", { class: "lbl" }, label), el("span", { class: "n" }, fmt(counts.get(k)))));
+  }
+  if (!impact && S.nodes.some(n => n.outside)) box.append(el("div", { class: "note" }, el("i"), "outside this scope"));
+  if (S.links.some(l => l.contains || l.synthetic)) box.append(el("div", { class: "note" }, el("i"), impact ? "relation from change impact" : "declared inside"));
+}
+function renderStatus() {
+  const d = S.data, bits = [];
+  if (d && S.mode === "impact") {
+    if (d.hidden) bits.push(`${fmt(d.hidden)} more not drawn`);
+    if (d.testsHidden && !d.includeTests) bits.push(`${plural(d.testsHidden, "test node")} hidden · turn on Tests`);
+  } else if (d) {
+    if (d.hidden) bits.push(`showing the ${S.nodes.filter(n => !n.outside).length} most connected · ${fmt(d.hidden)} more not drawn`);
+    if (d.hiddenOutside) bits.push(`${fmt(d.hiddenOutside)} more outside neighbours`);
+  }
+  $("status").textContent = bits.join("  ·  ");
+}
+
+/* ---------- inspector ---------- */
+function listOf(items, meta, onPick, max = 50) {
+  const ul = el("ul", { class: "list" });
+  for (const it of items.slice(0, max)) {
+    const n = it.node;
+    ul.append(el("li", { title: n.label, onclick: () => onPick(it) },
+      glyphEl(n), el("span", { class: "nm" }, n.label, it.sub ? el("small", null, it.sub) : null), el("span", { class: "w" }, meta(it))));
+  }
+  return items.length > max ? [ul, el("div", { class: "more" }, `${fmt(items.length - max)} more`)] : [ul];
+}
+function sec(title, count, ...body) {
+  return el("section", { class: "sec" }, el("h3", null, title, count != null ? el("span", { class: "n" }, fmt(count)) : null), ...body);
+}
+function tile(v, k, color) { return el("div", { class: "tile" }, el("div", { class: "v" }, typeof v === "number" ? fmt(v) : v), el("div", { class: "k" }, color ? el("i", { style: `background:${color}` }) : null, k)); }
+function setTabs(tabs) {
+  const box = $("insp-tabs"); box.replaceChildren();
+  if (!tabs.length) { box.style.display = "none"; return; }
+  box.style.display = "";
+  if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
+  for (const [id, label, count] of tabs) box.append(el("button", { role: "tab", "aria-selected": String(S.tab === id), onclick: () => { S.tab = id; renderPanel(); } }, label, count != null ? el("span", { class: "count" }, fmt(count)) : null));
+}
+function headFor(n, sub, chips, actions, badge) {
+  const h = $("insp-head"); h.replaceChildren();
+  const b = el("div", { class: "kbadge", style: `background:${badge?.color || colorOf(n)}` }, badge?.text ?? (glyphOf(n) || (n.type === "dir" ? "▤" : "")));
+  const pathRow = sub ? el("div", { class: "path" }, el("span", null, sub), el("button", { class: "copy", title: "Copy", onclick: () => copy(sub, "path") }, icon("copy"))) : null;
+  h.append(el("div", { class: "insp-title" }, b, el("div", { style: "min-width:0" }, el("h2", null, n.label), pathRow)));
+  const cs = (chips || []).filter(Boolean);
+  if (cs.length) h.append(el("div", { class: "chips" }, cs));
+  if (actions && actions.length) h.append(el("div", { class: "actions" }, actions));
+}
+const chip = (text, color) => el("span", { class: "chip" }, color ? el("i", { style: `background:${color}` }) : null, text);
+
+function renderPanel() {
+  $("insp-body").replaceChildren();
+  const d = S.data;
+  if (!d) {
+    headFor({ label: S.mode === "impact" ? "Change impact unavailable" : "Nothing here", type: "dir" }, null, [], [], { color: S.css.muted, text: "!" });
+    setTabs([]); return;
+  }
+  const sel = S.sel;
+  if (sel && sel.a) return renderLinkPanel(sel);
+  if (S.mode === "impact") return renderImpactPanel(sel);
+  const n = sel || S.nodes.find(x => x.focus) || null;
+  if (!n) return renderScopePanel();
+  renderNodePanel(n);
+}
+
+function renderScopePanel() {
+  const d = S.data, sc = d.scope, body = $("insp-body"), up = parentScope();
+  headFor(sc, sc.type === "dir" ? (sc.path || S.meta?.root) : sc.path, [
+    chip(sc.type === "dir" ? (sc.path ? "package" : "repository") : `${sc.kind || ""} file`.trim(), colorOf(sc)),
+    d.includeTests ? chip("tests included") : null,
+  ], up !== null ? [el("button", { class: "btn", onclick: () => go(up) }, icon("up"), "Up one level")] : []);
+  setTabs([]);
+  const inside = S.nodes.filter(x => !x.outside);
+  body.append(el("div", { class: "tiles" }, tile(sc.files || 0, "files"), tile(sc.symbols || 0, "symbols"), tile(inside.length, "nodes drawn"), tile(S.links.length, "dependency links")));
+  const top = inside.slice().sort((a, b) => (b.in + b.out) - (a.in + a.out) || (b.symbols || 0) - (a.symbols || 0)).slice(0, 12).map(node => ({ node }));
+  if (top.length) body.append(sec("Most connected", null, ...listOf(top, it => `${fmt(it.node.in)} in · ${fmt(it.node.out)} out`, it => select(it.node, true))));
+  if (!S.nodes.length) body.append(el("p", { class: "empty" }, d.testFilesExcluded ? "Only test files here. Turn on Tests to see them." : "Nothing indexed here."));
+  body.append(el("div", { class: "hint" }, "Click a node or link to inspect it · double-click to drill in · drag to move · scroll to zoom", el("br"),
+    el("kbd", null, "⌘K"), " search  ", el("kbd", null, "u"), " up  ", el("kbd", null, "f"), " fit  ", el("kbd", null, "i"), " change impact  ", el("kbd", null, "esc"), " clear"));
+}
+
+let srcSeq = 0;
+function sourceInto(holder, id) {
+  const seq = ++srcSeq;
+  holder.append(el("p", { class: "empty" }, "Loading source…"));
+  api("/api/source?id=" + encodeURIComponent(id)).then(src => {
+    if (seq !== srcSeq) return;
+    holder.replaceChildren();
+    if (src.doc) holder.append(sec("Documentation", null, el("div", { class: "doc" }, src.doc)));
+    if (!src.text) { holder.append(el("p", { class: "empty" }, "No source text in the index.")); return; }
+    const pre = el("pre", { class: "code" });
+    src.text.replace(/\n$/, "").split("\n").forEach((line, i) => pre.append(el("div", null, el("span", { class: "ln" }, src.start + i), el("span", { class: "tx" }, line || " "))));
+    holder.append(sec(`Lines ${src.start}–${src.end}`, null, pre));
+    if (src.truncated) holder.append(el("div", { class: "more" }, "Truncated — the declaration is longer than shown."));
+  }).catch(e => { if (seq === srcSeq) holder.replaceChildren(el("p", { class: "empty" }, e.message)); });
+}
+
+function renderNodePanel(n) {
+  const body = $("insp-body"), isSym = n.type === "symbol", canImpact = isSym && n.id.startsWith("s:") && S.meta?.canImpact;
+  const where = isSym ? `${n.path}:${n.line}` : n.path || "";
+  const chips = [chip(isSym ? n.kind || "symbol" : n.type === "dir" ? "package" : "file", colorOf(n))];
+  if (n.type === "file") chips.push(chip(plural(n.symbols || 0, "symbol")));
+  if (n.type === "dir") chips.push(chip(plural(n.files || 0, "file")), chip(plural(n.symbols || 0, "symbol")));
+  if (n.exported) chips.push(chip("exported"));
+  if (n.test) chips.push(chip("test"));
+  if (n.outside) chips.push(chip("outside this scope"));
+  const acts = [];
+  if (canImpact) acts.push(el("button", { class: "btn impact", onclick: () => impactOf(n.id) }, icon("target"), "Change impact"));
+  if (!n.focus) acts.push(el("button", { class: "btn" + (canImpact ? "" : " primary"), onclick: () => go(n.id) }, isSym ? "Neighbourhood" : "Open"));
+  if (isSym && n.path) acts.push(el("button", { class: "btn", onclick: () => go("f:" + n.path) }, icon("file"), "File"));
+  headFor(n, where, chips, acts);
+
+  const outs = [], ins = [], members = [];
+  for (const l of S.links) {
+    if (l.contains) { if (l.a === n) members.push({ node: l.b, l }); continue; }
+    if (l.a === n) outs.push({ node: l.b, l }); else if (l.b === n) ins.push({ node: l.a, l });
+  }
+  const byW = (a, b) => b.l.weight - a.l.weight || a.node.label.localeCompare(b.node.label);
+  ins.sort(byW); outs.sort(byW);
+  const tabs = [["overview", "Overview"], ["in", isSym ? "Used by" : "Dependents", ins.length], ["out", isSym ? "Uses" : "Depends on", outs.length]];
+  if (isSym && n.id.startsWith("s:")) tabs.push(["source", "Source"]);
+  setTabs(tabs);
+  const pick = it => select(it.node, true), meta = it => kindsText(it.l.kinds);
+  if (S.tab === "overview") {
+    body.append(el("div", { class: "tiles" },
+      tile(ins.reduce((s, x) => s + x.l.weight, 0), isSym ? "incoming references" : "incoming dependencies", S.css.in),
+      tile(outs.reduce((s, x) => s + x.l.weight, 0), isSym ? "outgoing references" : "outgoing dependencies", S.css.out)));
+    if (n.signature) body.append(sec("Signature", null, el("div", { class: "sig" }, n.signature)));
+    if (ins.length) body.append(sec(isSym ? "Used by" : "Depended on by", ins.length, ...listOf(ins, meta, pick, 6)));
+    if (outs.length) body.append(sec(isSym ? "Uses" : "Depends on", outs.length, ...listOf(outs, meta, pick, 6)));
+    if (members.length) body.append(sec("Declared inside", members.length, ...listOf(members.sort((a, b) => a.node.line - b.node.line), it => it.node.kind, pick, 30)));
+    if (!ins.length && !outs.length && !members.length) body.append(el("p", { class: "empty" }, "No indexed dependencies in this view."));
+  } else if (S.tab === "in") body.append(...(ins.length ? listOf(ins, meta, pick, 300) : [el("p", { class: "empty" }, "Nothing in this view uses it.")]));
+  else if (S.tab === "out") body.append(...(outs.length ? listOf(outs, meta, pick, 300) : [el("p", { class: "empty" }, "It uses nothing in this view.")]));
+  else if (S.tab === "source") { const h = el("div"); body.append(h); sourceInto(h, n.id); }
+}
+
+function renderLinkPanel(l) {
+  const body = $("insp-body");
+  headFor({ label: `${l.a.label} → ${l.b.label}`, type: "symbol" }, null,
+    [chip(l.contains ? "declared inside" : plural(l.weight, "dependency")), ...Object.entries(l.tiers || {}).sort((a, b) => b[1] - a[1]).map(([t, c]) => chip(`${t} ${fmt(c)}`))],
+    [el("button", { class: "btn", onclick: () => select(l.a, true) }, "From " + shorten(l.a.label, 24)), el("button", { class: "btn", onclick: () => select(l.b, true) }, "To " + shorten(l.b.label, 24))],
+    { color: S.css.accent, text: "→" });
+  setTabs([]);
+  body.append(el("div", { class: "doc", style: "margin-bottom:14px" }, kindsText(l.kinds)));
+  if (!l.sites || !l.sites.length) return;
+  const g = el("div", { class: "filegroup" });
+  for (const s of l.sites) {
+    g.append(el("div", { class: "site", title: "Open neighbourhood", onclick: () => go(s.fromId) },
+      el("span", { class: "ln" }, s.fromLine), el("div", { class: "who" }, el("span", null, s.fromSymbol), el("span", { class: "tag" }, s.kind), el("span", null, "→ " + s.toSymbol)),
+      el("code", null, `${s.fromFile} → ${s.toFile}:${s.toLine} · ${s.tier}`)));
+  }
+  body.append(sec(l.sites.length < l.weight ? `Evidence · first ${l.sites.length} of ${fmt(l.weight)}` : "Evidence", l.sites.length, g));
+}
+
+function renderImpactPanel(sel) {
+  const d = S.data, t = d.target, body = $("insp-body");
+  const nodeSel = sel && !sel.focus ? sel : null;
+  const n = nodeSel || S.nodes.find(x => x.focus) || t;
+  const acts = [];
+  if (nodeSel && nodeSel.id.startsWith("s:")) acts.push(el("button", { class: "btn impact", onclick: () => impactOf(nodeSel.id) }, icon("target"), "Its change impact"));
+  if (n.id.startsWith("s:")) acts.push(el("button", { class: "btn", onclick: () => go(n.id) }, "Neighbourhood"));
+  else if (n.id.startsWith("g:")) acts.push(el("button", { class: "btn", onclick: () => go("f:" + n.path) }, icon("file"), "Open file"));
+  if (!nodeSel) acts.push(el("button", { class: "btn", onclick: () => copy(siteList(d), "site list") }, icon("copy"), "Copy site list"));
+  const isGroup = n.id.startsWith("g:");
+  headFor(n, n.path ? (isGroup ? n.path : `${n.path}:${n.line}`) : "", [n.role ? chip(roleLabel(n.role), roleColor(n.role)) : null,
+    isGroup ? chip(plural(n.symbols || 0, "declaration")) : chip(n.kind || "symbol", colorOf(n)), n.test ? chip("test") : null], acts);
+
+  const sites = d.sites || [];
+  const tabs = [["impact", nodeSel ? "Details" : "Summary"], ["sites", "Edit sites", sites.length]];
+  if (n.id.startsWith("s:")) tabs.push(["source", "Source"]);
+  setTabs(tabs);
+
+  if (S.tab === "source") { const h = el("div"); body.append(h); sourceInto(h, n.id); return; }
+  if (S.tab === "sites") { body.append(siteGroups(sites)); return; }
+
+  if (nodeSel) {
+    const mine = sites.filter(s => s.nodeId === nodeSel.id);
+    if (nodeSel.signature) body.append(sec("Signature", null, el("div", { class: "sig" }, nodeSel.signature)));
+    body.append(sec("Edit sites here", mine.length, mine.length ? siteGroups(mine) : el("p", { class: "empty" },
+      nodeSel.role === "transitive" ? "Not an edit site. It calls an edit site, so a change in behaviour can reach it, but its own code does not change for this edit." : "No edit site recorded in this declaration.")));
+    return;
+  }
+
+  const ok = d.safeToClaimComplete;
+  body.append(el("div", { class: "verdict " + (ok ? "ok" : "warn") }, icon(ok ? "check" : "alert"), el("div", null,
+    el("b", null, ok ? "Complete for this repository" : "Partial — review before relying on it"),
+    el("span", null, [d.completeness, d.completenessScope].filter(Boolean).join(" · ")),
+    d.scopeBoundary || d.coverageNote ? el("details", null, el("summary", null, "Scope and limits"), d.scopeBoundary ? el("div", { style: "margin-top:4px" }, d.scopeBoundary) : null, d.coverageNote ? el("div", { style: "margin-top:4px" }, d.coverageNote) : null) : null)));
+  const c = d.counts || {};
+  const tiles = [tile(d.totalSites || sites.length, "edit sites", S.css["r-site"]), tile(d.files, "files to touch")];
+  if (c.caller) tiles.push(tile(c.caller, plural(c.caller, "caller").replace(/^[\d,]+ /, ""), S.css["r-site"]));
+  if (c.access) tiles.push(tile(c.access, d.memberKind ? `${d.memberKind} accessors` : "accessors", S.css["r-site"]));
+  if (c.family) tiles.push(tile(c.family, "change with it", S.css["r-family"]));
+  if (d.depth > 1) tiles.push(tile(c.transitive || 0, `reached in ${d.depth - 1} more hop${d.depth > 2 ? "s" : ""}`, S.css["r-trans"]));
+  const testSites = sites.filter(s => s.test).length;
+  if (testSites) tiles.push(tile(testSites, "sites in tests"));
+  body.append(el("div", { class: "tiles" }, tiles));
+  if (t.signature) body.append(sec("Signature", null, el("div", { class: "sig" }, t.signature)));
+  if (d.groupedByFile) body.append(el("div", { class: "doc", style: "margin-bottom:12px" }, "Large change: the graph draws one node per file. Select a file to see its sites."));
+  for (const note of d.notes || []) body.append(el("div", { class: "doc", style: "margin-bottom:12px" }, note));
+  const byDir = new Map();
+  for (const s of sites) { const k = s.path.includes("/") ? s.path.slice(0, s.path.lastIndexOf("/")) : "(root)"; byDir.set(k, (byDir.get(k) || 0) + 1); }
+  const dirs = [...byDir].sort((a, b) => b[1] - a[1]);
+  if (dirs.length > 1) {
+    const ul = el("ul", { class: "list" });
+    for (const [dir, cnt] of dirs.slice(0, 8)) ul.append(el("li", { onclick: () => { S.tab = "sites"; renderPanel(); } }, glyphEl({ type: "dir" }), el("span", { class: "nm" }, dir), el("span", { class: "w" }, plural(cnt, "site"))));
+    body.append(sec("Where the edits land", dirs.length, ul, dirs.length > 8 ? el("div", { class: "more" }, `${dirs.length - 8} more packages`) : null));
+  }
+  body.append(sec("Edit sites", sites.length, siteGroups(sites.slice(0, 10)), sites.length > 10 ? el("button", { class: "btn", style: "margin-top:4px", onclick: () => { S.tab = "sites"; renderPanel(); } }, `View all ${fmt(sites.length)} sites`) : null));
+  if (d.related && d.related.length) {
+    const items = d.related.map(h => ({ node: { ...h, type: "symbol", kind: "function" }, sub: `${h.kind} · ${h.path}:${h.line}` }));
+    body.append(sec("Related, not affected", items.length, ...listOf(items, () => "", it => { if (it.node.id) go(it.node.id); }, 10)));
+  }
+}
+function siteList(d) {
+  if (d.relaySites && d.relaySites.length) return d.relaySites.join("\n");
+  return (d.sites || []).map(s => `${s.path}:${s.line}:${s.symbol || ""} [${s.access || s.role}]`).join("\n");
+}
+function siteGroups(sites) {
+  const wrap = el("div"), byFile = new Map();
+  for (const s of sites) { if (!byFile.has(s.path)) byFile.set(s.path, []); byFile.get(s.path).push(s); }
+  for (const [path, list] of byFile) {
+    const g = el("div", { class: "filegroup" }, el("header", null, icon("file"), el("span", null, "‎" + path), el("em", null, list.length)));
+    for (const s of list) {
+      const node = S.byId.get(s.nodeId);
+      g.append(el("div", { class: "site", title: node ? "Show on the graph" : "Not drawn (hidden or capped)", onclick: () => { if (node) { if (S.hidden.delete(node.role)) renderLegend(); select(node, true); } } },
+        el("span", { class: "ln" }, s.line), el("div", { class: "who" }, el("i", { style: `background:${roleColor(s.role)}` }), el("span", null, s.symbol || "—"), s.access ? el("span", { class: "tag" }, s.access) : null, s.test ? el("span", { class: "tag" }, "test") : null),
+        s.text ? el("code", null, s.text.trim()) : null));
+    }
+    wrap.append(g);
+  }
+  return wrap;
+}
+
+/* ---------- command palette ---------- */
+const pal = $("palette"), q = $("q"), hitsBox = $("hits");
+let hits = [], hitIx = 0, searchSeq = 0, searchTimer = 0;
+function openPalette() { pal.classList.add("open"); q.value = ""; hits = []; renderHits(true); setTimeout(() => q.focus(), 0); }
+function closePalette() { pal.classList.remove("open"); q.blur(); }
+$("open-search").onclick = openPalette;
+pal.addEventListener("mousedown", e => { if (e.target === pal) closePalette(); });
+function renderHits(initial) {
+  hitsBox.replaceChildren();
+  if (initial) { hitsBox.append(el("li", { class: "none" }, "Type a name — a function, a type, a file or a package.")); return; }
+  if (!hits.length) { hitsBox.append(el("li", { class: "none" }, "No matches in the index")); return; }
+  let last = null, i = 0;
+  const label = { symbol: "Symbols", file: "Files", dir: "Packages" };
+  for (const h of hits) {
+    if (h.type !== last) { hitsBox.append(el("li", { class: "grp" }, label[h.type] || h.type)); last = h.type; }
+    const ix = i++;
+    hitsBox.append(el("li", { class: "hit" + (ix === hitIx ? " on" : ""), role: "option", onmousemove: () => { if (hitIx !== ix) { hitIx = ix; renderHits(); } }, onmousedown: e => { e.preventDefault(); choose(h, e.shiftKey); } },
+      glyphEl(h), el("span", { class: "name" }, h.label), el("span", { class: "where" }, "‎" + (h.type === "symbol" ? `${h.path}:${h.line}` : h.path))));
+  }
+  const on = hitsBox.querySelector(".on"); if (on) on.scrollIntoView({ block: "nearest" });
+}
+function choose(h, impact) { closePalette(); if (impact && h.type === "symbol" && S.meta?.canImpact) impactOf(h.id); else go(h.id); }
+q.addEventListener("input", () => {
+  const text = q.value.trim();
+  clearTimeout(searchTimer);
+  if (!text) { hits = []; renderHits(true); return; }
+  searchTimer = setTimeout(async () => {
+    const seq = ++searchSeq;
+    try {
+      const r = await api("/api/search?limit=60&q=" + encodeURIComponent(text));
+      if (seq !== searchSeq) return;
+      const order = { symbol: 0, file: 1, dir: 2 };
+      hits = r.hits.map((h, i) => ({ h, i })).sort((a, b) => order[a.h.type] - order[b.h.type] || a.i - b.i).map(x => x.h);
+      hitIx = 0; renderHits();
+    } catch { /* the next keystroke retries */ }
+  }, 90);
+});
+q.addEventListener("keydown", e => {
+  e.stopPropagation(); // the palette owns its keys; never fall through to graph shortcuts
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); closePalette(); return; }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (!hits.length) return;
+    e.preventDefault(); hitIx = (hitIx + (e.key === "ArrowDown" ? 1 : hits.length - 1)) % hits.length; renderHits();
+  } else if (e.key === "Enter") { e.preventDefault(); if (hits[hitIx]) choose(hits[hitIx], e.shiftKey); }
+  else if (e.key === "Escape") { e.preventDefault(); closePalette(); }
+});
+
+window.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); pal.classList.contains("open") ? closePalette() : openPalette(); return; }
+  if (pal.classList.contains("open") || e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement) return;
+  if (e.key === "/") { e.preventDefault(); openPalette(); }
+  else if (e.key === "Escape") select(null);
+  else if (e.key === "f") fit(true);
+  else if (e.key === "+" || e.key === "=") zoomBy(1.35);
+  else if (e.key === "-") zoomBy(1 / 1.35);
+  else if (e.key === "i") { const id = S.sel && !S.sel.a && S.sel.id.startsWith("s:") ? S.sel.id : S.scope.startsWith("s:") ? S.scope : null; if (id && S.meta?.canImpact) impactOf(id); }
+  else if (e.key === "u" || e.key === "Backspace") { const up = parentScope(); if (up !== null) go(up); }
+  else if (e.key === "Enter" && S.sel && !S.sel.a && !S.sel.focus) S.mode === "impact" ? impactOf(S.sel.id) : go(S.sel.id);
+});
+
+/* ---------- start ---------- */
+(async function start() {
+  readHash();
+  syncTools();
+  try { S.meta = await api("/api/meta"); }
+  catch (e) { overlay("error", "Cannot reach the Prism graph server", e.message + " — is `prism graph` still running?"); return; }
+  renderRepo(); renderCrumbs(); syncTools();
+  load();
+})();
+</script>
+</body>
+</html>

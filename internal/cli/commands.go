@@ -58,6 +58,11 @@ Usage:
                                   tiers), cycles. Production shape by default
                                   ([--depth N] [--component X] [--tests]
                                   [--expand 'A->B'] [--json])
+  prism graph [dir]               Open the interactive graph explorer in a browser:
+                                  directories -> files -> symbols -> one symbol's
+                                  callers and callees, with search and the evidence
+                                  behind each edge. Serves on localhost until Ctrl+C
+                                  ([--port N] [--no-open] [--tests])
   prism cycles [dir]              Dependency cycles with per-edge evidence
                                   ([--depth N] [--tests] [--json])
   prism arch [dir]                Validate declared architecture rules
@@ -220,6 +225,8 @@ func Run(args []string) int {
 		return cmdDoctor(rest)
 	case "map":
 		return cmdMap(rest)
+	case "graph":
+		return cmdGraph(rest)
 	case "cycles":
 		return cmdCycles(rest)
 	case "arch", "arch-check":

@@ -232,6 +232,15 @@ prism verify . --base main
 
 `prism arch` reports the concrete `file:line` evidence for each forbidden component edge. `prism verify` checks the current diff for missed impact sites, new component dependencies, and introduced architecture violations.
 
+## Graph explorer
+
+```sh
+prism graph            # opens http://127.0.0.1:8787/ in the browser
+prism graph --no-open --port 9000 path/to/repo
+```
+
+`prism graph` serves an interactive view of the indexed graph on localhost until you press Ctrl+C. It opens on the repository's packages and the dependencies between them; double-click to drill down from a directory to its files, from a file to its symbols, and from a symbol to its callers, callees and members. Click a link to see the call and type-use sites behind it. Search (`⌘K` or `/`) finds symbols, files and directories across the whole index. **Change impact** (the `i` key, or Shift+Enter in search) lays a symbol's `prism change-impact` answer onto the graph: the declaration at the centre, the overrides and implementations that change with it, every edit site with its call line, and optionally the callers one or two hops further out (reached, not edit sites). It shows whether the answer is complete for the repository and can copy the site list; changes with more than 60 edit-site declarations are drawn one node per file. Test files are left out unless you turn on **Tests** (or pass `--tests`), and **Reload** re-indexes changed files. The page is self-contained: it loads nothing from the network, and the server answers loopback requests only.
+
 ## Language support
 
 Prism indexes Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#, PHP, Swift, Kotlin, Objective-C, COBOL, and JCL (via the embedded Grove engine). Semantic depth varies by language and by the native toolchain available in the repository; COBOL and JCL are structural/heuristic only, with no published accuracy oracle yet. `prism doctor` reports the full per-language indexing/resolution tier and limitations breakdown (Grove's own capability manifest) under its `languages` key, alongside index/engine status.
@@ -240,6 +249,7 @@ Prism indexes Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#,
 
 - **CLI:** local interactive use and CI
 - **MCP over stdio:** Claude Code, Cursor, VS Code, Codex, Gemini, OpenCode, and other MCP clients
+- **Browser:** `prism graph` — interactive graph explorer on localhost
 - **HTTP:** `prism serve --port 8888`; see [docs/HTTP_API.md](docs/HTTP_API.md)
 - **Go library:** see [docs/GO_KIT.md](docs/GO_KIT.md)
 
