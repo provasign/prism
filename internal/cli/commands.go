@@ -113,6 +113,10 @@ Usage:
   prism resolve <name> [dir]      Resolve a name to its definition(s): file:line + kind
   prism edges <name> [dir]        Walk the graph one hop from a symbol
                                   ([--direction in|out] [--kinds calls,uses-type,...])
+  prism test-plan [dir]          Impacted test symbols, file targets, evidence, and gaps
+                                  --base <ref>  Compare working tree with ref (default: HEAD)
+                                  --format text|json  Output format (default: text)
+                                  Construct runner commands; judge broader validation from gaps
   prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
 	                                  declaration(s), override/implementation family (subtype
 	                                  closure), super-declarations, and indexed callers.
@@ -233,6 +237,8 @@ func Run(args []string) int {
 		return cmdArch(rest)
 	case "verify":
 		return cmdVerify(rest)
+	case "test-plan":
+		return cmdTestPlan(rest)
 	case "query":
 		return cmdQuery(rest)
 	case "read":

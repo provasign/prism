@@ -749,13 +749,15 @@ func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any,
 			text, rendered = renderLookupAsText(m)
 		case "prism_verify":
 			text, rendered = renderVerifyAsText(m)
+		case "prism_test_plan":
+			text, rendered = renderTestPlanAsText(m)
 		case "prism_query":
 			// source delivery only; the symbols-delivery struct is not
 			// a map and correctly falls through to JSON.
 			text, rendered = renderQuerySourceAsText(m)
 		}
 	}
-	if rendered && compact {
+	if rendered && compact && tool != "prism_test_plan" {
 		text = compactToolWording(text)
 		if tool != "prism_search" {
 			text = h.once.applyKnown(text)

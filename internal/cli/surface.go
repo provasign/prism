@@ -374,6 +374,10 @@ const claudeShellOutputBudget = 28000
 // cut at a line boundary with a note saying how much was left out and how to
 // narrow the request.
 func fitShellOutput(op, text string) string {
+	if op == "test-plan" {
+		// An inventory must not silently lose targets or gaps.
+		return text
+	}
 	if os.Getenv("CLAUDECODE") == "" || len(text) <= claudeShellOutputBudget {
 		return text
 	}

@@ -149,7 +149,7 @@ func DispatchableTools() []string {
 		"prism_change_impact", "prism_missing_implementations",
 		"prism_dead_code", "prism_rename_plan",
 		"prism_map", "prism_cycles", "prism_verify", "prism_arch_check",
-		"prism_index", "prism_drift",
+		"prism_index", "prism_drift", "prism_test_plan",
 		"prism_compact", "prism_savings", "prism_feedback",
 	}
 }
@@ -174,7 +174,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	// reason.
 	timeout := 60 * time.Second
 	switch name {
-	case "prism_verify", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
+	case "prism_verify", "prism_test_plan", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
 		timeout = 10 * time.Minute
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -289,6 +289,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		return attachStaleWarning(res, stale), nil
 	case "prism_verify":
 		return h.toolVerify(ctx, args)
+	case "prism_test_plan":
+		return h.toolTestPlan(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
