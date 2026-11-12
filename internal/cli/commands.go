@@ -151,7 +151,9 @@ prism init [dir] flags:
   --interface <mcp|cli>
                       how agents reach Prism: mcp registers the MCP server, cli
                       registers nothing and steers agents to the prism command
-                      (asked interactively; recorded in prism.yaml; default mcp)
+                      (asked interactively; recorded in prism.yaml; default cli
+                      for a new project; a project initialized before the
+                      choice was recorded keeps mcp)
   --yes, -y           reuse harnesses recorded in prism.yaml without prompting
   --global            removed: MCP configuration is project-local only
   --mode <any>        accepted and IGNORED (since v0.38.0 one steering template
@@ -507,26 +509,21 @@ func cmdInit(args []string) int {
 		}
 	}
 
-	// Interface: the flag wins; then --refresh/--yes reuse what prism.yaml
-	// records; an interactive init asks; anything else keeps MCP, the
-	// behavior before init asked.
-	recordedInterface := readRecordedInterface(prismYAML)
+	// Interface: the flag wins; otherwise the default is what prism.yaml
+	// records, which --refresh/--yes reuse and an interactive init offers.
 	iface := interfaceArg
 	if iface == "" {
-		switch {
-		case refresh || yes:
-			iface = recordedInterface
-		case isInteractive():
+		def := defaultInterface(prismYAML)
+		if isInteractive() && !refresh && !yes {
 			fmt.Fprintln(os.Stderr, interfaceRecommendation(abs))
-			iface, err = promptInterface(recordedInterface)
+			iface, err = promptInterface(def)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "init:", err)
 				return 2
 			}
+		} else {
+			iface = def
 		}
-	}
-	if iface == "" {
-		iface = interfaceMCP
 	}
 
 	// 1. Write prism.yaml into the project. Grove is embedded in-process now,

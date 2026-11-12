@@ -108,13 +108,16 @@ prism init .
 
 This detects installed and previously configured harnesses, recommends those as the
 default, and asks which to configure. It then asks how agents should reach Prism:
-**MCP** (the default) registers the compact project-local server; **CLI** registers
-no MCP server and steers agents to run the `prism` command in their shell. Both
+**CLI** (the default, and the configuration the reference benchmark measured) registers
+no MCP server and steers agents to run the `prism` command in their shell; **MCP**
+registers the compact project-local server. Both
 choices write `prism.yaml` and current instruction files. CLI init removes Prism's
 own MCP registration from the selected harnesses' project configs if present.
 The interactive prompt gives a source-file-size hint: CLI suits occasional calls,
 while a resident MCP server is faster for repeated discovery, especially in a
 large repository. It does not change the default or claim a model-cost saving.
+A project that already has a `prism.yaml` without a recorded interface was set up when
+MCP was the default; init keeps it on MCP unless you pass `--interface cli`.
 Harness ids: `claude`, `codex`, `cursor`, `windsurf`, `vscode`, `gemini`, `opencode`.
 For automation, pass a comma-separated list such as
 `prism init --harness claude,codex .`; a first-time non-interactive init never assumes
@@ -122,7 +125,7 @@ all harnesses. Later runs can use `prism init --yes .` to reuse the selection re
 in `prism.yaml`. Set the interface without a prompt with
 `prism init --harness claude,codex --interface cli .` (or `--interface mcp`).
 `--yes` and `--refresh` also reuse the recorded interface; a first-time
-non-interactive init defaults to MCP. CLI mode requires `prism` on the agent's PATH.
+non-interactive init defaults to CLI. CLI mode requires `prism` on the agent's PATH.
 Windsurf receives `AGENTS.md` steering only because its documented MCP
 configuration is user-global, which Prism does not modify.
 Codex loads the generated `.codex/config.toml` after the repository is trusted;

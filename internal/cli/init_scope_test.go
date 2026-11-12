@@ -82,7 +82,7 @@ func TestCmdInit_ConfiguresOnlySelectedHarnesses(t *testing.T) {
 	setHome(t, home)
 	project := t.TempDir()
 
-	if rc := cmdInit([]string{"--harness", "codex", project}); rc != 0 {
+	if rc := cmdInit([]string{"--harness", "codex", "--interface", "mcp", project}); rc != 0 {
 		t.Fatalf("cmdInit rc = %d", rc)
 	}
 	for _, want := range []string{"prism.yaml", "AGENTS.md", filepath.Join(".codex", "config.toml")} {
@@ -179,7 +179,7 @@ func TestCmdInitYesReusesRecordedHarnesses(t *testing.T) {
 func TestCmdInitRefreshReusesRecordedHarnesses(t *testing.T) {
 	setHome(t, t.TempDir())
 	project := t.TempDir()
-	if rc := cmdInit([]string{"--harness", "codex", project}); rc != 0 {
+	if rc := cmdInit([]string{"--harness", "codex", "--interface", "mcp", project}); rc != 0 {
 		t.Fatalf("initial cmdInit = %d", rc)
 	}
 	configPath := filepath.Join(project, ".codex", "config.toml")

@@ -438,7 +438,7 @@ func TestCmdInit_ModeFlagAcceptedAndIgnored(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			setHome(t, t.TempDir())
 			dir := t.TempDir()
-			if rc := cmdInit([]string{"--harness", "claude", dir, "--mode", mode}); rc != 0 {
+			if rc := cmdInit([]string{"--harness", "claude", "--interface", "mcp", dir, "--mode", mode}); rc != 0 {
 				t.Fatalf("rc %d", rc)
 			}
 			raw, _ := os.ReadFile(filepath.Join(dir, "prism.yaml"))

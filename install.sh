@@ -166,8 +166,8 @@ printf '\n%s %s installed: context before the edit.\n' "$PRODUCT" "$VERSION"
 printf 'Prism gives your coding agent every caller, implementation and test a change\naffects, resolved by the compiler, not grep.\n\nNext steps:\n'
 step "Open a new terminal, or run:  export PATH=\"${INSTALL_DIR}:\$PATH\""
 step "cd your-repo"
-step "prism init       choose your coding agents and how they reach Prism (MCP or CLI)"
+step "prism init       choose your coding agents; they run the prism command (CLI, the default) or use MCP"
 step "prism index      build the code graph"
-step "Restart or reload your coding agent. MCP configuration is project-local: in"
-printf '     Claude Code, approve the .mcp.json servers if asked, then check: claude mcp list\n'
+step "Restart or reload your coding agent. If you chose MCP (prism init --interface mcp):"
+printf '     in Claude Code, approve the .mcp.json servers if asked, then check: claude mcp list\n'
 step "Commit what init writes, so every clone's agent works the same way"

@@ -130,15 +130,32 @@ func setPrismYAMLInterface(yaml, iface string) string {
 	return strings.TrimRight(yaml, "\n") + "\n" + line + "\n"
 }
 
-// promptInterface asks how agents should reach Prism. Enter takes the default.
-func promptInterface(recorded string) (string, error) {
-	def, defNum := interfaceMCP, "1"
-	if recorded == interfaceCLI {
-		def, defNum = interfaceCLI, "2"
+// defaultInterface is the interface init uses when --interface is not given:
+// the one prism.yaml records; CLI for a new project (the configuration the
+// published benchmark measured); MCP for a project whose prism.yaml predates
+// the recorded choice, because it was set up when MCP was the default and a
+// refresh must not silently switch it.
+func defaultInterface(prismYAML string) string {
+	if recorded := readRecordedInterface(prismYAML); recorded != "" {
+		return recorded
+	}
+	if _, err := os.Stat(prismYAML); err == nil {
+		return interfaceMCP
+	}
+	return interfaceCLI
+}
+
+// promptInterface asks how agents should reach Prism. Enter takes def.
+func promptInterface(def string) (string, error) {
+	defNum := "1"
+	if def == interfaceMCP {
+		defNum = "2"
+	} else {
+		def = interfaceCLI
 	}
 	fmt.Fprintln(os.Stderr, "\nHow should agents reach Prism?")
-	fmt.Fprintln(os.Stderr, "  [1] MCP  register the Prism MCP server in each harness (tool schemas load into the agent's context)")
-	fmt.Fprintln(os.Stderr, "  [2] CLI  no MCP server; agents run `prism ...` in their shell (nothing registered)")
+	fmt.Fprintln(os.Stderr, "  [1] CLI  no MCP server; agents run `prism ...` in their shell (nothing registered)")
+	fmt.Fprintln(os.Stderr, "  [2] MCP  register the Prism MCP server in each harness (tool schemas load into the agent's context)")
 	fmt.Fprintf(os.Stderr, "Select interface [default: %s]: ", defNum)
 	line, err := initStdin().ReadString('\n')
 	if err != nil && len(line) == 0 {
@@ -150,12 +167,12 @@ func promptInterface(recorded string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(line)) {
 	case "":
 		return def, nil
-	case "1", "mcp":
-		return interfaceMCP, nil
-	case "2", "cli":
+	case "1", "cli":
 		return interfaceCLI, nil
+	case "2", "mcp":
+		return interfaceMCP, nil
 	}
-	return "", fmt.Errorf("unknown interface %q; enter 1 (MCP) or 2 (CLI)", strings.TrimSpace(line))
+	return "", fmt.Errorf("unknown interface %q; enter 1 (CLI) or 2 (MCP)", strings.TrimSpace(line))
 }
 
 // unregisterMCPTools removes Prism's own MCP entry from the selected
