@@ -100,6 +100,7 @@ Usage:
                                   [--rollup-only]  on a truncated search, skip the raw
                                   sample and return only the grouped-by-symbol rollup
                                   [--dir <path>]  where to search (default: .)
+                                  [--repo <id>|all]  text matches in a linked repository
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
                                   Multiple names: prism lookup <name>... [--dir <path>]
@@ -2519,6 +2520,7 @@ func cmdSearch(args []string) int {
 	rollupOnly := false
 	contextLines := 0
 	contextSet := false
+	repo := ""
 	var bare []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -2536,6 +2538,10 @@ func cmdSearch(args []string) int {
 			// merged symbol view instead. A Bash-only subagent following its own
 			// instructions got the wrong answer shape and no indication why.
 			scope, err = choiceFlag("search", args, i, "text", "symbols", "both")
+			i++
+		case "--repo":
+			// A linked repository's id, or "all": text matches there.
+			repo, err = flagValue("search", args, i)
 			i++
 		case "--regex":
 			regex = true
@@ -2661,12 +2667,34 @@ func cmdSearch(args []string) int {
 	if contextSet {
 		searchArgs["context"] = contextLines
 	}
+	ws, wsErr := loadWorkspace(dir)
+	linkedOpts := textsearch.Options{Regex: regex, Paths: paths, Glob: globs, Exhaustive: exhaustive}
+	if limitSet {
+		linkedOpts.MaxHits = limit
+	}
+	if repo != "" {
+		if wsErr != nil || ws == nil {
+			fmt.Fprintln(os.Stderr, "search: --repo needs linked repositories; none are declared (prism workspace add <path>)")
+			return 1
+		}
+		if repo != "all" {
+			return printLinkedSearch(ws, repo, bare, linkedOpts, filesOnly)
+		}
+	}
 	out, compactText, rendered, err := invokeSearchWithCompactRendering(dir, searchArgs, format == formatText)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
 	}
 	printToolResult("search", out, compactText, rendered, format)
+	if ws != nil && format == formatText {
+		if repo == "all" {
+			return printLinkedSearch(ws, repo, bare, linkedOpts, filesOnly)
+		}
+		if line := linkedSearchCounts(ws, bare, linkedOpts); line != "" {
+			fmt.Println(line)
+		}
+	}
 	return 0
 }
 

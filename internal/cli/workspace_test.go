@@ -177,3 +177,39 @@ func TestWorkspaceLookupFallsBackToLinkedRepository(t *testing.T) {
 		t.Fatalf("local symbol not answered locally:\n%s", out)
 	}
 }
+
+func TestWorkspaceSearchLinkedRepositories(t *testing.T) {
+	parent, app := workspaceFixture(t)
+	writeCLIFile(t, parent, "app/use.go", "package main\n\n// calls LibMarker helpers\n")
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index rc=%d", rc)
+	}
+	t.Chdir(app)
+
+	out := captureStdout(func() {
+		if rc := cmdSearch([]string{"LibMarker", "--scope", "text"}); rc != 0 {
+			t.Fatalf("search rc=%d", rc)
+		}
+	})
+	if !strings.Contains(out, "use.go") || strings.Contains(out, "../lib/lib.go") {
+		t.Fatalf("default search must list this repository only:\n%s", out)
+	}
+	if !strings.Contains(out, "lib 1 in 1 file(s)") {
+		t.Fatalf("default search does not count matches in the linked repository:\n%s", out)
+	}
+
+	out = captureStdout(func() {
+		if rc := cmdSearch([]string{"LibMarker", "--repo", "lib"}); rc != 0 {
+			t.Fatalf("search --repo rc=%d", rc)
+		}
+	})
+	if !strings.Contains(out, "../lib/lib.go:3:") || strings.Contains(out, "use.go") {
+		t.Fatalf("--repo lib must list only lib, under ../lib paths:\n%s", out)
+	}
+	if strings.Contains(out, "OtherMarker") {
+		t.Fatalf("unlinked repository searched:\n%s", out)
+	}
+	if rc := cmdSearch([]string{"LibMarker", "--repo", "other"}); rc == 0 {
+		t.Fatal("--repo accepted a repository that is not linked")
+	}
+}
