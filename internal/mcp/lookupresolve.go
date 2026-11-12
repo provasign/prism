@@ -64,7 +64,16 @@ func (h *Handler) resolveLookup(ctx context.Context, name, fileScope, fileHint s
 		out["note"] = note
 		return out, nil
 	}
-	return h.lookupMiss(ctx, loc, q, name, pool), nil
+	linked, unread := h.lookupLinked(ctx, q, fields)
+	if linked != nil {
+		return linked, nil
+	}
+	miss := h.lookupMiss(ctx, loc, q, name, pool)
+	if len(unread) > 0 {
+		note, _ := miss["note"].(string)
+		miss["note"] = strings.TrimSpace(note + " Linked repositories with no index, not searched: " + strings.Join(unread, ", ") + ".")
+	}
+	return miss, nil
 }
 
 // lookupPool gathers the candidate symbols for q: every symbol of the scoped

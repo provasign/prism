@@ -850,3 +850,19 @@ func convertSymbol(s groveeng.Symbol) SymbolRecord {
 		CallSites:      calls,
 	}
 }
+
+// ReadSymbolsNamed answers from another repository's existing index without
+// opening an engine there: nothing is indexed, built, or written under root.
+// It fails when root has no index.
+func ReadSymbolsNamed(ctx context.Context, root string, names []string) ([]SymbolRecord, error) {
+	r, err := groveeng.OpenReader(root)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	syms, err := r.SymbolsNamed(ctx, names)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
+}

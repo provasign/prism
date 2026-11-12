@@ -139,3 +139,41 @@ func TestWorkspaceAddRemove(t *testing.T) {
 		t.Fatal("remove touched the checkout")
 	}
 }
+
+func TestWorkspaceLookupFallsBackToLinkedRepository(t *testing.T) {
+	parent, app := workspaceFixture(t)
+	writeCLIFile(t, parent, "lib/box.go", "package lib\n\ntype Box struct{}\n\n// Unwrap is only defined in lib.\nfunc (b *Box) Unwrap() int { return 42 }\n")
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	t.Chdir(app)
+
+	// lib is linked but has no index yet: the miss must say it was not searched.
+	out := captureStdout(func() { cmdLookup([]string{"Box.Unwrap"}) })
+	if !strings.Contains(out, "not searched") || !strings.Contains(out, "lib (../lib)") {
+		t.Fatalf("miss does not name the unindexed linked repository:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(parent, "lib", ".grove")); err == nil {
+		t.Fatal("a lookup from app created an index in lib")
+	}
+
+	if rc := cmdIndex([]string{filepath.Join(parent, "lib")}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	out = captureStdout(func() {
+		if rc := cmdLookup([]string{"Box.Unwrap"}); rc != 0 {
+			t.Fatalf("lookup rc=%d", rc)
+		}
+	})
+	for _, want := range []string{"../lib/box.go", "return 42", "linked repository lib"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("lookup output missing %q:\n%s", want, out)
+		}
+	}
+
+	// A name this repository defines is answered here, with no linked note.
+	out = captureStdout(func() { cmdLookup([]string{"Main"}) })
+	if !strings.Contains(out, "main.go") || strings.Contains(out, "linked repository") {
+		t.Fatalf("local symbol not answered locally:\n%s", out)
+	}
+}
