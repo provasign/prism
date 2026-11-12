@@ -1,0 +1,225 @@
+shale_version: "0"
+id: e2434b55-bf3b-4dcc-979c-27da9bb34e6b
+created_at: 2026-11-12T19:22:04.014396Z
+finalized_at: 2026-11-12T20:52:08.044867Z
+agent:
+    tool: claude-code
+    model: claude-fable-5-2
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: graph-viz
+privacy: redacted
+files:
+    - path: internal/graphui/model.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-12T19:29:41.766974Z
+    - path: internal/graphui/server.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-12T19:30:25.257083Z
+    - path: internal/graphui/index.html
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-12T19:33:36.099245Z
+    - path: internal/graphui/impact.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-12T19:49:46.016351Z
+commands:
+    - cmd: prism --help 2>&1 | head -60; prism search graph viz visualize serve --scope text --format text --path internal/cli 2>&1 | head -40
+      at: 2026-11-12T19:22:40.674271Z
+      classified: other
+    - cmd: prism --help 2>&1 | sed -n '60,200p'; prism search "dot" mermaid html graphviz --scope text --format text --path internal/cli/viewcmds.go 2>&1 | head -30
+      at: 2026-11-12T19:22:42.878354Z
+      classified: other
+    - cmd: git checkout -b graph-viz && wc -l internal/cli/*.go | sort -n | tail -15 && ls internal/ && prism search cmdMap cmdServe cmdEdges cmdNode --scope symbols --format text --no-bodies 2>&1 | head -40
+      at: 2026-11-12T19:25:20.726428Z
+      classified: other
+    - cmd: prism lookup invokeTool cmdServe cmdEdges cmdNode --format text 2>&1 | head -330
+      at: 2026-11-12T19:25:26.431152Z
+      classified: other
+    - cmd: 'prism map --json 2>/dev/null | python3 -c " import json,sys d=json.load(sys.stdin) def shape(v,ind=0,k=''''): p='' ''*ind if isinstance(v,dict): print(p+k+'' {'') for kk,vv in list(v.items())[:14]: shape(vv,ind+2,kk) elif isi…'
+      at: 2026-11-12T19:25:26.710009Z
+      classified: other
+    - cmd: wc -l internal/view/*.go internal/httpapi/*.go internal/grove/*.go | grep -v _test && prism search handleMap --scope symbols --format text --no-bodies 2>&1 | head; grep -n "^func " internal/view/*.go | grep -v _test | h…
+      at: 2026-11-12T19:25:32.694065Z
+      classified: other
+    - cmd: prism search "view.Build(" --scope text --format text --no-bodies 2>&1 | head -20; grep -n "^func " internal/grove/client.go internal/httpapi/http.go; sed -n 1,60p internal/grove/types.go
+      at: 2026-11-12T19:25:36.642925Z
+      classified: other
+    - cmd: prism lookup Run pickPort SnapshotGraph newClient cliRoot mustAbs --format text 2>&1 | grep -v "^$" | head -260; grep -n "dependencyKinds" -A12 internal/view/view.go | head -30; git diff --stat
+      at: 2026-11-12T19:26:08.290871Z
+      classified: other
+    - cmd: sed -n 185,276p internal/cli/commands.go; grep -n "serve\|\"watch\"\|\"map\"" internal/cli/surface.go internal/cli/*_test.go README.md docs/*.md 2>/dev/null | head -40; grep -n "tierOf\|func tierOf" -A14 internal/view/v…
+      at: 2026-11-12T19:26:11.597753Z
+      classified: other
+    - cmd: prism lookup commandHelp helpRequested TestHelpTextCoversCommands --format text 2>&1 | head -90; grep -rn "prism serve\|prism map" README.md docs/*.md 2>/dev/null | head; grep -n "serve" internal/cli/*_test.go | head; g…
+      at: 2026-11-12T19:26:18.293085Z
+      classified: other
+    - cmd: head -3 go.mod && go run ./cmd/_scratch . 2>&1 | tail -40
+      at: 2026-11-12T19:26:46.31091Z
+      classified: other
+    - cmd: rm -rf cmd/_scratch && sed -n 50,62p internal/grove/client.go && sed -n 60,110p internal/cli/flagvalues_test.go && sed -n 222,246p README.md && grep -n "func usageError\|func rejectUnknownFlag\|func positiveIntFlag\|fun…
+      at: 2026-11-12T19:28:08.148217Z
+      classified: other
+    - cmd: go build ./internal/graphui/ ./internal/view/
+      at: 2026-11-12T19:30:05.511547Z
+      classified: build
+    - cmd: go build -o <path> ./cmd/prism
+      at: 2026-11-12T19:34:11.394173Z
+      classified: build
+    - cmd: SP=<path> && ($SP/prism graph --no-open --port 8791 > $SP/graph.log 2>&1 &) ; sleep 6; cat $SP/graph.log; curl -s localhost:8791/api/meta; echo; curl -s 'localhost:8791/api/graph?scope=&flat=1' | python3 -c " import jso…
+      at: 2026-11-12T19:34:24.871824Z
+      classified: other
+    - cmd: SP=<path>; CH="<path> Chrome.app/Contents/MacOS/Google Chrome"; ls "$CH" >/dev/null && cd $SP && shot(){ "$CH" --headless=new --disable-gpu --hide-scrollbars --window-size=1440,900 --virtual-time-budget=6000 --screensho…
+      at: 2026-11-12T19:34:34.669866Z
+      classified: other
+    - cmd: go build -o $SP/prism ./cmd/prism
+      at: 2026-11-12T19:35:22.614021Z
+      classified: build
+    - cmd: node --version; python3 -c "import websockets; print('ws ok')" 2>&1 | tail -1
+      at: 2026-11-12T19:35:55.961651Z
+      classified: other
+    - cmd: sleep 7; node $SP/drive.mjs $SP 2>&1 | tail -40
+      at: 2026-11-12T19:37:03.678315Z
+      classified: other
+    - cmd: go test ./internal/graphui/ ./internal/cli/ -run 'Graph
+      at: 2026-11-12T19:38:31.669969Z
+      classified: test
+    - cmd: go vet ./internal/graphui/ ./internal/cli/ ./internal/view/
+      at: 2026-11-12T19:39:39.63048Z
+      classified: lint
+    - cmd: go build -o $SP/prism ./cmd/prism
+      at: 2026-11-12T19:40:25.650626Z
+      classified: build
+    - cmd: go test ./internal/graphui/ -run TestScaleScratch -v 2>&1
+      at: 2026-11-12T19:40:43.038142Z
+      classified: test
+    - cmd: go build ./...
+      at: 2026-11-12T19:41:03.206388Z
+      classified: build
+    - cmd: sed -n 60,257p internal/grove/types.go | grep -n "" | sed -n 1,200p | grep -iE "ChangeImpact|Related|Member|type |\`json" | head -80; sed -n 632,700p internal/grove/client.go
+      at: 2026-11-12T19:47:55.970029Z
+      classified: other
+    - cmd: 'for q in invokeTool Client.SnapshotGraph View.Depth Model.Graph; do echo "== $q"; prism change-impact $q --format json 2>&1 | python3 -c " import json,sys d=json.load(sys.stdin) for k,v in d.items(): if isinstance(v,lis…'
+      at: 2026-11-12T19:48:01.250767Z
+      classified: other
+    - cmd: 'prism change-impact invokeTool --format json | python3 -c " import json,sys d=json.load(sys.stdin) for k in [''callers'',''declarations'',''related'',''relaySites'',''editSites'']: v=d.get(k); print(k, json.dumps(v[0])[:400] if v…'
+      at: 2026-11-12T19:48:12.577347Z
+      classified: other
+    - cmd: sed -n 3216,3260p internal/mcp/tools.go; prism change-impact Client.SnapshotGraph --file internal/grove/client.go --format json | python3 -c " import json,sys; d=json.load(sys.stdin); print(d.get('status'), d.get('compl…
+      at: 2026-11-12T19:48:19.323971Z
+      classified: other
+    - cmd: 'prism change-impact Provider.Chat --format json | python3 -c " import json,sys; d=json.load(sys.stdin) for k in [''declarations'',''family'',''supers'',''declaringTypes'',''callers'',''related'']: v=d.get(k) or []; print(k,len(v),…'
+      at: 2026-11-12T19:48:22.935654Z
+      classified: other
+    - cmd: for q in "View internal/view/view.go" "Build.compStats internal/view/view.go" "maxInsideNodes internal/graphui/model.go" "dependencyKinds internal/view/view.go" "Handler internal/mcp/server.go"; do set -- $q; echo "== $…
+      at: 2026-11-12T19:48:47.889003Z
+      classified: other
+    - cmd: bash -c 'for q in "View internal/view/view.go" "Build.compStats internal/view/view.go" "maxInsideNodes internal/graphui/model.go" "dependencyKinds internal/view/view.go" "Handler internal/mcp/server.go"; do set -- $q; e…
+      at: 2026-11-12T19:48:53.241157Z
+      classified: other
+    - cmd: go vet ./internal/graphui/
+      at: 2026-11-12T19:49:52.767965Z
+      classified: lint
+    - cmd: go vet ./internal/graphui ./internal/cli
+      at: 2026-11-12T19:50:30.814991Z
+      classified: lint
+    - cmd: wc -l internal/graphui/index.html && git diff --stat -- internal/graphui/ ; ls -la internal/graphui/
+      at: 2026-11-12T19:55:42.120002Z
+      classified: other
+    - cmd: echo ok
+      at: 2026-11-12T19:55:46.413237Z
+      classified: other
+    - cmd: sleep 8; node $SP/drive2.mjs $SP 2>&1 | tail -40
+      at: 2026-11-12T20:00:50.328515Z
+      classified: other
+    - cmd: go build -o $SP/prism ./cmd/prism
+      at: 2026-11-12T20:01:56.377696Z
+      classified: build
+    - cmd: grep -n "sort.SliceStable(kept" -A40 internal/graphui/impact.go | head -60; grep -n "Counts map\|Files int\|maxImpactNodes =" internal/graphui/impact.go
+      at: 2026-11-12T20:02:20.188441Z
+      classified: other
+    - cmd: sed -n 400,440p internal/graphui/impact.go
+      at: 2026-11-12T20:02:22.271925Z
+      classified: other
+    - cmd: go vet ./internal/graphui
+      at: 2026-11-12T20:02:54.551179Z
+      classified: lint
+    - cmd: go vet ./internal/graphui
+      at: 2026-11-12T20:03:31.173044Z
+      classified: lint
+    - cmd: go build -o $SP/prism ./cmd/prism
+      at: 2026-11-12T20:04:26.216115Z
+      classified: build
+    - cmd: go build -o $SP/prism ./cmd/prism
+      at: 2026-11-12T20:05:36.326742Z
+      classified: build
+    - cmd: go vet ./internal/graphui ./internal/cli
+      at: 2026-11-12T20:06:00.368263Z
+      classified: lint
+    - cmd: git branch --show-current && git diff --stat internal/cli/commands.go internal/view/view.go README.md && git diff internal/cli/commands.go | grep -n "^@@\|graph\|Graph" | head -30
+      at: 2026-11-12T20:21:18.57764Z
+      classified: other
+    - cmd: git diff internal/cli/commands.go | sed -n 1,45p
+      at: 2026-11-12T20:21:20.699465Z
+      classified: other
+    - cmd: git add internal/graphui/ internal/cli/graphcmd.go internal/cli/graphcmd_test.go internal/view/view.go README.md && git diff --cached --stat && git diff --cached README.md internal/view/view.go | grep "^[+-]" | grep -v…
+      at: 2026-11-12T20:21:30.044321Z
+      classified: other
+    - cmd: go vet ./internal/graphui ./internal/cli ./internal/view
+      at: 2026-11-12T20:22:32.698892Z
+      classified: lint
+    - cmd: git log --oneline -1 && git status --short | grep -v "docs/research\|outputs/"
+      at: 2026-11-12T20:22:39.095401Z
+      classified: other
+    - cmd: git diff --stat && wc -l internal/cli/testplan*.go internal/mcp/testplan*.go && ls docs/research/ | grep -E "2026-10-(2[0-7])|2026-10-1[78]" ; ls outputs | head; git diff prism.yaml .mcp.json .codex/config.toml .claude/…
+      at: 2026-11-12T20:26:56.570576Z
+      classified: other
+    - cmd: git diff internal/mcp/server.go internal/mcp/tools.go internal/mcp/compactargs.go internal/cli/surface.go | grep "^[+-]" | grep -v "^+++\|^---" | cut -c1-150 | head -60; git diff CLAUDE.md | grep "^[+-]" | head -12 | cu…
+      at: 2026-11-12T20:27:01.710725Z
+      classified: other
+    - cmd: do echo "== $d"; ls $d | head -8; done; for d in test-plan-*2026-10-27; do f=$(ls $d/*.md 2>/dev/null | head -1); [ -n "$f" ] && { echo "### $f"; head -40 "$f"; }; done 2>/dev/null | head -150
+      at: 2026-11-12T20:31:00.7719Z
+      classified: other
+    - cmd: for d in test-plan-sonnet8-2026-10-27 test-plan-steering-sonnet3-2026-10-27 test-plan-response-sonnet1-2026-10-27 test-plan-response5-sonnet1-2026-10-27; do echo "===== $d"; cat $d/comparison.txt | head -40; [ -f $d/ado…
+      at: 2026-11-12T20:31:03.935035Z
+      classified: other
+    - cmd: cd . && git diff internal/mcp/tools.go internal/mcp/server.go internal/mcp/compactargs.go internal/cli/surface.go
+      at: 2026-11-12T20:34:51.771227Z
+      classified: other
+    - cmd: git diff internal/cli/commands.go | sed -n 45,200p; git diff internal/mcp/compact_test.go internal/mcp/mcp_test.go internal/mcp/indexerrors_test.go internal/cli/flagvalues_test.go; grep -n "legacyMCPTool(" internal/mcp/…
+      at: 2026-11-12T20:34:59.656394Z
+      classified: other
+    - cmd: gofmt -l internal/ ; git diff internal/mcp/server.go internal/mcp/tools.go internal/cli/surface.go | grep "^[+-]" | grep -v "^+++\|^---"
+      at: 2026-11-12T20:35:24.494676Z
+      classified: other
+    - cmd: go vet ./internal/mcp ./internal/cli
+      at: 2026-11-12T20:36:29.326075Z
+      classified: lint
+    - cmd: grep -n "^func Test" internal/mcp/testplan_test.go && sed -n 255,400p internal/mcp/testplan_test.go
+      at: 2026-11-12T20:36:31.863444Z
+      classified: other
+    - cmd: go vet ./internal/mcp
+      at: 2026-11-12T20:36:51.930926Z
+      classified: lint
+    - cmd: go vet ./internal/cli ./internal/mcp
+      at: 2026-11-12T20:37:54.749601Z
+      classified: lint
+    - cmd: go vet ./... 2>&1
+      at: 2026-11-12T20:39:05.619104Z
+      classified: lint
+    - cmd: git log --oneline -3 && git status --short | grep -v "docs/research\|outputs/"
+      at: 2026-11-12T20:39:11.896497Z
+      classified: other
+    - cmd: git fetch -q . graph-viz:main && git log --oneline -3 main && git status -sb | head -1
+      at: 2026-11-12T20:42:03.833136Z
+      classified: other
+notes: []
+redactions: 0
