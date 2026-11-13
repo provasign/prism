@@ -871,17 +871,11 @@ func ReadSymbolsNamed(ctx context.Context, root string, names []string) ([]Symbo
 // another module declares.
 type ExternalRef = groveeng.ExternalRef
 
-// GoSymbolKey is the key other repositories record when they name s, a Go
-// function, method or type declared under root.
-func GoSymbolKey(root string, s SymbolRecord) (string, bool) {
-	if s.Language != "go" {
-		return "", false
-	}
-	switch s.Kind {
-	case "function", "method", "struct", "interface", "type", "class":
-		return groveeng.GoKey(root, s.FilePath, s.QualifiedName)
-	}
-	return "", false
+// SymbolKey is the key other repositories record when they name s,
+// declared under root: Go functions, methods and types, and JavaScript or
+// TypeScript functions, methods and classes.
+func SymbolKey(root string, s SymbolRecord) (string, bool) {
+	return groveeng.KeyFor(root, s.Language, s.Kind, s.FilePath, s.QualifiedName)
 }
 
 // ReadExternalRefs lists, from another repository's existing index, its
@@ -927,8 +921,9 @@ func RefreshIndex(ctx context.Context, root string) error {
 	return err
 }
 
-// GoKey is GoSymbolKey for a Go symbol given by its repository-relative
-// file and qualified name, for a symbol that is no longer in the index.
-func GoKey(root, filePath, qualifiedName string) (string, bool) {
-	return groveeng.GoKey(root, filePath, qualifiedName)
+// KeyFor is SymbolKey for a symbol given by its fields, for one that is no
+// longer in the index. An empty language is inferred from the file
+// extension; an empty kind is taken to be a function.
+func KeyFor(root, language, kind, filePath, qualifiedName string) (string, bool) {
+	return groveeng.KeyFor(root, language, kind, filePath, qualifiedName)
 }

@@ -290,10 +290,7 @@ func (h *Handler) planLinkedTests(ctx context.Context, r *testPlanResult) {
 	var keys []string
 	seen := map[string]bool{}
 	for _, s := range r.ChangedSymbols {
-		if s.Language != "go" {
-			continue
-		}
-		if k, ok := grove.GoKey(h.Root, s.File, s.Name); ok && !seen[k] {
+		if k, ok := grove.KeyFor(h.Root, s.Language, s.Kind, s.File, s.Name); ok && !seen[k] {
 			seen[k] = true
 			keys = append(keys, k)
 		}

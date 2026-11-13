@@ -30,7 +30,7 @@ func (h *Handler) linkedKeys(syms []grove.SymbolRecord) []string {
 	seen := map[string]bool{}
 	var keys []string
 	for _, s := range syms {
-		if k, ok := grove.GoSymbolKey(h.Root, s); ok && !seen[k] {
+		if k, ok := grove.SymbolKey(h.Root, s); ok && !seen[k] {
 			seen[k] = true
 			keys = append(keys, k)
 		}
@@ -69,7 +69,7 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 		return nil, "", 0
 	}
 	if len(keys) == 0 {
-		return nil, "linked repositories not searched: cross-repository references are recorded for Go functions, methods and types only", 0
+		return nil, "linked repositories not searched: cross-repository references are recorded for Go (functions, methods, types) and TypeScript/JavaScript (calls) only", 0
 	}
 	searched := 0
 	var unread, staleRoots []string
@@ -127,6 +127,11 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 			if isTestFilePath(ref.File) {
 				tag = "  [test]"
 			}
+			if strings.HasPrefix(ref.Key, "npm:") {
+				// TypeScript records a callee by package and name, without
+				// its owner type.
+				tag += "  [matched by package and name]"
+			}
 			lines = append(lines, fmt.Sprintf("  %s: %s  [in %s]%s", at, text, ref.From, tag))
 			sites++
 		}
@@ -148,23 +153,25 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 // ahead of or behind that pin.
 func requirePin(root string, keys []string) string {
 	for _, req := range grove.ManifestRequires(root) {
-		if req.Ecosystem != "go" || req.CoMember {
+		if req.CoMember {
 			continue
 		}
 		for _, k := range keys {
-			pkg := strings.TrimPrefix(k[:strings.IndexByte(k, '#')], "go:")
-			if pkg == req.Name || strings.HasPrefix(pkg, req.Name+"/") {
-				pin := "requires " + req.Name
-				if req.Version != "" {
-					pin += " " + req.Version
-				}
-				if req.LocalPath != "" {
-					// go.work or a replace directive: the version is not
-					// what it is built against.
-					pin += ", built against the local checkout"
-				}
-				return pin
+			eco, rest, _ := strings.Cut(k, ":")
+			pkg, _, _ := strings.Cut(rest, "#")
+			if eco != req.Ecosystem || !(pkg == req.Name || (eco == "go" && strings.HasPrefix(pkg, req.Name+"/"))) {
+				continue
 			}
+			pin := "requires " + req.Name
+			if req.Version != "" {
+				pin += " " + req.Version
+			}
+			if req.LocalPath != "" {
+				// go.work, a replace directive, file: — the version is
+				// not what it is built against.
+				pin += ", built against the local checkout"
+			}
+			return pin
 		}
 	}
 	return ""

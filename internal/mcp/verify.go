@@ -864,7 +864,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		for _, sc := range sigChanges {
 			sym, _ := sc["symbol"].(string)
 			file, _ := sc["file"].(string)
-			if k, ok := grove.GoKey(h.Root, file, sym); ok {
+			if k, ok := grove.KeyFor(h.Root, "", "", file, sym); ok {
 				keys = append(keys, k)
 			}
 		}
