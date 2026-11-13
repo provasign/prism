@@ -103,10 +103,42 @@ func Load(primary string, cfg *config.Config) *Workspace {
 			Evidence: fmt.Sprintf("cache clone of %s at %s (%s), read-only reference", l.URL, ref, sha),
 		})
 	}
+	// The other end of links made from another repository's prism.yaml.
+	for _, l := range reverseLinks(primary) {
+		p := resolve(l.Path)
+		if seen[p] {
+			continue
+		}
+		seen[p] = true
+		id := l.ID
+		for n := 2; ids[id]; n++ {
+			id = fmt.Sprintf("%s-%d", l.ID, n)
+		}
+		ids[id] = true
+		_, err := os.Stat(p)
+		w.Roots = append(w.Roots, Root{
+			ID: id, Path: p, Missing: err != nil,
+			Evidence: "linked from " + w.RelPath(p) + "/prism.yaml (recorded on this machine)",
+		})
+	}
 	if len(w.Roots) == 0 {
 		return nil
 	}
 	return w
+}
+
+// RootsOf returns the directories of the repositories linked to root that
+// exist on disk: what an index run of root is told about.
+func RootsOf(root string) []string {
+	cfg, err := config.LoadFromDir(root)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, r := range Load(root, cfg).Linked() {
+		out = append(out, r.Path)
+	}
+	return out
 }
 
 // Linked returns the roots that exist on disk.

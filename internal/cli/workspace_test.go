@@ -766,3 +766,71 @@ func TestWorkspaceMissingCheckoutIsNamed(t *testing.T) {
 		t.Fatalf("unlinked dependencies not listed correctly:\n%s", out)
 	}
 }
+
+func hasJDK() bool {
+	if os.Getenv("JAVA_HOME") != "" {
+		return true
+	}
+	m, _ := filepath.Glob("/opt/homebrew/opt/openjdk*")
+	n, _ := filepath.Glob("/usr/lib/jvm/*")
+	return len(m)+len(n) > 0
+}
+
+// Two Java repositories with nothing installed between them: no jar of the
+// library on the application's classpath. Linking them once, from either
+// side, is enough for the library's change-impact to list the application's
+// call sites, because the link is recorded at both ends and the application
+// is then analysed against the library's sources.
+func TestWorkspaceJavaLinkedFromTheLibrarySide(t *testing.T) {
+	if !hasJDK() {
+		t.Skip("no JDK")
+	}
+	base, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(base, "state"))
+	lib, app := filepath.Join(base, "one", "lib"), filepath.Join(base, "two", "deep", "app")
+	pom := func(artifact string) string {
+		return "<project><modelVersion>4.0.0</modelVersion><groupId>com.acme</groupId><artifactId>" + artifact + "</artifactId><version>1.0</version></project>\n"
+	}
+	writeCLIFile(t, lib, "pom.xml", pom("lib"))
+	writeCLIFile(t, lib, "prism.yaml", "version: 2\n")
+	writeCLIFile(t, lib, "src/main/java/com/acme/lib/Box.java", "package com.acme.lib;\n\npublic class Box {\n    public int open() { return 1; }\n}\n")
+	writeCLIFile(t, app, "pom.xml", pom("app"))
+	writeCLIFile(t, app, "src/main/java/com/acme/app/Main.java", "package com.acme.app;\n\nimport com.acme.lib.Box;\n\npublic class Main {\n    static int run(Box b) {\n        return b.open();\n    }\n}\n")
+	// --allow-heuristic: the fixture's pom has no resolvable Maven setup,
+	// which cmdIndex reports as a readiness problem; javac still runs.
+	if rc := cmdIndex([]string{lib, "--allow-heuristic"}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	t.Chdir(lib)
+	// One command, from the library, with the application never indexed.
+	if rc := workspaceAdd([]string{app}); rc != 0 {
+		t.Fatalf("workspace add rc=%d", rc)
+	}
+	if _, err := os.Stat(filepath.Join(app, ".grove", "grove.db")); err != nil {
+		t.Fatal("workspace add did not index the repository it linked")
+	}
+	out := captureStdout(func() { cmdChangeImpact([]string{"Box.open", "--format", "text"}) })
+	if !strings.Contains(out, "src/main/java/com/acme/app/Main.java:7:18: return b.open();  [in Main.run]") {
+		t.Fatalf("the Java call site in the linked application is not listed:\n%s", out)
+	}
+	// The type itself: the parameter that names it.
+	out = captureStdout(func() { cmdChangeImpact([]string{"Box", "--format", "text"}) })
+	if !strings.Contains(out, "Main.java:6:") {
+		t.Fatalf("the use of the type in the linked application is not listed:\n%s", out)
+	}
+	// And the application sees the library, without a prism.yaml of its own.
+	t.Chdir(app)
+	out = captureStdout(func() { cmdWorkspace(nil) })
+	if !strings.Contains(out, "lib") || !strings.Contains(out, "recorded on this machine") {
+		t.Fatalf("the application does not see the library that linked it:\n%s", out)
+	}
+	// Unlinking removes both ends.
+	t.Chdir(lib)
+	if rc := workspaceRemove([]string{"app"}); rc != 0 {
+		t.Fatalf("remove rc=%d", rc)
+	}
+	t.Chdir(app)
+	if out = captureStdout(func() { cmdWorkspace(nil) }); !strings.Contains(out, "no linked repositories") {
+		t.Fatalf("the reverse end of a removed link is still there:\n%s", out)
+	}
+}

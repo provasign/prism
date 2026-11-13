@@ -26,6 +26,10 @@ import (
 type Client struct {
 	root    string
 	oneShot bool
+	// linked: other repositories linked to root (absolute paths). The
+	// engine never indexes them; a compiler pass may read a dependency's
+	// declarations from their sources.
+	linked []string
 
 	mu  sync.Mutex
 	eng *groveeng.Engine
@@ -58,6 +62,13 @@ func (c *Client) OneShot() *Client {
 	return c
 }
 
+// WithLinkedRoots names the repositories linked to this one. Call before
+// EnsureRunning.
+func (c *Client) WithLinkedRoots(roots []string) *Client {
+	c.linked = roots
+	return c
+}
+
 // BaseURL returns an embedded-mode marker so legacy log lines remain readable.
 func (c *Client) BaseURL() string { return "embedded://grove" }
 
@@ -85,7 +96,7 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	if c.root == "" {
 		return errors.New("grove: WithTokenFromDir(root) must be called before EnsureRunning")
 	}
-	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root, OneShot: c.oneShot})
+	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root, OneShot: c.oneShot, LinkedRoots: c.linked})
 	if err != nil {
 		return fmt.Errorf("grove open: %w", err)
 	}
@@ -911,8 +922,8 @@ func ReadIndexState(ctx context.Context, root string) (IndexState, error) {
 
 // RefreshIndex brings the existing index under root up to date with the
 // files on disk: the ordinary incremental run, bounded by ctx.
-func RefreshIndex(ctx context.Context, root string) error {
-	c := NewClient("", "").WithTokenFromDir(root).OneShot()
+func RefreshIndex(ctx context.Context, root string, linked ...string) error {
+	c := NewClient("", "").WithTokenFromDir(root).WithLinkedRoots(linked).OneShot()
 	if err := c.EnsureRunning(ctx); err != nil {
 		return err
 	}
@@ -945,3 +956,10 @@ func SymbolKeys(root string, s SymbolRecord) []string {
 func KeysFor(root, language, kind, filePath, qualifiedName string) []string {
 	return groveeng.KeysFor(root, language, kind, filePath, qualifiedName)
 }
+
+// ResolverVersion is the resolver version this build writes into an index.
+const ResolverVersion = groveeng.ResolverVersion
+
+// LinkedDigest identifies a set of linked repositories, for comparing with
+// IndexState.Linked.
+func LinkedDigest(roots []string) string { return groveeng.LinkedDigest(roots) }

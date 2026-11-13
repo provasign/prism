@@ -86,7 +86,7 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 		return nil, "", 0
 	}
 	if len(keys) == 0 {
-		return lines, "linked repositories not searched: cross-repository references are recorded for Go (functions, methods, types), TypeScript/JavaScript (calls) and Python (calls through imported names) only", 0
+		return lines, "linked repositories not searched: cross-repository references are recorded for Go, Java, TypeScript/JavaScript and Python only", 0
 	}
 	searched := 0
 	var unread, staleRoots []string

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/provasign/prism/internal/config"
 )
 
 // A cache clone is a dependency's source fetched by Prism itself, for a
@@ -30,7 +32,12 @@ type CacheLink struct {
 	Ref     string `json:"ref"` // as asked: a branch, tag or commit; "" is the remote's default branch
 	SHA     string `json:"sha"`
 	Path    string `json:"path"`
+	// Kind is "" for a cache clone and "reverse" for the other end of a
+	// link a `prism workspace` command made from Path's prism.yaml.
+	Kind string `json:"kind,omitempty"`
 }
+
+const kindReverse = "reverse"
 
 // CacheDir is where cache clones live: $PRISM_CACHE_DIR, else the user
 // cache directory.
@@ -97,11 +104,101 @@ func CacheLinks(primary string) []CacheLink {
 	primary = resolve(primary)
 	var out []CacheLink
 	for _, l := range readLinks() {
-		if l.Primary == primary {
+		if l.Primary == primary && l.Kind == "" {
 			out = append(out, l)
 		}
 	}
 	return out
+}
+
+// A link is written in one repository's prism.yaml but is useful from both
+// ends: the library wants its consumers' call sites, the consumer wants the
+// library's source, and a Java consumer is only analysed against the
+// library's sources if it knows where they are. So the command that makes a
+// link also records its other end, per machine, outside both repositories.
+// Only an explicit `prism workspace` command records one; merely having a
+// prism.yaml that points at a repository does not make that repository
+// trust it.
+
+// LinkReverse records that linker's prism.yaml links target, so target's
+// workspace includes linker.
+func LinkReverse(linker, target string) {
+	linker, target = resolve(linker), resolve(target)
+	if linker == target {
+		return
+	}
+	links := readLinks()
+	for _, l := range links {
+		if l.Kind == kindReverse && l.Primary == target && l.Path == linker {
+			return
+		}
+	}
+	_ = writeLinks(append(links, CacheLink{Primary: target, ID: filepath.Base(linker), Path: linker, Kind: kindReverse}))
+}
+
+// UnlinkReverse removes the record LinkReverse made.
+func UnlinkReverse(linker, target string) {
+	linker, target = resolve(linker), resolve(target)
+	links := readLinks()
+	kept := links[:0]
+	changed := false
+	for _, l := range links {
+		if l.Kind == kindReverse && l.Primary == target && l.Path == linker {
+			changed = true
+			continue
+		}
+		kept = append(kept, l)
+	}
+	if changed {
+		_ = writeLinks(kept)
+	}
+}
+
+// reverseLinks returns the repositories whose prism.yaml links primary, as
+// recorded on this machine. A record is honoured only while that prism.yaml
+// still declares the link: editing the file by hand unlinks both ends.
+func reverseLinks(primary string) []CacheLink {
+	var out []CacheLink
+	for _, l := range readLinks() {
+		if l.Kind != kindReverse || l.Primary != primary {
+			continue
+		}
+		cfg, err := config.LoadFromDir(l.Path)
+		if err != nil {
+			continue
+		}
+		for _, r := range cfg.WorkspaceRepos {
+			p := r.Path
+			if !filepath.IsAbs(p) {
+				p = filepath.Join(l.Path, filepath.FromSlash(p))
+			}
+			if resolve(p) == primary {
+				out = append(out, l)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// ConfirmLinks records the other end of every link in root's prism.yaml
+// whose directory exists. It runs from explicit `prism workspace` and
+// `prism init` commands, so a repository cloned with links already written
+// becomes visible from the repositories it links once the user has run one
+// of them there.
+func ConfirmLinks(root string, cfg *config.Config) {
+	if cfg == nil {
+		return
+	}
+	for _, r := range cfg.WorkspaceRepos {
+		p := r.Path
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(root, filepath.FromSlash(p))
+		}
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			LinkReverse(root, p)
+		}
+	}
 }
 
 // IsGitURL reports whether a `workspace add` argument names a remote

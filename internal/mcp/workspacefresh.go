@@ -46,17 +46,14 @@ func (h *Handler) freshenLinked(ctx context.Context, r workspace.Root) (stale st
 	if err != nil {
 		return "", false
 	}
-	if r.Cache {
-		return "", true // a cache clone is one commit and never changes
-	}
-	why := linkedStaleReason(r.Path, state)
+	why := linkedStaleReason(r, state)
 	if why == "" {
 		return "", true
 	}
 	budget := linkedRefreshBudget()
 	if budget > 0 {
 		rctx, cancel := context.WithTimeout(ctx, budget)
-		err := grove.RefreshIndex(rctx, r.Path)
+		err := grove.RefreshIndex(rctx, r.Path, workspace.RootsOf(r.Path)...)
 		cancel()
 		if err == nil {
 			return "", true
@@ -68,7 +65,23 @@ func (h *Handler) freshenLinked(ctx context.Context, r workspace.Root) (stale st
 
 // linkedStaleReason compares the tree an index was built from with the one
 // on disk. "" means no difference was found.
-func linkedStaleReason(root string, state grove.IndexState) string {
+func linkedStaleReason(r workspace.Root, state grove.IndexState) string {
+	root := r.Path
+	// Two things make an index wrong without any file changing. Written by
+	// another version, it was resolved by other rules; one from before
+	// cross-repository references existed holds none, and "no references"
+	// from it would be false. Built with a different set of linked
+	// repositories, a compiler pass may not have had a dependency's
+	// declarations to resolve against.
+	if state.Resolver != grove.ResolverVersion {
+		return "its index was written by another Prism version, so cross-repository references may be missing from it"
+	}
+	if state.Linked != grove.LinkedDigest(workspace.RootsOf(root)) {
+		return "the repositories linked to it changed since it was indexed"
+	}
+	if r.Cache {
+		return "" // a cache clone is one commit and never changes
+	}
 	now := workspace.CurrentTree(root)
 	if now.Head == "" {
 		return "" // not a git work tree: nothing to compare against

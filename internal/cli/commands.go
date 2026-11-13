@@ -120,7 +120,9 @@ Usage:
                                   --format text|json  Output format (default: text)
                                   Construct runner commands; judge broader validation from gaps
   prism workspace                Linked repositories: path, branch, commit, index, how linked
-                                  add <path> [--id <name>]  Link a local checkout (written to prism.yaml)
+                                  add <path>... [--id <name>] [--no-index]
+                                                            Link local checkouts: written to prism.yaml, made
+                                                            visible from both, and indexed if never indexed
                                   add <git-url>[@ref]       Fetch a repository that is not checked out into a
                                                             read-only cache at that commit, index it, link it
                                   fetch                     Re-resolve cache clones' branches
@@ -2210,7 +2212,7 @@ func cmdStatus(args []string) int {
 	// engine (newClient -> EnsureRunning) rehydrates the whole graph first —
 	// ~1.3s of work on a 500k-edge index that status never reads. Same counts,
 	// same output shape, ~5ms.
-	client := grove.NewClient("", "").WithTokenFromDir(root).OneShot()
+	client := grove.NewClient("", "").WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root)).OneShot()
 	res, err := client.QuickStatus(context.Background())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "status:", err)
@@ -3429,7 +3431,7 @@ func cmdMCP(args []string) int {
 		fmt.Fprintln(os.Stderr, "config:", err)
 		return 1
 	}
-	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root)
+	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root))
 
 	// Open the embedded Grove engine and run the initial index in the
 	// background so the MCP handshake is serviced without waiting on I/O.
@@ -3524,7 +3526,7 @@ func newClientMode(dir string, oneShot bool) (*config.Config, *grove.Client, err
 	if err != nil {
 		return nil, nil, fmt.Errorf("config: %w", err)
 	}
-	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root)
+	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root))
 	if oneShot {
 		client.OneShot()
 	}
@@ -3602,7 +3604,7 @@ func invokeCompactReadText(dir string, args map[string]any) (out any, text strin
 		return nil, "", false, fmt.Errorf("config: %w", err)
 	}
 	// Never started: the read path does not call it.
-	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root).OneShot()
+	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root)).OneShot()
 	h := mcp.NewHandler(cfg, root, client)
 	return h.InvokeCompactReadText(args)
 }

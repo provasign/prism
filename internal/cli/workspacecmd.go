@@ -46,6 +46,7 @@ func cmdWorkspace(args []string) int {
 		fmt.Fprintln(os.Stderr, "workspace:", err)
 		return 1
 	}
+	workspace.ConfirmLinks(root, cfg)
 	self := workspace.Inspect(workspace.Root{ID: filepath.Base(root), Path: root})
 	fmt.Printf("// workspace of %s  %s\n", root, refHead(self))
 	ws := workspace.Load(root, cfg)
@@ -92,8 +93,11 @@ func refHead(s workspace.Status) string {
 func workspaceAdd(args []string) int {
 	var targets []string
 	var id string
+	index := true
 	for i := 0; i < len(args); i++ {
 		switch {
+		case args[i] == "--no-index":
+			index = false
 		case args[i] == "--id" && i+1 < len(args):
 			i++
 			id = args[i]
@@ -106,19 +110,33 @@ func workspaceAdd(args []string) int {
 		}
 	}
 	if len(targets) == 0 || (id != "" && len(targets) > 1) {
-		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path|git-url[@ref]>... [--id <name>]   (--id names a single repository)")
+		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path|git-url[@ref]>... [--id <name>] [--no-index]   (--id names a single repository)")
 		return 2
 	}
 	rc := 0
 	for _, target := range targets {
-		if r := workspaceAddOne(target, id); r != 0 {
+		if r := workspaceAddOne(target, id, index); r != 0 {
 			rc = r
 		}
 	}
 	return rc
 }
 
-func workspaceAddOne(target, id string) int {
+// ensureLinkedIndex builds the first index of a repository that was just
+// linked. A linked repository with no index answers nothing, and the user
+// asked for the link, so the index is part of the request. An existing
+// index is left for the ordinary staleness check.
+func ensureLinkedIndex(dir string) {
+	if _, err := os.Stat(filepath.Join(dir, ".grove", "grove.db")); err == nil {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "indexing %s (first time; --no-index skips this)\n", dir)
+	if err := grove.RefreshIndex(context.Background(), dir, workspace.RootsOf(dir)...); err != nil {
+		fmt.Fprintf(os.Stderr, "workspace add: %s was linked but not indexed: %v\n", dir, err)
+	}
+}
+
+func workspaceAddOne(target, id string, index bool) int {
 	if target == "" {
 		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path> [--id <name>]")
 		return 2
@@ -182,6 +200,11 @@ func workspaceAddOne(target, id string) int {
 		return 1
 	}
 	fmt.Printf("linked %s -> %s\n", id, filepath.ToSlash(rel))
+	// The other end, on this machine: abs now sees this repository too.
+	workspace.LinkReverse(root, abs)
+	if index {
+		ensureLinkedIndex(abs)
+	}
 	return 0
 }
 
@@ -200,6 +223,17 @@ func workspaceRemove(args []string) int {
 	}
 	var kept []string
 	removed := false
+	if cfg, err := config.LoadFromDir(root); err == nil {
+		for _, r := range cfg.WorkspaceRepos {
+			if r.ID == id {
+				p := r.Path
+				if !filepath.IsAbs(p) {
+					p = filepath.Join(root, filepath.FromSlash(p))
+				}
+				workspace.UnlinkReverse(root, p)
+			}
+		}
+	}
 	for _, line := range strings.Split(string(data), "\n") {
 		if workspaceLineID(line) == id {
 			removed = true
@@ -299,6 +333,9 @@ func workspaceDiscover(args []string) int {
 // changes what every later answer covers, so it is never done silently.
 func offerWorkspaceLinks(root, mode string) {
 	workspace.Register(root)
+	if cfg, err := config.LoadFromDir(root); err == nil {
+		workspace.ConfirmLinks(root, cfg)
+	}
 	if mode == "none" {
 		return
 	}
