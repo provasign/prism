@@ -1071,3 +1071,55 @@ func TestWorkspaceChangeImpactVariablesAndFields(t *testing.T) {
 		t.Fatalf("the consumer setting the struct field is not listed:\n%s", out)
 	}
 }
+
+// The steering line follows the links: written when a link is added from
+// either side, removed when the link is, and never written into MCP
+// steering, where the server states the links at session start.
+func TestWorkspaceSteeringFollowsLinks(t *testing.T) {
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	app, lib := filepath.Join(parent, "app"), filepath.Join(parent, "lib")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nfunc main() {}\n")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n")
+	for _, r := range []string{app, lib} {
+		if rc := cmdInit([]string{r, "--harness", "claude", "--interface", "cli", "--workspace", "none"}); rc != 0 {
+			t.Fatalf("init %s rc=%d", r, rc)
+		}
+	}
+	steering := func(dir string) string {
+		data, _ := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+		return string(data)
+	}
+	t.Chdir(app)
+	if rc := workspaceAdd([]string{"../lib", "--no-index"}); rc != 0 {
+		t.Fatalf("add rc=%d", rc)
+	}
+	if !strings.Contains(steering(app), "Linked repositories: lib (../lib).") || !strings.Contains(steering(app), "--repo <id>") {
+		t.Fatalf("app steering not updated after linking:\n%s", steering(app))
+	}
+	if !strings.Contains(steering(lib), "Linked repositories: app (../app).") {
+		t.Fatalf("the other end's steering not updated:\n%s", steering(lib))
+	}
+	if strings.Count(steering(app), "<!-- prism:end -->") != 1 {
+		t.Fatalf("steering block duplicated:\n%s", steering(app))
+	}
+	if rc := workspaceRemove([]string{"lib"}); rc != 0 {
+		t.Fatalf("remove rc=%d", rc)
+	}
+	if strings.Contains(steering(app), "Linked repositories") || strings.Contains(steering(lib), "Linked repositories") {
+		t.Fatalf("steering still names a removed link:\napp:\n%s\nlib:\n%s", steering(app), steering(lib))
+	}
+
+	// MCP: the file never carries links.
+	if rc := cmdInit([]string{app, "--harness", "claude", "--interface", "mcp", "--workspace", "none"}); rc != 0 {
+		t.Fatalf("init mcp rc=%d", rc)
+	}
+	if rc := workspaceAdd([]string{"../lib", "--no-index"}); rc != 0 {
+		t.Fatalf("add rc=%d", rc)
+	}
+	if strings.Contains(steering(app), "Linked repositories") {
+		t.Fatalf("MCP steering file names links:\n%s", steering(app))
+	}
+}

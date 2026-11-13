@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"text/tabwriter"
 
@@ -211,6 +212,8 @@ func workspaceAddOne(target, id string, index bool) int {
 	if index {
 		ensureLinkedIndex(abs)
 	}
+	refreshSteering(root)
+	refreshSteering(abs)
 	return 0
 }
 
@@ -229,6 +232,7 @@ func workspaceRemove(args []string) int {
 	}
 	var kept []string
 	removed := false
+	var other string
 	if cfg, err := config.LoadFromDir(root); err == nil {
 		for _, r := range cfg.WorkspaceRepos {
 			if r.ID == id {
@@ -237,9 +241,16 @@ func workspaceRemove(args []string) int {
 					p = filepath.Join(root, filepath.FromSlash(p))
 				}
 				workspace.UnlinkReverse(root, p)
+				other = p
 			}
 		}
 	}
+	defer func() {
+		refreshSteering(root)
+		if other != "" {
+			refreshSteering(other)
+		}
+	}()
 	for _, line := range strings.Split(string(data), "\n") {
 		if workspaceLineID(line) == id {
 			removed = true
@@ -385,9 +396,25 @@ func offerWorkspaceLinks(root, mode string) {
 	}
 }
 
-// workspaceSteeringLine is the one line init adds to the steering block
-// when repositories are linked. Steering is paid for at every session
-// start, so it is a single sentence and absent without a workspace.
+// steeringFor is the steering block for a repository: the interface's
+// instructions, plus one line naming its linked repositories on the CLI.
+// Over MCP the server says the same at initialize, from the links as they
+// are when the session starts, so the file carries nothing that can go out
+// of date.
+func steeringFor(root, iface string) string {
+	if iface != interfaceCLI {
+		return steeringBlock()
+	}
+	steering := cliSteeringInstructionsForOS(runtime.GOOS)
+	if line := workspaceSteeringLine(root); line != "" {
+		steering = strings.Replace(steering, "<!-- prism:end -->", line+"\n\n<!-- prism:end -->", 1)
+	}
+	return steering
+}
+
+// workspaceSteeringLine is the one line the CLI steering block carries when
+// repositories are linked. Steering is paid for at every session start, so
+// it is a single sentence, absent without a workspace.
 func workspaceSteeringLine(root string) string {
 	cfg, err := config.LoadFromDir(root)
 	if err != nil {
@@ -397,7 +424,28 @@ func workspaceSteeringLine(root string) string {
 	if ws == nil || len(ws.Linked()) == 0 {
 		return ""
 	}
-	return "Linked repositories: " + ws.Describe() + ". lookup, read and change-impact cover them; search takes --repo <id>."
+	return "Linked repositories: " + ws.Describe() + ". change-impact, verify and test-plan also list their " +
+		"consumers; lookup and read reach their source; search takes --repo <id>."
+}
+
+// refreshSteering rewrites the steering block of a repository Prism was set
+// up in, after its links changed: an agent told about yesterday's links
+// searches the wrong places. A repository never initialised (no recorded
+// harnesses) is left alone.
+func refreshSteering(root string) {
+	yaml := filepath.Join(root, "prism.yaml")
+	harnesses := readRecordedHarnesses(yaml)
+	if len(harnesses) == 0 {
+		return
+	}
+	iface := readRecordedInterface(yaml)
+	if iface == "" {
+		iface = interfaceMCP
+	}
+	if iface != interfaceCLI {
+		return // MCP steering carries no links
+	}
+	writeSteeringBlock(root, harnesses, true, steeringFor(root, iface))
 }
 
 // workspaceAddClone fetches a remote repository at a ref into the cache,

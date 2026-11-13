@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -597,14 +596,7 @@ mcp_surface: "compact"
 	offerWorkspaceLinks(abs, workspaceMode)
 
 	// 3. Write steering instructions matching the chosen mode.
-	steering := steeringBlock()
-	if iface == interfaceCLI {
-		steering = cliSteeringInstructionsForOS(runtime.GOOS)
-	}
-	if line := workspaceSteeringLine(abs); line != "" {
-		steering = strings.Replace(steering, "<!-- prism:end -->", line+"\n\n<!-- prism:end -->", 1)
-	}
-	writeSteeringBlock(abs, harnesses, refresh, steering)
+	writeSteeringBlock(abs, harnesses, refresh, steeringFor(abs, iface))
 
 	// Routing is the one thing steering cannot do. Measured at 12:1 in the
 	// benchmark and observed live: an agent listed prism's connected tools,
