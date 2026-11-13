@@ -32,7 +32,14 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 		score int
 	}
 	var hits []hit
+	staleBy := map[string]string{}
 	for _, r := range h.Workspace.Linked() {
+		stale, indexed := h.freshenLinked(ctx, r)
+		if !indexed {
+			unread = append(unread, r.ID+" ("+h.Workspace.RelPath(r.Path)+")")
+			continue
+		}
+		staleBy[r.ID] = stale
 		syms, err := grove.ReadSymbolsNamed(ctx, r.Path, names)
 		if err != nil {
 			unread = append(unread, r.ID+" ("+h.Workspace.RelPath(r.Path)+")")
@@ -69,7 +76,10 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 	} else {
 		out = map[string]any{"symbol": best.sym, "content": h.sourceText(best.sym)}
 	}
-	note := fmt.Sprintf("not defined in this repository; shown from linked repository %s, as last indexed there", best.repo)
+	note := fmt.Sprintf("not defined in this repository; shown from linked repository %s", best.repo)
+	if stale := staleBy[best.repo]; stale != "" {
+		note += " — " + stale
+	}
 	if len(unread) > 0 {
 		note += "; linked repositories with no index, not searched: " + strings.Join(unread, ", ")
 	}

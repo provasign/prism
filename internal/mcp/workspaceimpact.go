@@ -44,19 +44,31 @@ func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any,
 	sort.Strings(keys)
 	var lines []string
 	searched, sites := 0, 0
-	var unread []string
+	var unread, staleRoots []string
 	for _, root := range linked {
 		rel := h.Workspace.RelPath(root.Path)
-		refs, err := grove.ReadExternalRefs(ctx, root.Path, keys)
-		if err != nil {
+		stale, indexed := h.freshenLinked(ctx, root)
+		var refs []grove.ExternalRef
+		var err error
+		if indexed {
+			refs, err = grove.ReadExternalRefs(ctx, root.Path, keys)
+		}
+		if !indexed || err != nil {
 			unread = append(unread, root.ID)
 			lines = append(lines, fmt.Sprintf("// repo %s  %s  NOT SEARCHED: no index there", root.ID, rel))
 			continue
 		}
 		searched++
 		pin := requirePin(root.Path, keys)
-		if len(refs) == 0 {
+		if stale != "" {
+			staleRoots = append(staleRoots, root.ID)
 			if pin != "" {
+				pin += "  "
+			}
+			pin += stale
+		}
+		if len(refs) == 0 {
+			if pin != "" || stale != "" {
 				lines = append(lines, fmt.Sprintf("// repo %s  %s  %s: no calls recorded", root.ID, rel, pin))
 			}
 			continue
@@ -88,8 +100,11 @@ func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any,
 		}
 	}
 	out["workspaceConsumers"] = lines
-	scope := fmt.Sprintf("%d call site(s) in %d of %d linked repositories searched, as last indexed there; "+
+	scope := fmt.Sprintf("%d call site(s) in %d of %d linked repositories searched; "+
 		"calls only (a function passed as a value is not listed)", sites, searched, len(linked))
+	if len(staleRoots) > 0 {
+		scope += "; answered from a STALE index: " + strings.Join(staleRoots, ", ")
+	}
 	if len(unread) > 0 {
 		scope += "; not searched (no index): " + strings.Join(unread, ", ")
 	}

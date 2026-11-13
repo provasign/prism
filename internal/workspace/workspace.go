@@ -175,3 +175,33 @@ func resolve(p string) string {
 	}
 	return filepath.Clean(abs)
 }
+
+// TreeState is what is checked out in a repository right now.
+type TreeState struct {
+	Head string // full commit SHA; "" when not a git work tree
+	Ref  string // branch; "" when detached
+	// Changed lists files git reports as modified, added or untracked,
+	// repository-relative.
+	Changed []string
+}
+
+// CurrentTree reads a repository's checked-out commit and its uncommitted
+// files. It changes nothing.
+func CurrentTree(root string) TreeState {
+	t := TreeState{Head: git(root, "rev-parse", "HEAD")}
+	if t.Head == "" {
+		return t
+	}
+	t.Ref = git(root, "symbolic-ref", "--quiet", "--short", "HEAD")
+	for _, line := range strings.Split(git(root, "status", "--porcelain", "--untracked-files=all"), "\n") {
+		if len(line) < 4 {
+			continue
+		}
+		p := strings.TrimSpace(line[3:])
+		if i := strings.Index(p, " -> "); i >= 0 { // rename: the new path
+			p = p[i+4:]
+		}
+		t.Changed = append(t.Changed, strings.Trim(p, `"`))
+	}
+	return t
+}

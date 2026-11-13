@@ -294,3 +294,79 @@ func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
 		t.Fatal("change-impact from lib created an index in a linked repository")
 	}
 }
+
+func gitIn(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false"}, args...)...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+}
+
+// The consumer repository switches to a branch that no longer calls the
+// library. The library's change-impact must not answer from the old tree:
+// it refreshes the consumer's index, or, when it may not, says it is stale.
+func TestWorkspaceChangeImpactFollowsBranchSwitch(t *testing.T) {
+	for _, tool := range []string{"go", "git"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip(tool + " not available")
+		}
+	}
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Helper() int { return 1 }\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, parent, "app/.gitignore", ".grove/\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() {\n\tprintln(lib.Helper())\n}\n")
+	gitIn(t, app, "init", "-q", "-b", "main")
+	gitIn(t, app, "add", "-A")
+	gitIn(t, app, "commit", "-q", "-m", "calls the library")
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	t.Chdir(lib)
+	impact := func() string {
+		return captureStdout(func() {
+			if rc := cmdChangeImpact([]string{"Helper", "--format", "text"}); rc != 0 {
+				t.Fatalf("change-impact rc=%d", rc)
+			}
+		})
+	}
+	if out := impact(); !strings.Contains(out, "../app/main.go:6:14") || strings.Contains(out, "STALE") {
+		t.Fatalf("baseline: site missing or index reported stale:\n%s", out)
+	}
+
+	gitIn(t, app, "checkout", "-q", "-b", "no-lib")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nfunc main() {\n\tprintln(1)\n}\n")
+	gitIn(t, app, "commit", "-q", "-am", "stop calling the library")
+
+	// Refresh forbidden: the old site may be shown, but only under a label
+	// naming both trees.
+	t.Setenv("PRISM_WORKSPACE_REFRESH", "off")
+	out := impact()
+	if !strings.Contains(out, "STALE: indexed at main@") || !strings.Contains(out, "now at no-lib@") ||
+		!strings.Contains(out, "answered from a STALE index: app") {
+		t.Fatalf("stale index not labelled with both trees:\n%s", out)
+	}
+
+	// Refresh allowed (the default): the answer describes the tree on disk.
+	t.Setenv("PRISM_WORKSPACE_REFRESH", "")
+	out = impact()
+	if strings.Contains(out, "main.go:6:14") || strings.Contains(out, "STALE") {
+		t.Fatalf("answer still describes the old branch:\n%s", out)
+	}
+	if !strings.Contains(out, "0 call site(s) in 1 of 1 linked repositories searched") {
+		t.Fatalf("scope line wrong after refresh:\n%s", out)
+	}
+
+	// An uncommitted edit that restores the call is picked up too.
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() {\n\tprintln(lib.Helper())\n}\n")
+	if out = impact(); !strings.Contains(out, "../app/main.go:6:14") {
+		t.Fatalf("uncommitted edit in the linked repository not seen:\n%s", out)
+	}
+}

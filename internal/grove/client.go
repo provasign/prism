@@ -896,3 +896,29 @@ func ReadExternalRefs(ctx context.Context, root string, keys []string) ([]Extern
 func ManifestRequires(root string) []groveeng.ManifestRequire {
 	return groveeng.ScanManifests(root).Requires
 }
+
+// IndexState says which tree state another repository's index describes.
+type IndexState = groveeng.IndexState
+
+// ReadIndexState reads, without writing, which commit and branch the index
+// under root was built from and when. It fails when root has no index.
+func ReadIndexState(ctx context.Context, root string) (IndexState, error) {
+	r, err := groveeng.OpenReader(root)
+	if err != nil {
+		return IndexState{}, err
+	}
+	defer r.Close()
+	return r.State(ctx), nil
+}
+
+// RefreshIndex brings the existing index under root up to date with the
+// files on disk: the ordinary incremental run, bounded by ctx.
+func RefreshIndex(ctx context.Context, root string) error {
+	c := NewClient("", "").WithTokenFromDir(root).OneShot()
+	if err := c.EnsureRunning(ctx); err != nil {
+		return err
+	}
+	defer c.Shutdown()
+	_, err := c.Index(ctx, root)
+	return err
+}
