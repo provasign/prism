@@ -262,7 +262,10 @@ func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
 	lib, app, idle := filepath.Join(parent, "lib"), filepath.Join(parent, "app"), filepath.Join(parent, "idle")
 	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
 	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Helper() int { return 1 }\n\nfunc inside() int { return Helper() }\n")
-	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\nworkspace_repo: idle=../idle\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\nworkspace_repo: idle=../idle\nworkspace_repo: raw=../raw\n")
+	writeCLIFile(t, parent, "raw/go.mod", "module example.com/raw\n\ngo 1.22\n\nrequire example.com/lib v0.2.0\n")
+	writeCLIFile(t, parent, "raw/use.go", "package raw\n\nimport \"example.com/lib\"\n\nfunc Use() int { return lib.Helper() }\n")
+	writeCLIFile(t, parent, "raw/other.go", "package raw\n\n// Helper is mentioned here, in a file that never names the library.\nfunc Helper() {}\n")
 	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
 	writeCLIFile(t, parent, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() {\n\tprintln(lib.Helper())\n}\n")
 	writeCLIFile(t, parent, "idle/go.mod", "module example.com/idle\n\ngo 1.22\n")
@@ -285,17 +288,34 @@ func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
 		"consumers in other repositories",
 		"// repo app  ../app  requires example.com/lib v0.3.0, built against the local checkout",
 		"../app/main.go:6:14: println(lib.Helper())  [in main]",
-		"// repo idle  ../idle  NOT SEARCHED: no index there",
-		"1 site(s) in 1 of 2 linked repositories searched",
-		"not searched (no index): idle",
+		"1 resolved site(s) in 1 of 3 linked repositories",
+		// idle's go.mod does not name the library: it cannot reference it.
+		"1 skipped (their manifests do not require it)",
+		// raw requires the library but was never indexed: text matches,
+		// labelled, instead of silence.
+		"// repo raw  ../raw  requires example.com/lib v0.2.0  NAME-MATCHED ONLY (no index there)",
+		"../raw/use.go:5: func Use() int { return lib.Helper() }  [name match, not resolved]",
+		"NAME-MATCHED ONLY, not resolved (1 line(s)): raw",
 		"repositories that are not linked are not covered",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("change-impact output missing %q:\n%s", want, out)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(idle, ".grove")); err == nil {
-		t.Fatal("change-impact from lib created an index in a linked repository")
+	if strings.Contains(out, "raw/other.go") {
+		t.Fatalf("a name match in a file that never mentions the library was listed:\n%s", out)
+	}
+	for _, dir := range []string{idle, filepath.Join(parent, "raw")} {
+		if _, err := os.Stat(filepath.Join(dir, ".grove")); err == nil {
+			t.Fatalf("change-impact from lib created an index in %s", dir)
+		}
+	}
+	// The consumer's site leads; this repository's own lists follow.
+	if strings.Index(out, "../app/main.go:6:14") > strings.Index(out, "declarations (") {
+		t.Fatalf("linked consumers are printed after this repository's lists:\n%s", out)
+	}
+	if !strings.Contains(out, "site(s) in this repository + 1 in linked repositories") {
+		t.Fatalf("the first line does not count the linked site:\n%s", out)
 	}
 }
 
@@ -364,7 +384,7 @@ func TestWorkspaceChangeImpactFollowsBranchSwitch(t *testing.T) {
 	if strings.Contains(out, "main.go:6:14") || strings.Contains(out, "STALE") {
 		t.Fatalf("answer still describes the old branch:\n%s", out)
 	}
-	if !strings.Contains(out, "0 site(s) in 1 of 1 linked repositories searched") {
+	if !strings.Contains(out, "0 resolved site(s) in 1 of 1 linked repositories") {
 		t.Fatalf("scope line wrong after refresh:\n%s", out)
 	}
 
@@ -405,8 +425,8 @@ func TestWorkspaceVerifyListsLinkedConsumersOfAChangedContract(t *testing.T) {
 	out := captureStdout(func() { cmdVerify([]string{"--format", "text"}) })
 	for _, want := range []string{
 		"../app/main.go:6:14: println(lib.Helper())  [in main]",
-		"NOT covered by this verdict",
-		"1 site(s) in 1 of 1 linked repositories searched",
+		"verify: complete for this repository; NOT checked: 1 line(s) in linked repositories reference a contract this diff changed or removed",
+		"1 resolved site(s) in 1 of 1 linked repositories",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("verify output missing %q:\n%s", want, out)
@@ -448,7 +468,7 @@ func TestWorkspaceTestPlanListsLinkedTests(t *testing.T) {
 		"Tests in linked repositories that reference a changed symbol",
 		"../app/use_test.go:10:9",
 		"1 non-test site(s) in linked repositories reference a changed symbol",
-		"linked repositories: 2 site(s) in 1 of 1 linked repositories searched",
+		"linked repositories: 2 resolved site(s) in 1 of 1 linked repositories",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("test-plan output missing %q:\n%s", want, out)
@@ -684,7 +704,7 @@ func TestWorkspaceChangeImpactPython(t *testing.T) {
 	}
 	t.Chdir(lib)
 	out := captureStdout(func() { cmdChangeImpact([]string{"persist", "--format", "text"}) })
-	if !strings.Contains(out, "../app/app/use.py:5:5: persist(m)  [in run]  [import-scoped: matched by module and name]") {
+	if !strings.Contains(out, "../app/app/use.py:5:5: persist(m)  [in run]  [import-scoped]") {
 		t.Fatalf("Python consumer in the linked repository not listed:\n%s", out)
 	}
 }
@@ -741,7 +761,7 @@ func TestWorkspaceMissingCheckoutIsNamed(t *testing.T) {
 	out := captureStdout(func() { cmdChangeImpact([]string{"Helper", "--format", "text"}) })
 	for _, want := range []string{
 		"// repo gone  ../gone  NOT SEARCHED: not checked out",
-		"0 site(s) in 0 of 1 linked repositories searched",
+		"0 resolved site(s) in 0 of 1 linked repositories",
 		"not searched (see above): gone",
 	} {
 		if !strings.Contains(out, want) {

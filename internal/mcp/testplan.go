@@ -284,21 +284,14 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 // changed symbol. Their runners live in those repositories; the plan names
 // the files and leaves the commands to the reader, as for local targets.
 func (h *Handler) planLinkedTests(ctx context.Context, r *testPlanResult) {
-	if h.Workspace == nil && h.Cfg.WorkspaceServer == "" {
+	if !h.workspaceConfigured() {
 		return
 	}
-	var keys []string
-	seen := map[string]bool{}
+	var targets []linkTarget
 	for _, s := range r.ChangedSymbols {
-		for _, k := range grove.KeysFor(h.Root, s.Language, s.Kind, s.File, s.Name) {
-			if !seen[k] {
-				seen[k] = true
-				keys = append(keys, k)
-			}
-		}
+		targets = append(targets, targetFor(h.Root, s.Language, s.Kind, s.File, s.Name))
 	}
-	sort.Strings(keys)
-	lines, scope, _ := h.linkedConsumers(ctx, keys)
+	lines, scope, _ := h.linkedConsumers(ctx, targets)
 	r.LinkedScope = scope
 	other := 0
 	var header string
@@ -306,11 +299,11 @@ func (h *Handler) planLinkedTests(ctx context.Context, r *testPlanResult) {
 		switch {
 		case strings.HasPrefix(l, "// repo "):
 			header = l
-			if strings.Contains(l, "NOT SEARCHED") || strings.Contains(l, "STALE") {
+			if strings.Contains(l, "NOT SEARCHED") || strings.Contains(l, "STALE") || strings.Contains(l, "NAME-MATCHED ONLY") {
 				r.LinkedTests = append(r.LinkedTests, l)
 				header = ""
 			}
-		case strings.HasSuffix(l, "[test]"):
+		case strings.Contains(l, "[test]"):
 			if header != "" {
 				r.LinkedTests = append(r.LinkedTests, header)
 				header = ""

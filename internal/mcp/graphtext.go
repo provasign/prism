@@ -135,7 +135,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true, "callPositionsNote": true,
 		"reExports": true, "related": true, "degradedAnalysis": true,
 		"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
-		"workspaceConsumers": true, "workspaceScope": true,
+		"workspaceConsumers": true, "workspaceScope": true, "linkedSites": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -143,7 +143,11 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		}
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "// %v — change-impact: %v site(s)\n", out["query"], out["totalSites"])
+	if linked := intArg(out, "linkedSites", 0); linked > 0 {
+		fmt.Fprintf(&b, "// %v — change-impact: %v site(s) in this repository + %d in linked repositories\n", out["query"], out["totalSites"], linked)
+	} else {
+		fmt.Fprintf(&b, "// %v — change-impact: %v site(s)\n", out["query"], out["totalSites"])
+	}
 	b.WriteString(FormatImpactHeaderNotesText(out))
 	if note, _ := out["resolvedAmbiguity"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
@@ -160,6 +164,9 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if boundary, _ := out["scopeBoundary"].(string); boundary != "" {
 		fmt.Fprintf(&b, "// %s\n", boundary)
 	}
+	// Other repositories come before this repository's own lists: they are
+	// the sites an agent working here cannot see any other way.
+	b.WriteString(FormatWorkspaceConsumersText(out))
 	// With editSites, the relay inventory, the generic evidence notes and
 	// the declarations' signatures repeat what the edit rows already show
 	// (bench29: ~20% of a change_impact answer). A signature is still
@@ -328,7 +335,6 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "// wider anchor: %v (%v sites, %v) — %v\n",
 			wa["qualifiedName"], wa["totalSites"], wa["completeness"], wa["note"])
 	}
-	b.WriteString(FormatWorkspaceConsumersText(out))
 	return b.String(), true
 }
 
@@ -599,7 +605,7 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 		"contentAdvisories": true,
 		"newDependencies":   true, "archStatus": true, "archIntroduced": true,
 		"notes": true, "testCoverage": true,
-		"workspaceConsumers": true, "workspaceScope": true,
+		"workspaceConsumers": true, "workspaceScope": true, "linkedVerdict": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -613,7 +619,13 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 		return b.String(), true
 	}
 	changed := anySlice(out["changedFiles"])
-	fmt.Fprintf(&b, "verify: %s — %d changed files vs %v\n", verdict, len(changed), out["base"])
+	if lv, _ := out["linkedVerdict"].(string); lv != "" {
+		// The first line is what an agent or a CI log keeps: it must not
+		// say "complete" alone while another repository is unchecked.
+		fmt.Fprintf(&b, "verify: %s for this repository; %s — %d changed files vs %v\n", verdict, lv, len(changed), out["base"])
+	} else {
+		fmt.Fprintf(&b, "verify: %s — %d changed files vs %v\n", verdict, len(changed), out["base"])
+	}
 	if sigs := anySlice(out["signatureChanges"]); len(sigs) > 0 {
 		b.WriteString("\ncontract changes detected:\n")
 		for _, s := range sigs {

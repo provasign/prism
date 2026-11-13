@@ -354,7 +354,11 @@ func renderVerifyText(m map[string]any) {
 		return
 	}
 	changed := asSliceAny(m["changedFiles"])
-	fmt.Printf("verify: %s — %d changed files vs %v\n", verdict, len(changed), m["base"])
+	if lv, _ := m["linkedVerdict"].(string); lv != "" {
+		fmt.Printf("verify: %s for this repository; %s — %d changed files vs %v\n", verdict, lv, len(changed), m["base"])
+	} else {
+		fmt.Printf("verify: %s — %d changed files vs %v\n", verdict, len(changed), m["base"])
+	}
 
 	if sigs := asSliceAny(m["signatureChanges"]); len(sigs) > 0 {
 		fmt.Println("\ncontract changes detected:")

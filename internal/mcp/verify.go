@@ -855,27 +855,31 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		}
 		testCoverageOut = append(testCoverageOut, e)
 	}
-	// Consumers of a changed contract in linked repositories. They are
-	// reported, not judged: this verdict covers this repository's diff, and
-	// the other repositories were not rebuilt against it.
+	// Consumers of a changed contract in linked repositories. The targets
+	// are the BASE symbols (the names and signatures consumers were written
+	// against): after a rename or a removal the new name has no consumers,
+	// the old one does. They are reported, not judged: this verdict covers
+	// this repository's diff, and the other repositories were not rebuilt.
 	linkedOut := map[string]any{}
-	if h.Workspace != nil || h.Cfg.WorkspaceServer != "" {
-		var keys []string
-		for _, sc := range sigChanges {
-			sym, _ := sc["symbol"].(string)
-			file, _ := sc["file"].(string)
-			keys = append(keys, grove.KeysFor(h.Root, "", "", file, sym)...)
+	linkedUnchecked := 0
+	if h.workspaceConfigured() && len(seeds) > 0 {
+		var syms []grove.SymbolRecord
+		for _, sd := range seeds {
+			syms = append(syms, sd.sym)
 		}
-		if len(keys) > 0 {
-			sort.Strings(keys)
-			if n := h.attachLinkedConsumers(ctx, linkedOut, keys); n > 0 {
-				notes = append(notes, fmt.Sprintf("%d site(s) in linked repositories reference a changed contract; they are listed under workspaceConsumers and are NOT covered by this verdict", n))
-			}
+		ans := h.linkedAnswer(ctx, h.targetsOf(syms))
+		ans.attach(linkedOut)
+		linkedUnchecked = ans.sites + ans.matches
+		switch {
+		case linkedUnchecked > 0:
+			linkedOut["linkedVerdict"] = fmt.Sprintf("NOT checked: %d line(s) in linked repositories reference a contract this diff changed or removed (listed below)", linkedUnchecked)
+		case ans.incomplete:
+			linkedOut["linkedVerdict"] = "linked repositories were NOT all searched (see workspaceScope)"
 		}
 	}
 	result := map[string]any{
 		"verdict":           verdict,
-		"gateFailure":       verdict == "incomplete" || (strict && verdict == "review"),
+		"gateFailure":       verdict == "incomplete" || (strict && (verdict == "review" || linkedOut["linkedVerdict"] != nil)),
 		"base":              base,
 		"changedFiles":      changedFiles,
 		"signatureChanges":  sigChanges,
