@@ -25,7 +25,7 @@ Differences from the design below, decided while building:
 - No `extrefs`, `packages` or `requires` tables. External references are per-caller marker records
   (`external-ref`), the mechanism Grove already uses for resolved calls, so incremental re-index
   handles them. Manifests are read from disk when asked. A declaration's key is derived at query time.
-- Only the resolver version is bumped (v46), not the extractor version: existing indexes re-resolve once.
+- Only the resolver version is bumped (v47), not the extractor version: existing indexes re-resolve once.
 - Grove's Go pass now follows a `go.work` in a directory above the repository that lists it. It used to
   run with `GOWORK=off`, which type-checked a consumer against its pinned module version instead of the
   linked checkout and missed anything that exists only in the checkout. This changes Go results for any
