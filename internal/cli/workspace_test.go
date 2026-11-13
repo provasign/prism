@@ -688,3 +688,36 @@ func TestWorkspaceChangeImpactPython(t *testing.T) {
 		t.Fatalf("Python consumer in the linked repository not listed:\n%s", out)
 	}
 }
+
+// A plain parent folder declares its checkouts once; each then sees the
+// others, and a command run inside one still answers for that one.
+func TestWorkspaceParentFolderDeclaresChildren(t *testing.T) {
+	parent, _ := workspaceFixture(t)
+	writeCLIFile(t, parent, "prism.yaml", "version: 2\n")
+	t.Chdir(parent)
+	if rc := workspaceAdd([]string{"app", "lib", "other"}); rc != 0 {
+		t.Fatalf("add children rc=%d", rc)
+	}
+	yaml, _ := os.ReadFile(filepath.Join(parent, "prism.yaml"))
+	for _, want := range []string{"workspace_repo: app=app", "workspace_repo: lib=lib", "workspace_repo: other=other"} {
+		if !strings.Contains(string(yaml), want) {
+			t.Fatalf("parent prism.yaml missing %q:\n%s", want, yaml)
+		}
+	}
+	t.Chdir(filepath.Join(parent, "other"))
+	if root, _ := cliRoot(""); root != filepath.Join(parent, "other") {
+		t.Fatalf("a command inside a child answered from %s", root)
+	}
+	out := captureStdout(func() { cmdWorkspace(nil) })
+	if !strings.Contains(out, "../app") || !strings.Contains(out, "../lib") || strings.Contains(out, "../other") {
+		t.Fatalf("child does not see its siblings through the parent file:\n%s", out)
+	}
+	// Inside a repository, a path below it is still refused.
+	t.Chdir(filepath.Join(parent, "app"))
+	if err := os.MkdirAll(filepath.Join(parent, "app", "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if rc := workspaceAdd([]string{"sub"}); rc == 0 {
+		t.Fatal("a directory inside the repository was linked to it")
+	}
+}

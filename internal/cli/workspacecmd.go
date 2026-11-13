@@ -90,7 +90,8 @@ func refHead(s workspace.Status) string {
 }
 
 func workspaceAdd(args []string) int {
-	var target, id string
+	var targets []string
+	var id string
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--id" && i+1 < len(args):
@@ -100,13 +101,24 @@ func workspaceAdd(args []string) int {
 			id = strings.TrimPrefix(args[i], "--id=")
 		case strings.HasPrefix(args[i], "-"):
 			return rejectUnknownFlag("workspace add", args[i])
-		case target == "":
-			target = args[i]
 		default:
-			fmt.Fprintln(os.Stderr, "usage: prism workspace add <path> [--id <name>]")
-			return 2
+			targets = append(targets, args[i])
 		}
 	}
+	if len(targets) == 0 || (id != "" && len(targets) > 1) {
+		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path|git-url[@ref]>... [--id <name>]   (--id names a single repository)")
+		return 2
+	}
+	rc := 0
+	for _, target := range targets {
+		if r := workspaceAddOne(target, id); r != 0 {
+			rc = r
+		}
+	}
+	return rc
+}
+
+func workspaceAddOne(target, id string) int {
 	if target == "" {
 		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path> [--id <name>]")
 		return 2
@@ -120,7 +132,11 @@ func workspaceAdd(args []string) int {
 		fmt.Fprintf(os.Stderr, "workspace add: %s is not a directory\n", target)
 		return 1
 	}
-	if isWithin(root, abs) || isWithin(abs, root) {
+	// A plain folder that holds several checkouts declares them once for
+	// all of them (workspace.Load reads an ancestor prism.yaml). Inside a
+	// git work tree a path below the root is part of this repository.
+	folder := !inGitWorkTree(root)
+	if abs == root || isWithin(abs, root) || (isWithin(root, abs) && !folder) {
 		fmt.Fprintf(os.Stderr, "workspace add: %s overlaps this repository (%s); link a separate checkout\n", target, root)
 		return 1
 	}
