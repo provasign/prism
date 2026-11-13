@@ -55,6 +55,11 @@ type testPlanResult struct {
 	FileTargets    []testPlanTarget `json:"fileTargets"`
 	Gaps           []string         `json:"gaps"`
 	Boundary       string           `json:"boundary"`
+	// LinkedTests: test files in linked repositories that reference a
+	// changed symbol, with the lines that do. LinkedScope says what was
+	// searched there.
+	LinkedTests []string `json:"linkedTests,omitempty"`
+	LinkedScope string   `json:"linkedScope,omitempty"`
 }
 
 func planSymbol(s grove.SymbolRecord) testPlanSymbol {
@@ -271,7 +276,54 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 	if len(r.Candidates)+len(r.FileTargets) > 0 {
 		r.Status = "candidates found"
 	}
+	h.planLinkedTests(ctx, &r)
 	return testPlanMap(r), nil
+}
+
+// planLinkedTests lists the tests in linked repositories that reference a
+// changed symbol. Their runners live in those repositories; the plan names
+// the files and leaves the commands to the reader, as for local targets.
+func (h *Handler) planLinkedTests(ctx context.Context, r *testPlanResult) {
+	if h.Workspace == nil {
+		return
+	}
+	var keys []string
+	seen := map[string]bool{}
+	for _, s := range r.ChangedSymbols {
+		if s.Language != "go" {
+			continue
+		}
+		if k, ok := grove.GoKey(h.Root, s.File, s.Name); ok && !seen[k] {
+			seen[k] = true
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	lines, scope, _ := h.linkedConsumers(ctx, keys)
+	r.LinkedScope = scope
+	other := 0
+	var header string
+	for _, l := range lines {
+		switch {
+		case strings.HasPrefix(l, "// repo "):
+			header = l
+			if strings.Contains(l, "NOT SEARCHED") || strings.Contains(l, "STALE") {
+				r.LinkedTests = append(r.LinkedTests, l)
+				header = ""
+			}
+		case strings.HasSuffix(l, "[test]"):
+			if header != "" {
+				r.LinkedTests = append(r.LinkedTests, header)
+				header = ""
+			}
+			r.LinkedTests = append(r.LinkedTests, l)
+		default:
+			other++
+		}
+	}
+	if other > 0 {
+		r.Gaps = uniqueSorted(append(r.Gaps, fmt.Sprintf("%d non-test site(s) in linked repositories reference a changed symbol; the tests of that code in those repositories are not traced from here (change-impact lists the sites)", other)))
+	}
 }
 
 func testPlanMap(r testPlanResult) map[string]any {
@@ -512,7 +564,7 @@ func planInventory(ctx context.Context, r *testPlanResult, syms []grove.SymbolRe
 func renderTestPlanAsText(out map[string]any) (string, bool) {
 	for key := range out {
 		switch key {
-		case "base", "status", "changedFiles", "changedSymbols", "candidates", "fileTargets", "gaps", "boundary":
+		case "base", "status", "changedFiles", "changedSymbols", "candidates", "fileTargets", "gaps", "boundary", "linkedTests", "linkedScope":
 		default:
 			return "", false
 		}
@@ -565,6 +617,15 @@ func renderTestPlanAsText(out map[string]any) (string, bool) {
 			fmt.Fprintf(&b, "; %d symbol candidates (details in JSON)", len(cs))
 		}
 		b.WriteByte('\n')
+	}
+	if len(r.LinkedTests) > 0 {
+		b.WriteString("Tests in linked repositories that reference a changed symbol (run them from their own repository):\n")
+		for _, l := range r.LinkedTests {
+			b.WriteString(l + "\n")
+		}
+	}
+	if r.LinkedScope != "" {
+		fmt.Fprintf(&b, "linked repositories: %s\n", r.LinkedScope)
 	}
 	fmt.Fprintf(&b, "End of test-plan: %d file targets, %d gaps. If this footer is missing, read the remaining output before choosing tests.\n", len(r.FileTargets), len(r.Gaps))
 	return b.String(), true

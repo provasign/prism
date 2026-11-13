@@ -370,3 +370,87 @@ func TestWorkspaceChangeImpactFollowsBranchSwitch(t *testing.T) {
 		t.Fatalf("uncommitted edit in the linked repository not seen:\n%s", out)
 	}
 }
+
+// verify judges this repository's diff. A changed contract that a linked
+// repository calls is listed, and the verdict says it was not covered.
+func TestWorkspaceVerifyListsLinkedConsumersOfAChangedContract(t *testing.T) {
+	for _, tool := range []string{"go", "git"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip(tool + " not available")
+		}
+	}
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Helper() int { return 1 }\n")
+	writeCLIFile(t, parent, "lib/.gitignore", ".grove/\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() {\n\tprintln(lib.Helper())\n}\n")
+	gitIn(t, lib, "init", "-q", "-b", "main")
+	gitIn(t, lib, "add", "-A")
+	gitIn(t, lib, "commit", "-q", "-m", "library")
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Helper(n int) int { return n }\n")
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdVerify([]string{"--format", "text"}) })
+	for _, want := range []string{
+		"../app/main.go:6:14: println(lib.Helper())  [in main]",
+		"NOT covered by this verdict",
+		"1 site(s) in 1 of 1 linked repositories searched",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("verify output missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "the diff covers its own blast radius") {
+		t.Fatalf("verify claims the diff covers its blast radius while a linked repository still calls the old contract:\n%s", out)
+	}
+}
+
+func TestWorkspaceTestPlanListsLinkedTests(t *testing.T) {
+	for _, tool := range []string{"go", "git"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip(tool + " not available")
+		}
+	}
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Helper() int { return 1 }\n")
+	writeCLIFile(t, parent, "lib/.gitignore", ".grove/\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, parent, "app/use.go", "package app\n\nimport \"example.com/lib\"\n\nfunc Use() int { return lib.Helper() }\n")
+	writeCLIFile(t, parent, "app/use_test.go", "package app\n\nimport (\n\t\"testing\"\n\n\t\"example.com/lib\"\n)\n\nfunc TestHelper(t *testing.T) {\n\tif lib.Helper() != 1 {\n\t\tt.Fatal()\n\t}\n}\n")
+	gitIn(t, lib, "init", "-q", "-b", "main")
+	gitIn(t, lib, "add", "-A")
+	gitIn(t, lib, "commit", "-q", "-m", "library")
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Helper() int { return 2 }\n")
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdTestPlan([]string{"--format", "text"}) })
+	for _, want := range []string{
+		"Tests in linked repositories that reference a changed symbol",
+		"../app/use_test.go:10:9",
+		"1 non-test site(s) in linked repositories reference a changed symbol",
+		"linked repositories: 2 site(s) in 1 of 1 linked repositories searched",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("test-plan output missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "../app/use.go:5") {
+		t.Fatalf("a non-test site was listed as a linked test:\n%s", out)
+	}
+}

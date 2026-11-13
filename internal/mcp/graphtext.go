@@ -599,6 +599,7 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 		"contentAdvisories": true,
 		"newDependencies":   true, "archStatus": true, "archIntroduced": true,
 		"notes": true, "testCoverage": true,
+		"workspaceConsumers": true, "workspaceScope": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -680,11 +681,17 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 			}
 		}
 	}
+	if linked := FormatWorkspaceConsumersText(out); linked != "" {
+		b.WriteString("\n" + linked)
+	}
 	switch verdict {
 	case "complete":
-		if len(anySlice(out["contentAdvisories"])) > 0 {
+		switch {
+		case len(anySlice(out["contentAdvisories"])) > 0:
 			b.WriteString("\nno missed contract sites identified; content behavior above was not assessed\n")
-		} else {
+		case len(anySlice(out["workspaceConsumers"])) > 0:
+			b.WriteString("\nno missed sites in this repository; the linked-repository sites above were not checked\n")
+		default:
 			b.WriteString("\nno missed sites — the diff covers its own blast radius\n")
 		}
 	case "review":

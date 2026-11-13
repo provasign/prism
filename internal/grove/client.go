@@ -926,3 +926,9 @@ func RefreshIndex(ctx context.Context, root string) error {
 	_, err := c.Index(ctx, root)
 	return err
 }
+
+// GoKey is GoSymbolKey for a Go symbol given by its repository-relative
+// file and qualified name, for a symbol that is no longer in the index.
+func GoKey(root, filePath, qualifiedName string) (string, bool) {
+	return groveeng.GoKey(root, filePath, qualifiedName)
+}

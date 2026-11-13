@@ -12,38 +12,66 @@ import (
 )
 
 // addWorkspaceConsumers extends a change-impact answer past this
-// repository: the call sites in linked repositories whose compiler resolved
-// them to a symbol of the change set. It reads their existing indexes only.
-//
-// The answer always says what was and was not searched. A linked repository
-// with no index, a language with no cross-repository records, and
-// repositories nobody linked are each named, because a consumer list that
-// stops silently reads as "no other consumers".
+// repository: the places in linked repositories whose compiler resolved
+// them to a symbol of the change set.
 func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any, r *grove.ChangeImpactResult) {
 	if h.Workspace == nil || r == nil {
 		return
 	}
-	linked := h.Workspace.Linked()
-	if len(linked) == 0 {
-		return
+	var syms []grove.SymbolRecord
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Supers, r.Family} {
+		syms = append(syms, group...)
 	}
+	h.attachLinkedConsumers(ctx, out, h.linkedKeys(syms))
+}
+
+// linkedKeys returns the cross-repository keys of syms, sorted and unique.
+func (h *Handler) linkedKeys(syms []grove.SymbolRecord) []string {
 	seen := map[string]bool{}
 	var keys []string
-	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Supers, r.Family} {
-		for _, s := range group {
-			if k, ok := grove.GoSymbolKey(h.Root, s); ok && !seen[k] {
-				seen[k] = true
-				keys = append(keys, k)
-			}
+	for _, s := range syms {
+		if k, ok := grove.GoSymbolKey(h.Root, s); ok && !seen[k] {
+			seen[k] = true
+			keys = append(keys, k)
 		}
 	}
-	if len(keys) == 0 {
-		out["workspaceScope"] = "linked repositories not searched: cross-repository references are recorded for Go functions, methods and types only"
-		return
-	}
 	sort.Strings(keys)
-	var lines []string
-	searched, sites := 0, 0
+	return keys
+}
+
+// attachLinkedConsumers sets workspaceConsumers and workspaceScope on out
+// and returns how many sites it found.
+func (h *Handler) attachLinkedConsumers(ctx context.Context, out map[string]any, keys []string) int {
+	lines, scope, sites := h.linkedConsumers(ctx, keys)
+	if len(lines) > 0 {
+		out["workspaceConsumers"] = lines
+	}
+	if scope != "" {
+		out["workspaceScope"] = scope
+	}
+	return sites
+}
+
+// linkedConsumers reads the linked repositories' indexes for references to
+// keys. It returns the lines to show, a statement of what was searched, and
+// the number of sites.
+//
+// The statement is never omitted when repositories are linked. A linked
+// repository with no index, a stale one, a language with no cross-repository
+// records, and repositories nobody linked are each named, because a consumer
+// list that stops silently reads as "no other consumers".
+func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []string, scope string, sites int) {
+	if h.Workspace == nil {
+		return nil, "", 0
+	}
+	linked := h.Workspace.Linked()
+	if len(linked) == 0 {
+		return nil, "", 0
+	}
+	if len(keys) == 0 {
+		return nil, "linked repositories not searched: cross-repository references are recorded for Go functions, methods and types only", 0
+	}
+	searched := 0
 	var unread, staleRoots []string
 	for _, root := range linked {
 		rel := h.Workspace.RelPath(root.Path)
@@ -68,8 +96,8 @@ func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any,
 			pin += stale
 		}
 		if len(refs) == 0 {
-			if pin != "" || stale != "" {
-				lines = append(lines, fmt.Sprintf("// repo %s  %s  %s: no calls recorded", root.ID, rel, pin))
+			if pin != "" {
+				lines = append(lines, fmt.Sprintf("// repo %s  %s  %s: no references recorded", root.ID, rel, pin))
 			}
 			continue
 		}
@@ -95,12 +123,15 @@ func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any,
 			if ref.Col > 0 {
 				at += fmt.Sprintf(":%d", ref.Col)
 			}
-			lines = append(lines, fmt.Sprintf("  %s: %s  [in %s]", at, text, ref.From))
+			tag := ""
+			if isTestFilePath(ref.File) {
+				tag = "  [test]"
+			}
+			lines = append(lines, fmt.Sprintf("  %s: %s  [in %s]%s", at, text, ref.From, tag))
 			sites++
 		}
 	}
-	out["workspaceConsumers"] = lines
-	scope := fmt.Sprintf("%d site(s) in %d of %d linked repositories searched; "+
+	scope = fmt.Sprintf("%d site(s) in %d of %d linked repositories searched; "+
 		"references inside functions only (a package-level declaration naming it is not listed)", sites, searched, len(linked))
 	if len(staleRoots) > 0 {
 		scope += "; answered from a STALE index: " + strings.Join(staleRoots, ", ")
@@ -109,7 +140,7 @@ func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any,
 		scope += "; not searched (no index): " + strings.Join(unread, ", ")
 	}
 	scope += "; repositories that are not linked are not covered"
-	out["workspaceScope"] = scope
+	return lines, scope, sites
 }
 
 // requirePin says which version of the changed module a repository's

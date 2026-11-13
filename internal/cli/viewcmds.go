@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/provasign/prism/internal/mcp"
 	"os"
 	"sort"
 	"strings"
@@ -441,11 +442,18 @@ func renderVerifyText(m map[string]any) {
 			}
 		}
 	}
+	linked := mcp.FormatWorkspaceConsumersText(m)
+	if linked != "" {
+		fmt.Print("\n" + linked)
+	}
 	switch verdict {
 	case "complete":
-		if len(asSliceAny(m["contentAdvisories"])) > 0 {
+		switch {
+		case len(asSliceAny(m["contentAdvisories"])) > 0:
 			fmt.Println("\nno missed contract sites identified; content behavior above was not assessed")
-		} else {
+		case len(asSliceAny(m["workspaceConsumers"])) > 0:
+			fmt.Println("\nno missed sites in this repository; the linked-repository sites above were not checked")
+		default:
 			fmt.Println("\nno missed sites — the diff covers its own blast radius")
 		}
 	case "review":
