@@ -24,6 +24,9 @@ type Root struct {
 	Evidence string
 	// Missing is true when the declared directory does not exist.
 	Missing bool
+	// Cache is true for a clone Prism fetched: reference source at a fixed
+	// commit, not a checkout the user works in.
+	Cache bool
 }
 
 // Workspace is the primary root plus the roots linked to it.
@@ -73,6 +76,33 @@ func Load(primary string, cfg *config.Config) *Workspace {
 			add(dir, filepath.Join(dir, "prism.yaml"), parent.WorkspaceRepos)
 		}
 	}
+	// Cache clones linked on this machine: dependencies Prism fetched
+	// because they are not checked out here.
+	for _, l := range CacheLinks(primary) {
+		p := resolve(l.Path)
+		if seen[p] {
+			continue
+		}
+		seen[p] = true
+		id := l.ID
+		for n := 2; ids[id]; n++ {
+			id = fmt.Sprintf("%s-%d", l.ID, n)
+		}
+		ids[id] = true
+		_, err := os.Stat(p)
+		ref := l.Ref
+		if ref == "" {
+			ref = "default branch"
+		}
+		sha := l.SHA
+		if len(sha) > 8 {
+			sha = sha[:8]
+		}
+		w.Roots = append(w.Roots, Root{
+			ID: id, Path: p, Missing: err != nil, Cache: true,
+			Evidence: fmt.Sprintf("cache clone of %s at %s (%s), read-only reference", l.URL, ref, sha),
+		})
+	}
 	if len(w.Roots) == 0 {
 		return nil
 	}
@@ -97,6 +127,11 @@ func (w *Workspace) Linked() []Root {
 // the form answers print for a file in another repository ("../grove/x.go"):
 // the agent's own file tools accept it from the primary root unchanged.
 func (w *Workspace) RelPath(abs string) string {
+	for _, r := range w.Roots {
+		if r.Cache && (abs == r.Path || strings.HasPrefix(abs, r.Path+string(filepath.Separator))) {
+			return filepath.ToSlash(abs)
+		}
+	}
 	rel, err := filepath.Rel(w.Primary, abs)
 	if err != nil {
 		return filepath.ToSlash(abs)
@@ -104,11 +139,21 @@ func (w *Workspace) RelPath(abs string) string {
 	return filepath.ToSlash(rel)
 }
 
+// DisplayPath is the path answers print for a linked root: relative to the
+// primary for a checkout beside it, absolute for a cache clone, whose
+// relative path would be a long climb out of the repository.
+func (w *Workspace) DisplayPath(r Root) string {
+	if r.Cache {
+		return filepath.ToSlash(r.Path)
+	}
+	return w.RelPath(r.Path)
+}
+
 // Describe lists the linked roots as "id (relative path)", for one-line notes.
 func (w *Workspace) Describe() string {
 	var parts []string
 	for _, r := range w.Linked() {
-		parts = append(parts, r.ID+" ("+w.RelPath(r.Path)+")")
+		parts = append(parts, r.ID+" ("+w.DisplayPath(r)+")")
 	}
 	return strings.Join(parts, ", ")
 }

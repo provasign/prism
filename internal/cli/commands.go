@@ -121,6 +121,10 @@ Usage:
                                   Construct runner commands; judge broader validation from gaps
   prism workspace                Linked repositories: path, branch, commit, index, how linked
                                   add <path> [--id <name>]  Link a local checkout (written to prism.yaml)
+                                  add <git-url>[@ref]       Fetch a repository that is not checked out into a
+                                                            read-only cache at that commit, index it, link it
+                                  fetch                     Re-resolve cache clones' branches
+                                  prune                     Delete cache clones nothing links to
                                   remove <id>               Unlink; the checkout is not touched
                                   discover [--link]         Related checkouts found in manifests
   prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:

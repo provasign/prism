@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/workspace"
 )
 
@@ -21,8 +23,15 @@ func cmdWorkspace(args []string) int {
 			return workspaceRemove(args[1:])
 		case "discover":
 			return workspaceDiscover(args[1:])
+		case "fetch":
+			return workspaceFetch(args[1:])
+		case "prune":
+			for _, dir := range workspace.PruneClones() {
+				fmt.Println("removed", dir)
+			}
+			return 0
 		default:
-			fmt.Fprintln(os.Stderr, "usage: prism workspace [add <path> [--id <name>] | remove <id> | discover [--link]]")
+			fmt.Fprintln(os.Stderr, "usage: prism workspace [add <path|git-url[@ref]> [--id <name>] | remove <id> | discover [--link] | fetch | prune]")
 			return 2
 		}
 	}
@@ -98,6 +107,9 @@ func workspaceAdd(args []string) int {
 		return 2
 	}
 	root, _ := cliRoot("")
+	if workspace.IsGitURL(target) {
+		return workspaceAddClone(root, target, id)
+	}
 	abs := mustAbs(target)
 	if fi, err := os.Stat(abs); err != nil || !fi.IsDir() {
 		fmt.Fprintf(os.Stderr, "workspace add: %s is not a directory\n", target)
@@ -175,6 +187,10 @@ func workspaceRemove(args []string) int {
 		kept = append(kept, line)
 	}
 	if !removed {
+		if workspace.UnlinkClone(root, id) {
+			fmt.Printf("unlinked %s (its cache clone stays until `prism workspace prune`)\n", id)
+			return 0
+		}
 		fmt.Fprintf(os.Stderr, "workspace remove: %q is not linked in %s\n", id, yaml)
 		return 1
 	}
@@ -317,4 +333,76 @@ func workspaceSteeringLine(root string) string {
 		return ""
 	}
 	return "Linked repositories: " + ws.Describe() + ". lookup, read and change-impact cover them; search takes --repo <id>."
+}
+
+// workspaceAddClone fetches a remote repository at a ref into the cache,
+// indexes it, and links it to this repository on this machine only.
+func workspaceAddClone(root, target, id string) int {
+	repo, ref := workspace.SplitURLRef(target)
+	if id == "" {
+		id = strings.TrimSuffix(filepath.Base(strings.TrimRight(repo, "/")), ".git")
+	}
+	link, err := fetchAndIndexClone(repo, ref)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "workspace add:", err)
+		return 1
+	}
+	link.ID = id
+	if err := workspace.LinkClone(root, link); err != nil {
+		fmt.Fprintln(os.Stderr, "workspace add:", err)
+		return 1
+	}
+	fmt.Printf("linked %s -> %s (cache clone at %s, read-only reference)\n", id, link.Path, shortSHA(link.SHA))
+	return 0
+}
+
+func fetchAndIndexClone(repo, ref string) (workspace.CacheLink, error) {
+	dir, sha, err := workspace.FetchClone(repo, ref)
+	if err != nil {
+		return workspace.CacheLink{}, err
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, ".grove", "grove.db")); statErr != nil {
+		fmt.Fprintf(os.Stderr, "indexing %s at %s (once per commit)\n", repo, shortSHA(sha))
+		if err := grove.RefreshIndex(context.Background(), dir); err != nil {
+			return workspace.CacheLink{}, fmt.Errorf("index %s: %w", dir, err)
+		}
+	}
+	return workspace.CacheLink{URL: repo, Ref: ref, SHA: sha, Path: dir}, nil
+}
+
+// workspaceFetch re-resolves every cache clone's ref. A branch that moved
+// gets a new directory and index; the link is pointed at it.
+func workspaceFetch(args []string) int {
+	if len(args) > 0 {
+		return rejectUnknownFlag("workspace fetch", args[0])
+	}
+	root, _ := cliRoot("")
+	rc := 0
+	for _, l := range workspace.CacheLinks(root) {
+		next, err := fetchAndIndexClone(l.URL, l.Ref)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "workspace fetch: %s: %v\n", l.ID, err)
+			rc = 1
+			continue
+		}
+		if next.SHA == l.SHA {
+			fmt.Printf("%s: unchanged at %s\n", l.ID, shortSHA(l.SHA))
+			continue
+		}
+		next.ID = l.ID
+		if err := workspace.LinkClone(root, next); err != nil {
+			fmt.Fprintf(os.Stderr, "workspace fetch: %s: %v\n", l.ID, err)
+			rc = 1
+			continue
+		}
+		fmt.Printf("%s: %s -> %s\n", l.ID, shortSHA(l.SHA), shortSHA(next.SHA))
+	}
+	return rc
+}
+
+func shortSHA(sha string) string {
+	if len(sha) > 8 {
+		return sha[:8]
+	}
+	return sha
 }

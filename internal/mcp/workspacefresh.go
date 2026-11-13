@@ -46,6 +46,9 @@ func (h *Handler) freshenLinked(ctx context.Context, r workspace.Root) (stale st
 	if err != nil {
 		return "", false
 	}
+	if r.Cache {
+		return "", true // a cache clone is one commit and never changes
+	}
 	why := linkedStaleReason(r.Path, state)
 	if why == "" {
 		return "", true

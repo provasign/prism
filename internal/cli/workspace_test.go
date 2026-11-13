@@ -514,3 +514,64 @@ func TestDiscoverUsesTheRegistry(t *testing.T) {
 		t.Fatalf("registered checkout not discovered:\n%s", out)
 	}
 }
+
+// A dependency that is not checked out: fetched into the cache at a commit,
+// indexed once, and answered from like a linked checkout.
+func TestWorkspaceCacheClone(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	base, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_CACHE_DIR", filepath.Join(base, "cache"))
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(base, "state"))
+	upstream := filepath.Join(base, "upstream", "lib")
+	writeCLIFile(t, base, "upstream/lib/lib.go", "package lib\n\n// CloneMarker one\nfunc FromClone() int { return 1 }\n")
+	gitIn(t, upstream, "init", "-q", "-b", "main")
+	gitIn(t, upstream, "add", "-A")
+	gitIn(t, upstream, "commit", "-q", "-m", "one")
+	app := filepath.Join(base, "app")
+	writeCLIFile(t, base, "app/prism.yaml", "version: 2\n")
+	writeCLIFile(t, base, "app/main.go", "package main\n\nfunc main() {}\n")
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index rc=%d", rc)
+	}
+	t.Chdir(app)
+	if rc := workspaceAdd([]string{"file://" + upstream + "@main"}); rc != 0 {
+		t.Fatalf("workspace add <url> rc=%d", rc)
+	}
+	yaml, _ := os.ReadFile(filepath.Join(app, "prism.yaml"))
+	if strings.Contains(string(yaml), "workspace_repo") {
+		t.Fatalf("a machine-specific cache link was written into prism.yaml:\n%s", yaml)
+	}
+	out := captureStdout(func() { cmdLookup([]string{"FromClone"}) })
+	if !strings.Contains(out, "return 1") || !strings.Contains(out, "linked repository lib") {
+		t.Fatalf("lookup did not answer from the cache clone:\n%s", out)
+	}
+	status := captureStdout(func() { cmdWorkspace(nil) })
+	if !strings.Contains(status, "cache clone of file://") || !strings.Contains(status, "at main") {
+		t.Fatalf("status does not show the cache clone:\n%s", status)
+	}
+
+	// The branch moves upstream. The old clone is untouched until fetch;
+	// fetch adds the new commit and repoints the link.
+	writeCLIFile(t, base, "upstream/lib/lib.go", "package lib\n\n// CloneMarker two\nfunc FromClone() int { return 2 }\n")
+	gitIn(t, upstream, "commit", "-q", "-am", "two")
+	if out = captureStdout(func() { cmdLookup([]string{"FromClone"}) }); !strings.Contains(out, "return 1") {
+		t.Fatalf("a cache clone changed without a fetch:\n%s", out)
+	}
+	if rc := workspaceFetch(nil); rc != 0 {
+		t.Fatalf("fetch rc=%d", rc)
+	}
+	if out = captureStdout(func() { cmdLookup([]string{"FromClone"}) }); !strings.Contains(out, "return 2") {
+		t.Fatalf("fetch did not move the link to the new commit:\n%s", out)
+	}
+	if removed := workspace.PruneClones(); len(removed) != 1 {
+		t.Fatalf("prune removed %v; want the one superseded clone", removed)
+	}
+	if rc := workspaceRemove([]string{"lib"}); rc != 0 {
+		t.Fatalf("remove rc=%d", rc)
+	}
+	if out = captureStdout(func() { cmdLookup([]string{"FromClone"}) }); strings.Contains(out, "return 2") {
+		t.Fatalf("an unlinked cache clone still answers:\n%s", out)
+	}
+}
