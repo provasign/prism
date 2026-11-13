@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/provasign/prism/internal/textsearch"
@@ -59,6 +60,11 @@ func (h *Handler) linkedSearchRoots(repo string) ([]workspace.Root, error) {
 	for _, r := range h.Workspace.Linked() {
 		if repo == "all" || r.ID == repo {
 			roots = append(roots, r)
+		}
+	}
+	for _, r := range h.Workspace.Roots {
+		if why := r.Unusable(); why != "" && r.ID == repo {
+			return nil, fmt.Errorf("linked repository %q (%s) NOT SEARCHED: %s", repo, h.Workspace.DisplayPath(r), why)
 		}
 	}
 	if len(roots) == 0 {
@@ -133,26 +139,43 @@ func (h *Handler) LinkedSearchTail(ctx context.Context, args map[string]any) str
 		return out
 	}
 	terms, opts, _ := linkedSearchArgs(args)
-	parts := make([]string, 0, len(linked)+len(absent))
-	for _, r := range linked {
-		cctx, cancel := context.WithTimeout(ctx, linkedSearchBudget)
-		hits, files, timedOut := 0, 0, false
-		for _, t := range terms {
-			c := textsearch.Count(cctx, r.Path, t, opts)
-			hits += c.TotalHits
-			files += c.FilesMatched
-			timedOut = timedOut || c.TimedOut || cctx.Err() != nil
-		}
-		cancel()
-		switch {
-		case timedOut:
-			parts = append(parts, r.ID+" not counted (timed out)")
-		case hits == 0:
-			parts = append(parts, r.ID+" 0")
-		default:
-			parts = append(parts, fmt.Sprintf("%s %d in %d file(s)", r.ID, hits, files))
-		}
+	how := "--repo <id> lists them"
+	if h.toolSurface {
+		how = "repo=<id> lists them"
 	}
+	if len(opts.Paths) > 0 {
+		// A path filter names files of this repository. Applied to another
+		// one it matches nothing, and "0" would read as "not there".
+		return "// linked repositories not counted: the path filter applies to this repository (" + how + ", with paths of that repository)\n"
+	}
+	parts := make([]string, 0, len(linked)+len(absent))
+	counts := make([]string, len(linked))
+	var wg sync.WaitGroup
+	for i, r := range linked {
+		wg.Add(1)
+		go func(i int, r workspace.Root) {
+			defer wg.Done()
+			cctx, cancel := context.WithTimeout(ctx, linkedSearchBudget)
+			defer cancel()
+			hits, files, timedOut := 0, 0, false
+			for _, t := range terms {
+				c := textsearch.Count(cctx, r.Path, t, opts)
+				hits += c.TotalHits
+				files += c.FilesMatched
+				timedOut = timedOut || c.TimedOut || cctx.Err() != nil
+			}
+			switch {
+			case timedOut:
+				counts[i] = r.ID + " not counted (timed out)"
+			case hits == 0:
+				counts[i] = r.ID + " 0"
+			default:
+				counts[i] = fmt.Sprintf("%s %d in %d file(s)", r.ID, hits, files)
+			}
+		}(i, r)
+	}
+	wg.Wait()
+	parts = append(parts, counts...)
 	parts = append(parts, absent...)
-	return "// linked repositories, text matches not listed above (repo=<id> lists them): " + strings.Join(parts, "; ") + "\n"
+	return "// linked repositories, text matches not listed above (" + how + "): " + strings.Join(parts, "; ") + "\n"
 }

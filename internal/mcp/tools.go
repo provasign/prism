@@ -33,6 +33,9 @@ type Handler struct {
 	Ledger  *session.Ledger
 	// Workspace is the set of other repositories linked to Root, or nil.
 	Workspace *workspace.Workspace
+	// toolSurface is true when answers go to an MCP client, false for the
+	// CLI: a hint must name the argument the reader can actually pass.
+	toolSurface bool
 
 	// driftBase records the symbols delivered with each full file read this
 	// session, so prism_drift can diff structurally (renames, breaking
@@ -77,6 +80,7 @@ func NewHandler(cfg *config.Config, root string, client *grove.Client) *Handler 
 func NewHandlerWithReady(cfg *config.Config, root string, client *grove.Client, readyCh <-chan struct{}) *Handler {
 	h := NewHandlerWithLedger(cfg, root, client, nil)
 	h.readyCh = readyCh
+	h.toolSurface = true
 	return h
 }
 
@@ -479,6 +483,7 @@ var argAliases = map[string]map[string]bool{
 	// entry: the schema is paid for in every session, the argument only
 	// matters where repositories are linked, and initialize names it there.
 	"prism_search": {"repo": true},
+	"prism_lookup": {"repo": true},
 }
 
 // rejectUnknownArgs errors on any argument key the tool's published schema
@@ -2966,6 +2971,11 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 	// any substring of it, as shown in prism_search results) to pick the right one.
 	fileHint := strings.ToLower(stringArg(args, "file", ""))
 
+	// repo: answer from one linked repository (or "all" of them), for a
+	// name this repository also defines.
+	if repo := stringArg(args, "repo", ""); repo != "" {
+		return h.lookupInRepo(ctx, name, repo, fields)
+	}
 	return h.resolveLookup(ctx, name, fileScope, fileHint, fields)
 }
 
@@ -4346,6 +4356,11 @@ func (h *Handler) safeReadPath(p string) (abs string, sessionPath string, err er
 	for _, r := range h.Workspace.Linked() {
 		if a, _, e := safePathWithinRoot(r.Path, candidate); e == nil {
 			return a, h.Workspace.RelPath(a), nil
+		}
+	}
+	for _, r := range h.Workspace.Roots {
+		if why := r.Unusable(); why != "" && (candidate == r.Path || strings.HasPrefix(candidate, r.Path+string(filepath.Separator))) {
+			return "", "", fmt.Errorf("path %q is in linked repository %s (%s), which cannot be read: %s", p, r.ID, h.Workspace.DisplayPath(r), why)
 		}
 	}
 	return "", "", fmt.Errorf("%w; linked repositories: %s", err, h.Workspace.Describe())

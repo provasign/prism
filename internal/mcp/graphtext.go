@@ -723,7 +723,7 @@ func renderRemovedSymbolsAsText(out map[string]any) (string, bool) {
 		return "", false
 	}
 	known := map[string]bool{"mode": true, "verdict": true, "gateFailure": true,
-		"clean": true, "checked": true, "residuals": true, "note": true}
+		"clean": true, "checked": true, "residuals": true, "note": true, "linked": true}
 	for k := range m {
 		if !known[k] {
 			return "", false
@@ -731,6 +731,12 @@ func renderRemovedSymbolsAsText(out map[string]any) (string, bool) {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "verify --removed: %v (%v/%v clean)\n", m["verdict"], m["clean"], m["checked"])
+	if linked := anySlice(m["linked"]); len(linked) > 0 {
+		b.WriteString("  linked repositories (whole-identifier text lines, not resolved):\n")
+		for _, l := range linked {
+			fmt.Fprintf(&b, "    %v\n", l)
+		}
+	}
 	for _, item := range anySlice(m["residuals"]) {
 		r, ok := item.(map[string]any)
 		if !ok {

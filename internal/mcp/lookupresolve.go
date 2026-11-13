@@ -74,8 +74,11 @@ func (h *Handler) resolveLookup(ctx context.Context, name, fileScope, fileHint s
 		miss["note"] = strings.TrimSpace(note + " " + where)
 	}
 	if len(unread) > 0 {
+		// The name may be defined in a repository that was not read: that
+		// leads, ahead of any advice to check the spelling.
 		note, _ := miss["note"].(string)
-		miss["note"] = strings.TrimSpace(note + " Linked repositories not searched (no index, or not checked out): " + strings.Join(unread, ", ") + ".")
+		miss["note"] = strings.TrimSpace("NOT FOUND in this repository; linked repositories NOT SEARCHED: " +
+			strings.Join(unread, ", ") + ". The name may be defined there. " + note)
 	}
 	return miss, nil
 }

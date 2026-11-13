@@ -20,8 +20,40 @@ import (
 // A hit keeps the usual lookup shape. Its file path is relative to this
 // root ("../grove/pkg/x.go"), which the agent's own file tools accept.
 func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []string) (out map[string]any, unread []string) {
+	return h.lookupLinkedIn(ctx, q, fields, "")
+}
+
+// lookupInRepo answers a lookup from one linked repository by id, or from
+// every one for "all", without consulting this repository.
+func (h *Handler) lookupInRepo(ctx context.Context, name, repo string, fields []string) (any, error) {
+	if _, err := h.linkedSearchRoots(repo); err != nil {
+		return nil, err
+	}
+	only := repo
+	if repo == "all" {
+		only = ""
+	}
+	out, unread := h.lookupLinkedIn(ctx, parseLookupName(name), fields, only)
+	if out != nil {
+		return out, nil
+	}
+	note := fmt.Sprintf("no symbol named %q in linked repository %s", name, repo)
+	if len(unread) > 0 {
+		note += "; NOT SEARCHED: " + strings.Join(unread, ", ")
+	}
+	return map[string]any{"symbol": nil, "name": name, "matched": false, "note": note}, nil
+}
+
+// lookupLinkedIn is lookupLinked restricted to the linked repository with
+// id only ("" for all of them).
+func (h *Handler) lookupLinkedIn(ctx context.Context, q lookupQuery, fields []string, only string) (out map[string]any, unread []string) {
 	if h.Workspace == nil || len(q.segs) == 0 {
 		return nil, nil
+	}
+	// A repository this one requires is the likelier home of a name it uses.
+	required := map[string]bool{}
+	for _, req := range grove.ManifestRequires(h.Root) {
+		required[req.Ecosystem+":"+req.Name] = true
 	}
 	leaf := q.name()
 	names := []string{leaf, strings.Join(q.segs, ".")}
@@ -36,11 +68,20 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 	var hits []hit
 	staleBy := map[string]string{}
 	for _, r := range h.Workspace.Roots {
-		if why := r.Unusable(); why != "" {
+		if why := r.Unusable(); why != "" && (only == "" || r.ID == only) {
 			unread = append(unread, r.ID+" ("+h.Workspace.DisplayPath(r)+", "+shortReason(why)+")")
 		}
 	}
 	for _, r := range h.Workspace.Linked() {
+		if only != "" && r.ID != only {
+			continue
+		}
+		bonus := 0
+		for _, pkg := range grove.ManifestPackages(r.Path) {
+			if required[pkg.Ecosystem+":"+pkg.Name] {
+				bonus = 1
+			}
+		}
 		stale, indexed := h.freshenLinked(ctx, r)
 		if !indexed {
 			unread = append(unread, r.ID+" ("+h.Workspace.RelPath(r.Path)+")")
@@ -62,10 +103,23 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 			case s.Name == leaf && len(q.segs) == 1:
 				score = 2 // a bare name that is some type's member
 			case s.Name == leaf:
-				score = 1 // the qualifier named a package or module, not an owner type
+				// The qualifier names a package or module, not an owner
+				// type: it must match the symbol's directory or file, or
+				// "store.Normalize" would return any Normalize anywhere.
+				qual := strings.ToLower(q.segs[len(q.segs)-2])
+				dir := strings.ToLower(filepath.Base(filepath.Dir(filepath.FromSlash(s.FilePath))))
+				stem := strings.ToLower(strings.TrimSuffix(filepath.Base(s.FilePath), filepath.Ext(s.FilePath)))
+				if dir != qual && stem != qual && s.ParentSymbol != "" {
+					continue
+				}
+				score = 1
+				if dir == qual || stem == qual {
+					score = 3
+				}
 			default:
 				continue
 			}
+			score = score*4 + bonus*2
 			if isTestFilePath(s.FilePath) {
 				score--
 			}
@@ -78,6 +132,14 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 	}
 	sort.SliceStable(hits, func(i, j int) bool { return hits[i].score > hits[j].score })
 	best := hits[0]
+	// Several repositories or files fit equally well: say so and list them,
+	// rather than let the order of workspace_repo lines pick a definition.
+	tied := 0
+	for _, o := range hits {
+		if o.score == best.score && (o.repo != best.repo || o.sym.FilePath != best.sym.FilePath) {
+			tied++
+		}
+	}
 	if len(fields) > 0 {
 		out = projectSymbol(h.Root, best.sym, fields)
 	} else {
@@ -99,7 +161,16 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 		}
 		also = append(also, lookupCandidateLabel(o.sym))
 	}
-	if len(also) > 0 {
+	if tied > 0 {
+		cands := []string{lookupCandidateLabel(best.sym) + "  " + best.sym.Signature}
+		for _, o := range hits[1:] {
+			if o.score == best.score {
+				cands = append(cands, lookupCandidateLabel(o.sym)+"  "+o.sym.Signature)
+			}
+		}
+		out["ambiguous"] = true
+		out["candidates"] = cands
+	} else if len(also) > 0 {
 		out["alsoNamed"] = also
 	}
 	return out, nil

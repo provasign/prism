@@ -104,6 +104,7 @@ Usage:
                                   [--repo <id>|all]  text matches in a linked repository
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
+                                  [--repo <id>|all]  answer from a linked repository
                                   Multiple names: prism lookup <name>... [--dir <path>]
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
                                   its neighbours, or a file's source + the
@@ -2756,6 +2757,7 @@ func cmdLookup(args []string) int {
 	}
 	explicitDir := ""
 	format := formatText
+	repo := ""
 	fileHint := ""
 	var fields []any
 	var bare []string
@@ -2777,6 +2779,13 @@ func cmdLookup(args []string) int {
 			for _, item := range items {
 				fields = append(fields, item)
 			}
+			i++
+		case "--repo":
+			v, err := flagValue("lookup", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			repo = v
 			i++
 		case "--file":
 			v, err := flagValue("lookup", args, i)
@@ -2837,6 +2846,9 @@ func cmdLookup(args []string) int {
 	callArgs := map[string]any{"name": names}
 	if len(fields) > 0 {
 		callArgs["fields"] = fields
+	}
+	if repo != "" {
+		callArgs["repo"] = repo
 	}
 	if fileHint != "" {
 		callArgs["file"] = fileHint

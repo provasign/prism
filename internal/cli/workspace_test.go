@@ -155,7 +155,7 @@ func TestWorkspaceLookupFallsBackToLinkedRepository(t *testing.T) {
 
 	// lib is linked but has no index yet: the miss must say it was not searched.
 	out := captureStdout(func() { cmdLookup([]string{"Box.Unwrap"}) })
-	if !strings.Contains(out, "not searched") || !strings.Contains(out, "lib (../lib)") {
+	if !strings.Contains(out, "NOT SEARCHED: lib (../lib)") || !strings.Contains(out, "may be defined there") {
 		t.Fatalf("miss does not name the unindexed linked repository:\n%s", out)
 	}
 	if _, err := os.Stat(filepath.Join(parent, "lib", ".grove")); err == nil {
@@ -935,5 +935,80 @@ func TestWorkspaceCloneRefusesOptionInjection(t *testing.T) {
 	}
 	if got := workspace.RedactURL("https://user:s3cret@example.com/org/repo.git"); strings.Contains(got, "s3cret") {
 		t.Fatalf("credential not redacted: %s", got)
+	}
+}
+
+// lookup across linked repositories: the package qualifier picks the right
+// definition, a tie is reported instead of resolved by link order, and
+// --repo reaches a name this repository also defines.
+func TestWorkspaceLookupQualifierAmbiguityAndRepo(t *testing.T) {
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	app := filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nfunc main() {}\n\n// Shared: the application's own.\nfunc Shared() int { return 0 }\n")
+	writeCLIFile(t, parent, "app/prism.yaml", "version: 2\nworkspace_repo: one=../one\nworkspace_repo: two=../two\n")
+	writeCLIFile(t, parent, "one/go.mod", "module example.com/one\n")
+	writeCLIFile(t, parent, "one/store/store.go", "package store\n\nfunc Normalize(s string) string { return \"one-store\" }\n")
+	writeCLIFile(t, parent, "one/misc/misc.go", "package misc\n\nfunc Normalize(s string) string { return \"one-misc\" }\n\nfunc Shared() int { return 1 }\n")
+	writeCLIFile(t, parent, "two/go.mod", "module example.com/two\n")
+	writeCLIFile(t, parent, "two/text/text.go", "package text\n\nfunc Normalize(s string) string { return \"two-text\" }\n")
+	for _, r := range []string{"app", "one", "two"} {
+		if rc := cmdIndex([]string{filepath.Join(parent, r)}); rc != 0 {
+			t.Fatalf("index %s rc=%d", r, rc)
+		}
+	}
+	t.Chdir(app)
+	out := captureStdout(func() { cmdLookup([]string{"store.Normalize"}) })
+	if !strings.Contains(out, "one-store") || strings.Contains(out, "AMBIGUOUS") {
+		t.Fatalf("the package qualifier did not select one/store:\n%s", out)
+	}
+	out = captureStdout(func() { cmdLookup([]string{"Normalize"}) })
+	if !strings.Contains(out, "AMBIGUOUS") || !strings.Contains(out, "../one/misc/misc.go") || !strings.Contains(out, "../two/text/text.go") {
+		t.Fatalf("an unqualified name defined in three places was not reported as ambiguous with its candidates:\n%s", out)
+	}
+	out = captureStdout(func() { cmdLookup([]string{"Shared"}) })
+	if !strings.Contains(out, "return 0") {
+		t.Fatalf("a name this repository defines was not answered here:\n%s", out)
+	}
+	out = captureStdout(func() { cmdLookup([]string{"Shared", "--repo", "one"}) })
+	if !strings.Contains(out, "return 1") || !strings.Contains(out, "../one/misc/misc.go") {
+		t.Fatalf("--repo did not reach the linked repository's definition:\n%s", out)
+	}
+	if out = captureStdout(func() { cmdLookup([]string{"Shared", "--repo", "nope"}) }); !strings.Contains(out, `no linked repository "nope"`) || strings.Contains(out, "return") {
+		t.Fatalf("--repo with an unknown repository did not say so:\n%s", out)
+	}
+
+	// search: the CLI is told the CLI flag, and a path filter is not turned
+	// into a false zero for the other repositories.
+	out = captureStdout(func() { cmdSearch([]string{"Normalize", "--scope", "text"}) })
+	if !strings.Contains(out, "--repo <id> lists them") || !strings.Contains(out, "one 2 in 2 file(s)") {
+		t.Fatalf("count line wording or counts wrong:\n%s", out)
+	}
+	out = captureStdout(func() { cmdSearch([]string{"Normalize", "--scope", "text", "--path", "main.go"}) })
+	if strings.Contains(out, "one 0") || !strings.Contains(out, "path filter applies to this repository") {
+		t.Fatalf("a path filter produced a zero count for linked repositories:\n%s", out)
+	}
+}
+
+// verify --removed: clean here, still named by a linked consumer.
+func TestWorkspaceVerifyRemovedLooksAtLinkedRepositories(t *testing.T) {
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	lib := filepath.Join(parent, "lib")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Kept() {}\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\nrequire example.com/lib v1.0.0\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() { lib.OldHelper() }\n")
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index rc=%d", rc)
+	}
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdVerify([]string{"--removed", "OldHelper", "--format", "text"}) })
+	for _, want := range []string{"clean in this repository; linked repositories still name the removed identifiers", "app (../app): OldHelper 1 line(s) in 1 file(s)"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("verify --removed output missing %q:\n%s", want, out)
+		}
 	}
 }

@@ -61,3 +61,20 @@ func TestSearchRepoArgumentOnTheToolSurface(t *testing.T) {
 		t.Fatal("repo was added to the published schema; it is meant to stay out of it")
 	}
 }
+
+// The default (compact) tool surface must accept the repo argument its own
+// answers and instructions name.
+func TestCompactSurfaceAcceptsRepo(t *testing.T) {
+	for op, args := range map[string]map[string]any{
+		"search": {"terms": "x", "repo": "lib"},
+		"lookup": {"name": "x", "repo": "lib"},
+	} {
+		allowed := false
+		for _, f := range compactFields[op] {
+			allowed = allowed || f == "repo"
+		}
+		if !allowed {
+			t.Fatalf("compact %s rejects repo (args %v)", op, args)
+		}
+	}
+}

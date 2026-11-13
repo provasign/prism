@@ -382,6 +382,9 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 	switch op {
 	case "lookup":
 		legacy["name"] = args["name"]
+		if v, ok := args["repo"]; ok {
+			legacy["repo"] = v
+		}
 		if v, ok := args["symbol_file"]; ok {
 			legacy["file"] = v
 		}
@@ -408,7 +411,7 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 		legacy["query"] = args["terms"]
 		for compact, old := range map[string]string{"paths": "path", "max_results": "limit",
 			"scope": "scope", "glob": "glob", "regex": "regex", "files_only": "files_only", "exhaustive": "exhaustive",
-			"include_bodies": "include_bodies", "context": "context", "rollup_only": "rollup_only"} {
+			"include_bodies": "include_bodies", "context": "context", "rollup_only": "rollup_only", "repo": "repo"} {
 			if v, ok := args[compact]; ok {
 				legacy[old] = v
 			}

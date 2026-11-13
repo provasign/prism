@@ -1465,17 +1465,54 @@ func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any,
 	if clean == len(syms) {
 		verdict = "clean — no exact identifier mentions remain"
 	}
-	return map[string]any{
+	// Linked repositories: the same whole-identifier pass, counted per
+	// repository. A removal that is clean here and still named by a
+	// consumer is not clean.
+	var linkedLines []string
+	linkedMentions := 0
+	if h.Workspace != nil {
+		for _, r := range h.Workspace.Roots {
+			if why := r.Unusable(); why != "" {
+				linkedLines = append(linkedLines, fmt.Sprintf("%s (%s): NOT SEARCHED: %s", r.ID, h.Workspace.DisplayPath(r), shortReason(why)))
+			}
+		}
+		for _, r := range h.Workspace.Linked() {
+			var parts []string
+			for _, sym := range syms {
+				c := textsearch.Count(ctx, r.Path, `\b`+regexp.QuoteMeta(removedSymbolIdentifier(sym))+`\b`,
+					textsearch.Options{Regex: true, CaseSensitive: true})
+				if c.TotalHits > 0 {
+					linkedMentions += c.TotalHits
+					parts = append(parts, fmt.Sprintf("%s %d line(s) in %d file(s)", sym, c.TotalHits, c.FilesMatched))
+				}
+			}
+			if len(parts) > 0 {
+				linkedLines = append(linkedLines, fmt.Sprintf("%s (%s): %s", r.ID, h.Workspace.DisplayPath(r), strings.Join(parts, "; ")))
+			}
+		}
+		if linkedMentions > 0 {
+			if clean == len(syms) {
+				verdict = "clean in this repository; linked repositories still name the removed identifiers"
+			} else {
+				verdict += "; linked repositories name them too"
+			}
+		}
+	}
+	result := map[string]any{
 		"mode":        "removed_symbols",
 		"verdict":     verdict,
-		"gateFailure": clean != len(syms),
+		"gateFailure": clean != len(syms) || linkedMentions > 0,
 		"clean":       clean,
 		"checked":     len(syms),
 		"residuals":   out,
 		"note": "whole-identifier text pass over searchable working-tree files, including comments and docs. " +
 			"Mentions are not proof of live code references; inspect reported sites. Full verify is optional when " +
 			"build/typecheck does not cover affected callers.",
-	}, nil
+	}
+	if len(linkedLines) > 0 {
+		result["linked"] = linkedLines
+	}
+	return result, nil
 }
 
 // removedSymbolIdentifier returns the identifier a removed symbol is written
