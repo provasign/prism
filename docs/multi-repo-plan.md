@@ -2,52 +2,50 @@
 
 Date: 2026-11-12. Status: proposal, nothing built. Baseline: prism v1.2.0, grove v0.63.27, astkit v0.16.10.
 
-## Status (2026-11-12, end of day)
+## Status (2026-11-13)
 
 Built on the `multi-repo` branches of grove and prism. Local commits only, nothing pushed, no tags.
-Branch binary: `~/Projects/provasign-mr/bin/prism-mr`. User guide: `docs/MULTI_REPO.md`.
+Branch binary: `~/Projects/provasign-mr/bin/prism-mr`. User guide: `docs/MULTI_REPO.md` (current).
+The design text below is the original plan; where it and the user guide differ, the guide is right.
 
-| Step | State |
+| Area | State |
 |---|---|
-| 0 worktrees, separate go.work and binary | done |
-| 1 `workspace_repo` config, `prism workspace`, cross-repo `read`, root-resolution fix | done |
-| 2 `lookup` fallback, `search` count line and `repo=` | done, CLI and MCP share one path |
-| 3 manifests, discovery, registry, init | done: go.mod, go.work, package.json, Cargo.toml, pyproject.toml, pom.xml, composer.json. Init reports and links only on `--workspace auto` or an interactive yes |
-| 4 references that leave the repository | Go: calls, function values, types (compiler). TypeScript/JavaScript: calls (compiler, matched by package and name). Python: calls through imported names (import-scoped). Java, Rust, PHP, C#, C/C++: not done |
-| 4b staleness | done: commit and branch stamped in the index; stale linked index refreshed within a budget or labelled STALE |
-| 5 cross-repo `change-impact`, `verify`, `test-plan` | done |
-| 7 cache clones | done: `workspace add <git-url>[@ref]`, `fetch`, `prune`; no size cap or automatic eviction |
-| 8 link server | done: `workspace export`, `workspace push`, `prism link-server`, bearer token; no per-repository permissions |
-| 9 graph explorer repo level, read-guard paths | not done |
+| Linking | `workspace_repo` in prism.yaml, parent-folder file, `prism workspace` (add, remove, discover, fetch, prune, export, push). A link is visible from both ends and indexes the linked repository. A prism.yaml link takes effect only once confirmed by a command on that machine; non-repositories are refused; nothing is linked under GROVE_UNTRUSTED |
+| Discovery | go.mod, go.work, package.json, Cargo.toml, pyproject.toml, requirements.txt, pom.xml, Gradle (by pattern), composer.json; nested packages; per-user registry; unlinked dependencies listed |
+| References recorded | Go: calls, values, types, variables, constants, fields, interface implementers (compiler). Java: calls, constructors, type uses, heritage (javac; a linked library's sources go on the sourcepath). TypeScript/JavaScript: calls, new, type uses, heritage, keyed by owner (tsc). Python: calls through imported names (import-scoped) |
+| Fallback | Labelled whole-word name matches, narrowed to files that import the package or name the owner, for repositories with no index or no completed compiler pass and for kinds and languages with no records |
+| Answers | lookup (qualifier-aware, ambiguity reported, `--repo`), read, search (count line, `--repo`, both surfaces), change-impact (linked sites first, claims corrected), verify (base names, first line and --strict carry linked state, `--removed` counts linked lines), test-plan, query (one-line scope note) |
+| Staleness | Commit, branch, Prism version and linked set stamped; refresh within a budget or STALE; rows checked against the line on disk |
+| Sources | Local checkouts, commit-keyed cache clones, link server with bearer token |
+| Performance | External-reference lookup indexed (2.8 s to 0.03 s on a 1.3M-edge index); linked repositories read concurrently; repositories whose manifest does not require the package skipped; freshness cached for a burst of calls in a server |
 
 Differences from the design below, decided while building:
 
 - No `extrefs`, `packages` or `requires` tables. External references are per-caller marker records
-  (`external-ref`), the mechanism Grove already uses for resolved calls, so incremental re-index
-  handles them. Manifests are read from disk when asked. A declaration's key is derived at query time.
-- Only the resolver version is bumped (v47), not the extractor version: existing indexes re-resolve once.
-- Grove's Go pass now follows a `go.work` in a directory above the repository that lists it. It used to
-  run with `GOWORK=off`, which type-checked a consumer against its pinned module version instead of the
-  linked checkout and missed anything that exists only in the checkout. This changes Go results for any
-  repository built in such a workspace, multi-repo or not.
-- `prism init` never links without being asked. The plan said explicit build links would be added
-  silently; linking changes what every later answer covers, so it needs a yes.
-- Linked-repository paths are relative to the primary root (`../grove/x.go`); cache clones are absolute.
-- The server holds locations, one source line per reference, and signatures. It also answers "where is
-  this name declared", which `lookup` uses as a pointer when a name is not found locally.
+  (`external-ref`) with a partial index; manifests are read from disk; a declaration's key is derived
+  at query time. Only the resolver version is bumped (v50): existing indexes re-resolve once.
+- Grove's Go pass follows a `go.work` in a directory above the repository that lists it (it ran with
+  `GOWORK=off`). This changes Go results for any repository built in such a workspace.
+- `prism init` never links without being asked.
+- Links are confirmed per machine and recorded at both ends, outside the repositories.
 
-Not done, and why:
+A multi-agent review was started and cut short by a usage limit: two of ten reviewers finished
+(agent experience, competitive gaps). Their findings were not independently verified; the ones
+acted on are in the commits of 2026-11-13.
 
-1. **Java.** The resolver already computes the external owner; emitting its qualified name needs a JDK
-   to test, and this machine has none. Not changed, so nothing untested was shipped.
-2. **Rust.** rust-analyzer is here, but the change touches both the batch and the resident pass and
-   must keep them identical. Left for a session that can spend the index time on it.
-3. **PHP, C#, C/C++.** No cross-repository records.
-4. **Graph explorer** repo level and the **read guard**'s path matching across roots.
-5. **Cache size cap** and automatic eviction; `workspace prune` is manual.
-6. **Per-repository permissions** on the link server. One bearer token gates everything.
-7. **References in package-level variable and constant declarations** in Go.
-8. **Agent benchmarks.** None run: they are paid and need a go-ahead.
+Not done:
+
+1. **Rust, Kotlin, C#, PHP, C/C++**: name matches only. Rust needs the batch and resident passes
+   changed together.
+2. **Link server**: per-repository permissions, a separate write token, branch selection by the
+   client, retention of old bundles, manifest-only enrolment of repositories that upload nothing.
+3. **Reading a third-party dependency's source** at its pinned version from the module cache,
+   node_modules or site-packages.
+4. **Measured accuracy**: no recall/precision of cross-repository references against a compiler
+   oracle on real repositories. The tests are fixtures.
+5. **Transitive impact** across repositories (A used by B, B's wrapper used by C).
+6. **Graph explorer** repository level; cache size cap.
+7. **Agent benchmarks**: none run; they are paid and need a go-ahead.
 
 Contents
 
