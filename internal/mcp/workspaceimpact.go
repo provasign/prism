@@ -456,6 +456,48 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 			res.sites++
 		}
 	}
+	// Go: the types here that implement an interface of the change set.
+	// A key go:<path>#Iface names the interface, go:<path>#Iface.Method one
+	// of its methods; a key that is no interface matches nothing.
+	if complete["go"] {
+		methodOf := map[string]map[string]bool{} // "path.Iface" -> methods asked for ("" = all)
+		var ifaces []string
+		for _, k := range resolvable {
+			if !strings.HasPrefix(k, "go:") {
+				continue
+			}
+			path, name, _ := strings.Cut(strings.TrimPrefix(k, "go:"), "#")
+			typ, method, _ := strings.Cut(name, ".")
+			id := path + "." + typ
+			if methodOf[id] == nil {
+				methodOf[id] = map[string]bool{}
+				ifaces = append(ifaces, id)
+			}
+			methodOf[id][method] = true
+		}
+		impls, _ := grove.ReadExternalImplementers(ctx, root.Path, ifaces)
+		for _, im := range impls {
+			_, method, _ := strings.Cut(im.Method, ".")
+			if !methodOf[im.Interface][""] && !methodOf[im.Interface][method] {
+				continue
+			}
+			id := fmt.Sprintf("%s:%d", im.File, im.Line)
+			if shown[id] {
+				continue
+			}
+			shown[id] = true
+			text, _ := lineOf(im.File, im.Line)
+			tag := ""
+			if isTestFilePath(im.File) {
+				tag = "  [test]"
+			} else {
+				res.production++
+			}
+			short := im.Interface[strings.LastIndexByte(im.Interface, '/')+1:]
+			rows = append(rows, fmt.Sprintf("  %s/%s:%d: %s  [implements %s]%s", rel, im.File, im.Line, text, short, tag))
+			res.sites++
+		}
+	}
 	var matchRows []string
 	more := 0
 	for _, t := range fallback {

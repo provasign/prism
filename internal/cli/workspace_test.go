@@ -1012,3 +1012,30 @@ func TestWorkspaceVerifyRemovedLooksAtLinkedRepositories(t *testing.T) {
 		}
 	}
 }
+
+// The classic cross-repository break: the library changes an interface and a
+// type in a consumer stops implementing it. No call names the method there.
+func TestWorkspaceChangeImpactListsImplementers(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go toolchain not available")
+	}
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/store.go", "package lib\n\ntype Store interface {\n\tGet(key string) (string, error)\n}\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, parent, "app/file.go", "package app\n\nimport \"example.com/lib\"\n\ntype FileStore struct{}\n\nfunc (f *FileStore) Get(key string) (string, error) { return key, nil }\n\nvar _ lib.Store = (*FileStore)(nil)\n")
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdChangeImpact([]string{"Store.Get", "--format", "text"}) })
+	if !strings.Contains(out, "../app/file.go:7: func (f *FileStore) Get(key string) (string, error) { return key, nil }  [implements lib.Store]") {
+		t.Fatalf("the consumer type implementing the changed interface method is not listed:\n%s", out)
+	}
+}

@@ -963,3 +963,18 @@ const ResolverVersion = groveeng.ResolverVersion
 // LinkedDigest identifies a set of linked repositories, for comparing with
 // IndexState.Linked.
 func LinkedDigest(roots []string) string { return groveeng.LinkedDigest(roots) }
+
+// ExternalImpl is a method in another repository that implements a method
+// of an interface this module declares.
+type ExternalImpl = groveeng.ExternalImpl
+
+// ReadExternalImplementers lists, from another repository's existing index,
+// its methods that fulfil any of ifaces ("import/path.Interface").
+func ReadExternalImplementers(ctx context.Context, root string, ifaces []string) ([]ExternalImpl, error) {
+	r, err := groveeng.OpenReader(root)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return r.ExternalImplementers(ctx, ifaces)
+}
