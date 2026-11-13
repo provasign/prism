@@ -279,7 +279,7 @@ func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
 	})
 	for _, want := range []string{
 		"consumers in linked repositories",
-		"// repo app  ../app  requires example.com/lib v0.3.0",
+		"// repo app  ../app  requires example.com/lib v0.3.0, built against the local checkout",
 		"../app/main.go:6:14: println(lib.Helper())  [in main]",
 		"// repo idle  ../idle  NOT SEARCHED: no index there",
 		"1 call site(s) in 1 of 2 linked repositories searched",

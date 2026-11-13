@@ -108,10 +108,16 @@ func requirePin(root string, keys []string) string {
 		for _, k := range keys {
 			pkg := strings.TrimPrefix(k[:strings.IndexByte(k, '#')], "go:")
 			if pkg == req.Name || strings.HasPrefix(pkg, req.Name+"/") {
-				if req.Version == "" {
-					return "requires " + req.Name
+				pin := "requires " + req.Name
+				if req.Version != "" {
+					pin += " " + req.Version
 				}
-				return "requires " + req.Name + " " + req.Version
+				if req.LocalPath != "" {
+					// go.work or a replace directive: the version is not
+					// what it is built against.
+					pin += ", built against the local checkout"
+				}
+				return pin
 			}
 		}
 	}
