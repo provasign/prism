@@ -66,6 +66,12 @@ TAIL = ("\n\nThis repository is a Go library. Repositories that use it are check
         "go.work in the parent directory builds them together against this checkout. Make the change here "
         "and update every place that needs it, in this repository and in those, so that every module "
         "builds and its tests pass.")
+# Variant: the prompt does not say where the dependents are (a library
+# maintainer's request). Selected with MR_PROMPT=unprompted.
+TAIL_UNPROMPTED = ("\n\nThis repository is a Go library. Make the change and update whatever depends on it, "
+                   "so that everything still builds and its tests pass.")
+if os.environ.get("MR_PROMPT") == "unprompted":
+    TAIL = TAIL_UNPROMPTED
 run_e2e.MINIMAL_TAIL = TAIL
 os.environ["E2E_TAIL"] = "minimal"
 run_e2e.PRISM_BIN_FOR_ARM["prism_cli"] = PRISM
