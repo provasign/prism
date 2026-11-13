@@ -290,9 +290,11 @@ func (h *Handler) planLinkedTests(ctx context.Context, r *testPlanResult) {
 	var keys []string
 	seen := map[string]bool{}
 	for _, s := range r.ChangedSymbols {
-		if k, ok := grove.KeyFor(h.Root, s.Language, s.Kind, s.File, s.Name); ok && !seen[k] {
-			seen[k] = true
-			keys = append(keys, k)
+		for _, k := range grove.KeysFor(h.Root, s.Language, s.Kind, s.File, s.Name) {
+			if !seen[k] {
+				seen[k] = true
+				keys = append(keys, k)
+			}
 		}
 	}
 	sort.Strings(keys)

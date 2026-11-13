@@ -33,9 +33,11 @@ func (h *Handler) linkedKeys(syms []grove.SymbolRecord) []string {
 	seen := map[string]bool{}
 	var keys []string
 	for _, s := range syms {
-		if k, ok := grove.SymbolKey(h.Root, s); ok && !seen[k] {
-			seen[k] = true
-			keys = append(keys, k)
+		for _, k := range grove.SymbolKeys(h.Root, s) {
+			if !seen[k] {
+				seen[k] = true
+				keys = append(keys, k)
+			}
 		}
 	}
 	sort.Strings(keys)
@@ -73,7 +75,7 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 		return nil, "", 0
 	}
 	if len(keys) == 0 {
-		return nil, "linked repositories not searched: cross-repository references are recorded for Go (functions, methods, types) and TypeScript/JavaScript (calls) only", 0
+		return nil, "linked repositories not searched: cross-repository references are recorded for Go (functions, methods, types), TypeScript/JavaScript (calls) and Python (calls through imported names) only", 0
 	}
 	searched := 0
 	var unread, staleRoots []string
@@ -131,10 +133,15 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 			if isTestFilePath(ref.File) {
 				tag = "  [test]"
 			}
-			if strings.HasPrefix(ref.Key, "npm:") {
+			switch {
+			case strings.HasPrefix(ref.Key, "npm:"):
 				// TypeScript records a callee by package and name, without
 				// its owner type.
 				tag += "  [matched by package and name]"
+			case strings.HasPrefix(ref.Key, "py:"):
+				// Python has no compiler pass: the call names something
+				// the file imported under this module and name.
+				tag += "  [import-scoped: matched by module and name]"
 			}
 			lines = append(lines, fmt.Sprintf("  %s: %s  [in %s]%s", at, text, ref.From, tag))
 			sites++

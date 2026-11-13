@@ -282,7 +282,7 @@ func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
 		}
 	})
 	for _, want := range []string{
-		"consumers in linked repositories",
+		"consumers in other repositories",
 		"// repo app  ../app  requires example.com/lib v0.3.0, built against the local checkout",
 		"../app/main.go:6:14: println(lib.Helper())  [in main]",
 		"// repo idle  ../idle  NOT SEARCHED: no index there",
@@ -666,5 +666,25 @@ func TestWorkspaceServerAnswersForRepositoriesNotCheckedOut(t *testing.T) {
 	out = impact()
 	if !strings.Contains(out, "../app/main.go:6:14") || strings.Contains(out, "example.org/team/app:main.go") {
 		t.Fatalf("a locally linked repository was also listed from the server:\n%s", out)
+	}
+}
+
+func TestWorkspaceChangeImpactPython(t *testing.T) {
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/extlib/__init__.py", "from .models import persist\n")
+	writeCLIFile(t, parent, "lib/extlib/models.py", "def persist(m):\n    pass\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\n")
+	writeCLIFile(t, parent, "app/app/use.py", "from extlib import persist\n\n\ndef run(m):\n    persist(m)\n")
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdChangeImpact([]string{"persist", "--format", "text"}) })
+	if !strings.Contains(out, "../app/app/use.py:5:5: persist(m)  [in run]  [import-scoped: matched by module and name]") {
+		t.Fatalf("Python consumer in the linked repository not listed:\n%s", out)
 	}
 }

@@ -933,3 +933,15 @@ func KeyFor(root, language, kind, filePath, qualifiedName string) (string, bool)
 func ManifestPackages(root string) []groveeng.ManifestPackage {
 	return groveeng.ScanManifests(root).Packages
 }
+
+// SymbolKeys returns every key other repositories may have recorded for s.
+// Most languages have one; Python has one per package above the defining
+// module, since a consumer records the module it imported the name from.
+func SymbolKeys(root string, s SymbolRecord) []string {
+	return groveeng.KeysFor(root, s.Language, s.Kind, s.FilePath, s.QualifiedName)
+}
+
+// KeysFor is SymbolKeys for a symbol given by its fields.
+func KeysFor(root, language, kind, filePath, qualifiedName string) []string {
+	return groveeng.KeysFor(root, language, kind, filePath, qualifiedName)
+}
