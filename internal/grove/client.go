@@ -871,13 +871,17 @@ func ReadSymbolsNamed(ctx context.Context, root string, names []string) ([]Symbo
 // another module declares.
 type ExternalRef = groveeng.ExternalRef
 
-// GoSymbolKey is the key other repositories record when they call s, a Go
-// function or method declared under root.
+// GoSymbolKey is the key other repositories record when they name s, a Go
+// function, method or type declared under root.
 func GoSymbolKey(root string, s SymbolRecord) (string, bool) {
-	if s.Language != "go" || (s.Kind != "function" && s.Kind != "method") {
+	if s.Language != "go" {
 		return "", false
 	}
-	return groveeng.GoKey(root, s.FilePath, s.QualifiedName)
+	switch s.Kind {
+	case "function", "method", "struct", "interface", "type", "class":
+		return groveeng.GoKey(root, s.FilePath, s.QualifiedName)
+	}
+	return "", false
 }
 
 // ReadExternalRefs lists, from another repository's existing index, its

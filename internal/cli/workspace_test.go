@@ -282,7 +282,7 @@ func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
 		"// repo app  ../app  requires example.com/lib v0.3.0, built against the local checkout",
 		"../app/main.go:6:14: println(lib.Helper())  [in main]",
 		"// repo idle  ../idle  NOT SEARCHED: no index there",
-		"1 call site(s) in 1 of 2 linked repositories searched",
+		"1 site(s) in 1 of 2 linked repositories searched",
 		"not searched (no index): idle",
 		"repositories that are not linked are not covered",
 	} {
@@ -360,7 +360,7 @@ func TestWorkspaceChangeImpactFollowsBranchSwitch(t *testing.T) {
 	if strings.Contains(out, "main.go:6:14") || strings.Contains(out, "STALE") {
 		t.Fatalf("answer still describes the old branch:\n%s", out)
 	}
-	if !strings.Contains(out, "0 call site(s) in 1 of 1 linked repositories searched") {
+	if !strings.Contains(out, "0 site(s) in 1 of 1 linked repositories searched") {
 		t.Fatalf("scope line wrong after refresh:\n%s", out)
 	}
 

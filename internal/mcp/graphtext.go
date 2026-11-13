@@ -337,7 +337,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 func FormatWorkspaceConsumersText(out map[string]any) string {
 	var b strings.Builder
 	if lines := anySlice(out["workspaceConsumers"]); len(lines) > 0 {
-		b.WriteString("consumers in linked repositories (compiler-resolved calls):\n")
+		b.WriteString("consumers in linked repositories (compiler-resolved references):\n")
 		for _, l := range lines {
 			fmt.Fprintf(&b, "%v\n", l)
 		}

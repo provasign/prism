@@ -38,7 +38,7 @@ func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any,
 		}
 	}
 	if len(keys) == 0 {
-		out["workspaceScope"] = "linked repositories not searched: cross-repository references are recorded for Go functions and methods only"
+		out["workspaceScope"] = "linked repositories not searched: cross-repository references are recorded for Go functions, methods and types only"
 		return
 	}
 	sort.Strings(keys)
@@ -100,8 +100,8 @@ func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any,
 		}
 	}
 	out["workspaceConsumers"] = lines
-	scope := fmt.Sprintf("%d call site(s) in %d of %d linked repositories searched; "+
-		"calls only (a function passed as a value is not listed)", sites, searched, len(linked))
+	scope := fmt.Sprintf("%d site(s) in %d of %d linked repositories searched; "+
+		"references inside functions only (a package-level declaration naming it is not listed)", sites, searched, len(linked))
 	if len(staleRoots) > 0 {
 		scope += "; answered from a STALE index: " + strings.Join(staleRoots, ", ")
 	}
