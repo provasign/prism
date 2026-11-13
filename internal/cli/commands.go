@@ -25,6 +25,7 @@ import (
 	"github.com/provasign/prism/internal/mcp"
 	"github.com/provasign/prism/internal/textsearch"
 	"github.com/provasign/prism/internal/version"
+	"github.com/provasign/prism/internal/workspace"
 )
 
 // outputFormat controls how CLI results are printed.
@@ -153,6 +154,10 @@ prism init [dir] flags:
                       ids: claude, codex, cursor, windsurf, vscode, gemini, opencode
                       interactive init recommends detected/existing harnesses;
                       non-interactive init requires this flag
+  --workspace <auto|none>
+                      related checkouts found in manifests: auto links them,
+                      none does not look (default: ask when interactive,
+                      otherwise only report)
   --interface <mcp|cli>
                       how agents reach Prism: mcp registers the MCP server, cli
                       registers nothing and steers agents to the prism command
@@ -365,6 +370,7 @@ func cmdInit(args []string) int {
 	readGuard := false
 	noReadGuard := false
 	yes := false
+	workspaceMode := ""
 	interfaceArg := ""
 	var harnessArgs []string
 	filtered := args[:0]
@@ -405,6 +411,13 @@ func cmdInit(args []string) int {
 			refresh = true
 		case "--yes", "-y":
 			yes = true
+		case "--workspace":
+			v, err := choiceFlag("init", args, i, "auto", "none")
+			if err != nil {
+				return usageError(err)
+			}
+			workspaceMode = v
+			i++
 		case "--print-config":
 			v, err := flagValue("init", args, i)
 			if err != nil {
@@ -566,10 +579,16 @@ mcp_surface: "compact"
 		fmt.Fprintln(os.Stderr, warning)
 	}
 
+	// Related checkouts: recorded, reported, linked only on a yes.
+	offerWorkspaceLinks(abs, workspaceMode)
+
 	// 3. Write steering instructions matching the chosen mode.
 	steering := steeringBlock()
 	if iface == interfaceCLI {
 		steering = cliSteeringInstructionsForOS(runtime.GOOS)
+	}
+	if line := workspaceSteeringLine(abs); line != "" {
+		steering = strings.Replace(steering, "<!-- prism:end -->", line+"\n\n<!-- prism:end -->", 1)
 	}
 	writeSteeringBlock(abs, harnesses, refresh, steering)
 
@@ -2107,6 +2126,7 @@ func cmdIndex(args []string) int {
 		return 1
 	}
 	defer client.Shutdown()
+	workspace.Register(mustAbs(dir))
 	_ = cfg
 	// No default deadline: a deadline cancels the index itself, and a first
 	// index of a never-built project compiles its dependencies once (grafana:

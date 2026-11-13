@@ -100,9 +100,17 @@ func Discover(primary string, ws *Workspace) []Candidate {
 		}
 	}
 	sort.Strings(names)
+	dirs := make([]string, 0, len(names))
 	for _, name := range names {
-		dir := filepath.Join(parent, name)
-		if resolve(dir) == primary {
+		dirs = append(dirs, filepath.Join(parent, name))
+	}
+	// Then repositories Prism was set up in elsewhere on this machine.
+	for _, e := range Known() {
+		dirs = append(dirs, e.Path)
+	}
+	for _, dir := range dirs {
+		name := filepath.Base(dir)
+		if r := resolve(dir); r == primary || isInside(primary, r) || isInside(r, primary) {
 			continue
 		}
 		theirs := groveeng.ScanManifests(dir)

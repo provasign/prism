@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/workspace"
 )
 
 // workspaceFixture lays out a parent folder holding three checkouts: app
@@ -452,5 +454,63 @@ func TestWorkspaceTestPlanListsLinkedTests(t *testing.T) {
 	}
 	if strings.Contains(out, "../app/use.go:5") {
 		t.Fatalf("a non-test site was listed as a linked test:\n%s", out)
+	}
+}
+
+func TestInitOffersLinksAndWritesSteeringLine(t *testing.T) {
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	app := filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\nrequire example.com/lib v1.2.0\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nfunc main() {}\n")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n")
+
+	// Non-interactive, no flag: reported, not linked, no steering line.
+	if rc := cmdInit([]string{app, "--harness", "claude", "--interface", "cli"}); rc != 0 {
+		t.Fatalf("init rc=%d", rc)
+	}
+	yaml, _ := os.ReadFile(filepath.Join(app, "prism.yaml"))
+	steering, _ := os.ReadFile(filepath.Join(app, "CLAUDE.md"))
+	if strings.Contains(string(yaml), "workspace_repo") || strings.Contains(string(steering), "Linked repositories") {
+		t.Fatalf("init linked a repository without being asked:\n%s\n%s", yaml, steering)
+	}
+
+	if rc := cmdInit([]string{app, "--harness", "claude", "--interface", "cli", "--workspace", "auto"}); rc != 0 {
+		t.Fatalf("init --workspace auto rc=%d", rc)
+	}
+	yaml, _ = os.ReadFile(filepath.Join(app, "prism.yaml"))
+	steering, _ = os.ReadFile(filepath.Join(app, "CLAUDE.md"))
+	if !strings.Contains(string(yaml), "workspace_repo: lib=../lib") {
+		t.Fatalf("--workspace auto did not link the dependency:\n%s", yaml)
+	}
+	if !strings.Contains(string(steering), "Linked repositories: lib (../lib).") || strings.Count(string(steering), "<!-- prism:end -->") != 1 {
+		t.Fatalf("steering line missing or the block is malformed:\n%s", steering)
+	}
+	// Re-running keeps one link and one line.
+	if rc := cmdInit([]string{app, "--harness", "claude", "--interface", "cli", "--workspace", "auto"}); rc != 0 {
+		t.Fatalf("re-init rc=%d", rc)
+	}
+	yaml, _ = os.ReadFile(filepath.Join(app, "prism.yaml"))
+	steering, _ = os.ReadFile(filepath.Join(app, "CLAUDE.md"))
+	if strings.Count(string(yaml), "workspace_repo") != 1 || strings.Count(string(steering), "Linked repositories") != 1 {
+		t.Fatalf("re-init duplicated the link or the line:\n%s\n%s", yaml, steering)
+	}
+}
+
+// A checkout that is not a sibling is found through the registry once
+// Prism has been set up in it.
+func TestDiscoverUsesTheRegistry(t *testing.T) {
+	base, _ := filepath.EvalSymlinks(t.TempDir())
+	writeCLIFile(t, base, "work/app/go.mod", "module example.com/app\n\nrequire example.com/far v1.0.0\n")
+	writeCLIFile(t, base, "work/app/prism.yaml", "version: 2\n")
+	writeCLIFile(t, base, "elsewhere/deep/far/go.mod", "module example.com/far\n")
+	t.Chdir(filepath.Join(base, "work", "app"))
+	out := captureStdout(func() { workspaceDiscover(nil) })
+	if strings.Contains(out, "far") {
+		t.Fatalf("an unregistered, non-sibling checkout was found:\n%s", out)
+	}
+	workspace.Register(filepath.Join(base, "elsewhere", "deep", "far"))
+	out = captureStdout(func() { workspaceDiscover(nil) })
+	if !strings.Contains(out, "elsewhere/deep/far") || !strings.Contains(out, "depends on") {
+		t.Fatalf("registered checkout not discovered:\n%s", out)
 	}
 }

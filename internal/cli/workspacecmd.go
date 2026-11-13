@@ -253,3 +253,68 @@ func workspaceDiscover(args []string) int {
 	}
 	return rc
 }
+
+// offerWorkspaceLinks runs at the end of `prism init`: it records the
+// repository in the per-user registry, looks for related checkouts, and
+// links them only on a yes. mode is "auto" (link all found), "none" (do not
+// look), or "" (ask when interactive, otherwise only report). Linking
+// changes what every later answer covers, so it is never done silently.
+func offerWorkspaceLinks(root, mode string) {
+	workspace.Register(root)
+	if mode == "none" {
+		return
+	}
+	cfg, err := config.LoadFromDir(root)
+	if err != nil {
+		return
+	}
+	var pending []workspace.Candidate
+	for _, c := range workspace.Discover(root, workspace.Load(root, cfg)) {
+		if !c.Linked {
+			pending = append(pending, c)
+		}
+	}
+	if len(pending) == 0 {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "\nrelated checkouts found (%d):\n", len(pending))
+	for _, c := range pending {
+		rel, _ := filepath.Rel(root, c.Path)
+		fmt.Fprintf(os.Stderr, "  %s  %s  — %s\n", filepath.ToSlash(rel), c.Relation, c.Evidence)
+	}
+	link := mode == "auto"
+	if mode == "" && isInteractive() {
+		fmt.Fprint(os.Stderr, "Link them, so lookup, read and change-impact cover them? [y/N]: ")
+		line, _ := initStdin().ReadString('\n')
+		switch strings.ToLower(strings.TrimSpace(line)) {
+		case "y", "yes":
+			link = true
+		}
+	}
+	if !link {
+		fmt.Fprintln(os.Stderr, "not linked; `prism workspace discover --link` links them later")
+		return
+	}
+	wd, _ := os.Getwd()
+	if os.Chdir(root) == nil {
+		for _, c := range pending {
+			workspaceAdd([]string{c.Path})
+		}
+		_ = os.Chdir(wd)
+	}
+}
+
+// workspaceSteeringLine is the one line init adds to the steering block
+// when repositories are linked. Steering is paid for at every session
+// start, so it is a single sentence and absent without a workspace.
+func workspaceSteeringLine(root string) string {
+	cfg, err := config.LoadFromDir(root)
+	if err != nil {
+		return ""
+	}
+	ws := workspace.Load(root, cfg)
+	if ws == nil || len(ws.Linked()) == 0 {
+		return ""
+	}
+	return "Linked repositories: " + ws.Describe() + ". lookup, read and change-impact cover them; search takes --repo <id>."
+}
