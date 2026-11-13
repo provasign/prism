@@ -1,0 +1,39 @@
+09:52:54 PAIR pflag-setannotation-rename: native: resolved=True task5m=$0.055 req=7 | prism_cli: resolved=True task5m=$0.051 req=7
+09:52:54 CELL pflag-visitall-stop prism_cli start
+09:54:05 CELL pflag-visitall-stop prism_cli resolved=True 5m=$0.256521 startup=$0.059723 requests=19 raw=$1.4513319999999998 app_files=7 err=
+09:54:05 CELL pflag-visitall-stop native start
+09:55:12 CELL pflag-visitall-stop native resolved=True 5m=$0.256911 startup=$0.057503 requests=20 raw=$1.514874 app_files=7 err=
+09:55:12 PAIR pflag-visitall-stop: native: resolved=True task5m=$0.199 req=20 | prism_cli: resolved=True task5m=$0.197 req=19
+09:55:12 CELL billy-readlink-rename native start
+09:57:01 CELL billy-readlink-rename native resolved=True 5m=$0.14649 startup=$0.05737 requests=8 raw=$0.551372 app_files=7 err=
+09:57:01 CELL billy-readlink-rename prism_cli start
+09:58:46 CELL billy-readlink-rename prism_cli resolved=True 5m=$0.118675 startup=$0.05959 requests=7 raw=$0.427322 app_files=7 err=
+09:58:46 PAIR billy-readlink-rename: native: resolved=True task5m=$0.089 req=8 | prism_cli: resolved=True task5m=$0.059 req=7
+09:58:46 CELL billy-tempdir-rename native start
+10:00:32 CELL billy-tempdir-rename native resolved=True 5m=$0.130651 startup=$0.057343 requests=9 raw=$0.5344720000000001 app_files=2 err=
+10:00:32 CELL billy-tempdir-rename prism_cli start
+10:02:00 CELL billy-tempdir-rename prism_cli resolved=True 5m=$0.094675 startup=$0.05955 requests=5 raw=$0.28139200000000003 app_files=2 err=
+10:02:00 PAIR billy-tempdir-rename: native: resolved=True task5m=$0.073 req=9 | prism_cli: resolved=True task5m=$0.035 req=5
+10:02:00 CELL common-mftotext-error prism_cli start
+10:03:15 CELL common-mftotext-error prism_cli resolved=False 5m=$0.163765 startup=$0.059495 requests=9 raw=$0.61795 app_files=5 err=
+10:03:15 CELL common-mftotext-error native start
+10:04:19 CELL common-mftotext-error native resolved=False 5m=$0.144797 startup=$0.057268 requests=9 raw=$0.5704520000000001 app_files=5 err=
+10:04:19 PAIR common-mftotext-error: native: resolved=False task5m=$0.088 req=9 | prism_cli: resolved=False task5m=$0.104 req=9
+10:04:19 CELL common-newformat-rename prism_cli start
+10:04:59 CELL common-newformat-rename prism_cli resolved=True 5m=$0.097819 startup=$0.059475 requests=5 raw=$0.27672399999999997 app_files=5 err=
+10:04:59 CELL common-newformat-rename native start
+10:05:50 CELL common-newformat-rename native resolved=True 5m=$0.090255 startup=$0.05728 requests=4 raw=$0.215838 app_files=5 err=
+10:05:50 PAIR common-newformat-rename: native: resolved=True task5m=$0.033 req=4 | prism_cli: resolved=True task5m=$0.038 req=5
+10:05:50 CELL bubbletea-pastemsg-rename native start
+10:06:18 CELL bubbletea-pastemsg-rename native resolved=True 5m=$0.089533 startup=$0.057348 requests=5 raw=$0.25850399999999996 app_files=3 err=
+10:06:18 CELL bubbletea-pastemsg-rename prism_cli start
+10:06:52 CELL bubbletea-pastemsg-rename prism_cli resolved=True 5m=$0.116003 startup=$0.059578 requests=8 raw=$0.457144 app_files=3 err=
+10:06:52 PAIR bubbletea-pastemsg-rename: native: resolved=True task5m=$0.032 req=5 | prism_cli: resolved=True task5m=$0.056 req=8
+10:06:52 CELL grove-neighbors-kinds native start
+10:09:48 CELL grove-neighbors-kinds native resolved=True 5m=$0.10634 startup=$0.057418 requests=6 raw=$0.335782 app_files=1 err=
+10:09:48 CELL grove-neighbors-kinds prism_cli start
+10:12:31 CELL grove-neighbors-kinds prism_cli resolved=True 5m=$0.124118 startup=$0.059583 requests=8 raw=$0.478416 app_files=1 err=
+10:12:31 PAIR grove-neighbors-kinds: native: resolved=True task5m=$0.049 req=6 | prism_cli: resolved=True task5m=$0.065 req=8
+10:12:31 ALLDONE
+10:12:44 RESCORE common-mftotext-error prism_cli resolved=True
+10:12:52 RESCORE common-mftotext-error native resolved=True

@@ -1,0 +1,13 @@
+task                                                 native                          prism_cli
+pflag-setannotation-rename     OK $0.055 req=7 tools=6 prism=0 app=5 | OK $0.051 req=7 tools=6 prism=3 app=5
+pflag-visitall-stop            OK $0.199 req=20 tools=19 prism=0 app=7 | OK $0.197 req=19 tools=18 prism=2 app=7
+billy-readlink-rename          OK $0.089 req=8 tools=8 prism=0 app=7 | OK $0.059 req=7 tools=6 prism=1 app=7
+billy-tempdir-rename           OK $0.073 req=9 tools=8 prism=0 app=2 | OK $0.035 req=5 tools=5 prism=1 app=2
+common-mftotext-error          OK $0.088 req=9 tools=8 prism=0 app=5 | OK $0.104 req=9 tools=12 prism=1 app=5
+common-newformat-rename        OK $0.033 req=4 tools=3 prism=0 app=5 | OK $0.038 req=5 tools=4 prism=2 app=5
+bubbletea-pastemsg-rename      OK $0.032 req=5 tools=4 prism=0 app=3 | OK $0.056 req=8 tools=9 prism=3 app=3
+grove-neighbors-kinds          OK $0.049 req=6 tools=7 prism=0 app=1 | OK $0.065 req=8 tools=13 prism=1 app=1
+
+native     resolved 8/8  task@5m $0.619  startup $0.459  requests 68  output tokens 23281  tool calls 63  prism calls 0  grep calls 42
+prism_cli  resolved 8/8  task@5m $0.605  startup $0.477  requests 68  output tokens 23616  tool calls 73  prism calls 14  grep calls 21
+prism/native: task cost 0.979x, total incl. startup 1.004x, requests 68/68

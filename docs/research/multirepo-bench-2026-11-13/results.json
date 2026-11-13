@@ -1,0 +1,4885 @@
+{
+ "pflag-setannotation-rename": {
+  "cells": {
+   "prism_cli": {
+    "wall_s": 24.3,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 7,
+    "cost_usd": 0.408966,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "e034ef5b-e262-4965-8cf1-c2dee2c61263",
+     "tokens": {
+      "input_uncached": 195043,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 1888
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 195043,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 195043,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 1888,
+      "output_tokens_details": {
+       "thinking_tokens": 309
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 30114,
+        "output_tokens": 600,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 195043,
+       "outputTokens": 1888,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.408966,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 309,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.408966,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-pflag-setannotation-rename-prism-cli-2o1ptd2i-pflag/e034ef5b-e262-4965-8cf1-c2dee2c61263.jsonl",
+      "messages": 7,
+      "requests": 7,
+      "tokens": {
+       "input_uncached": 195043,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch17eLY3HFRXeVPxtn1n9",
+        "request_id": "req_011Ch17eLGAoe4V5a19GWc12",
+        "input_uncached": 23906,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 68,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17eTjdLRdctmGtXFjFy",
+        "request_id": "req_011Ch17eTUFdPk34sip2fZpR",
+        "input_uncached": 26342,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 306,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17ejUfhbo7uhW5gSFk5",
+        "request_id": "req_011Ch17ejEYWy6VjEr5m4Wvn",
+        "input_uncached": 27957,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 238,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17ewQmpThtMhFo8HcVq",
+        "request_id": "req_011Ch17euLFomzt5NH3QD29k",
+        "input_uncached": 28466,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 177,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17fDknZKxhBhyxsEvMX",
+        "request_id": "req_011Ch17fDKjqggvQczixWoN2",
+        "input_uncached": 28807,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 201,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17fU9DaMxe4wnHSQBAq",
+        "request_id": "req_011Ch17fTrrGUkhEquQryWvN",
+        "input_uncached": 29451,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 298,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17fhRRWbJbhQ3bPLfy5",
+        "request_id": "req_011Ch17fhAoKWyheBJgUcz4w",
+        "input_uncached": 30114,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 600,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "e034ef5b-e262-4965-8cf1-c2dee2c61263",
+    "api_calls": 7,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23906,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 68
+     },
+     "startup_usd": 0.047812,
+     "task_usd": 0.361154,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "bash other": 1,
+      "edit": 2,
+      "build/test": 3
+     },
+     "prism_calls": 0,
+     "tool_calls": 6,
+     "transcript": true
+    },
+    "tokens_request": 195043,
+    "tokens_out": 1888,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 6
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-probe/transcripts/pflag-setannotation-rename.prism_cli",
+    "task": "pflag-setannotation-rename",
+    "arm": "prism_cli",
+    "setup_s": 2.4,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "FlagSet.SetFlagAnnotation",
+       "needle": "SetFlagAnnotation(",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "FlagSet.SetAnnotation",
+       "needle": null,
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "flag.go",
+     "flag_test.go"
+    ],
+    "app_files": [
+     "bash_completions_test.go",
+     "command.go",
+     "completions_test.go",
+     "flag_groups.go",
+     "shell_completions.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.110658,
+      "requests": 7,
+      "startup_usd": 0.059765
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.155829,
+      "requests": 7,
+      "startup_usd": 0.095624
+     }
+    }
+   },
+   "native": {
+    "wall_s": 26.4,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 7,
+    "cost_usd": 0.395926,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "354c3f48-4724-4008-9bad-160ed8bc7029",
+     "tokens": {
+      "input_uncached": 186043,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 2384
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 186043,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 186043,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 2384,
+      "output_tokens_details": {
+       "thinking_tokens": 446
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 29233,
+        "output_tokens": 784,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 186043,
+       "outputTokens": 2384,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.395926,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 446,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.395926,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-pflag-setannotation-rename-native-c31a9m49-pflag/354c3f48-4724-4008-9bad-160ed8bc7029.jsonl",
+      "messages": 7,
+      "requests": 7,
+      "tokens": {
+       "input_uncached": 186043,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch17gKyc9e6ZqsGjJ3BdW",
+        "request_id": "req_011Ch17gKiVVGzUwi2fRuhpe",
+        "input_uncached": 22977,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 162,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17gU1oKVUowAn1fkHgA",
+        "request_id": "req_011Ch17gTmvTBxryjgzb9Tuc",
+        "input_uncached": 24754,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 357,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17gpPu6R1TNkbww3ZFZ",
+        "request_id": "req_011Ch17gp5JVobWNWTPgWdJp",
+        "input_uncached": 26458,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 270,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17gzmjMiRgtNjoKh8h9",
+        "request_id": "req_011Ch17gzY6N2nPemv9cLbDU",
+        "input_uncached": 26956,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 184,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17hG9xDBSXydfhacsjz",
+        "request_id": "req_011Ch17hFn8nX2VSns1RdreY",
+        "input_uncached": 27488,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 305,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17hYBrhQtGtuNCwPcBv",
+        "request_id": "req_011Ch17hXjpNaKsVXhUaipSn",
+        "input_uncached": 28177,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 322,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17hoSNiTQ7QNU3TZYie",
+        "request_id": "req_011Ch17ho8XdccnhQLzgAJrK",
+        "input_uncached": 29233,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 784,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "354c3f48-4724-4008-9bad-160ed8bc7029",
+    "api_calls": 7,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 22977,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 162
+     },
+     "startup_usd": 0.045954,
+     "task_usd": 0.349972,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 1,
+      "build/test": 4,
+      "edit": 1
+     },
+     "prism_calls": 0,
+     "tool_calls": 6,
+     "transcript": true
+    },
+    "tokens_request": 186043,
+    "tokens_out": 2384,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 6
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-probe/transcripts/pflag-setannotation-rename.native",
+    "task": "pflag-setannotation-rename",
+    "arm": "native",
+    "setup_s": 0.7,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "FlagSet.SetFlagAnnotation",
+       "needle": "SetFlagAnnotation(",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "FlagSet.SetAnnotation",
+       "needle": null,
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "flag.go",
+     "flag_test.go"
+    ],
+    "app_files": [
+     "bash_completions_test.go",
+     "command.go",
+     "completions_test.go",
+     "flag_groups.go",
+     "shell_completions.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.112603,
+      "requests": 7,
+      "startup_usd": 0.057443
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.156453,
+      "requests": 7,
+      "startup_usd": 0.091908
+     }
+    }
+   }
+  }
+ },
+ "pflag-visitall-stop": {
+  "cells": {
+   "prism_cli": {
+    "wall_s": 66.5,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 19,
+    "cost_usd": 1.4513319999999998,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "9ca920d0-b052-403f-a7b0-51f302e97328",
+     "tokens": {
+      "input_uncached": 688806,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 7372
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 688806,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 688806,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 7372,
+      "output_tokens_details": {
+       "thinking_tokens": 1017
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 47467,
+        "output_tokens": 640,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 688806,
+       "outputTokens": 7372,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 1.4513319999999998,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 1017,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 1.4513319999999998,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-pflag-visitall-stop-prism-cli-hjlxocuc-pflag/9ca920d0-b052-403f-a7b0-51f302e97328.jsonl",
+      "messages": 19,
+      "requests": 19,
+      "tokens": {
+       "input_uncached": 688806,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch17krjQ9a5BgJHiLqcLP",
+        "request_id": "req_011Ch17krWGYk3reK4HUydW8",
+        "input_uncached": 23889,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 71,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17kzGbDybadss6U1W7x",
+        "request_id": "req_011Ch17kz2hHjbygt5NdzvfC",
+        "input_uncached": 24065,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 79,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17m6h3DmKJavex7qx7K",
+        "request_id": "req_011Ch17m6U9SK1gpboo2d6Nu",
+        "input_uncached": 27384,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 163,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17mG9KaJEeZqS6UAka2",
+        "request_id": "req_011Ch17mFvBHkiH4CK6PmcGR",
+        "input_uncached": 28336,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 120,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17mP2ZUYqsxDv5HtGRr",
+        "request_id": "req_011Ch17mNnBMLV3M8rHzZQwp",
+        "input_uncached": 30448,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 590,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17mfoMWbLf9qcs8m8DV",
+        "request_id": "req_011Ch17mfXEuUseGcRZdpGjT",
+        "input_uncached": 31519,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 550,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17mxsHBUCz473K6wzrz",
+        "request_id": "req_011Ch17mxcQAj4V2KoaZQuUy",
+        "input_uncached": 32096,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 197,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17n7rXb8ch8tyCmcbVR",
+        "request_id": "req_011Ch17n7d8QqFvz58X3C8jU",
+        "input_uncached": 33325,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1044,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17na6MDa8xKH8MXCUpr",
+        "request_id": "req_011Ch17nZrx9PMFFDX1pNPUW",
+        "input_uncached": 34801,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 90,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17nhFx5WSeQ7N21vWTb",
+        "request_id": "req_011Ch17nh3YXtkAgpD8fLVyy",
+        "input_uncached": 34952,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 290,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17nwPFgybRPGNGy1Xmy",
+        "request_id": "req_011Ch17nw98DfgPC4BgXnyaB",
+        "input_uncached": 35267,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 369,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17oCEUfKbpapUm6AMVU",
+        "request_id": "req_011Ch17oBmSz8oBBfnzhDm4c",
+        "input_uncached": 36628,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 383,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17oSfPMsLZVCLToShRx",
+        "request_id": "req_011Ch17oSM3WVPPDdChjk6kV",
+        "input_uncached": 41981,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 944,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17oziDSt14Ezicyx5Lb",
+        "request_id": "req_011Ch17ozTKwSm3xdXv8Xgu5",
+        "input_uncached": 43045,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 750,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17pNzfKi93wa4N7PdXE",
+        "request_id": "req_011Ch17pNeaJhv7HJahnzL7P",
+        "input_uncached": 45148,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 438,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17phA4CuEvB2qAsbs5F",
+        "request_id": "req_011Ch17pgwAXxsJR2bKRyEyX",
+        "input_uncached": 45688,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 135,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17ps1NzgE8ewahdBnSP",
+        "request_id": "req_011Ch17prjGjWfDcXvDrryzQ",
+        "input_uncached": 46034,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 184,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17q4mZTf3YbJUfsthWv",
+        "request_id": "req_011Ch17q4YvLjNKTTrBmrtge",
+        "input_uncached": 46733,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 335,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17qNH28enWdnVYD1bQf",
+        "request_id": "req_011Ch17qN19xmaWueWt41uib",
+        "input_uncached": 47467,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 640,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "9ca920d0-b052-403f-a7b0-51f302e97328",
+    "api_calls": 19,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23889,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 71
+     },
+     "startup_usd": 0.047778,
+     "task_usd": 1.403554,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "bash other": 1,
+      "read": 8,
+      "build/test": 8,
+      "search": 1
+     },
+     "prism_calls": 0,
+     "tool_calls": 18,
+     "transcript": true
+    },
+    "tokens_request": 688806,
+    "tokens_out": 7372,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 18
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/pflag-visitall-stop.prism_cli",
+    "task": "pflag-visitall-stop",
+    "arm": "prism_cli",
+    "setup_s": 1.8,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "FlagSet.VisitAll",
+       "needle": "VisitAll(fn func(*Flag) bool)",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "VisitAll",
+       "needle": "VisitAll(fn func(*Flag) bool)",
+       "expect": true,
+       "passed": true
+      }
+     ],
+     "hidden": {
+      "rc": 0,
+      "tail": "ok  \tgithub.com/spf13/pflag\t0.096s\n"
+     },
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "bool_slice_test.go",
+     "duration_slice_test.go",
+     "flag.go",
+     "flag_test.go",
+     "float32_slice_test.go",
+     "float64_slice_test.go",
+     "golangflag.go",
+     "golangflag_test.go",
+     "int32_slice_test.go",
+     "int64_slice_test.go",
+     "ip_slice_test.go",
+     "string_array_test.go",
+     "string_slice_test.go",
+     "uint_slice_test.go"
+    ],
+    "app_files": [
+     "bash_completions.go",
+     "command.go",
+     "command_test.go",
+     "completions.go",
+     "doc/man_docs.go",
+     "doc/yaml_docs.go",
+     "flag_groups.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.256521,
+      "requests": 19,
+      "startup_usd": 0.059723
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.327722,
+      "requests": 19,
+      "startup_usd": 0.095556
+     }
+    }
+   },
+   "native": {
+    "wall_s": 64.4,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 20,
+    "cost_usd": 1.514874,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "98bdd5a2-761a-4af2-b97a-4da5e57f1e2e",
+     "tokens": {
+      "input_uncached": 723547,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 6778
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 723547,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 723547,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 6778,
+      "output_tokens_details": {
+       "thinking_tokens": 1081
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 48657,
+        "output_tokens": 595,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 723547,
+       "outputTokens": 6778,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 1.514874,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 1081,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 1.514874,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-pflag-visitall-stop-native-705cuwty-pflag/98bdd5a2-761a-4af2-b97a-4da5e57f1e2e.jsonl",
+      "messages": 20,
+      "requests": 20,
+      "tokens": {
+       "input_uncached": 723547,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch17qzU88DoUCMgnx8Vp9",
+        "request_id": "req_011Ch17qzEzCEbU5VM4hYALy",
+        "input_uncached": 23001,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 102,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17r7KPDSpZbhSk7cDAV",
+        "request_id": "req_011Ch17r77EMiHt4zhuYjXqj",
+        "input_uncached": 23162,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 140,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17rEFcBCqD45ykoR91B",
+        "request_id": "req_011Ch17rE2TvKRPj9Q5eQJC2",
+        "input_uncached": 25824,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 225,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17rS4WcpyBPmtRUG14W",
+        "request_id": "req_011Ch17rRps4zVLPHipfUiqk",
+        "input_uncached": 27579,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 153,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17radCRjfMFwpe1tkRe",
+        "request_id": "req_011Ch17raQKGYcuvtdoAqtXa",
+        "input_uncached": 29122,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 555,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17rrUSn3sL7y235tz7t",
+        "request_id": "req_011Ch17rrEZRPX2dZukj4LQn",
+        "input_uncached": 29835,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 326,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17s3dQn4364ZiLYzYpE",
+        "request_id": "req_011Ch17s3MHsNpKa8PD8X5b5",
+        "input_uncached": 30494,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 143,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17sAxgZ6AnBbY1euQ5q",
+        "request_id": "req_011Ch17sAgpMYJXtrfLHGFVN",
+        "input_uncached": 30674,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 132,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17sKFX7sBrAXs8wBfmJ",
+        "request_id": "req_011Ch17sK2NZext4k2LpTbmG",
+        "input_uncached": 31508,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 205,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17sTpxPt6bZacsjowxN",
+        "request_id": "req_011Ch17sTbZfuaSCUZimp2Mg",
+        "input_uncached": 34602,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 116,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17sbFgR5JsGNobhskj2",
+        "request_id": "req_011Ch17sayK8sgzEgpy1r7h1",
+        "input_uncached": 35274,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1385,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17tE8iKcVhknN9qpkFi",
+        "request_id": "req_011Ch17tDtqLyCz9Ay9M9P31",
+        "input_uncached": 36789,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 124,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17tN5TbfdnPPNq7yi12",
+        "request_id": "req_011Ch17tMr4ST6YZdVP1wi9D",
+        "input_uncached": 38735,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 767,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17tn65tnn7RRD64cHE5",
+        "request_id": "req_011Ch17tmrCA8obfncwkKWhy",
+        "input_uncached": 44956,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 112,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17tuwcdCQ6wmZ5PabS1",
+        "request_id": "req_011Ch17tuaXfomQSuYXuNa1y",
+        "input_uncached": 45470,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 454,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17uF2aGazHbWhDGaHsc",
+        "request_id": "req_011Ch17uEnC79Eo7BrgBKnCd",
+        "input_uncached": 46226,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 138,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17uR1M3AVPBvcVzw8rv",
+        "request_id": "req_011Ch17uQki9aM8P836BTkqY",
+        "input_uncached": 46631,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 269,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17ug7gkjGuk9Vv8ZWHA",
+        "request_id": "req_011Ch17ufs4NGAiePobNXeR3",
+        "input_uncached": 47191,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 276,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17uvC1mPAboWMy1Gp8G",
+        "request_id": "req_011Ch17uux8pMjPiTyPKGv8p",
+        "input_uncached": 47817,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 561,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17vLQJKzsfTTpe2sGkk",
+        "request_id": "req_011Ch17vLAugfDtEfvRpffnk",
+        "input_uncached": 48657,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 595,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "98bdd5a2-761a-4af2-b97a-4da5e57f1e2e",
+    "api_calls": 20,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23001,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 102
+     },
+     "startup_usd": 0.046002,
+     "task_usd": 1.468872,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 4,
+      "read": 5,
+      "build/test": 10
+     },
+     "prism_calls": 0,
+     "tool_calls": 19,
+     "transcript": true
+    },
+    "tokens_request": 723547,
+    "tokens_out": 6778,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 18,
+     "Grep": 1
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/pflag-visitall-stop.native",
+    "task": "pflag-visitall-stop",
+    "arm": "native",
+    "setup_s": 0.7,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "FlagSet.VisitAll",
+       "needle": "VisitAll(fn func(*Flag) bool)",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "VisitAll",
+       "needle": "VisitAll(fn func(*Flag) bool)",
+       "expect": true,
+       "passed": true
+      }
+     ],
+     "hidden": {
+      "rc": 0,
+      "tail": "ok  \tgithub.com/spf13/pflag\t0.094s\n"
+     },
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "bool_slice_test.go",
+     "duration_slice_test.go",
+     "flag.go",
+     "flag_test.go",
+     "float32_slice_test.go",
+     "float64_slice_test.go",
+     "golangflag.go",
+     "golangflag_test.go",
+     "int32_slice_test.go",
+     "int64_slice_test.go",
+     "ip_slice_test.go",
+     "string_array_test.go",
+     "string_slice_test.go",
+     "uint_slice_test.go"
+    ],
+    "app_files": [
+     "bash_completions.go",
+     "command.go",
+     "command_test.go",
+     "completions.go",
+     "doc/man_docs.go",
+     "doc/yaml_docs.go",
+     "flag_groups.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.256911,
+      "requests": 20,
+      "startup_usd": 0.057503
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.329897,
+      "requests": 20,
+      "startup_usd": 0.092004
+     }
+    }
+   }
+  }
+ },
+ "billy-readlink-rename": {
+  "cells": {
+   "native": {
+    "wall_s": 101.4,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 9,
+    "cost_usd": 0.551372,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "8bcdbce3-d5b7-4b37-851f-0bbcdd7577c1",
+     "tokens": {
+      "input_uncached": 259191,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 3299
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 259191,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 259191,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 3299,
+      "output_tokens_details": {
+       "thinking_tokens": 790
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 36492,
+        "output_tokens": 510,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 259191,
+       "outputTokens": 3299,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.551372,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 790,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.551372,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-billy-readlink-rename-native-f8zizq8v-go-billy/8bcdbce3-d5b7-4b37-851f-0bbcdd7577c1.jsonl",
+      "messages": 8,
+      "requests": 8,
+      "tokens": {
+       "input_uncached": 259191,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch17w3ogXmK1w4hD9kGZU",
+        "request_id": "req_011Ch17w3bXpmnfkzggvbdqV",
+        "input_uncached": 22948,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 264,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17wDDjBxHx5WQqiRQ67",
+        "request_id": "req_011Ch17wD1LK2CiJdHKc5bQt",
+        "input_uncached": 28307,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 810,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17wgvcK3sgSUxpxYYAj",
+        "request_id": "req_011Ch17wghTaqP84ENBUoKu2",
+        "input_uncached": 32356,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 544,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch17x12XxtuDKgTacinpb",
+        "request_id": "req_011Ch17wzhSSzLscvQe93DwT",
+        "input_uncached": 33240,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 431,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch181fbM28Z1aMuMMjFU7",
+        "request_id": "req_011Ch181fA4NaiSJmQwqqux3",
+        "input_uncached": 34209,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 212,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch183V78C7MRESe16CBLi",
+        "request_id": "req_011Ch183UrzRDtXba9QKotwj",
+        "input_uncached": 35604,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 227,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch183r7Am4BbRTR2eEs5a",
+        "request_id": "req_011Ch183qrJSFhs3LX9FPfc2",
+        "input_uncached": 36035,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 301,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch184BksFRyEr59XFxKPb",
+        "request_id": "req_011Ch184BR2VDid3Ey13ShZn",
+        "input_uncached": 36492,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 510,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "8bcdbce3-d5b7-4b37-851f-0bbcdd7577c1",
+    "api_calls": 8,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 22948,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 264
+     },
+     "startup_usd": 0.045896,
+     "task_usd": 0.505476,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 1,
+      "read": 1,
+      "edit": 2,
+      "build/test": 4
+     },
+     "prism_calls": 0,
+     "tool_calls": 8,
+     "transcript": true
+    },
+    "tokens_request": 259191,
+    "tokens_out": 3299,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Grep": 1,
+     "Bash": 7
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/billy-readlink-rename.native",
+    "task": "billy-readlink-rename",
+    "arm": "native",
+    "setup_s": 1.7,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "Symlink",
+       "needle": "ReadLink(link string)",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "Symlink",
+       "needle": "Readlink(",
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "embedfs/embed.go",
+     "fs.go",
+     "helper/chroot/chroot.go",
+     "helper/chroot/chroot_test.go",
+     "helper/mount/mount.go",
+     "helper/mount/mount_test.go",
+     "helper/polyfill/polyfill.go",
+     "helper/polyfill/polyfill_test.go",
+     "internal/test/mock.go",
+     "memfs/memory.go",
+     "memfs/memory_test.go",
+     "osfs/os_bound.go",
+     "osfs/os_bound_test.go",
+     "osfs/os_rootfs.go",
+     "test/symlink_test.go"
+    ],
+    "app_files": [
+     "storage/filesystem/dotgit/repository_filesystem.go",
+     "storage/filesystem/dotgit/repository_filesystem_test.go",
+     "utils/merkletrie/filesystem/node.go",
+     "worktree_fs.go",
+     "worktree_fs_test.go",
+     "worktree_status.go",
+     "worktree_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.14649,
+      "requests": 8,
+      "startup_usd": 0.05737
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.201228,
+      "requests": 8,
+      "startup_usd": 0.091792
+     }
+    }
+   },
+   "prism_cli": {
+    "wall_s": 90.8,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 7,
+    "cost_usd": 0.427322,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "1912fe02-255b-4b62-a0ba-d0297b2ee090",
+     "tokens": {
+      "input_uncached": 203276,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 2077
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 203276,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 203276,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 2077,
+      "output_tokens_details": {
+       "thinking_tokens": 529
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 32324,
+        "output_tokens": 672,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 203276,
+       "outputTokens": 2077,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.427322,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 529,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.427322,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-billy-readlink-rename-prism-cli-a1ej9e3o-go-billy/1912fe02-255b-4b62-a0ba-d0297b2ee090.jsonl",
+      "messages": 7,
+      "requests": 7,
+      "tokens": {
+       "input_uncached": 203276,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch185UumZzL6vBLdB4Yxb",
+        "request_id": "req_011Ch185UaBLnY2s77vM3r2o",
+        "input_uncached": 23836,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 77,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch185bXdYB5BUdxA5Bh5Z",
+        "request_id": "req_011Ch185bF239DKDe2CB4Nwa",
+        "input_uncached": 28096,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 299,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch185qKMYYB6F4A1kVZjn",
+        "request_id": "req_011Ch185q5xkEgKZmxXk6Pfe",
+        "input_uncached": 28417,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 110,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch185wqmmULkaPB8PDLNL",
+        "request_id": "req_011Ch185wZtx8W28qYPjM99a",
+        "input_uncached": 29293,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 345,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch186DW6wZbX4HW2KWkSu",
+        "request_id": "req_011Ch186D7Xa7zJT3Fqo9MmD",
+        "input_uncached": 29998,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 303,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch188Fm6FLQQgrRXfM1od",
+        "request_id": "req_011Ch188FP1YkJy1C4nsAj48",
+        "input_uncached": 31312,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 271,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18BmqfycHoTFyWUVECq",
+        "request_id": "req_011Ch18BmNeEgwojn62M9rjF",
+        "input_uncached": 32324,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 672,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "1912fe02-255b-4b62-a0ba-d0297b2ee090",
+    "api_calls": 7,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23836,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 77
+     },
+     "startup_usd": 0.047672,
+     "task_usd": 0.37965,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "read": 1,
+      "search": 3,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 6,
+     "transcript": true
+    },
+    "tokens_request": 203276,
+    "tokens_out": 2077,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 6
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/billy-readlink-rename.prism_cli",
+    "task": "billy-readlink-rename",
+    "arm": "prism_cli",
+    "setup_s": 7.7,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "Symlink",
+       "needle": "ReadLink(link string)",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "Symlink",
+       "needle": "Readlink(",
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "embedfs/embed.go",
+     "fs.go",
+     "helper/chroot/chroot.go",
+     "helper/chroot/chroot_test.go",
+     "helper/mount/mount.go",
+     "helper/mount/mount_test.go",
+     "helper/polyfill/polyfill.go",
+     "helper/polyfill/polyfill_test.go",
+     "internal/test/mock.go",
+     "memfs/memory.go",
+     "memfs/memory_test.go",
+     "osfs/os_bound.go",
+     "osfs/os_bound_test.go",
+     "osfs/os_rootfs.go",
+     "test/symlink_test.go"
+    ],
+    "app_files": [
+     "storage/filesystem/dotgit/repository_filesystem.go",
+     "storage/filesystem/dotgit/repository_filesystem_test.go",
+     "utils/merkletrie/filesystem/node.go",
+     "worktree_fs.go",
+     "worktree_fs_test.go",
+     "worktree_status.go",
+     "worktree_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.118675,
+      "requests": 7,
+      "startup_usd": 0.05959
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.167161,
+      "requests": 7,
+      "startup_usd": 0.095344
+     }
+    }
+   }
+  }
+ },
+ "billy-tempdir-rename": {
+  "cells": {
+   "native": {
+    "wall_s": 98.3,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 9,
+    "cost_usd": 0.5344720000000001,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "025ee9fa-cfd7-4641-8f71-245b2830c7c0",
+     "tokens": {
+      "input_uncached": 254161,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 2615
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 254161,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 254161,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 2615,
+      "output_tokens_details": {
+       "thinking_tokens": 260
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 32952,
+        "output_tokens": 552,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 254161,
+       "outputTokens": 2615,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.5344720000000001,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 260,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.5344720000000001,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-billy-tempdir-rename-native-7ltyh55o-go-billy/025ee9fa-cfd7-4641-8f71-245b2830c7c0.jsonl",
+      "messages": 9,
+      "requests": 9,
+      "tokens": {
+       "input_uncached": 254161,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18CnHEv1xRxNo5xiBpB",
+        "request_id": "req_011Ch18Cn4M3vrMFLKTHbPrZ",
+        "input_uncached": 22937,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 174,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18CvjF39u9bUukFRdfu",
+        "request_id": "req_011Ch18CvWbLnuHDFvkyxrmK",
+        "input_uncached": 23538,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 141,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18D3DR442dnCvuFsStx",
+        "request_id": "req_011Ch18D2xYHZbewuw4qDiz6",
+        "input_uncached": 24840,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 287,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18DG6pSTRVSAPKTMisr",
+        "request_id": "req_011Ch18DFqgj3SUx1Mnhduue",
+        "input_uncached": 27509,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 260,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18DTtjYwUYenBw6cmrT",
+        "request_id": "req_011Ch18DTdMH77qWkyuHSfSK",
+        "input_uncached": 28094,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 509,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18DvvRM58z9wxSt7Jxc",
+        "request_id": "req_011Ch18DvgXwZNc6HhPyS4Da",
+        "input_uncached": 29825,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 312,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18K5spkdqcMQxw3A5WH",
+        "request_id": "req_011Ch18K5UGDbox44NirbaY1",
+        "input_uncached": 31991,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 158,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18KQR3giHYLeiU7SPgv",
+        "request_id": "req_011Ch18KQ3DHbpu3c38vTRzx",
+        "input_uncached": 32475,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 222,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18KeSA4RrJTj8GnvuzP",
+        "request_id": "req_011Ch18KeDFic5oS3kDEExda",
+        "input_uncached": 32952,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 552,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "025ee9fa-cfd7-4641-8f71-245b2830c7c0",
+    "api_calls": 9,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 22937,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 174
+     },
+     "startup_usd": 0.045874,
+     "task_usd": 0.488598,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 4,
+      "build/test": 4
+     },
+     "prism_calls": 0,
+     "tool_calls": 8,
+     "transcript": true
+    },
+    "tokens_request": 254161,
+    "tokens_out": 2615,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 7,
+     "Grep": 1
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/billy-tempdir-rename.native",
+    "task": "billy-tempdir-rename",
+    "arm": "native",
+    "setup_s": 1.7,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "MkdirTemp",
+       "needle": "func MkdirTemp(",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "TempDir",
+       "needle": null,
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "util/util.go",
+     "util/util_test.go"
+    ],
+    "app_files": [
+     "common_test.go",
+     "repository_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.130651,
+      "requests": 9,
+      "startup_usd": 0.057343
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.180079,
+      "requests": 9,
+      "startup_usd": 0.091748
+     }
+    }
+   },
+   "prism_cli": {
+    "wall_s": 73.7,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 6,
+    "cost_usd": 0.28139200000000003,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "7e6c1dba-0d7f-423c-8e33-4c413c5bb2fe",
+     "tokens": {
+      "input_uncached": 134536,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 1232
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 134536,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 134536,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 1232,
+      "output_tokens_details": {
+       "thinking_tokens": 101
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 28709,
+        "output_tokens": 227,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 134536,
+       "outputTokens": 1232,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.28139200000000003,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 101,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.28139200000000003,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-billy-tempdir-rename-prism-cli-n1apo6jj-go-billy/7e6c1dba-0d7f-423c-8e33-4c413c5bb2fe.jsonl",
+      "messages": 5,
+      "requests": 5,
+      "tokens": {
+       "input_uncached": 134536,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18M6Jfv5FRX4jHiQwNq",
+        "request_id": "req_011Ch18M65myFWGJDVGnd1UR",
+        "input_uncached": 23820,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 61,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18MDju8sernvjPwZUjR",
+        "request_id": "req_011Ch18MDLLgL9UZR7Px6H7a",
+        "input_uncached": 26582,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 206,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18MMqa52NNEDSWt3GbC",
+        "request_id": "req_011Ch18MMYwu4k17saqvDQk3",
+        "input_uncached": 27190,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 515,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18S1pSEcVfyzjZZNBhZ",
+        "request_id": "req_011Ch18S1SNJgCh2gwaAh4So",
+        "input_uncached": 28235,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 223,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18SJcyoUCScRBrr59yq",
+        "request_id": "req_011Ch18SJR5EGZ6Ak5RhUtoV",
+        "input_uncached": 28709,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 227,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "7e6c1dba-0d7f-423c-8e33-4c413c5bb2fe",
+    "api_calls": 5,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23820,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 61
+     },
+     "startup_usd": 0.04764,
+     "task_usd": 0.233752,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "bash other": 1,
+      "read": 2,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 5,
+     "transcript": true
+    },
+    "tokens_request": 134536,
+    "tokens_out": 1232,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 4,
+     "Read": 1
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/billy-tempdir-rename.prism_cli",
+    "task": "billy-tempdir-rename",
+    "arm": "prism_cli",
+    "setup_s": 7.7,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "MkdirTemp",
+       "needle": "func MkdirTemp(",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "TempDir",
+       "needle": null,
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "util/util.go",
+     "util/util_test.go"
+    ],
+    "app_files": [
+     "common_test.go",
+     "repository_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.094675,
+      "requests": 5,
+      "startup_usd": 0.05955
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.137739,
+      "requests": 5,
+      "startup_usd": 0.09528
+     }
+    }
+   }
+  }
+ },
+ "common-mftotext-error": {
+  "cells": {
+   "prism_cli": {
+    "wall_s": 64.2,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 13,
+    "cost_usd": 0.61795,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "8e8a3a7e-6a0a-4e5d-84ec-a63e98b5aea8",
+     "tokens": {
+      "input_uncached": 286810,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 4433
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 286810,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 286810,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 4433,
+      "output_tokens_details": {
+       "thinking_tokens": 973
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 37814,
+        "output_tokens": 648,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 286810,
+       "outputTokens": 4433,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.61795,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 973,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.61795,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-common-mftotext-error-prism-cli-l3rqe7hf-common/8e8a3a7e-6a0a-4e5d-84ec-a63e98b5aea8.jsonl",
+      "messages": 9,
+      "requests": 9,
+      "tokens": {
+       "input_uncached": 286810,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18TRV1aYpYVz5MQqrQH",
+        "request_id": "req_011Ch18TRFN4YWjtoaDQbH5L",
+        "input_uncached": 23798,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 64,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18TYr2Evhm9VHtXMcT9",
+        "request_id": "req_011Ch18TYXBX2umf7BMZyXQR",
+        "input_uncached": 25694,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 451,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18Tn2XGw5xWkPYKNb8j",
+        "request_id": "req_011Ch18TmotUHgLHT6FxTVYe",
+        "input_uncached": 28534,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 232,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18TxiTrPDM22TkuDovi",
+        "request_id": "req_011Ch18TxUq7ZzTxiakaN45J",
+        "input_uncached": 30560,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1009,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18UYbAxZRkJN9rMDcKM",
+        "request_id": "req_011Ch18UYPXCNNuxvbFKmTJz",
+        "input_uncached": 32547,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 612,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18Urk4zpKV5Cccse3hj",
+        "request_id": "req_011Ch18UrWRhePrcpm2VeQyQ",
+        "input_uncached": 34550,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 907,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18VGKQsqVA9gBiRHuMj",
+        "request_id": "req_011Ch18VG4GsH6pV91pJoEZP",
+        "input_uncached": 35926,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 249,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18WZnuL5d3QzxC4XFNw",
+        "request_id": "req_011Ch18WZGAKfXHJxyb6PUKn",
+        "input_uncached": 37387,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 261,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18XmJEykgHz3onuc614",
+        "request_id": "req_011Ch18Xm4qk4JFaXkVc2pCr",
+        "input_uncached": 37814,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 648,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "8e8a3a7e-6a0a-4e5d-84ec-a63e98b5aea8",
+    "api_calls": 9,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23798,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 64
+     },
+     "startup_usd": 0.047596,
+     "task_usd": 0.570354,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "bash other": 1,
+      "read": 5,
+      "edit": 4,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 12,
+     "transcript": true
+    },
+    "tokens_request": 286810,
+    "tokens_out": 4433,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 5,
+     "Read": 4,
+     "Edit": 3
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/common-mftotext-error.prism_cli",
+    "task": "common-mftotext-error",
+    "arm": "prism_cli",
+    "setup_s": 5.7,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "MetricFamilyToText",
+       "needle": "written int",
+       "expect": false,
+       "passed": true
+      },
+      {
+       "sym": "MetricFamilyToText",
+       "needle": "error",
+       "expect": true,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "expfmt/benchmark_test.go",
+     "expfmt/encode.go",
+     "expfmt/text_create.go",
+     "expfmt/text_create_test.go"
+    ],
+    "app_files": [
+     "prometheus/examples_test.go",
+     "prometheus/process_collector_darwin_test.go",
+     "prometheus/process_collector_linux_test.go",
+     "prometheus/process_collector_windows_test.go",
+     "prometheus/registry.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.163765,
+      "requests": 9,
+      "startup_usd": 0.059495
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.220486,
+      "requests": 9,
+      "startup_usd": 0.095192
+     }
+    },
+    "rescored": [
+     {
+      "was": false,
+      "now": true,
+      "reason": "doc check required the literal '*dto.MetricFamily) error'; a named result (err error) is the same signature"
+     }
+    ]
+   },
+   "native": {
+    "wall_s": 58.1,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 9,
+    "cost_usd": 0.5704520000000001,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "ed503f1d-0723-472f-b14e-4025ab5fccf4",
+     "tokens": {
+      "input_uncached": 269116,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 3222
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 269116,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 269116,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 3222,
+      "output_tokens_details": {
+       "thinking_tokens": 334
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 35694,
+        "output_tokens": 564,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 269116,
+       "outputTokens": 3222,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.5704520000000001,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 334,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.5704520000000001,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-common-mftotext-error-native-snwalf87-common/ed503f1d-0723-472f-b14e-4025ab5fccf4.jsonl",
+      "messages": 9,
+      "requests": 9,
+      "tokens": {
+       "input_uncached": 269116,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18YczSpZw1bayL8eDud",
+        "request_id": "req_011Ch18Yck4oGbQYtE4dKD9d",
+        "input_uncached": 22907,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 167,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18Yn5tB5Lri32XMoLat",
+        "request_id": "req_011Ch18YmsVfw2VHo653TNzw",
+        "input_uncached": 23349,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 172,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18YvVu1pzF2vqp1a8bQ",
+        "request_id": "req_011Ch18YvGkh4NMtgUdEXQb3",
+        "input_uncached": 25417,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 198,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18Z5NCc9eWksbzm9S7q",
+        "request_id": "req_011Ch18Z594nTJTDsj3DjfXA",
+        "input_uncached": 29233,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 250,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18ZHKY8PrndcGnmn1eK",
+        "request_id": "req_011Ch18ZH69t4jNMeHs9XKGF",
+        "input_uncached": 31546,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 645,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18Zf4W1Qhneky8FZC8b",
+        "request_id": "req_011Ch18ZeqLzVcnDtpkvqfm5",
+        "input_uncached": 32425,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 418,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18ZuTvZboUjpHmpZGRT",
+        "request_id": "req_011Ch18ZuD3j494hDWRAg3zR",
+        "input_uncached": 33442,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 566,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18bR5gCdohjBfsnUVYM",
+        "request_id": "req_011Ch18bQmZiBFRwrpitTCjs",
+        "input_uncached": 35103,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 242,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18cXFXgzco57m66wP86",
+        "request_id": "req_011Ch18cWyQU2Tbks76jZeRr",
+        "input_uncached": 35694,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 564,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "ed503f1d-0723-472f-b14e-4025ab5fccf4",
+    "api_calls": 9,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 22907,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 167
+     },
+     "startup_usd": 0.045814,
+     "task_usd": 0.524638,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 3,
+      "read": 1,
+      "build/test": 3,
+      "edit": 1
+     },
+     "prism_calls": 0,
+     "tool_calls": 8,
+     "transcript": true
+    },
+    "tokens_request": 269116,
+    "tokens_out": 3222,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 8
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/common-mftotext-error.native",
+    "task": "common-mftotext-error",
+    "arm": "native",
+    "setup_s": 1.9,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "MetricFamilyToText",
+       "needle": "written int",
+       "expect": false,
+       "passed": true
+      },
+      {
+       "sym": "MetricFamilyToText",
+       "needle": "error",
+       "expect": true,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "expfmt/benchmark_test.go",
+     "expfmt/encode.go",
+     "expfmt/text_create.go",
+     "expfmt/text_create_test.go"
+    ],
+    "app_files": [
+     "prometheus/examples_test.go",
+     "prometheus/process_collector_darwin_test.go",
+     "prometheus/process_collector_linux_test.go",
+     "prometheus/process_collector_windows_test.go",
+     "prometheus/registry.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.144797,
+      "requests": 9,
+      "startup_usd": 0.057268
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.198338,
+      "requests": 9,
+      "startup_usd": 0.091628
+     }
+    },
+    "rescored": [
+     {
+      "was": false,
+      "now": true,
+      "reason": "doc check required the literal '*dto.MetricFamily) error'; a named result (err error) is the same signature"
+     }
+    ]
+   }
+  }
+ },
+ "common-newformat-rename": {
+  "cells": {
+   "prism_cli": {
+    "wall_s": 30.2,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 5,
+    "cost_usd": 0.27672399999999997,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "6c601293-6a34-42be-9214-26e311797920",
+     "tokens": {
+      "input_uncached": 130647,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 1543
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 130647,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 130647,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 1543,
+      "output_tokens_details": {
+       "thinking_tokens": 201
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 28885,
+        "output_tokens": 638,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 130647,
+       "outputTokens": 1543,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.27672399999999997,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 201,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.27672399999999997,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-common-newformat-rename-prism-cli-pfufyar4-common/6c601293-6a34-42be-9214-26e311797920.jsonl",
+      "messages": 5,
+      "requests": 5,
+      "tokens": {
+       "input_uncached": 130647,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18ddnxQqSsaCeSVMoAK",
+        "request_id": "req_011Ch18ddaocCuFiunFdy3Gn",
+        "input_uncached": 23790,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 78,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18dk5ikCk6LXCZppT1C",
+        "request_id": "req_011Ch18djp6pBbL9FL8eqCY4",
+        "input_uncached": 25296,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 168,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18dw6Wo8QTzxrtsFmFN",
+        "request_id": "req_011Ch18dvkRZ41MpMzD8ipo2",
+        "input_uncached": 25780,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 278,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18e7xcvuv8kmqajGo67",
+        "request_id": "req_011Ch18e7jDhy7c1mg8NccGH",
+        "input_uncached": 26896,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 381,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18fSGiHfXiCKFbP4Kcy",
+        "request_id": "req_011Ch18fRmTnNjZG5SRRvHpn",
+        "input_uncached": 28885,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 638,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "6c601293-6a34-42be-9214-26e311797920",
+    "api_calls": 5,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23790,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 78
+     },
+     "startup_usd": 0.04758,
+     "task_usd": 0.229144,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "read": 2,
+      "edit": 1,
+      "build/test": 1
+     },
+     "prism_calls": 0,
+     "tool_calls": 4,
+     "transcript": true
+    },
+    "tokens_request": 130647,
+    "tokens_out": 1543,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 4
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/common-newformat-rename.prism_cli",
+    "task": "common-newformat-rename",
+    "arm": "prism_cli",
+    "setup_s": 5.8,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "FormatOf",
+       "needle": "func FormatOf(",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "NewFormat",
+       "needle": null,
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "expfmt/expfmt.go"
+    ],
+    "app_files": [
+     "prometheus/push/push.go",
+     "prometheus/push/push_test.go",
+     "prometheus/registry_test.go",
+     "prometheus/testutil/promlint/promlint.go",
+     "prometheus/testutil/testutil.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.097819,
+      "requests": 5,
+      "startup_usd": 0.059475
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.141146,
+      "requests": 5,
+      "startup_usd": 0.09516
+     }
+    }
+   },
+   "native": {
+    "wall_s": 44.5,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 4,
+    "cost_usd": 0.215838,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "30d19bdc-4ffc-4b38-95eb-f7ade627d397",
+     "tokens": {
+      "input_uncached": 99844,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 1615
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 99844,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 99844,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 1615,
+      "output_tokens_details": {
+       "thinking_tokens": 366
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 26717,
+        "output_tokens": 701,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 99844,
+       "outputTokens": 1615,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.215838,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 366,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.215838,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-common-newformat-rename-native-w1ppiavt-common/30d19bdc-4ffc-4b38-95eb-f7ade627d397.jsonl",
+      "messages": 4,
+      "requests": 4,
+      "tokens": {
+       "input_uncached": 99844,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18gL5gJMpZNuJgmW5nw",
+        "request_id": "req_011Ch18gKq3N6bgYpDXrNT4N",
+        "input_uncached": 22912,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 157,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18gV1T8AogragzSqspD",
+        "request_id": "req_011Ch18gUma7VXZTTNdcDxqw",
+        "input_uncached": 24237,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 454,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18i45K4MB62hiBYwezD",
+        "request_id": "req_011Ch18i3iVWQqzXYhw5VE7z",
+        "input_uncached": 25978,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 303,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18jAcVjN4MJgn8qHPQH",
+        "request_id": "req_011Ch18jAJ9CfPaDLF6CvtKN",
+        "input_uncached": 26717,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 701,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "30d19bdc-4ffc-4b38-95eb-f7ade627d397",
+    "api_calls": 4,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 22912,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 157
+     },
+     "startup_usd": 0.045824,
+     "task_usd": 0.170014,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 1,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 3,
+     "transcript": true
+    },
+    "tokens_request": 99844,
+    "tokens_out": 1615,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 3
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/common-newformat-rename.native",
+    "task": "common-newformat-rename",
+    "arm": "native",
+    "setup_s": 1.8,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "FormatOf",
+       "needle": "func FormatOf(",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "NewFormat",
+       "needle": null,
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "expfmt/expfmt.go"
+    ],
+    "app_files": [
+     "prometheus/push/push.go",
+     "prometheus/push/push_test.go",
+     "prometheus/registry_test.go",
+     "prometheus/testutil/promlint/promlint.go",
+     "prometheus/testutil/testutil.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.090255,
+      "requests": 4,
+      "startup_usd": 0.05728
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.130331,
+      "requests": 4,
+      "startup_usd": 0.091648
+     }
+    }
+   }
+  }
+ },
+ "bubbletea-pastemsg-rename": {
+  "cells": {
+   "native": {
+    "wall_s": 22.7,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 5,
+    "cost_usd": 0.25850399999999996,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "eedba5f5-019d-4b56-9370-dc615dad40c7",
+     "tokens": {
+      "input_uncached": 122172,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 1416
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 122172,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 122172,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 1416,
+      "output_tokens_details": {
+       "thinking_tokens": 279
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 26315,
+        "output_tokens": 349,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 122172,
+       "outputTokens": 1416,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.25850399999999996,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 279,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.25850399999999996,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-bubbletea-pastemsg-rename-native-6-jq-pn4-bubbletea/eedba5f5-019d-4b56-9370-dc615dad40c7.jsonl",
+      "messages": 5,
+      "requests": 5,
+      "tokens": {
+       "input_uncached": 122172,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18k5NzyR5Df62gKBFH8",
+        "request_id": "req_011Ch18k58817iPnvSz2Uczq",
+        "input_uncached": 22939,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 94,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18kC1roUJshnMLmUas5",
+        "request_id": "req_011Ch18kBniiMm79BemRQUZM",
+        "input_uncached": 23245,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 125,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18kKFBc26n7aF72v3C5",
+        "request_id": "req_011Ch18kK23vJfc5JXyDGRq9",
+        "input_uncached": 24078,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 425,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18kw5iTfwVVcLxd8r6D",
+        "request_id": "req_011Ch18kvhtpzmMyGynTPQRE",
+        "input_uncached": 25595,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 423,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18mRoMtsnvcR9ywbyzB",
+        "request_id": "req_011Ch18mRXF3V31zHtPXjaBb",
+        "input_uncached": 26315,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 349,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "eedba5f5-019d-4b56-9370-dc615dad40c7",
+    "api_calls": 5,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 22939,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 94
+     },
+     "startup_usd": 0.045878,
+     "task_usd": 0.212626,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 2,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 4,
+     "transcript": true
+    },
+    "tokens_request": 122172,
+    "tokens_out": 1416,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 4
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/bubbletea-pastemsg-rename.native",
+    "task": "bubbletea-pastemsg-rename",
+    "arm": "native",
+    "setup_s": 1.8,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "PasteEvent",
+       "needle": "type PasteEvent",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "PasteMsg",
+       "needle": null,
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "UPGRADE_GUIDE_V2.md",
+     "input.go",
+     "paste.go"
+    ],
+    "app_files": [
+     "textarea/textarea.go",
+     "textarea/textarea_test.go",
+     "textinput/textinput.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.089533,
+      "requests": 5,
+      "startup_usd": 0.057348
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.129006,
+      "requests": 5,
+      "startup_usd": 0.091756
+     }
+    }
+   },
+   "prism_cli": {
+    "wall_s": 25.8,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 10,
+    "cost_usd": 0.457144,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "98e814e2-e999-4c88-bd4b-565d6757bdc7",
+     "tokens": {
+      "input_uncached": 217522,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 2210
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 217522,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 217522,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 2210,
+      "output_tokens_details": {
+       "thinking_tokens": 240
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 30063,
+        "output_tokens": 421,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 217522,
+       "outputTokens": 2210,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.457144,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 240,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.457144,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-bubbletea-pastemsg-rename-prism-cli-k4g1rhy5-bubbletea/98e814e2-e999-4c88-bd4b-565d6757bdc7.jsonl",
+      "messages": 8,
+      "requests": 8,
+      "tokens": {
+       "input_uncached": 217522,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18nM6cxo2BDCU18igw7",
+        "request_id": "req_011Ch18nLtU3DXAfK9efrKor",
+        "input_uncached": 23831,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 150,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18nVWP3CWbr5Q77b2QE",
+        "request_id": "req_011Ch18nVD2apLmnhMvTVorQ",
+        "input_uncached": 25207,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 102,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18ncBDsJ2RYccvQcCCs",
+        "request_id": "req_011Ch18nbwaoxbRGZPxVXqiw",
+        "input_uncached": 26199,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 326,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18no92nD7KD4MHKdgcg",
+        "request_id": "req_011Ch18nnu9XFccURmEZGZqt",
+        "input_uncached": 26969,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 383,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18o2smegyhBf1sYuTBc",
+        "request_id": "req_011Ch18o2XSTGyF9YwBsJm3i",
+        "input_uncached": 27802,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 222,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18oEgg3FWD6qHYRURxS",
+        "request_id": "req_011Ch18oER4jdm8WVBeeRgKa",
+        "input_uncached": 28158,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 397,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18oTPumCHXe3DSRrMAP",
+        "request_id": "req_011Ch18oTAmmNFnhBMnRJmHF",
+        "input_uncached": 29293,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 209,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18ox8JRrNaRKJ8LSmvM",
+        "request_id": "req_011Ch18owmDwxMiobf2WZ5oo",
+        "input_uncached": 30063,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 421,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "98e814e2-e999-4c88-bd4b-565d6757bdc7",
+    "api_calls": 8,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23831,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 150
+     },
+     "startup_usd": 0.047662,
+     "task_usd": 0.409482,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "bash other": 2,
+      "read": 3,
+      "edit": 2,
+      "search": 1,
+      "build/test": 1
+     },
+     "prism_calls": 0,
+     "tool_calls": 9,
+     "transcript": true
+    },
+    "tokens_request": 217522,
+    "tokens_out": 2210,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 7,
+     "Read": 2
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/bubbletea-pastemsg-rename.prism_cli",
+    "task": "bubbletea-pastemsg-rename",
+    "arm": "prism_cli",
+    "setup_s": 4.3,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "lib/windows": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/linux": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/windows": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "PasteEvent",
+       "needle": "type PasteEvent",
+       "expect": true,
+       "passed": true
+      },
+      {
+       "sym": "PasteMsg",
+       "needle": null,
+       "expect": false,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "UPGRADE_GUIDE_V2.md",
+     "input.go",
+     "paste.go"
+    ],
+    "app_files": [
+     "textarea/textarea.go",
+     "textarea/textarea_test.go",
+     "textinput/textinput.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.116003,
+      "requests": 8,
+      "startup_usd": 0.059578
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.161098,
+      "requests": 8,
+      "startup_usd": 0.095324
+     }
+    }
+   }
+  }
+ },
+ "grove-neighbors-kinds": {
+  "cells": {
+   "native": {
+    "wall_s": 165.6,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 8,
+    "cost_usd": 0.335782,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "4610fd79-5fa4-42dd-ad9e-0ea93097e32e",
+     "tokens": {
+      "input_uncached": 158131,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 1952
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 158131,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 158131,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 1952,
+      "output_tokens_details": {
+       "thinking_tokens": 121
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 29586,
+        "output_tokens": 480,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 158131,
+       "outputTokens": 1952,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.335782,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 121,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.335782,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-grove-neighbors-kinds-native-6qccyb35-grove/4610fd79-5fa4-42dd-ad9e-0ea93097e32e.jsonl",
+      "messages": 6,
+      "requests": 6,
+      "tokens": {
+       "input_uncached": 158131,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch18pqyF9utEG2JjCrBuT",
+        "request_id": "req_011Ch18pqi7VwBHyK2b2nCje",
+        "input_uncached": 22967,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 102,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18pxXtfP1ia5w5fC1mw",
+        "request_id": "req_011Ch18pxKjRrSr9WZfL34BM",
+        "input_uncached": 23183,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 168,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18q5PeFTsFvJkTW7iyu",
+        "request_id": "req_011Ch18q57mZrCFadoim5sRk",
+        "input_uncached": 25645,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 519,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18qLt3rnrWuxUd2A9jq",
+        "request_id": "req_011Ch18qLeQjzWqvsyFqYsZe",
+        "input_uncached": 27465,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 501,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch18xYn7HDDjFfLyxLXed",
+        "request_id": "req_011Ch18xYQ3McmnTcGicde3k",
+        "input_uncached": 29285,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 182,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch192iUdBwHQa5SGTUAvg",
+        "request_id": "req_011Ch192i269NXcUogyP1PVM",
+        "input_uncached": 29586,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 480,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "4610fd79-5fa4-42dd-ad9e-0ea93097e32e",
+    "api_calls": 6,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 22967,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 102
+     },
+     "startup_usd": 0.045934,
+     "task_usd": 0.289848,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 3,
+      "read": 2,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 7,
+     "transcript": true
+    },
+    "tokens_request": 158131,
+    "tokens_out": 1952,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 3,
+     "Grep": 2,
+     "Read": 2
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/grove-neighbors-kinds.native",
+    "task": "grove-neighbors-kinds",
+    "arm": "native",
+    "setup_s": 4.6,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "Engine.Neighbors",
+       "needle": "kinds []EdgeType",
+       "expect": true,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "pkg/grove/grove.go",
+     "pkg/grove/incremental_test.go"
+    ],
+    "app_files": [
+     "internal/grove/client.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.10634,
+      "requests": 6,
+      "startup_usd": 0.057418
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.150719,
+      "requests": 6,
+      "startup_usd": 0.091868
+     }
+    }
+   },
+   "prism_cli": {
+    "wall_s": 146.1,
+    "runtimes": {
+     "go": "1.26"
+    },
+    "turns": 14,
+    "cost_usd": 0.478416,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "95347083-bb09-47bd-aabf-364953096881",
+     "tokens": {
+      "input_uncached": 224903,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 2861
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 224903,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 224903,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 2861,
+      "output_tokens_details": {
+       "thinking_tokens": 199
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 30424,
+        "output_tokens": 454,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 224903,
+       "outputTokens": 2861,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.478416,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 199,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.478416,
+     "pricing_source": "claude-cli total_cost_usd (2.1.323 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-grove-neighbors-kinds-prism-cli-bjocakoy-grove/95347083-bb09-47bd-aabf-364953096881.jsonl",
+      "messages": 8,
+      "requests": 8,
+      "tokens": {
+       "input_uncached": 224903,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch194K5GzVmBLDiQodaFM",
+        "request_id": "req_011Ch194JhSUsDBFZLEFM9ts",
+        "input_uncached": 23833,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 64,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch194Shf39CzmQ5gfnbT2",
+        "request_id": "req_011Ch194SVWT6yaEkWQUXU1P",
+        "input_uncached": 25742,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 233,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch194bidSm5BXNVvtSQWc",
+        "request_id": "req_011Ch194bUkEhjqJ1gX8ui4Z",
+        "input_uncached": 26931,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1277,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1957psVTNaPA4o1ggDv",
+        "request_id": "req_011Ch1957bUtYjpNw7DJWz8b",
+        "input_uncached": 28803,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 157,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch19ABuLdkzocRsuPDseX",
+        "request_id": "req_011Ch19ABXWYQRUG9HRQzLJB",
+        "input_uncached": 29346,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 174,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch19AN4GzirysZQ1xXiqB",
+        "request_id": "req_011Ch19AMiC83UoQdjUe4W6q",
+        "input_uncached": 29723,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 298,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch19AbeLtVMXe4Uuspj7f",
+        "request_id": "req_011Ch19AbRh1A3XboMd5cwRD",
+        "input_uncached": 30101,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 204,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch19EkdhKLuwaytRprNXv",
+        "request_id": "req_011Ch19Ek5hzmh2TcmVq1eJH",
+        "input_uncached": 30424,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 454,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "95347083-bb09-47bd-aabf-364953096881",
+    "api_calls": 8,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23833,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 64
+     },
+     "startup_usd": 0.047666,
+     "task_usd": 0.43075,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "bash other": 1,
+      "read": 2,
+      "edit": 6,
+      "build/test": 4
+     },
+     "prism_calls": 0,
+     "tool_calls": 13,
+     "transcript": true
+    },
+    "tokens_request": 224903,
+    "tokens_out": 2861,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 6,
+     "Read": 1,
+     "Edit": 6
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrbench-2026-11-13/transcripts/grove-neighbors-kinds.prism_cli",
+    "task": "grove-neighbors-kinds",
+    "arm": "prism_cli",
+    "setup_s": 11.2,
+    "score": {
+     "vet": {
+      "lib/darwin": {
+       "rc": 0,
+       "tail": ""
+      },
+      "app/darwin": {
+       "rc": 0,
+       "tail": ""
+      }
+     },
+     "doc": [
+      {
+       "sym": "Engine.Neighbors",
+       "needle": "kinds []EdgeType",
+       "expect": true,
+       "passed": true
+      }
+     ],
+     "hidden": null,
+     "lib_tests": {
+      "rc": 0,
+      "tail": ""
+     },
+     "resolved": true
+    },
+    "resolved": true,
+    "lib_files": [
+     "pkg/grove/grove.go",
+     "pkg/grove/incremental_test.go"
+    ],
+    "app_files": [
+     "internal/grove/client.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.124118,
+      "requests": 8,
+      "startup_usd": 0.059583
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.169754,
+      "requests": 8,
+      "startup_usd": 0.095332
+     }
+    }
+   }
+  }
+ }
+}
