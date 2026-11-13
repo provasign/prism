@@ -148,7 +148,7 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 		}
 	}
 	scope = fmt.Sprintf("%d site(s) in %d of %d linked repositories searched; "+
-		"references inside functions only (a package-level declaration naming it is not listed)", sites, searched, len(linked))
+		"functions and type declarations searched (a package-level variable naming it is not listed)", sites, searched, len(linked))
 	if len(staleRoots) > 0 {
 		scope += "; answered from a STALE index: " + strings.Join(staleRoots, ", ")
 	}

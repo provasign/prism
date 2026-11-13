@@ -56,13 +56,13 @@ no index is named in answers as not searched; Prism does not build a first index
 
 | Language | Recorded | Evidence |
 |---|---|---|
-| Go | calls, functions used as values, types named in a function | compiler-resolved |
+| Go | calls, functions used as values, types named in a function or a type declaration | compiler-resolved |
 | TypeScript, JavaScript | calls | compiler-resolved; matched by package and name, not owner type |
 | Python | calls through imported names | import-scoped; matched by module and name |
 | Java, Rust, PHP, C#, C/C++ | nothing yet | — |
 
-A site carries a tag when it is not a full compiler match. A reference outside any function (a
-package-level variable's type) is not recorded.
+A site carries a tag when it is not a full compiler match. A reference in a package-level variable
+or constant declaration is not recorded.
 
 ## Branches and staleness
 

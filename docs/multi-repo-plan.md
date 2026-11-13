@@ -46,7 +46,7 @@ Not done, and why:
 4. **Graph explorer** repo level and the **read guard**'s path matching across roots.
 5. **Cache size cap** and automatic eviction; `workspace prune` is manual.
 6. **Per-repository permissions** on the link server. One bearer token gates everything.
-7. **References outside functions** (a package-level variable's type, a struct field's type) in Go.
+7. **References in package-level variable and constant declarations** in Go.
 8. **Agent benchmarks.** None run: they are paid and need a go-ahead.
 
 Contents
