@@ -78,3 +78,36 @@ func TestCompactSurfaceAcceptsRepo(t *testing.T) {
 		}
 	}
 }
+
+// A long-lived server picks up a link confirmed after it started.
+func TestHandlerReloadsWorkspaceWhenLinksChange(t *testing.T) {
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	for rel, content := range map[string]string{
+		"app/prism.yaml": "version: 2\n", "app/a.go": "package app\n",
+		"lib/go.mod": "module example.com/lib\n", "lib/lib.go": "package lib\n\n// LateNeedle\n",
+	} {
+		p := filepath.Join(parent, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	root := filepath.Join(parent, "app")
+	cfg, _ := config.LoadFromDir(root)
+	h := NewHandlerWithLedger(cfg, root, nil, session.NewLedger("t"))
+	if h.Workspace != nil {
+		t.Fatal("a workspace before any link")
+	}
+	if err := os.WriteFile(filepath.Join(root, "prism.yaml"), []byte("version: 2\nworkspace_repo: lib=../lib\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg2, _ := config.LoadFromDir(root)
+	workspace.ConfirmLinks(root, cfg2)
+	h.reloadWorkspace()
+	if h.Workspace == nil || len(h.Workspace.Linked()) != 1 {
+		t.Fatalf("the server did not pick up the new link: %+v", h.Workspace)
+	}
+}

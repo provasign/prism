@@ -36,6 +36,16 @@ type Handler struct {
 	// toolSurface is true when answers go to an MCP client, false for the
 	// CLI: a hint must name the argument the reader can actually pass.
 	toolSurface bool
+	// wsStamp is workspace.Stamp when Workspace was loaded. A server runs
+	// for hours; a link added or removed meanwhile must take effect without
+	// a restart.
+	wsMu    sync.Mutex
+	wsStamp string
+	// fresh caches freshenLinked per linked root for a few seconds in a
+	// long-lived server: git status on every linked repository for every
+	// call is the single largest cost of a cross-repository answer.
+	freshMu sync.Mutex
+	fresh   map[string]freshness
 
 	// driftBase records the symbols delivered with each full file read this
 	// session, so prism_drift can diff structurally (renames, breaking
@@ -98,8 +108,31 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 		Ledger:    ledger,
 		driftBase: map[string][]grove.SymbolRecord{},
 		Workspace: workspace.Load(root, cfg),
+		wsStamp:   workspace.Stamp(root),
 	}
 	return h
+}
+
+// reloadWorkspace re-reads the links when a file that defines them changed.
+func (h *Handler) reloadWorkspace() {
+	h.wsMu.Lock()
+	defer h.wsMu.Unlock()
+	stamp := workspace.Stamp(h.Root)
+	if stamp == h.wsStamp {
+		return
+	}
+	h.wsStamp = stamp
+	cfg, err := config.LoadFromDir(h.Root)
+	if err != nil {
+		return
+	}
+	if h.Cfg != nil {
+		h.Cfg.WorkspaceRepos, h.Cfg.WorkspaceServer = cfg.WorkspaceRepos, cfg.WorkspaceServer
+	}
+	h.Workspace = workspace.Load(h.Root, cfg)
+	h.freshMu.Lock()
+	h.fresh = nil
+	h.freshMu.Unlock()
 }
 
 // confidenceFor estimates whether previously delivered content for entry is
@@ -164,6 +197,7 @@ func DispatchableTools() []string {
 
 // Invoke routes a tools/call to the right handler.
 func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) {
+	h.reloadWorkspace()
 	// A panicking tool must fail THAT CALL, not the process: the stdio MCP
 	// server is the agent's whole session, and one nil-pointer in one tool
 	// killed all of it (found by the dispatch-pinning test — toolDeadCode

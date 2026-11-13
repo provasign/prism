@@ -42,6 +42,38 @@ func linkedRefreshBudget() time.Duration {
 // indexed is false when the repository has no index at all; none is built
 // here (a first index can take minutes and is the user's call).
 func (h *Handler) freshenLinked(ctx context.Context, r workspace.Root) (stale string, indexed bool) {
+	if h.toolSurface {
+		h.freshMu.Lock()
+		f, ok := h.fresh[r.Path]
+		h.freshMu.Unlock()
+		if ok && time.Since(f.at) < freshnessTTL {
+			return f.stale, f.indexed
+		}
+		defer func() {
+			h.freshMu.Lock()
+			if h.fresh == nil {
+				h.fresh = map[string]freshness{}
+			}
+			h.fresh[r.Path] = freshness{stale: stale, indexed: indexed, at: time.Now()}
+			h.freshMu.Unlock()
+		}()
+	}
+	return h.freshenLinkedNow(ctx, r)
+}
+
+// freshness is one linked root's last staleness verdict.
+type freshness struct {
+	stale   string
+	indexed bool
+	at      time.Time
+}
+
+// freshnessTTL: long enough to cover the burst of calls an agent makes
+// while working on one change, short enough that an edit in the other
+// repository is seen by the next burst.
+const freshnessTTL = 5 * time.Second
+
+func (h *Handler) freshenLinkedNow(ctx context.Context, r workspace.Root) (stale string, indexed bool) {
 	state, err := grove.ReadIndexState(ctx, r.Path)
 	if err != nil {
 		return "", false

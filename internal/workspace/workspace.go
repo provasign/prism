@@ -359,3 +359,27 @@ func CurrentTree(root string) TreeState {
 	}
 	return t
 }
+
+// Stamp changes whenever what Load(primary) would return may have changed:
+// the repository's prism.yaml, a workspace file above it, or the per-user
+// link records. A long-lived process compares stamps instead of re-reading
+// the files on every call.
+func Stamp(primary string) string {
+	primary = resolve(primary)
+	files := []string{filepath.Join(primary, "prism.yaml"), linksPath()}
+	if dir, ok := ancestorConfigDir(primary); ok {
+		files = append(files, filepath.Join(dir, "prism.yaml"))
+	}
+	var b strings.Builder
+	for _, f := range files {
+		if fi, err := os.Stat(f); err == nil {
+			fmt.Fprintf(&b, "%s:%d:%d;", f, fi.Size(), fi.ModTime().UnixNano())
+		} else {
+			b.WriteString(f + ":-;")
+		}
+	}
+	if untrusted() {
+		b.WriteString("untrusted")
+	}
+	return b.String()
+}
