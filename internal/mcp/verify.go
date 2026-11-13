@@ -859,7 +859,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	// reported, not judged: this verdict covers this repository's diff, and
 	// the other repositories were not rebuilt against it.
 	linkedOut := map[string]any{}
-	if h.Workspace != nil {
+	if h.Workspace != nil || h.Cfg.WorkspaceServer != "" {
 		var keys []string
 		for _, sc := range sigChanges {
 			sym, _ := sc["symbol"].(string)

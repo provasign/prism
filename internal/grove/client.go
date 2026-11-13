@@ -927,3 +927,9 @@ func RefreshIndex(ctx context.Context, root string) error {
 func KeyFor(root, language, kind, filePath, qualifiedName string) (string, bool) {
 	return groveeng.KeyFor(root, language, kind, filePath, qualifiedName)
 }
+
+// ManifestPackages returns what the repository at root declares, from its
+// build manifests.
+func ManifestPackages(root string) []groveeng.ManifestPackage {
+	return groveeng.ScanManifests(root).Packages
+}

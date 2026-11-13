@@ -2,7 +2,9 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/linkserver"
 	"github.com/provasign/prism/internal/workspace"
 )
 
@@ -25,13 +28,15 @@ func cmdWorkspace(args []string) int {
 			return workspaceDiscover(args[1:])
 		case "fetch":
 			return workspaceFetch(args[1:])
+		case "export", "push":
+			return workspaceExport(args[0] == "push", args[1:])
 		case "prune":
 			for _, dir := range workspace.PruneClones() {
 				fmt.Println("removed", dir)
 			}
 			return 0
 		default:
-			fmt.Fprintln(os.Stderr, "usage: prism workspace [add <path|git-url[@ref]> [--id <name>] | remove <id> | discover [--link] | fetch | prune]")
+			fmt.Fprintln(os.Stderr, "usage: prism workspace [add <path|git-url[@ref]> [--id <name>] | remove <id> | discover [--link] | fetch | prune | export [-o <file>] | push [--server <url>]]")
 			return 2
 		}
 	}
@@ -405,4 +410,120 @@ func shortSHA(sha string) string {
 		return sha[:8]
 	}
 	return sha
+}
+
+// workspaceExport writes this repository's link bundle, or with push
+// uploads it to the link server. The bundle holds locations, one source
+// line per reference and declaration signatures; no source bodies.
+func workspaceExport(push bool, args []string) int {
+	var outFile, server, repo, ref string
+	for i := 0; i < len(args); i++ {
+		var dst *string
+		switch args[i] {
+		case "-o", "--output":
+			dst = &outFile
+		case "--server":
+			dst = &server
+		case "--repo":
+			dst = &repo
+		case "--ref":
+			dst = &ref
+		default:
+			return rejectUnknownFlag("workspace export", args[i])
+		}
+		if i+1 >= len(args) {
+			fmt.Fprintf(os.Stderr, "workspace: %s needs a value\n", args[i])
+			return 2
+		}
+		i++
+		*dst = args[i]
+	}
+	root, _ := cliRoot("")
+	// The bundle must describe the tree on disk: bring the index up to date.
+	if err := grove.RefreshIndex(context.Background(), root); err != nil {
+		fmt.Fprintln(os.Stderr, "workspace: index:", err)
+		return 1
+	}
+	b, err := linkserver.Build(context.Background(), root, repo, ref)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "workspace:", err)
+		return 1
+	}
+	if !push {
+		data, _ := json.MarshalIndent(b, "", " ")
+		if outFile == "" {
+			fmt.Println(string(data))
+			return 0
+		}
+		if err := os.WriteFile(outFile, data, 0o644); err != nil {
+			fmt.Fprintln(os.Stderr, "workspace export:", err)
+			return 1
+		}
+		fmt.Printf("wrote %s: %s@%s, %d reference(s), %d declaration(s)\n", outFile, b.Repo, shortSHA(b.SHA), len(b.Refs), len(b.Defs))
+		return 0
+	}
+	if server == "" {
+		if cfg, err := config.LoadFromDir(root); err == nil {
+			server = cfg.WorkspaceServer
+		}
+	}
+	if server == "" {
+		fmt.Fprintln(os.Stderr, "workspace push: no server; pass --server <url> or set workspace_server in prism.yaml")
+		return 2
+	}
+	if b.Dirty {
+		fmt.Fprintln(os.Stderr, "workspace push: the tree has uncommitted changes, so its commit does not describe it; commit first")
+		return 1
+	}
+	if err := linkserver.Push(context.Background(), server, b); err != nil {
+		fmt.Fprintln(os.Stderr, "workspace push:", err)
+		return 1
+	}
+	fmt.Printf("pushed %s@%s (%s) to %s: %d reference(s), %d declaration(s)\n", b.Repo, shortSHA(b.SHA), b.Ref, server, len(b.Refs), len(b.Defs))
+	return 0
+}
+
+// cmdLinkServer runs the shared link server over a directory of bundles.
+func cmdLinkServer(args []string) int {
+	dir, port := "", 8890
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--dir":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "link-server: --dir needs a value")
+				return 2
+			}
+			i++
+			dir = args[i]
+		case "--port":
+			p, err := positiveIntFlag("link-server", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			port = p
+			i++
+		default:
+			return rejectUnknownFlag("link-server", args[i])
+		}
+	}
+	if dir == "" {
+		fmt.Fprintln(os.Stderr, "usage: prism link-server --dir <bundle-store> [--port N]   (PRISM_LINK_TOKEN sets the required bearer token)")
+		return 2
+	}
+	store, err := linkserver.Open(dir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "link-server:", err)
+		return 1
+	}
+	token := linkserver.Token()
+	if token == "" {
+		fmt.Fprintln(os.Stderr, "link-server: WARNING no PRISM_LINK_TOKEN set; anyone who can reach this port can read and upload bundles")
+	}
+	addr := fmt.Sprintf(":%d", port)
+	fmt.Fprintf(os.Stderr, "prism link server on %s: %s\n", addr, store.Describe())
+	if err := http.ListenAndServe(addr, store.Handler(token)); err != nil {
+		fmt.Fprintln(os.Stderr, "link-server:", err)
+		return 1
+	}
+	return 0
 }

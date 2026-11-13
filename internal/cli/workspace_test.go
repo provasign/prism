@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/provasign/prism/internal/linkserver"
 	"github.com/provasign/prism/internal/workspace"
 )
 
@@ -573,5 +575,96 @@ func TestWorkspaceCacheClone(t *testing.T) {
 	}
 	if out = captureStdout(func() { cmdLookup([]string{"FromClone"}) }); strings.Contains(out, "return 2") {
 		t.Fatalf("an unlinked cache clone still answers:\n%s", out)
+	}
+}
+
+// A consumer that is not on this machine: it uploaded its link bundle to
+// the server, and the library's change-impact lists its call site at the
+// uploaded commit.
+func TestWorkspaceServerAnswersForRepositoriesNotCheckedOut(t *testing.T) {
+	for _, tool := range []string{"go", "git"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip(tool + " not available")
+		}
+	}
+	base, _ := filepath.EvalSymlinks(t.TempDir())
+	store, err := linkserver.Open(filepath.Join(base, "store"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(store.Handler("s3cret"))
+	defer srv.Close()
+	t.Setenv("PRISM_LINK_TOKEN", "s3cret")
+
+	lib, app := filepath.Join(base, "lib"), filepath.Join(base, "app")
+	writeCLIFile(t, base, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, base, "lib/lib.go", "package lib\n\nfunc Helper() int { return 1 }\n")
+	writeCLIFile(t, base, "lib/prism.yaml", "version: 2\nworkspace_server: "+srv.URL+"\n")
+	writeCLIFile(t, base, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, base, "app/.gitignore", ".grove/\n")
+	writeCLIFile(t, base, "app/prism.yaml", "version: 2\n")
+	writeCLIFile(t, base, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() {\n\tprintln(lib.Helper())\n}\n")
+	gitIn(t, app, "init", "-q", "-b", "main")
+	gitIn(t, app, "add", "-A")
+	gitIn(t, app, "commit", "-q", "-m", "app")
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+
+	// The consumer's CI: push its bundle.
+	t.Chdir(app)
+	if rc := workspaceExport(true, []string{"--server", srv.URL, "--repo", "example.org/team/app"}); rc != 0 {
+		t.Fatalf("workspace push rc=%d", rc)
+	}
+	// A tree with uncommitted changes is refused: its commit would lie.
+	writeCLIFile(t, base, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() {\n\tprintln(lib.Helper(), 2)\n}\n")
+	if rc := workspaceExport(true, []string{"--server", srv.URL, "--repo", "example.org/team/app"}); rc == 0 {
+		t.Fatal("a dirty tree was pushed")
+	}
+
+	// The library author, with the consumer nowhere on disk as far as the
+	// workspace knows.
+	t.Chdir(lib)
+	impact := func() string {
+		return captureStdout(func() { cmdChangeImpact([]string{"Helper", "--format", "text"}) })
+	}
+	out := impact()
+	for _, want := range []string{
+		"// repo example.org/team/app@",
+		"(main)  from the server, not checked out  requires example.com/lib v0.3.0",
+		"example.org/team/app:main.go:6:14: println(lib.Helper())  [in main]",
+		"1 site(s) in 1 of 1 uploaded repositories, each at its uploaded commit",
+		"repositories neither linked nor uploaded are not covered",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("change-impact output missing %q:\n%s", want, out)
+		}
+	}
+
+	// A name declared only in an uploaded repository: lookup points at it.
+	if look := captureStdout(func() { cmdLookup([]string{"main"}) }); !strings.Contains(look, "example.org/team/app@") ||
+		!strings.Contains(look, "main.go:5") || !strings.Contains(look, "signature only") {
+		t.Fatalf("lookup did not point at the server's declaration:\n%s", look)
+	}
+
+	// A wrong token is a server that was not asked, and is said so.
+	t.Setenv("PRISM_LINK_TOKEN", "wrong")
+	if out = impact(); !strings.Contains(out, "NOT REACHED") || !strings.Contains(out, "repositories only it knows are not covered") {
+		t.Fatalf("an unauthorized server answer was not reported as not covered:\n%s", out)
+	}
+	t.Setenv("PRISM_LINK_TOKEN", "s3cret")
+
+	// Once the consumer is linked locally, the local answer stands alone:
+	// the server's copy of the same repository is not listed again.
+	gitIn(t, app, "checkout", "-q", "--", "main.go")
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	if rc := workspaceAdd([]string{"../app"}); rc != 0 {
+		t.Fatalf("link app rc=%d", rc)
+	}
+	out = impact()
+	if !strings.Contains(out, "../app/main.go:6:14") || strings.Contains(out, "example.org/team/app:main.go") {
+		t.Fatalf("a locally linked repository was also listed from the server:\n%s", out)
 	}
 }

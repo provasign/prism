@@ -284,7 +284,7 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 // changed symbol. Their runners live in those repositories; the plan names
 // the files and leaves the commands to the reader, as for local targets.
 func (h *Handler) planLinkedTests(ctx context.Context, r *testPlanResult) {
-	if h.Workspace == nil {
+	if h.Workspace == nil && h.Cfg.WorkspaceServer == "" {
 		return
 	}
 	var keys []string

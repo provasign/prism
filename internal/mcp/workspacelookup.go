@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/linkserver"
 )
 
 // lookupLinked answers a name this repository does not define from the
@@ -105,4 +107,45 @@ func contains(list []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// serverDeclarations says where the link server knows a missed name to be
+// declared, in repositories that are not checked out here. The server holds
+// signatures and locations, not bodies, so this is a pointer, not an answer.
+func (h *Handler) serverDeclarations(ctx context.Context, q lookupQuery) string {
+	if h.Cfg == nil || h.Cfg.WorkspaceServer == "" || len(q.segs) == 0 {
+		return ""
+	}
+	name := strings.Join(q.segs, ".")
+	if n := len(q.segs); n > 2 {
+		name = strings.Join(q.segs[n-2:], ".")
+	}
+	rctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	repos, err := linkserver.AskDefineName(rctx, h.Cfg.WorkspaceServer, name)
+	if err != nil {
+		return fmt.Sprintf("Link server %s not reached (%v): repositories only it knows were not searched.", h.Cfg.WorkspaceServer, err)
+	}
+	var parts []string
+	for _, r := range repos {
+		sha := r.SHA
+		if len(sha) > 8 {
+			sha = sha[:8]
+		}
+		for _, d := range r.Defs {
+			if len(parts) == 6 {
+				parts = append(parts, "…")
+				break
+			}
+			at := fmt.Sprintf("%s@%s %s:%d", r.Repo, sha, d.File, d.Line)
+			if d.Signature != "" {
+				at += " `" + d.Signature + "`"
+			}
+			parts = append(parts, at)
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "Declared in repositories the link server knows, not checked out here (signature only; the body needs a checkout or a cache clone): " + strings.Join(parts, "; ") + "."
 }

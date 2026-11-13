@@ -69,6 +69,10 @@ func (h *Handler) resolveLookup(ctx context.Context, name, fileScope, fileHint s
 		return linked, nil
 	}
 	miss := h.lookupMiss(ctx, loc, q, name, pool)
+	if where := h.serverDeclarations(ctx, q); where != "" {
+		note, _ := miss["note"].(string)
+		miss["note"] = strings.TrimSpace(note + " " + where)
+	}
 	if len(unread) > 0 {
 		note, _ := miss["note"].(string)
 		miss["note"] = strings.TrimSpace(note + " Linked repositories with no index, not searched: " + strings.Join(unread, ", ") + ".")

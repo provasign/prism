@@ -7,15 +7,18 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/linkserver"
+	"github.com/provasign/prism/internal/workspace"
 )
 
 // addWorkspaceConsumers extends a change-impact answer past this
 // repository: the places in linked repositories whose compiler resolved
 // them to a symbol of the change set.
 func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any, r *grove.ChangeImpactResult) {
-	if h.Workspace == nil || r == nil {
+	if r == nil {
 		return
 	}
 	var syms []grove.SymbolRecord
@@ -61,11 +64,12 @@ func (h *Handler) attachLinkedConsumers(ctx context.Context, out map[string]any,
 // records, and repositories nobody linked are each named, because a consumer
 // list that stops silently reads as "no other consumers".
 func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []string, scope string, sites int) {
-	if h.Workspace == nil {
-		return nil, "", 0
-	}
 	linked := h.Workspace.Linked()
-	if len(linked) == 0 {
+	server := ""
+	if h.Cfg != nil {
+		server = h.Cfg.WorkspaceServer
+	}
+	if len(linked) == 0 && server == "" {
 		return nil, "", 0
 	}
 	if len(keys) == 0 {
@@ -144,8 +148,72 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 	if len(unread) > 0 {
 		scope += "; not searched (no index): " + strings.Join(unread, ", ")
 	}
-	scope += "; repositories that are not linked are not covered"
+	if server == "" {
+		return lines, scope + "; repositories that are not linked are not covered", sites
+	}
+	remoteLines, remoteScope, remoteSites := h.serverConsumers(ctx, server, keys, linked)
+	lines = append(lines, remoteLines...)
+	return lines, scope + "; " + remoteScope, sites + remoteSites
+}
+
+// serverConsumers asks the shared link server for references in
+// repositories that are not on this machine. Each answer describes a
+// repository at the commit it uploaded, which the lines say; a server that
+// cannot be reached is reported as not covered, never as no consumers.
+func (h *Handler) serverConsumers(ctx context.Context, server string, keys []string, linked []workspace.Root) (lines []string, scope string, sites int) {
+	req := linkserver.ConsumersRequest{Keys: keys}
+	for _, root := range append([]string{h.Root}, rootPaths(linked)...) {
+		for _, pkg := range grove.ManifestPackages(root) {
+			req.ExcludePackages = append(req.ExcludePackages, pkg.Ecosystem+":"+pkg.Name)
+		}
+	}
+	rctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	resp, err := linkserver.AskConsumers(rctx, server, req)
+	if err != nil {
+		return nil, fmt.Sprintf("server %s NOT REACHED (%v): repositories only it knows are not covered", server, err), 0
+	}
+	for _, repo := range resp.Repos {
+		sha := repo.SHA
+		if len(sha) > 8 {
+			sha = sha[:8]
+		}
+		header := fmt.Sprintf("// repo %s@%s", repo.Repo, sha)
+		if repo.Ref != "" {
+			header += " (" + repo.Ref + ")"
+		}
+		header += "  from the server, not checked out"
+		if repo.Requires != "" {
+			header += "  requires " + repo.Requires
+		}
+		if day, _, ok := strings.Cut(repo.Created, "T"); ok {
+			header += "  uploaded " + day
+		}
+		lines = append(lines, header)
+		for _, site := range repo.Sites {
+			at := fmt.Sprintf("%s:%s:%d", repo.Repo, site.File, site.Line)
+			if site.Col > 0 {
+				at += fmt.Sprintf(":%d", site.Col)
+			}
+			tag := ""
+			if site.Test {
+				tag = "  [test]"
+			}
+			lines = append(lines, fmt.Sprintf("  %s: %s  [in %s]%s", at, site.Text, site.From, tag))
+			sites++
+		}
+	}
+	scope = fmt.Sprintf("server %s: %d site(s) in %d of %d uploaded repositories, each at its uploaded commit; "+
+		"repositories neither linked nor uploaded are not covered", server, sites, len(resp.Repos), resp.Searched)
 	return lines, scope, sites
+}
+
+func rootPaths(roots []workspace.Root) []string {
+	out := make([]string, 0, len(roots))
+	for _, r := range roots {
+		out = append(out, r.Path)
+	}
+	return out
 }
 
 // requirePin says which version of the changed module a repository's

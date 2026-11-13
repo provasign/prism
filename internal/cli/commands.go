@@ -125,6 +125,11 @@ Usage:
                                                             read-only cache at that commit, index it, link it
                                   fetch                     Re-resolve cache clones' branches
                                   prune                     Delete cache clones nothing links to
+                                  export [-o <file>]        Write this repository's link bundle (no source bodies)
+                                  push [--server <url>]     Upload it to the link server (workspace_server)
+  prism link-server --dir <store> [--port N]
+                                  Serve uploaded link bundles: who references a symbol across
+                                  repositories that are not checked out (PRISM_LINK_TOKEN required token)
                                   remove <id>               Unlink; the checkout is not touched
                                   discover [--link]         Related checkouts found in manifests
   prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
@@ -257,6 +262,8 @@ func Run(args []string) int {
 		return cmdTestPlan(rest)
 	case "workspace":
 		return cmdWorkspace(rest)
+	case "link-server":
+		return cmdLinkServer(rest)
 	case "query":
 		return cmdQuery(rest)
 	case "read":
