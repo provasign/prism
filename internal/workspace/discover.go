@@ -159,3 +159,58 @@ func requiredBy(repo string, req groveeng.ManifestRequire) string {
 	}
 	return strings.TrimSpace(repo + "/" + manifest + " requires " + req.Name + " " + req.Version)
 }
+
+// Unlinked is a dependency this repository declares that no checkout on
+// this machine was found for.
+type Unlinked struct {
+	Ecosystem string
+	Name      string
+	Version   string
+	Evidence  string
+	// URL is where the source can be fetched from, when the package name
+	// says so (a Go module path). Empty otherwise.
+	URL string
+}
+
+// Missing lists the requirements of primary that neither a discovered
+// candidate nor an already linked repository satisfies: what a cache clone
+// or the link server would have to supply. Most entries are ordinary
+// third-party packages; the list is for picking out the ones that matter.
+func Missing(primary string, ws *Workspace, found []Candidate) []Unlinked {
+	primary = resolve(primary)
+	have := map[string]bool{}
+	note := func(dir string) {
+		for _, p := range groveeng.ScanManifests(dir).Packages {
+			have[p.Ecosystem+":"+p.Name] = true
+		}
+	}
+	for _, c := range found {
+		note(c.Path)
+	}
+	for _, r := range ws.Linked() {
+		note(r.Path)
+	}
+	var out []Unlinked
+	seen := map[string]bool{}
+	for _, req := range groveeng.ScanManifests(primary).Requires {
+		key := req.Ecosystem + ":" + req.Name
+		if req.CoMember || have[key] || seen[key] {
+			continue
+		}
+		if req.LocalPath != "" {
+			if fi, err := os.Stat(req.LocalPath); err == nil && fi.IsDir() {
+				continue
+			}
+		}
+		seen[key] = true
+		u := Unlinked{Ecosystem: req.Ecosystem, Name: req.Name, Version: req.Version, Evidence: req.Evidence}
+		if req.Ecosystem == "go" {
+			parts := strings.Split(req.Name, "/")
+			if len(parts) >= 3 && strings.Contains(parts[0], ".") {
+				u.URL = "https://" + strings.Join(parts[:3], "/")
+			}
+		}
+		out = append(out, u)
+	}
+	return out
+}

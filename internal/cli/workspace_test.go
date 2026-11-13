@@ -721,3 +721,48 @@ func TestWorkspaceParentFolderDeclaresChildren(t *testing.T) {
 		t.Fatal("a directory inside the repository was linked to it")
 	}
 }
+
+// A repository that is linked but not on disk must be named in every
+// answer, never dropped from the count.
+func TestWorkspaceMissingCheckoutIsNamed(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go toolchain not available")
+	}
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib := filepath.Join(parent, "lib")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n\nrequire (\n\tgithub.com/acme/core v1.4.0\n\texample.com/near v0.1.0\n)\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Helper() int { return 1 }\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: gone=../gone\n")
+	writeCLIFile(t, parent, "near/go.mod", "module example.com/near\n")
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index rc=%d", rc)
+	}
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdChangeImpact([]string{"Helper", "--format", "text"}) })
+	for _, want := range []string{
+		"// repo gone  ../gone  NOT SEARCHED: not checked out",
+		"0 site(s) in 0 of 1 linked repositories searched",
+		"not searched (not checked out): gone",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("change-impact output missing %q:\n%s", want, out)
+		}
+	}
+	if out = captureStdout(func() { cmdLookup([]string{"Absent"}) }); !strings.Contains(out, "gone (../gone, not checked out)") {
+		t.Fatalf("lookup miss does not name the missing checkout:\n%s", out)
+	}
+	if out = captureStdout(func() { cmdSearch([]string{"Helper", "--scope", "text"}) }); !strings.Contains(out, "gone not checked out") {
+		t.Fatalf("search does not name the missing checkout:\n%s", out)
+	}
+
+	// discover: the dependency with a sibling checkout is a candidate; the
+	// one with none is listed as unlinked, with where to fetch it.
+	out = captureStdout(func() { workspaceDiscover(nil) })
+	if !strings.Contains(out, "../near") {
+		t.Fatalf("sibling dependency not discovered:\n%s", out)
+	}
+	if !strings.Contains(out, "unlinked: go:github.com/acme/core") || !strings.Contains(out, "v1.4.0") ||
+		!strings.Contains(out, "https://github.com/acme/core") || strings.Contains(out, "unlinked: go:example.com/near") {
+		t.Fatalf("unlinked dependencies not listed correctly:\n%s", out)
+	}
+}

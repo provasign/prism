@@ -35,6 +35,11 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 	}
 	var hits []hit
 	staleBy := map[string]string{}
+	for _, r := range h.Workspace.Roots {
+		if r.Missing {
+			unread = append(unread, r.ID+" ("+h.Workspace.DisplayPath(r)+", not checked out)")
+		}
+	}
 	for _, r := range h.Workspace.Linked() {
 		stale, indexed := h.freshenLinked(ctx, r)
 		if !indexed {
@@ -83,7 +88,7 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 		note += " — " + stale
 	}
 	if len(unread) > 0 {
-		note += "; linked repositories with no index, not searched: " + strings.Join(unread, ", ")
+		note += "; linked repositories not searched (no index, or not checked out): " + strings.Join(unread, ", ")
 	}
 	out["note"] = note
 	var also []string

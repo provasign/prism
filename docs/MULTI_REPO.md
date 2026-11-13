@@ -35,6 +35,12 @@ Discovery reads `go.mod`, `go.work`, `package.json`, `Cargo.toml`, `pyproject.to
 sibling directory declares a package this one requires or requires a package this one declares, and
 when a repository Prism was set up in elsewhere on the machine does.
 
+`discover` also lists required packages it found no checkout for, as `unlinked:` lines with a fetch
+URL where the package name gives one. Most are ordinary third-party packages; the list is for picking
+out the ones worth a cache clone.
+
+A linked repository whose directory is missing is named in every answer as not checked out.
+
 Every linked repository needs its own index: run `prism index` in it once. A linked repository with
 no index is named in answers as not searched; Prism does not build a first index on its own.
 

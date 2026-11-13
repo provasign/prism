@@ -109,14 +109,24 @@ func (h *Handler) LinkedSearchTail(ctx context.Context, args map[string]any) str
 		return ""
 	}
 	linked := h.Workspace.Linked()
-	if len(linked) == 0 {
+	var absent []string
+	for _, r := range h.Workspace.Roots {
+		if r.Missing {
+			absent = append(absent, r.ID+" not checked out")
+		}
+	}
+	if len(linked) == 0 && len(absent) == 0 {
 		return ""
 	}
 	if stringArg(args, "repo", "") == "all" {
-		return h.linkedSearchListing(ctx, linked, args)
+		out := h.linkedSearchListing(ctx, linked, args)
+		for _, a := range absent {
+			out += "// repo " + a + ": NOT SEARCHED\n"
+		}
+		return out
 	}
 	terms, opts, _ := linkedSearchArgs(args)
-	parts := make([]string, 0, len(linked))
+	parts := make([]string, 0, len(linked)+len(absent))
 	for _, r := range linked {
 		cctx, cancel := context.WithTimeout(ctx, linkedSearchBudget)
 		hits, files, timedOut := 0, 0, false
@@ -136,5 +146,6 @@ func (h *Handler) LinkedSearchTail(ctx context.Context, args map[string]any) str
 			parts = append(parts, fmt.Sprintf("%s %d in %d file(s)", r.ID, hits, files))
 		}
 	}
+	parts = append(parts, absent...)
 	return "// linked repositories, text matches not listed above (repo=<id> lists them): " + strings.Join(parts, "; ") + "\n"
 }

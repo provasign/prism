@@ -67,15 +67,26 @@ func (h *Handler) attachLinkedConsumers(ctx context.Context, out map[string]any,
 // list that stops silently reads as "no other consumers".
 func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []string, scope string, sites int) {
 	linked := h.Workspace.Linked()
+	// Declared but not on disk. They are named in every answer: a
+	// repository dropped from the count without a word reads as searched.
+	var absent []string
+	if h.Workspace != nil {
+		for _, r := range h.Workspace.Roots {
+			if r.Missing {
+				absent = append(absent, r.ID)
+				lines = append(lines, fmt.Sprintf("// repo %s  %s  NOT SEARCHED: not checked out", r.ID, h.Workspace.DisplayPath(r)))
+			}
+		}
+	}
 	server := ""
 	if h.Cfg != nil {
 		server = h.Cfg.WorkspaceServer
 	}
-	if len(linked) == 0 && server == "" {
+	if len(linked) == 0 && len(absent) == 0 && server == "" {
 		return nil, "", 0
 	}
 	if len(keys) == 0 {
-		return nil, "linked repositories not searched: cross-repository references are recorded for Go (functions, methods, types), TypeScript/JavaScript (calls) and Python (calls through imported names) only", 0
+		return lines, "linked repositories not searched: cross-repository references are recorded for Go (functions, methods, types), TypeScript/JavaScript (calls) and Python (calls through imported names) only", 0
 	}
 	searched := 0
 	var unread, staleRoots []string
@@ -148,7 +159,10 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 		}
 	}
 	scope = fmt.Sprintf("%d site(s) in %d of %d linked repositories searched; "+
-		"functions and type declarations searched (a package-level variable naming it is not listed)", sites, searched, len(linked))
+		"functions and type declarations searched (a package-level variable naming it is not listed)", sites, searched, len(linked)+len(absent))
+	if len(absent) > 0 {
+		scope += "; not searched (not checked out): " + strings.Join(absent, ", ")
+	}
 	if len(staleRoots) > 0 {
 		scope += "; answered from a STALE index: " + strings.Join(staleRoots, ", ")
 	}

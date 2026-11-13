@@ -75,7 +75,7 @@ func (h *Handler) resolveLookup(ctx context.Context, name, fileScope, fileHint s
 	}
 	if len(unread) > 0 {
 		note, _ := miss["note"].(string)
-		miss["note"] = strings.TrimSpace(note + " Linked repositories with no index, not searched: " + strings.Join(unread, ", ") + ".")
+		miss["note"] = strings.TrimSpace(note + " Linked repositories not searched (no index, or not checked out): " + strings.Join(unread, ", ") + ".")
 	}
 	return miss, nil
 }

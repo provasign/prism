@@ -257,6 +257,7 @@ func workspaceDiscover(args []string) int {
 	}
 	ws := workspace.Load(root, cfg)
 	cands := workspace.Discover(root, ws)
+	defer printUnlinked(root, workspace.Missing(root, ws, cands))
 	if len(cands) == 0 {
 		fmt.Println("// no related repositories found: no manifest here points at a directory, and no sibling directory declares or requires a matching package")
 		return 0
@@ -542,4 +543,26 @@ func cmdLinkServer(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// printUnlinked lists declared dependencies with no checkout on this
+// machine. Nothing here was searched; a repository that matters can be
+// brought in with `prism workspace add <git-url>[@ref]`.
+func printUnlinked(root string, missing []workspace.Unlinked) {
+	if len(missing) == 0 {
+		return
+	}
+	const show = 20
+	fmt.Printf("\n// required, no checkout found on this machine (%d): not linked, not searched\n", len(missing))
+	tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	for i, m := range missing {
+		if i == show {
+			break
+		}
+		fmt.Fprintf(tw, "unlinked: %s:%s\t%s\t%s\n", m.Ecosystem, m.Name, m.Version, m.URL)
+	}
+	tw.Flush()
+	if len(missing) > show {
+		fmt.Printf("// … and %d more\n", len(missing)-show)
+	}
 }
