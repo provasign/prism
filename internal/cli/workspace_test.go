@@ -227,7 +227,7 @@ func TestWorkspaceDiscoverFromManifests(t *testing.T) {
 	writeCLIFile(t, parent, "unrelated/go.mod", "module example.com/unrelated\n")
 	t.Chdir(app)
 	out := captureStdout(func() {
-		if rc := workspaceDiscover(nil); rc != 0 {
+		if rc := cmdWorkspace([]string{"discover"}); rc != 0 {
 			t.Fatalf("discover rc=%d", rc)
 		}
 	})
@@ -243,7 +243,7 @@ func TestWorkspaceDiscoverFromManifests(t *testing.T) {
 	if strings.Contains(string(before), "other") {
 		t.Fatal("discover linked a repository without --link")
 	}
-	if rc := workspaceDiscover([]string{"--link"}); rc != 0 {
+	if rc := cmdWorkspace([]string{"discover", "--link"}); rc != 0 {
 		t.Fatalf("discover --link rc=%d", rc)
 	}
 	after, _ := os.ReadFile(filepath.Join(app, "prism.yaml"))
@@ -506,12 +506,12 @@ func TestDiscoverUsesTheRegistry(t *testing.T) {
 	writeCLIFile(t, base, "work/app/prism.yaml", "version: 2\n")
 	writeCLIFile(t, base, "elsewhere/deep/far/go.mod", "module example.com/far\n")
 	t.Chdir(filepath.Join(base, "work", "app"))
-	out := captureStdout(func() { workspaceDiscover(nil) })
+	out := captureStdout(func() { cmdWorkspace([]string{"discover"}) })
 	if strings.Contains(out, "elsewhere/deep/far") || !strings.Contains(out, "unlinked: go:example.com/far") {
 		t.Fatalf("an unregistered, non-sibling checkout must be listed as unlinked, not found:\n%s", out)
 	}
 	workspace.Register(filepath.Join(base, "elsewhere", "deep", "far"))
-	out = captureStdout(func() { workspaceDiscover(nil) })
+	out = captureStdout(func() { cmdWorkspace([]string{"discover"}) })
 	if !strings.Contains(out, "elsewhere/deep/far") || !strings.Contains(out, "depends on") || strings.Contains(out, "unlinked:") {
 		t.Fatalf("registered checkout not discovered, or still listed as unlinked:\n%s", out)
 	}
@@ -742,7 +742,7 @@ func TestWorkspaceMissingCheckoutIsNamed(t *testing.T) {
 	for _, want := range []string{
 		"// repo gone  ../gone  NOT SEARCHED: not checked out",
 		"0 site(s) in 0 of 1 linked repositories searched",
-		"not searched (not checked out): gone",
+		"not searched (see above): gone",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("change-impact output missing %q:\n%s", want, out)
@@ -757,7 +757,7 @@ func TestWorkspaceMissingCheckoutIsNamed(t *testing.T) {
 
 	// discover: the dependency with a sibling checkout is a candidate; the
 	// one with none is listed as unlinked, with where to fetch it.
-	out = captureStdout(func() { workspaceDiscover(nil) })
+	out = captureStdout(func() { cmdWorkspace([]string{"discover"}) })
 	if !strings.Contains(out, "../near") {
 		t.Fatalf("sibling dependency not discovered:\n%s", out)
 	}
@@ -832,5 +832,88 @@ func TestWorkspaceJavaLinkedFromTheLibrarySide(t *testing.T) {
 	t.Chdir(app)
 	if out = captureStdout(func() { cmdWorkspace(nil) }); !strings.Contains(out, "no linked repositories") {
 		t.Fatalf("the reverse end of a removed link is still there:\n%s", out)
+	}
+}
+
+// A cloned repository's committed prism.yaml must not be able to point Prism
+// at arbitrary places on the machine. Its links are proposals until the user
+// runs a workspace command there, and even then only a real repository that
+// does not swallow this one is accepted.
+func TestWorkspaceHostileLinksAreRefused(t *testing.T) {
+	base, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(base, "state"))
+	hostile := filepath.Join(base, "code", "hostile")
+	writeCLIFile(t, hostile, "main.go", "package main\n\nfunc main() {}\n")
+	writeCLIFile(t, base, "code/victim/go.mod", "module example.com/victim\n")
+	writeCLIFile(t, base, "code/victim/secret.go", "package victim\n\n// VictimMarker\n")
+	writeCLIFile(t, base, "loot/id_rsa", "PRIVATE-KEY-MARKER\n")
+	home, _ := os.UserHomeDir()
+	writeCLIFile(t, hostile, "prism.yaml", "version: 2\n"+
+		"workspace_repo: rootfs=/\n"+
+		"workspace_repo: home="+home+"\n"+
+		"workspace_repo: loot=../../loot\n"+
+		"workspace_repo: victim=../victim\n")
+	t.Chdir(hostile)
+
+	// Before any confirming command: an agent's read and search reach nothing
+	// outside the repository. (No explicit index: the first read builds one.)
+	for _, path := range []string{"../victim/secret.go", "../../loot/id_rsa", "/etc/hosts"} {
+		out := captureStdout(func() {
+			if rc := cmdRead([]string{path}); rc == 0 {
+				t.Fatalf("read of %s succeeded through an unconfirmed link", path)
+			}
+		})
+		if strings.Contains(out, "VictimMarker") || strings.Contains(out, "PRIVATE-KEY-MARKER") {
+			t.Fatalf("content leaked through an unconfirmed link:\n%s", out)
+		}
+	}
+	out := captureStdout(func() { cmdSearch([]string{"VictimMarker", "--scope", "text"}) })
+	if strings.Contains(out, "victim 1") || !strings.Contains(out, "link not confirmed") {
+		t.Fatalf("an unconfirmed link was searched, or the search did not say it was skipped:\n%s", out)
+	}
+
+	// The user reviews the links. Only the real repository is accepted.
+	status := captureStdout(func() { cmdWorkspace(nil) })
+	for _, want := range []string{"refused: it contains this repository", "refused: it is the home directory or above it", "refused: no sign of a repository there"} {
+		if !strings.Contains(status, want) {
+			t.Fatalf("status does not show %q:\n%s", want, status)
+		}
+	}
+	if rc := cmdRead([]string{"../../loot/id_rsa"}); rc == 0 {
+		t.Fatal("a non-repository directory became readable after confirmation")
+	}
+	out = captureStdout(func() {
+		if rc := cmdRead([]string{"../victim/secret.go"}); rc != 0 {
+			t.Fatalf("a confirmed link to a real repository is not readable (rc=%d)", rc)
+		}
+	})
+	if !strings.Contains(out, "VictimMarker") {
+		t.Fatalf("confirmed repository not delivered:\n%s", out)
+	}
+
+	// Untrusted mode: nothing is linked, confirmed or not.
+	t.Setenv("GROVE_UNTRUSTED", "1")
+	if rc := cmdRead([]string{"../victim/secret.go"}); rc == 0 {
+		t.Fatal("a linked repository was readable in untrusted mode")
+	}
+}
+
+func TestWorkspaceCloneRefusesOptionInjection(t *testing.T) {
+	base, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_CACHE_DIR", filepath.Join(base, "cache"))
+	for _, bad := range [][2]string{
+		{"--upload-pack=touch " + filepath.Join(base, "pwned"), ""},
+		{"ext::sh -c 'touch " + filepath.Join(base, "pwned") + "'", ""},
+		{"https://example.invalid/x.git", "--output=" + filepath.Join(base, "pwned")},
+	} {
+		if _, _, err := workspace.FetchClone(bad[0], bad[1]); err == nil {
+			t.Fatalf("FetchClone accepted %q at %q", bad[0], bad[1])
+		}
+	}
+	if _, err := os.Stat(filepath.Join(base, "pwned")); err == nil {
+		t.Fatal("a crafted repository argument ran a command")
+	}
+	if got := workspace.RedactURL("https://user:s3cret@example.com/org/repo.git"); strings.Contains(got, "s3cret") {
+		t.Fatalf("credential not redacted: %s", got)
 	}
 }

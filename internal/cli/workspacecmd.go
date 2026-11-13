@@ -18,6 +18,13 @@ import (
 
 // cmdWorkspace shows, adds, or removes the repositories linked to this one.
 func cmdWorkspace(args []string) int {
+	// Any workspace command is the user reviewing this repository's links:
+	// the ones its prism.yaml declares come into force on this machine.
+	if here, _ := cliRoot(""); here != "" {
+		if own, err := config.LoadFromDir(here); err == nil {
+			workspace.ConfirmLinks(here, own)
+		}
+	}
 	if len(args) > 0 {
 		switch args[0] {
 		case "add":
@@ -46,7 +53,6 @@ func cmdWorkspace(args []string) int {
 		fmt.Fprintln(os.Stderr, "workspace:", err)
 		return 1
 	}
-	workspace.ConfirmLinks(root, cfg)
 	self := workspace.Inspect(workspace.Root{ID: filepath.Base(root), Path: root})
 	fmt.Printf("// workspace of %s  %s\n", root, refHead(self))
 	ws := workspace.Load(root, cfg)
@@ -66,8 +72,8 @@ func cmdWorkspace(args []string) int {
 			index = s.IndexedAt.Format("2006-01-02 15:04")
 		}
 		state := refHead(s)
-		if s.Missing {
-			state = "not checked out"
+		if why := r.Unusable(); why != "" {
+			state, index = why, "-"
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", r.ID, ws.RelPath(r.Path), state, index, r.Evidence)
 	}

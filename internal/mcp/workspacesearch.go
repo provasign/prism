@@ -45,8 +45,15 @@ func linkedSearchArgs(args map[string]any) (terms []string, opts textsearch.Opti
 // linkedSearchRoots resolves the repo argument: a linked repository's id,
 // or "all".
 func (h *Handler) linkedSearchRoots(repo string) ([]workspace.Root, error) {
-	if h.Workspace == nil || len(h.Workspace.Linked()) == 0 {
+	if h.Workspace == nil {
 		return nil, fmt.Errorf("repo=%q needs linked repositories; none are declared (workspace_repo in prism.yaml)", repo)
+	}
+	if len(h.Workspace.Linked()) == 0 {
+		var why []string
+		for _, r := range h.Workspace.Roots {
+			why = append(why, r.ID+": "+r.Unusable())
+		}
+		return nil, fmt.Errorf("repo=%q: no linked repository can be searched (%s)", repo, strings.Join(why, "; "))
 	}
 	var roots []workspace.Root
 	for _, r := range h.Workspace.Linked() {
@@ -111,8 +118,8 @@ func (h *Handler) LinkedSearchTail(ctx context.Context, args map[string]any) str
 	linked := h.Workspace.Linked()
 	var absent []string
 	for _, r := range h.Workspace.Roots {
-		if r.Missing {
-			absent = append(absent, r.ID+" not checked out")
+		if why := r.Unusable(); why != "" {
+			absent = append(absent, r.ID+" "+shortReason(why))
 		}
 	}
 	if len(linked) == 0 && len(absent) == 0 {

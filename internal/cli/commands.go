@@ -2133,6 +2133,12 @@ func cmdIndex(args []string) int {
 		return rc
 	}
 	allowHeuristic := flags["--allow-heuristic"]
+	// An explicit index is the user trusting this repository's files, its
+	// declared links included; they are confirmed before the engine is told
+	// which repositories are linked.
+	if own, err := config.LoadFromDir(mustAbs(dir)); err == nil {
+		workspace.ConfirmLinks(mustAbs(dir), own)
+	}
 	cfg, client, err := newClient(dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

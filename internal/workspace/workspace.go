@@ -27,6 +27,58 @@ type Root struct {
 	// Cache is true for a clone Prism fetched: reference source at a fixed
 	// commit, not a checkout the user works in.
 	Cache bool
+	// Refused, when not empty, says why a declared link is not used: not
+	// confirmed on this machine, or not a repository.
+	Refused string
+}
+
+// Unusable says why a declared root cannot be consulted, or "" when it can.
+// Answers name every unusable root: one dropped without a word reads as
+// searched.
+func (r Root) Unusable() string {
+	switch {
+	case r.Missing:
+		return "not checked out"
+	case r.Refused != "":
+		return r.Refused
+	}
+	return ""
+}
+
+// Unconfirmed is the reason a link written in a prism.yaml is not yet in
+// force on this machine.
+const Unconfirmed = "link not confirmed on this machine (running `prism workspace` in the repository that declares it reviews and confirms its links)"
+
+// untrusted reports GROVE_UNTRUSTED: the repository's own files are not to
+// be believed about what else on the machine may be read.
+func untrusted() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("GROVE_UNTRUSTED")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
+
+// repositoryMarkers: files whose presence makes a directory look like a
+// source repository rather than an arbitrary place on disk.
+var repositoryMarkers = []string{".git", ".grove", "prism.yaml", "go.mod", "go.work", "package.json", "pom.xml",
+	"build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts", "Cargo.toml", "pyproject.toml",
+	"setup.py", "setup.cfg", "requirements.txt", "composer.json", "Gemfile", "CMakeLists.txt"}
+
+// notARepository refuses link targets that would turn "read this other
+// repository" into "read anywhere": a directory that contains the primary
+// repository, the home directory or anything above it, and a directory with
+// no sign of being a repository (~/.ssh, /etc).
+func notARepository(p, primary string) string {
+	if isInside(p, primary) {
+		return "refused: it contains this repository"
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" && isInside(p, resolve(home)) {
+		return "refused: it is the home directory or above it"
+	}
+	for _, m := range repositoryMarkers {
+		if _, err := os.Stat(filepath.Join(p, m)); err == nil {
+			return ""
+		}
+	}
+	return "refused: no sign of a repository there (no .git, manifest or index)"
 }
 
 // Workspace is the primary root plus the roots linked to it.
@@ -40,11 +92,27 @@ type Workspace struct {
 // nearest ancestor prism.yaml, which is how a parent folder holding several
 // checkouts declares them once. It returns nil when nothing is linked, so a
 // repository with no workspace behaves exactly as before.
+//
+// A link written in a prism.yaml is a proposal. It takes effect on a machine
+// once the user has run a `prism workspace`, `prism init` or `prism index`
+// command in the repository that declares it (ConfirmLinks), and only for a
+// target that looks like a repository. Otherwise a cloned repository's
+// committed file could point Prism at any directory on the machine. Under
+// GROVE_UNTRUSTED nothing is linked at all.
 func Load(primary string, cfg *config.Config) *Workspace {
+	if untrusted() {
+		return nil
+	}
 	primary = resolve(primary)
 	w := &Workspace{Primary: primary}
 	seen := map[string]bool{primary: true}
 	ids := map[string]bool{}
+	confirmed := map[string]bool{} // linker "\x00" target
+	for _, l := range readLinks() {
+		if l.Kind == kindReverse {
+			confirmed[l.Path+"\x00"+l.Primary] = true
+		}
+	}
 	add := func(base, file string, repos []config.WorkspaceRepo) {
 		for _, r := range repos {
 			p := r.Path
@@ -62,10 +130,17 @@ func Load(primary string, cfg *config.Config) *Workspace {
 			}
 			ids[id] = true
 			_, err := os.Stat(p)
-			w.Roots = append(w.Roots, Root{
-				ID: id, Path: p, Missing: err != nil,
-				Evidence: file + ": workspace_repo: " + r.ID + "=" + r.Path,
-			})
+			root := Root{ID: id, Path: p, Missing: err != nil,
+				Evidence: file + ": workspace_repo: " + r.ID + "=" + r.Path}
+			if !root.Missing {
+				switch {
+				case !confirmed[resolve(base)+"\x00"+p]:
+					root.Refused = Unconfirmed
+				default:
+					root.Refused = notARepository(p, primary)
+				}
+			}
+			w.Roots = append(w.Roots, root)
 		}
 	}
 	if cfg != nil {
@@ -100,13 +175,15 @@ func Load(primary string, cfg *config.Config) *Workspace {
 		}
 		w.Roots = append(w.Roots, Root{
 			ID: id, Path: p, Missing: err != nil, Cache: true,
-			Evidence: fmt.Sprintf("cache clone of %s at %s (%s), read-only reference", l.URL, ref, sha),
+			Evidence: fmt.Sprintf("cache clone of %s at %s (%s), read-only reference", RedactURL(l.URL), ref, sha),
 		})
 	}
 	// The other end of links made from another repository's prism.yaml.
 	for _, l := range reverseLinks(primary) {
 		p := resolve(l.Path)
-		if seen[p] {
+		// A folder above this repository that declares it is a workspace
+		// file, already read above; it is not itself a repository.
+		if seen[p] || isInside(p, primary) || notARepository(p, primary) != "" {
 			continue
 		}
 		seen[p] = true
@@ -148,7 +225,7 @@ func (w *Workspace) Linked() []Root {
 	}
 	var out []Root
 	for _, r := range w.Roots {
-		if !r.Missing {
+		if r.Unusable() == "" {
 			out = append(out, r)
 		}
 	}

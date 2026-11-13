@@ -36,8 +36,8 @@ func (h *Handler) lookupLinked(ctx context.Context, q lookupQuery, fields []stri
 	var hits []hit
 	staleBy := map[string]string{}
 	for _, r := range h.Workspace.Roots {
-		if r.Missing {
-			unread = append(unread, r.ID+" ("+h.Workspace.DisplayPath(r)+", not checked out)")
+		if why := r.Unusable(); why != "" {
+			unread = append(unread, r.ID+" ("+h.Workspace.DisplayPath(r)+", "+shortReason(why)+")")
 		}
 	}
 	for _, r := range h.Workspace.Linked() {
@@ -153,4 +153,12 @@ func (h *Handler) serverDeclarations(ctx context.Context, q lookupQuery) string 
 		return ""
 	}
 	return "Declared in repositories the link server knows, not checked out here (signature only; the body needs a checkout or a cache clone): " + strings.Join(parts, "; ") + "."
+}
+
+// shortReason trims a refusal to its first clause for a one-line list.
+func shortReason(why string) string {
+	if i := strings.Index(why, " ("); i > 0 {
+		return why[:i]
+	}
+	return why
 }

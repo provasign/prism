@@ -187,18 +187,38 @@ func reverseLinks(primary string) []CacheLink {
 // becomes visible from the repositories it links once the user has run one
 // of them there.
 func ConfirmLinks(root string, cfg *config.Config) {
-	if cfg == nil {
+	if cfg == nil || untrusted() {
 		return
 	}
-	for _, r := range cfg.WorkspaceRepos {
-		p := r.Path
-		if !filepath.IsAbs(p) {
-			p = filepath.Join(root, filepath.FromSlash(p))
-		}
-		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
-			LinkReverse(root, p)
+	confirm := func(base string, repos []config.WorkspaceRepo) {
+		for _, r := range repos {
+			p := r.Path
+			if !filepath.IsAbs(p) {
+				p = filepath.Join(base, filepath.FromSlash(p))
+			}
+			if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+				LinkReverse(base, p)
+			}
 		}
 	}
+	confirm(root, cfg.WorkspaceRepos)
+	// A workspace file in a folder above this repository: the same command
+	// shows its links, so it confirms them too.
+	if dir, ok := ancestorConfigDir(resolve(root)); ok {
+		if parent, err := config.LoadFromDir(dir); err == nil {
+			confirm(dir, parent.WorkspaceRepos)
+		}
+	}
+}
+
+// RedactURL removes a user name and password from a URL for display.
+func RedactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.User == nil {
+		return raw
+	}
+	u.User = nil
+	return u.String()
 }
 
 // IsGitURL reports whether a `workspace add` argument names a remote
@@ -238,14 +258,18 @@ func cacheSlug(repo string) string {
 }
 
 func gitRun(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	cmd := exec.Command("git", append([]string{"-c", "protocol.ext.allow=never"}, args...)...)
 	cmd.Dir = dir
 	// Never prompt: a missing credential must fail, not hang a command an
 	// agent may be running.
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("git %s: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		shown := make([]string, len(args))
+		for i, a := range args {
+			shown[i] = RedactURL(a)
+		}
+		return "", fmt.Errorf("git %s: %v: %s", strings.Join(shown, " "), err, strings.TrimSpace(string(out)))
 	}
 	return strings.TrimSpace(string(out)), nil
 }
@@ -256,6 +280,11 @@ func gitRun(dir string, args ...string) (string, error) {
 // blob-filtered clone downloads file by file on first read, which stalls an
 // indexer that reads every file.
 func FetchClone(repo, ref string) (dir, sha string, err error) {
+	// The URL and ref reach git's command line. Neither may be read as an
+	// option, and the ext:: transport runs an arbitrary command.
+	if strings.HasPrefix(repo, "-") || strings.HasPrefix(ref, "-") || strings.HasPrefix(strings.ToLower(repo), "ext::") {
+		return "", "", fmt.Errorf("refusing repository %q at ref %q", RedactURL(repo), ref)
+	}
 	base := CacheDir()
 	if base == "" {
 		return "", "", fmt.Errorf("no user cache directory")
@@ -266,10 +295,10 @@ func FetchClone(repo, ref string) (dir, sha string, err error) {
 		if err := os.MkdirAll(home, 0o755); err != nil {
 			return "", "", err
 		}
-		if _, err := gitRun(home, "clone", "--bare", "--quiet", repo, bare); err != nil {
+		if _, err := gitRun(home, "clone", "--bare", "--quiet", "--", repo, bare); err != nil {
 			return "", "", err
 		}
-	} else if _, err := gitRun(bare, "fetch", "--quiet", "--prune", "--tags", repo, "+refs/heads/*:refs/heads/*"); err != nil {
+	} else if _, err := gitRun(bare, "fetch", "--quiet", "--prune", "--tags", "--", repo, "+refs/heads/*:refs/heads/*"); err != nil {
 		return "", "", err
 	}
 	target := ref

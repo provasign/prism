@@ -8,6 +8,7 @@ import (
 
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/session"
+	"github.com/provasign/prism/internal/workspace"
 )
 
 // The MCP search op takes repo=<id> without a schema entry and answers with
@@ -25,12 +26,19 @@ func TestSearchRepoArgumentOnTheToolSurface(t *testing.T) {
 	}
 	write("app/prism.yaml", "version: 2\nworkspace_repo: lib=../lib\n")
 	write("app/a.go", "package app\n")
+	write("lib/go.mod", "module example.com/lib\n")
 	write("lib/lib.go", "package lib\n\n// NeedleInLib\n")
 	root := filepath.Join(parent, "app")
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
 	cfg, err := config.LoadFromDir(root)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A hand-written link is a proposal until a command confirms it.
+	if ws := workspace.Load(root, cfg); ws == nil || len(ws.Linked()) != 0 || ws.Roots[0].Refused != workspace.Unconfirmed {
+		t.Fatalf("an unconfirmed link was used: %+v", ws)
+	}
+	workspace.ConfirmLinks(root, cfg)
 	h := NewHandlerWithLedger(cfg, root, nil, session.NewLedger("t"))
 
 	args := map[string]any{"query": "NeedleInLib", "repo": "lib"}

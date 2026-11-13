@@ -72,9 +72,9 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 	var absent []string
 	if h.Workspace != nil {
 		for _, r := range h.Workspace.Roots {
-			if r.Missing {
+			if why := r.Unusable(); why != "" {
 				absent = append(absent, r.ID)
-				lines = append(lines, fmt.Sprintf("// repo %s  %s  NOT SEARCHED: not checked out", r.ID, h.Workspace.DisplayPath(r)))
+				lines = append(lines, fmt.Sprintf("// repo %s  %s  NOT SEARCHED: %s", r.ID, h.Workspace.DisplayPath(r), why))
 			}
 		}
 	}
@@ -161,7 +161,7 @@ func (h *Handler) linkedConsumers(ctx context.Context, keys []string) (lines []s
 	scope = fmt.Sprintf("%d site(s) in %d of %d linked repositories searched; "+
 		"functions and type declarations searched (a package-level variable naming it is not listed)", sites, searched, len(linked)+len(absent))
 	if len(absent) > 0 {
-		scope += "; not searched (not checked out): " + strings.Join(absent, ", ")
+		scope += "; not searched (see above): " + strings.Join(absent, ", ")
 	}
 	if len(staleRoots) > 0 {
 		scope += "; answered from a STALE index: " + strings.Join(staleRoots, ", ")
