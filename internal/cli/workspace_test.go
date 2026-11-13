@@ -972,8 +972,8 @@ func TestWorkspaceLookupQualifierAmbiguityAndRepo(t *testing.T) {
 		t.Fatalf("a name this repository defines was not answered here:\n%s", out)
 	}
 	out = captureStdout(func() { cmdLookup([]string{"Shared", "--repo", "one"}) })
-	if !strings.Contains(out, "return 1") || !strings.Contains(out, "../one/misc/misc.go") {
-		t.Fatalf("--repo did not reach the linked repository's definition:\n%s", out)
+	if !strings.Contains(out, "return 1") || !strings.Contains(out, "../one/misc/misc.go") || strings.Contains(out, "not defined in this repository") {
+		t.Fatalf("--repo did not reach the linked repository's definition, or claimed the name is not defined here:\n%s", out)
 	}
 	if out = captureStdout(func() { cmdLookup([]string{"Shared", "--repo", "nope"}) }); !strings.Contains(out, `no linked repository "nope"`) || strings.Contains(out, "return") {
 		t.Fatalf("--repo with an unknown repository did not say so:\n%s", out)

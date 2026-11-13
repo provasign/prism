@@ -35,6 +35,11 @@ func (h *Handler) lookupInRepo(ctx context.Context, name, repo string, fields []
 	}
 	out, unread := h.lookupLinkedIn(ctx, parseLookupName(name), fields, only)
 	if out != nil {
+		// Asked for by repository: whether this repository also defines
+		// the name was not looked at, so the note must not claim it.
+		if note, _ := out["note"].(string); note != "" {
+			out["note"] = strings.Replace(note, "not defined in this repository; shown from", "shown from", 1)
+		}
 		return out, nil
 	}
 	note := fmt.Sprintf("no symbol named %q in linked repository %s", name, repo)
