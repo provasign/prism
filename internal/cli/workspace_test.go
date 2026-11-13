@@ -507,13 +507,13 @@ func TestDiscoverUsesTheRegistry(t *testing.T) {
 	writeCLIFile(t, base, "elsewhere/deep/far/go.mod", "module example.com/far\n")
 	t.Chdir(filepath.Join(base, "work", "app"))
 	out := captureStdout(func() { workspaceDiscover(nil) })
-	if strings.Contains(out, "far") {
-		t.Fatalf("an unregistered, non-sibling checkout was found:\n%s", out)
+	if strings.Contains(out, "elsewhere/deep/far") || !strings.Contains(out, "unlinked: go:example.com/far") {
+		t.Fatalf("an unregistered, non-sibling checkout must be listed as unlinked, not found:\n%s", out)
 	}
 	workspace.Register(filepath.Join(base, "elsewhere", "deep", "far"))
 	out = captureStdout(func() { workspaceDiscover(nil) })
-	if !strings.Contains(out, "elsewhere/deep/far") || !strings.Contains(out, "depends on") {
-		t.Fatalf("registered checkout not discovered:\n%s", out)
+	if !strings.Contains(out, "elsewhere/deep/far") || !strings.Contains(out, "depends on") || strings.Contains(out, "unlinked:") {
+		t.Fatalf("registered checkout not discovered, or still listed as unlinked:\n%s", out)
 	}
 }
 
