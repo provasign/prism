@@ -54,3 +54,43 @@ func TestModuleMatchesFile(t *testing.T) {
 		}
 	}
 }
+
+// A Go qualifier names a package: its directory, or the package clause of a
+// module-root package. memfs.New is not memfs/storage.go's storage.New;
+// build-tag twins (osfs/os.go, osfs/os_js.go) are one symbol; model.Time is
+// the type, not its method Time.Time; expfmt.Format is not another package's
+// Format. Each answer renders as text (2026-11-13: these fell back to JSON).
+func TestChangeImpactResolvesGoPackageQualifiers(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"go.mod":           "module example.com/lib\n\ngo 1.22\n",
+		"flag.go":          "package pflag\n\nfunc NewFlagSet() int { return 1 }\n\nfunc use() int { return NewFlagSet() }\n",
+		"memfs/memory.go":  "package memfs\n\nfunc New() int { return 1 }\n",
+		"memfs/storage.go": "package memfs\n\ntype storage struct{}\n\nfunc (s *storage) New() int { return New() }\n",
+		"osfs/os.go":       "//go:build !js\n\npackage osfs\n\nfunc New() int { return 2 }\n",
+		"osfs/os_js.go":    "//go:build js\n\npackage osfs\n\nfunc New() int { return 3 }\n",
+		"model/time.go":    "package model\n\ntype Time int64\n\nfunc (t Time) Time() int64 { return int64(t) }\n\nfunc Now() Time { return 0 }\n",
+		"expfmt/expfmt.go": "package expfmt\n\ntype Format string\n\nfunc Of() Format { return \"\" }\n",
+		"promslog/slog.go": "package promslog\n\ntype Format struct{}\n\nfunc Make() *Format { return nil }\n",
+	})
+	for _, tc := range []struct{ name, file string }{
+		{"pflag.NewFlagSet", "flag.go"},
+		{"memfs.New", "memfs/memory.go"},
+		{"osfs.New", "osfs/os.go"},
+		{"model.Time", "model/time.go"},
+		{"expfmt.Format", "expfmt/expfmt.go"},
+	} {
+		out := callCompact(t, srv, "change_impact", map[string]any{"name": tc.name})
+		if !strings.Contains(out, "module path: resolved") || !strings.Contains(out, tc.file) {
+			t.Errorf("%s did not resolve to %s:\n%s", tc.name, tc.file, out)
+		}
+		if strings.HasPrefix(strings.TrimSpace(out), "{") {
+			t.Errorf("%s answered in JSON:\n%s", tc.name, out)
+		}
+	}
+	if out := callCompact(t, srv, "change_impact", map[string]any{"name": "expfmt.Format"}); strings.Contains(out, "promslog/slog.go:3:6") || !strings.Contains(out, "expfmt/expfmt.go:3:6") {
+		t.Errorf("expfmt.Format answered with promslog.Format:\n%s", out)
+	}
+	if out := callCompact(t, srv, "change_impact", map[string]any{"name": "model.Time"}); strings.Contains(out, "Time.Time — change-impact") {
+		t.Errorf("model.Time answered as the method Time.Time:\n%s", out)
+	}
+}

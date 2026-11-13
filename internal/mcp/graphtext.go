@@ -136,6 +136,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"reExports": true, "related": true, "degradedAnalysis": true,
 		"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
 		"workspaceConsumers": true, "workspaceScope": true, "linkedSites": true,
+		"resolvedNote": true,
 	}
 	for k := range out {
 		if !known[k] {

@@ -470,7 +470,7 @@ func reExportRelayLabels(r *grove.ChangeImpactResult) []string {
 // they go directly under the header line.
 func FormatImpactHeaderNotesText(out map[string]any) string {
 	var b strings.Builder
-	for _, key := range []string{"inheritedNote", "signatureNote"} {
+	for _, key := range []string{"resolvedNote", "inheritedNote", "signatureNote"} {
 		if note, _ := out[key].(string); note != "" {
 			fmt.Fprintf(&b, "// %s\n", note)
 		}
