@@ -1039,3 +1039,35 @@ func TestWorkspaceChangeImpactListsImplementers(t *testing.T) {
 		t.Fatalf("the consumer type implementing the changed interface method is not listed:\n%s", out)
 	}
 }
+
+// A sentinel error, a constant and a struct field are part of a library's
+// surface: their uses in a linked repository are listed, or, where a kind is
+// not recorded, the answer still says what was and was not searched.
+func TestWorkspaceChangeImpactVariablesAndFields(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go toolchain not available")
+	}
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/conf.go", "package lib\n\nimport \"errors\"\n\nvar ErrGone = errors.New(\"gone\")\n\ntype Config struct {\n\tRoot string\n}\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, parent, "app/use.go", "package app\n\nimport \"example.com/lib\"\n\nfunc Check(err error) string {\n\tif err == lib.ErrGone {\n\t\treturn \"\"\n\t}\n\treturn lib.Config{Root: \"x\"}.Root\n}\n")
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d", rc)
+	}
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app rc=%d", rc)
+	}
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdChangeImpact([]string{"ErrGone", "--format", "text"}) })
+	if !strings.Contains(out, "../app/use.go:6:16: if err == lib.ErrGone {  [in Check]") || !strings.Contains(out, "workspaceScope:") {
+		t.Fatalf("the consumer comparing the sentinel error is not listed:\n%s", out)
+	}
+	out = captureStdout(func() { cmdChangeImpact([]string{"Config.Root", "--format", "text"}) })
+	if !strings.Contains(out, "../app/use.go:9:") || !strings.Contains(out, "workspaceScope:") {
+		t.Fatalf("the consumer setting the struct field is not listed:\n%s", out)
+	}
+}

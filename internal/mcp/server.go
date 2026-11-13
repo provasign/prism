@@ -783,6 +783,25 @@ func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any,
 		// on a stale or partially refreshed index would read as fresh.
 		text = "// " + stale + "\n" + text
 	}
+	if rendered && tool == "prism_query" && h.Workspace != nil {
+		// query answers "who calls this" from one repository's graph. With
+		// repositories linked, an agent that stops here misses the callers
+		// change-impact would list; one line says so.
+		if linked := h.Workspace.Linked(); len(linked) > 0 {
+			ids := make([]string, 0, len(linked))
+			for _, r := range linked {
+				ids = append(ids, r.ID)
+			}
+			op := "change-impact"
+			if compact {
+				op = "op=change_impact"
+			}
+			if !strings.HasSuffix(text, "\n") {
+				text += "\n"
+			}
+			text += "// this repository only; callers and uses in linked repositories (" + strings.Join(ids, ", ") + ") are listed by " + op + "\n"
+		}
+	}
 	return text, rendered
 }
 

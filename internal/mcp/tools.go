@@ -3358,6 +3358,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		leaf := leafOf(r.Query)
 		c, unsure := h.memberEditSites(r, leaf)
 		h.attachEditSites(ctx, mout, r, c, leaf, unsure)
+		h.addWorkspaceConsumers(ctx, mout, r)
 		return mout, nil
 	}
 	signatureNote := ""

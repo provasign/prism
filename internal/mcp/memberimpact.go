@@ -290,6 +290,7 @@ func FormatMemberImpactText(out map[string]any) (string, bool) {
 			fmt.Fprintf(&b, "// %s\n", v)
 		}
 	}
+	b.WriteString(FormatWorkspaceConsumersText(out))
 	relay := anySlice(out["relaySites"])
 	if len(relay) > 0 {
 		fmt.Fprintf(&b, "relaySites (%d confirmed; copy this inventory):\n", len(relay))
