@@ -2688,19 +2688,8 @@ func cmdSearch(args []string) int {
 	if contextSet {
 		searchArgs["context"] = contextLines
 	}
-	ws, wsErr := loadWorkspace(dir)
-	linkedOpts := textsearch.Options{Regex: regex, Paths: paths, Glob: globs, Exhaustive: exhaustive}
-	if limitSet {
-		linkedOpts.MaxHits = limit
-	}
 	if repo != "" {
-		if wsErr != nil || ws == nil {
-			fmt.Fprintln(os.Stderr, "search: --repo needs linked repositories; none are declared (prism workspace add <path>)")
-			return 1
-		}
-		if repo != "all" {
-			return printLinkedSearch(ws, repo, bare, linkedOpts, filesOnly)
-		}
+		searchArgs["repo"] = repo
 	}
 	out, compactText, rendered, err := invokeSearchWithCompactRendering(dir, searchArgs, format == formatText)
 	if err != nil {
@@ -2708,14 +2697,6 @@ func cmdSearch(args []string) int {
 		return 1
 	}
 	printToolResult("search", out, compactText, rendered, format)
-	if ws != nil && format == formatText {
-		if repo == "all" {
-			return printLinkedSearch(ws, repo, bare, linkedOpts, filesOnly)
-		}
-		if line := linkedSearchCounts(ws, bare, linkedOpts); line != "" {
-			fmt.Println(line)
-		}
-	}
 	return 0
 }
 

@@ -475,6 +475,10 @@ var contextUsedProp = map[string]any{
 // "dir" which Invoke itself validates for every tool.
 var argAliases = map[string]map[string]bool{
 	"prism_read": {"path": true},
+	// repo: a linked repository's id, or "all". Accepted without a schema
+	// entry: the schema is paid for in every session, the argument only
+	// matters where repositories are linked, and initialize names it there.
+	"prism_search": {"repo": true},
 }
 
 // rejectUnknownArgs errors on any argument key the tool's published schema
@@ -1704,6 +1708,17 @@ func appendNote(existing, add string) string {
 }
 
 func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, error) {
+	if repo := stringArg(args, "repo", ""); repo != "" && repo != "all" {
+		roots, err := h.linkedSearchRoots(repo)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"linkedSearch": h.linkedSearchListing(ctx, roots, args)}, nil
+	} else if repo == "all" {
+		if _, err := h.linkedSearchRoots(repo); err != nil {
+			return nil, err
+		}
+	}
 	// A caller label is metadata, never a retrieval term or scope override.
 	if task, present := args["task"]; present {
 		if _, ok := task.(string); !ok {

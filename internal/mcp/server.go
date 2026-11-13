@@ -606,7 +606,8 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		}
 		instructions += " " + scopeInstruction(s.handler.Root)
 		if ws := s.handler.Workspace; ws != nil && len(ws.Linked()) > 0 {
-			instructions += " Linked repositories, readable by path from that root: " + ws.Describe() + "."
+			instructions += " Linked repositories, readable by path from that root: " + ws.Describe() +
+				"; lookup and change_impact cover them, and search takes repo=<id> or repo=all."
 		}
 		if warning := legacyProjectWarning(s.handler.Root); warning != "" {
 			instructions += " " + warning
@@ -729,10 +730,18 @@ func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any,
 		case "prism_search":
 			if compact {
 				text, rendered = h.RenderCompactSearchText(context.Background(), m, args)
+			} else if listing, ok := m["linkedSearch"].(string); ok && len(m) == 1 {
+				text, rendered = listing, true
 			} else {
 				text, rendered = renderSearchAsText(m)
 				if rendered {
 					text = h.once.apply(text)
+					if tail := h.LinkedSearchTail(context.Background(), args); tail != "" {
+						if !strings.HasSuffix(text, "\n") {
+							text += "\n"
+						}
+						text += tail
+					}
 				}
 			}
 		case "prism_read":
@@ -802,7 +811,10 @@ func legacyMCPTool(name string) bool {
 // RenderCompactSearchText is the canonical compact search renderer shared by
 // MCP and CLI. Bodies were attached by the search itself (attachSearchBodies);
 // this only renders. The ctx and args parameters are kept for the callers.
-func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any, args map[string]any) (string, bool) {
+func (h *Handler) RenderCompactSearchText(ctx context.Context, out map[string]any, args map[string]any) (string, bool) {
+	if listing, ok := out["linkedSearch"].(string); ok && len(out) == 1 {
+		return listing, true // repo=<id>: matches in that linked repository only
+	}
 	out, stale := splitStaleWarning(out)
 	text, rendered := renderSearchAsText(out)
 	if !rendered {
@@ -823,6 +835,12 @@ func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any,
 	text = h.once.apply(text)
 	if stale != "" {
 		text = "// " + stale + "\n" + text
+	}
+	if tail := h.LinkedSearchTail(ctx, args); tail != "" {
+		if !strings.HasSuffix(text, "\n") {
+			text += "\n"
+		}
+		text += tail
 	}
 	return text, true
 }
