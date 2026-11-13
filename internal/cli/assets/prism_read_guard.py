@@ -121,7 +121,14 @@ def main():
     for t in tracked:
         f = norm_path(t.get("file") or "")
         rel = f[2:] if f.startswith("./") else f
-        if not rel or not (want == rel or want.endswith("/" + rel.lstrip("/"))):
+        if not rel:
+            continue
+        # A file in a linked repository is reported relative to the project
+        # root ("../grove/x.go"): no absolute path ends with that, so compare
+        # the resolved paths.
+        linked = rel.startswith("../") and norm_path(os.path.normpath(os.path.join(
+            os.environ.get("CLAUDE_PROJECT_DIR") or ".", rel))) == norm_path(os.path.normpath(file_path))
+        if not (linked or want == rel or want.endswith("/" + rel.lstrip("/"))):
             continue
         if t.get("stat") != now:
             continue  # changed on disk since delivery (or unverifiable): not redundant
