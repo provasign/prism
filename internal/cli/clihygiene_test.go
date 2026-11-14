@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -63,5 +64,21 @@ func TestCLIHintSpellingUsesFlags(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q:\n%s", want, got)
 		}
+	}
+}
+
+// The ambiguous-name answer listed MCP JSON calls; a CLI agent got told to
+// re-run in a form it cannot use (multi-repo bench 2026-11-14).
+func TestCLIHintSpellingAmbiguousImpact(t *testing.T) {
+	err := errors.New("change-impact: \"Name\" is ambiguous — 2 candidates:\n" +
+		"These are different functions; pick one and call it by its full name:\n" +
+		`  {"op":"change_impact","args":{"name":"Binding.Name","symbol_file":"binding/binding.go"}}` + "\n" +
+		`  {"op":"change_impact","args":{"name":"BindingUri.Name","symbol_file":"binding/binding.go"}}`)
+	got := prefixOnce("change-impact", err)
+	if strings.Contains(got, `"op"`) {
+		t.Fatalf("MCP call form left in CLI error:\n%s", got)
+	}
+	if !strings.Contains(got, "prism change-impact 'Binding.Name' --file 'binding/binding.go' --format text") {
+		t.Fatalf("missing CLI form:\n%s", got)
 	}
 }

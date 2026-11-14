@@ -111,3 +111,53 @@ func TestHandlerReloadsWorkspaceWhenLinksChange(t *testing.T) {
 		t.Fatalf("the server did not pick up the new link: %+v", h.Workspace)
 	}
 }
+
+// path=../lib/... searches the linked repository (it used to be rejected as
+// outside the root, with a hint to run prism there), and the default tail
+// shows the first linked matches instead of only a count.
+func TestSearchLinkedPathAndPreview(t *testing.T) {
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	for rel, content := range map[string]string{
+		"app/prism.yaml": "version: 2\nworkspace_repo: lib=../lib\n", "app/a.go": "package app\n\n// NeedleShared\n",
+		"lib/go.mod": "module example.com/lib\n", "lib/sub/lib.go": "package sub\n\n// NeedleShared in lib\n",
+		"other/x.go": "package other\n",
+	} {
+		p := filepath.Join(parent, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	root := filepath.Join(parent, "app")
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	cfg, _ := config.LoadFromDir(root)
+	workspace.ConfirmLinks(root, cfg)
+	h := NewHandlerWithLedger(cfg, root, nil, session.NewLedger("t"))
+
+	id, rels, ok := h.linkedPathRepo(map[string]any{"path": []string{"../lib/sub"}})
+	if !ok || id != "lib" || len(rels) != 1 || rels[0] != "sub" {
+		t.Fatalf("../lib/sub -> %q %v %v", id, rels, ok)
+	}
+	if _, _, ok := h.linkedPathRepo(map[string]any{"path": []string{"../lib/sub", "a.go"}}); ok {
+		t.Fatal("a path in this repository must not be routed")
+	}
+	if _, _, ok := h.linkedPathRepo(map[string]any{"path": []string{"../other"}}); ok {
+		t.Fatal("an unlinked directory must not be routed")
+	}
+	out, err := h.toolSearch(t.Context(), map[string]any{"query": "NeedleShared", "path": []string{"../lib/sub"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m, _ := out.(map[string]any); !strings.Contains(m["linkedSearch"].(string), "../lib/sub/lib.go:3:") {
+		t.Fatalf("routed search: %v", out)
+	}
+	if hint := h.outsideRootHint(); !strings.Contains(hint, "--repo <id>") || !strings.Contains(hint, "linked: lib") {
+		t.Fatalf("hint: %q", hint)
+	}
+	tail := h.LinkedSearchTail(t.Context(), map[string]any{"query": "NeedleShared"})
+	if !strings.Contains(tail, "lib 1 in 1 file(s)") || !strings.Contains(tail, "../lib/sub/lib.go:3: // NeedleShared in lib") {
+		t.Fatalf("tail:\n%s", tail)
+	}
+}

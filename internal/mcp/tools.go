@@ -1747,6 +1747,17 @@ func appendNote(existing, add string) string {
 }
 
 func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, error) {
+	if id, rels, ok := h.linkedPathRepo(args); ok {
+		// path=../boxo/... names a linked repository: search it there
+		// instead of rejecting the path as outside the root (multi-repo
+		// bench 2026-11-14: the rejection sent agents to "run prism there").
+		routed := make(map[string]any, len(args)+1)
+		for k, v := range args {
+			routed[k] = v
+		}
+		routed["repo"], routed["path"] = id, rels
+		args = routed
+	}
 	if repo := stringArg(args, "repo", ""); repo != "" && repo != "all" {
 		roots, err := h.linkedSearchRoots(repo)
 		if err != nil {
@@ -2283,8 +2294,8 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			// Never let a dropped scope pass as a completed search.
 			out["rejectedPaths"] = r.RejectedPaths
 			out["warning"] = fmt.Sprintf(
-				"these path= entries resolve outside the project root %s and were NOT searched: %v (for another repository run the prism CLI there or use its own prism MCP server)",
-				h.Root, r.RejectedPaths)
+				"these path= entries resolve outside the project root %s and were NOT searched: %v (%s)",
+				h.Root, r.RejectedPaths, h.outsideRootHint())
 		}
 		if r.TimedOut {
 			out["timedOut"] = true
@@ -2461,7 +2472,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		}
 		if len(r.RejectedPaths) > 0 {
 			out["rejectedPaths"] = r.RejectedPaths
-			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf("Paths outside the root %s were NOT searched: %v (for another repository run the prism CLI there or use its own prism MCP server)", h.Root, r.RejectedPaths))
+			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf("Paths outside the root %s were NOT searched: %v (%s)", h.Root, r.RejectedPaths, h.outsideRootHint()))
 		}
 	}
 	if sc.filesOnly {

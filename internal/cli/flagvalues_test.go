@@ -61,7 +61,7 @@ func TestMalformedFlagValuesAreUsageErrors(t *testing.T) {
 		{"lookup missing fields", []string{"lookup", "Foo", "--fields"}, "--fields requires a comma-separated list"},
 		{"lookup bad format", []string{"lookup", "Foo", "--format", "xml"}, "--format wants"},
 		{"change-impact missing file", []string{"change-impact", "Foo.bar", "--file"}, "--file requires a value"},
-		{"change-impact two dirs", []string{"change-impact", "Foo.bar", "x", "y"}, "takes one directory"},
+		{"change-impact two names", []string{"change-impact", "Foo.bar", "Baz.qux"}, "takes one symbol name per call"},
 		{"node missing file", []string{"node", "Foo", "--file"}, "--file requires a value"},
 		{"resolve bad format", []string{"resolve", "Foo", "--format", "csv"}, "--format wants"},
 		{"edges bad direction", []string{"edges", "Foo", "--direction", "up"}, "--direction wants out|in|both"},

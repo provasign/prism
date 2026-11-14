@@ -24,6 +24,18 @@ var goMissingModule = regexp.MustCompile(`could not import ([A-Za-z0-9._-]+\.[A-
 // "could not import <path> (<reason>)" diagnostic.
 var goImportFailure = regexp.MustCompile(`could not import (\S+) \((.*)\)\s*$`)
 
+// goTooOld matches the go command refusing a go.mod/go.work newer than itself
+// under GOTOOLCHAIN=local: "go.mod requires go >= 1.27 (running go 1.26.3; ...".
+var goTooOld = regexp.MustCompile(`requires go >= (\S+) \(running go (\S+?)[;)]`)
+
+func clipReadiness(s string, n int) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
+}
+
 // Readiness reads grove's native-analyzer diagnostics for one index run and
 // names each language that fell back to name-based resolution, with the
 // command that fixes it. Benign skips (nothing changed, previous compiler
@@ -112,6 +124,25 @@ func Readiness(root string, native []string) []ReadinessIssue {
 				(goPathInModules(m[1], goModules) || strings.Contains(m[2], `invalid package name: ""`)) {
 				addKey("go-local", "go", "local package "+m[1]+" could not be type-checked ("+m[2]+"); packages importing it are type-checked partially",
 					"no download is needed: the package is part of this project. If `go build ./...` succeeds in "+root+", this is a Go-pass limit (for example a cgo-only package) and those results are partly name-based")
+				continue
+			}
+			if m := goTooOld.FindStringSubmatch(reason); m != nil {
+				// go list refused to run: the installed go is older than go.mod
+				// (or go.work) requires, and the pass never downloads a
+				// toolchain. Grove uses a matching toolchain already in the
+				// module cache, so one `go build` (which downloads it) fixes this.
+				add("go", "the installed Go ("+m[2]+") is older than this repository requires (go "+m[1]+"), so Go type-checking did not run and Go results are name-based",
+					"install Go "+m[1]+" or newer, or run `go build ./...` once in "+root+" (the go command downloads the toolchain it needs; prism then uses it from the module cache), then `prism index`")
+				continue
+			}
+			if strings.HasPrefix(reason, "go list failed: ") {
+				add("go", "`go list` failed, so Go type-checking did not run and Go results are name-based: "+clipReadiness(strings.TrimPrefix(reason, "go list failed: "), 300),
+					"check that `go list ./...` runs in "+root+", then `prism index`")
+				continue
+			}
+			if strings.HasPrefix(reason, "go export data unreadable and the dependency listing failed") {
+				add("go", "this prism build cannot read the Go compiler's export data (the go on PATH is newer than the Go prism was built with), so dependency types are missing",
+					"upgrade prism to the latest release, then `prism index`")
 				continue
 			}
 			if m := goMissingModule.FindStringSubmatch(reason); m != nil && !strings.HasPrefix(m[1], "golang.org/toolchain") {

@@ -3079,6 +3079,12 @@ func cmdChangeImpact(args []string) int {
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("change-impact", a)
 			}
+			// Agents pass several names (`change-impact A B`); the second
+			// one used to be read as the directory, and a third failed with
+			// "takes one directory".
+			if info, statErr := os.Stat(a); statErr != nil || !info.IsDir() {
+				return usageError(fmt.Errorf("change-impact: takes one symbol name per call, and %q is not a directory; run `prism change-impact %s --format text` for it separately", a, a))
+			}
 			if err := positionalDir("change-impact", &dir, &dirSet, a); err != nil {
 				return usageError(err)
 			}
@@ -4584,7 +4590,9 @@ func cmdAssist(args []string) int {
 // naive `Fprintln("change-impact:", err)` printed the label twice — three
 // times before the MCP layer stopped re-wrapping too.
 func prefixOnce(op string, err error) string {
-	msg := err.Error()
+	// Errors carry MCP-spelled hints too (the ambiguous-name answer listed
+	// {"op":"change_impact",...} calls, which a CLI agent cannot run).
+	msg := cliHintSpelling(err.Error())
 	if strings.HasPrefix(msg, op+":") {
 		return msg
 	}

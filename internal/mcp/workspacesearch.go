@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -150,6 +151,10 @@ func (h *Handler) LinkedSearchTail(ctx context.Context, args map[string]any) str
 	}
 	parts := make([]string, 0, len(linked)+len(absent))
 	counts := make([]string, len(linked))
+	// The first few matching lines of each linked repository, so an answer
+	// that is there does not take a second call: in the 22-task multi-repo
+	// bench (2026-11-14) 38 of 153 prism calls were --repo reruns.
+	previews := make([][]string, len(linked))
 	var wg sync.WaitGroup
 	for i, r := range linked {
 		wg.Add(1)
@@ -171,11 +176,103 @@ func (h *Handler) LinkedSearchTail(ctx context.Context, args map[string]any) str
 				counts[i] = r.ID + " 0"
 			default:
 				counts[i] = fmt.Sprintf("%s %d in %d file(s)", r.ID, hits, files)
+				previews[i] = h.linkedPreview(cctx, r, terms, opts, hits)
 			}
 		}(i, r)
 	}
 	wg.Wait()
 	parts = append(parts, counts...)
 	parts = append(parts, absent...)
-	return "// linked repositories, text matches not listed above (" + how + "): " + strings.Join(parts, "; ") + "\n"
+	out := "// linked repositories, text matches not listed above (" + how + "): " + strings.Join(parts, "; ") + "\n"
+	for _, p := range previews {
+		out += strings.Join(p, "")
+	}
+	return out
+}
+
+// linkedPreviewLines caps the lines LinkedSearchTail shows per linked repository.
+const linkedPreviewLines = 5
+
+// linkedPreview lists up to linkedPreviewLines matching lines of one linked
+// repository (paths relative to the primary root), and how many it left out.
+func (h *Handler) linkedPreview(ctx context.Context, r workspace.Root, terms []string, opts textsearch.Options, hits int) []string {
+	rel := h.Workspace.RelPath(r.Path)
+	opts.MaxHits, opts.Exhaustive = linkedPreviewLines, false
+	var lines []string
+	for _, t := range terms {
+		if len(lines) >= linkedPreviewLines || ctx.Err() != nil {
+			break
+		}
+		for _, hit := range textsearch.Search(ctx, r.Path, t, opts).Hits {
+			if len(lines) >= linkedPreviewLines {
+				break
+			}
+			lines = append(lines, fmt.Sprintf("%s/%s:%d: %s\n", rel, hit.File, hit.Line, strings.TrimSpace(hit.Text)))
+		}
+	}
+	if len(lines) == 0 {
+		return nil
+	}
+	if more := hits - len(lines); more > 0 {
+		how := "--repo " + r.ID
+		if h.toolSurface {
+			how = "repo=" + r.ID
+		}
+		lines = append(lines, fmt.Sprintf("// %s: %d more match(es) not shown (%s lists them)\n", r.ID, more, how))
+	}
+	return lines
+}
+
+// linkedPathRepo reports whether every path argument of a search with no
+// repo argument resolves inside one linked repository, and those paths
+// relative to it.
+func (h *Handler) linkedPathRepo(args map[string]any) (id string, rels []string, ok bool) {
+	if h.Workspace == nil || stringArg(args, "repo", "") != "" {
+		return "", nil, false
+	}
+	paths := stringsArg(args, "path")
+	if len(paths) == 0 {
+		return "", nil, false
+	}
+	for _, p := range paths {
+		abs := p
+		if !filepath.IsAbs(abs) {
+			abs = filepath.Join(h.Root, p)
+		}
+		abs = filepath.Clean(abs)
+		if rel, err := filepath.Rel(h.Root, abs); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return "", nil, false // inside this repository: an ordinary search
+		}
+		found := ""
+		for _, r := range h.Workspace.Linked() {
+			rel, err := filepath.Rel(r.Path, abs)
+			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				continue
+			}
+			found = r.ID
+			rels = append(rels, filepath.ToSlash(rel))
+			break
+		}
+		if found == "" || (id != "" && found != id) {
+			return "", nil, false
+		}
+		id = found
+	}
+	return id, rels, true
+}
+
+// outsideRootHint says where a path outside the root can be searched.
+func (h *Handler) outsideRootHint() string {
+	if h.Workspace != nil && len(h.Workspace.Linked()) > 0 {
+		var ids []string
+		for _, r := range h.Workspace.Linked() {
+			ids = append(ids, r.ID)
+		}
+		flag := "--repo <id>"
+		if h.toolSurface {
+			flag = "repo=<id>"
+		}
+		return "a linked repository is searched with " + flag + " and paths of that repository; linked: " + strings.Join(ids, ", ")
+	}
+	return "for another repository run the prism CLI there or use its own prism MCP server"
 }

@@ -196,11 +196,14 @@ func TestWorkspaceSearchLinkedRepositories(t *testing.T) {
 			t.Fatalf("search rc=%d", rc)
 		}
 	})
-	if !strings.Contains(out, "use.go") || strings.Contains(out, "../lib/lib.go") {
-		t.Fatalf("default search must list this repository only:\n%s", out)
+	// This repository's answer first; the linked repository after the
+	// count line, as a short preview (at most linkedPreviewLines lines).
+	primary, tail, _ := strings.Cut(out, "// linked repositories")
+	if !strings.Contains(primary, "use.go") || strings.Contains(primary, "../lib/lib.go") {
+		t.Fatalf("default search must answer for this repository first:\n%s", out)
 	}
-	if !strings.Contains(out, "lib 1 in 1 file(s)") {
-		t.Fatalf("default search does not count matches in the linked repository:\n%s", out)
+	if !strings.Contains(tail, "lib 1 in 1 file(s)") || !strings.Contains(tail, "../lib/lib.go:3:") {
+		t.Fatalf("default search does not count and preview the linked repository:\n%s", out)
 	}
 
 	out = captureStdout(func() {

@@ -186,3 +186,35 @@ func TestReadinessRustAnalyzer(t *testing.T) {
 		}
 	}
 }
+
+// go list refusing a go.mod newer than the installed go (GOTOOLCHAIN=local)
+// used to leave no readiness issue: `prism index` exited 0 with Go name-based.
+func TestReadinessGoTooOld(t *testing.T) {
+	got := Readiness(t.TempDir(), []string{
+		"go: go list failed: exit status 1: go: go.mod requires go >= 1.27 (running go 1.26.3; GOTOOLCHAIN=local)",
+	})
+	if len(got) != 1 || got[0].Language != "go" {
+		t.Fatalf("want one go issue, got %+v", got)
+	}
+	if !strings.Contains(got[0].Problem, "1.26.3") || !strings.Contains(got[0].Problem, "go 1.27") {
+		t.Errorf("problem should name both versions: %q", got[0].Problem)
+	}
+	if !strings.Contains(got[0].Fix, "Go 1.27") || !strings.Contains(got[0].Fix, "go build") {
+		t.Errorf("fix: %q", got[0].Fix)
+	}
+}
+
+func TestReadinessGoListFailedAndExportData(t *testing.T) {
+	got := Readiness(t.TempDir(), []string{"go: go list failed: exit status 1: pattern ./...: directory prefix . does not contain main module"})
+	if len(got) != 1 || !strings.Contains(got[0].Problem, "does not contain main module") {
+		t.Fatalf("go list failure: %+v", got)
+	}
+	got = Readiness(t.TempDir(), []string{"go: go export data unreadable and the dependency listing failed; dependency types are missing: x"})
+	if len(got) != 1 || !strings.Contains(got[0].Fix, "upgrade prism") {
+		t.Fatalf("export data: %+v", got)
+	}
+	// Typed from source instead: not an issue.
+	if got := Readiness(t.TempDir(), []string{"go: go export data unreadable; dependencies typed from source instead: x"}); len(got) != 0 {
+		t.Fatalf("source fallback reported: %+v", got)
+	}
+}

@@ -443,10 +443,16 @@ func mcpSpelling(cmd string, args []string) (string, bool) {
 // spent several calls grepping whole-repository output instead.
 func cliHintSpelling(text string) string {
 	text = symbolListHint.ReplaceAllString(text, "prism search --scope symbols --path $1")
+	text = ambiguousImpactCall.ReplaceAllString(text, "prism change-impact '$1' --file '$2' --format text")
+	text = strings.Replace(text, "pick one and call it by its full name:", "pick one and run it by its full name:", 1)
 	return cliHintReplacer.Replace(text)
 }
 
 var symbolListHint = regexp.MustCompile(`op=search with scope=symbols and paths=\["([^"]+)"\]`)
+
+// ambiguousImpactCall is one candidate call in change-impact's
+// ambiguous-name answer (mcp.ambiguousImpactCalls).
+var ambiguousImpactCall = regexp.MustCompile(`\{"op":"change_impact","args":\{"name":"([^"]+)","symbol_file":"([^"]+)"\}\}`)
 
 var cliHintReplacer = strings.NewReplacer(
 	"paths=<file>", "--path <file>",
