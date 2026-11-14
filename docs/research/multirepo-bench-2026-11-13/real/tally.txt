@@ -1,0 +1,12 @@
+task                                                 native                          prism_cli
+clientgolang-openmetrics2-rc   NO $0.223 req=15 tools=17 prism=0 app=2 | OK $0.336 req=23 tools=42 prism=3 app=2
+kubo-bootstrap-empty-list      OK $0.176 req=13 tools=14 prism=0 app=0 | OK $0.089 req=9 tools=8 prism=2 app=0
+kubo-ipfs-uri-header           NO $0.493 req=29 tools=32 prism=0 app=6 | NO $0.323 req=19 tools=21 prism=9 app=5
+kubo-native-ipfs-uris          NO $0.449 req=25 tools=27 prism=0 app=8 | NO $0.598 req=34 tools=44 prism=12 app=7
+kubo-ipns-lifetime-bounds      NO $0.552 req=33 tools=38 prism=0 app=8 | NO $0.290 req=21 tools=24 prism=5 app=5
+prism-quickstatus              OK $0.194 req=12 tools=19 prism=1 app=3 | OK $0.110 req=9 tools=10 prism=8 app=2
+prism-doctor-capabilities      NO $0.156 req=14 tools=18 prism=0 app=4 | NO $0.122 req=11 tools=11 prism=3 app=3
+
+native     resolved 2/7  task@5m $2.243  startup $0.404  requests 141  output tokens 87324  tool calls 165  prism calls 1  grep calls 84
+prism_cli  resolved 3/7  task@5m $1.868  startup $0.419  requests 126  output tokens 73942  tool calls 160  prism calls 42  grep calls 36
+prism/native: task cost 0.833x, total incl. startup 0.864x, requests 126/141

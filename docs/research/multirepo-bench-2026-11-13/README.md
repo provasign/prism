@@ -80,3 +80,42 @@ consumers the agent is not told about, languages without a compiler safety net, 
 checked out (link server).
 
 Files: `results.json`, `run.log`, `tally.txt`, `accuracy-*.json`, `tasks.json`.
+
+## 3. Real cross-repository tasks from open-source history (paid)
+
+`make_real_tasks.py`, `real_tasks.py`, `run_real.py`. Each task is one change that landed as two commits in
+two repositories after June 2026: the library commit and the consumer commit that needed it. The cell checks
+out both at their parents, side by side under a go.work; the agent works in the consumer and gets the PR's
+problem text (or linked issue) plus the public names the tests call. Scoring is SWE-bench style: the gold
+commits' test files (and test-helper packages) replace the agent's, and the tests validated to fail at base
+and pass at gold must pass. kubo's `test/cli` tests fail at gold on this machine (network/ports) and are not
+counted, so three kubo tasks are scored on boxo's tests (and kubo unit tests where they exist).
+Same measurement as the release benchmark: Sonnet 5.5, prompt caching off per cell, cost repriced at 5m,
+startup apart.
+
+| task | repos | native | prism |
+|---|---|---|---|
+| empty Bootstrap list still dials backup peers | boxo + kubo | OK $0.176, 13 req | OK $0.089, 9 req |
+| IPIP-548 Ipfs-Uri gateway header | boxo + kubo | fail $0.493, 29 req | fail $0.323, 19 req |
+| accept ipfs:// and ipns:// URIs | boxo + kubo | fail $0.449, 25 req | fail $0.598, 34 req |
+| bound IPNS caching, validate lifetimes | boxo + kubo | fail $0.552, 33 req | fail $0.290, 21 req |
+| store-only QuickStatus for prism status | grove + prism | OK $0.194, 12 req | OK $0.110, 9 req |
+| doctor shows Grove's capability manifest | grove + prism | fail $0.156, 14 req | fail $0.122, 11 req |
+| promhttp offers OpenMetrics 2.0-rc | common + client_golang | fail $0.223, 15 req | OK $0.336, 23 req |
+
+- Resolved: native 2/7, prism 3/7 (prism-only win: OpenMetrics; native made the rc format identical to 2.0.0
+  on the wire, the prism agent traced the format through encode/decode and matched the tests).
+- Task cost prism/native 0.833x ($1.868 vs $2.243); with startup 0.864x. Requests 126 vs 141, output tokens
+  74k vs 87k. Prism cheaper on 5 of 7 tasks.
+- 42 prism calls in the prism arm; grep calls 36 vs 84.
+- Raw uncached spend $28.29.
+- Both-failed tasks are mostly task-inherent: hidden tests call unexported names the issue cannot reveal
+  (`ipfsUriHeaderValue`, `CidFromArg`). Scorer fixes after the run (test-helper package `internal/ipnstest`
+  copied with the gold tests; agents' own test edits reverted before the gold tests are written) were
+  re-scored from the saved diffs and changed no outcome; recorded under `rescored`.
+- Dropped at validation: grove/prism heuristic-refs (no test fails at base). Not attempted: kubo CAR
+  hardening (needs two more unreleased repos) and MFS (22 files incl. FUSE).
+
+Seven tasks is a small bed; per-pair cost swings ±40% run to run on the release benchmark, so the cost ratio
+is indicative, not settled. For comparison the release benchmark (41 single-repo issues, v0.87.37) measured
+task cost 0.916x and total 0.976x.

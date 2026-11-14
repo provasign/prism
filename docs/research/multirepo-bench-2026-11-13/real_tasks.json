@@ -1,0 +1,154 @@
+[
+ {
+  "id": "kubo-bootstrap-empty-list",
+  "lib": "boxo",
+  "app": "kubo",
+  "lib_repo": "ipfs_boxo",
+  "app_repo": "ipfs_kubo",
+  "lib_base": "02026ddcf262327aaa4f1d6b3cf4f7bcc0b5528e",
+  "lib_gold": "2edf737db3aa16d225cdbe7971ef473cfef054ba",
+  "lib_test_commits": [
+   "2edf737db3aa16d225cdbe7971ef473cfef054ba"
+  ],
+  "app_base": "7b18632014e4d188342b5439d0e7993f9025a807",
+  "app_gold": "372b1e3aed26fc319557b89f4e3cb9e71c2f1bc8",
+  "app_test_commits": [
+   "372b1e3aed26fc319557b89f4e3cb9e71c2f1bc8"
+  ],
+  "statement": "Routing.Type=none still runs bootstrap process, dials stale backup peers and triggers external DNS resolution.\n\nWhen the node was previously run with default routing, bootstrap peers are persisted to the datastore's backup bootstrap peer list (TempBootstrapPeersKey = /local/temp_bootstrap_peers). Later, with an empty `Bootstrap` list (for example `Routing.Type=none` and `Bootstrap=null`), the daemon still dials those stale backup peers every ~30s (DefaultBootstrapConfig.Period), triggering external DNS resolution and failed connection attempts. An empty Bootstrap list should disable all bootstrap dialing, including the saved backup peers.",
+  "build_bin": "cmd/ipfs/ipfs",
+  "build_pkg": "./cmd/ipfs"
+ },
+ {
+  "id": "kubo-ipfs-uri-header",
+  "lib": "boxo",
+  "app": "kubo",
+  "lib_repo": "ipfs_boxo",
+  "app_repo": "ipfs_kubo",
+  "lib_base": "7f19e817269e25da8dc164af63b8d785c99275e6",
+  "lib_gold": "63cae36adc96260c55d1e3b8bf5b9f4b78fd7080",
+  "lib_test_commits": [
+   "63cae36adc96260c55d1e3b8bf5b9f4b78fd7080"
+  ],
+  "app_base": "542aaed1fcbe3602bfca052efbe171dc99399a6c",
+  "app_gold": "873fab7331b427f72ce3e41cd2ed52dc97348e70",
+  "app_test_commits": [
+   "873fab7331b427f72ce3e41cd2ed52dc97348e70"
+  ],
+  "statement": "Legacy `X-Ipfs-Path` cannot carry every UnixFS file name: bytes outside visible ASCII are invalid in HTTP field values (RFC 9110 5.5), so names like `łódź.txt` reach clients garbled. ipfs/specs#548 (IPIP-548) deprecates it in favor of `Ipfs-Uri`, a percent-encoded `ipfs://` / `ipns://` address that survives any name.\n\nGateway responses should carry the `Ipfs-Uri` header and no longer send `X-Ipfs-Path`. Add an opt-in `Gateway.DeprecatedXIpfsPath` config flag that restores the legacy header to ease migration; even then it is skipped when the value would include non-ASCII byte sequences.",
+  "build_bin": "cmd/ipfs/ipfs",
+  "build_pkg": "./cmd/ipfs"
+ },
+ {
+  "id": "kubo-native-ipfs-uris",
+  "lib": "boxo",
+  "app": "kubo",
+  "lib_repo": "ipfs_boxo",
+  "app_repo": "ipfs_kubo",
+  "lib_base": "e67e4cf07a92d5130e664013032e286988d0a076",
+  "lib_gold": "8a6d1d21a6fb9522deb49969a4ef1782d2404bbb",
+  "lib_test_commits": [
+   "8a6d1d21a6fb9522deb49969a4ef1782d2404bbb"
+  ],
+  "app_base": "e14131dcbe567e0d8a523ea2c27e4ec5515a7ed3",
+  "app_gold": "4c227f07efe11a3aef5ca70ed2e1e348e51854c3",
+  "app_test_commits": [
+   "4c227f07efe11a3aef5ca70ed2e1e348e51854c3"
+  ],
+  "statement": "Commands should accept native IPFS URIs like `ipfs://cid` and `ipns://name` (and the schemeless `ipfs:cid` / `ipns:name` forms), so a link can be pasted straight from a browser or another tool instead of being rewritten into an `/ipfs/` path first. This must stay backward-compatible: `/ipfs/cid` paths and bare CIDs keep working, and a URI is one more accepted form. The URI parsing belongs in boxo's `path` package as `NewPathFromURI`, next to the existing path constructors.",
+  "build_bin": "cmd/ipfs/ipfs",
+  "build_pkg": "./cmd/ipfs"
+ },
+ {
+  "id": "kubo-ipns-lifetime-bounds",
+  "lib": "boxo",
+  "app": "kubo",
+  "lib_repo": "ipfs_boxo",
+  "app_repo": "ipfs_kubo",
+  "lib_base": "6fa268c14c56e3e8b267f036cbbddcd0e3026e9a",
+  "lib_gold": "c16c2378c127edf94cc4f7e54048df55f22e5c49",
+  "lib_test_commits": [
+   "38baa62fdf3b7a211f3885c04532c0cb78a8218a"
+  ],
+  "app_base": "f07f09342026748d36c0f8448fb10ff63b62aad7",
+  "app_gold": "dcaa850141fc8c1782ffb66d40333f8aeaf2a0c2",
+  "app_test_commits": [
+   "dcaa850141fc8c1782ffb66d40333f8aeaf2a0c2"
+  ],
+  "statement": "IPNS responses could be reused past a record's validity, and `ipfs name publish` accepted self-defeating settings. A cache (CDN, browser, Helia) could serve a record whose signature had already expired, which validating clients reject as sporadic 500s; `ipfs name publish` took a non-positive `--lifetime`, a negative `--ttl`, or a `--ttl` longer than `--lifetime`; and a republisher with `Ipns.RecordLifetime` shorter than `Ipns.RepublishPeriod` let records expire before the next cycle, leaving names unresolvable.",
+  "build_bin": "cmd/ipfs/ipfs",
+  "build_pkg": "./cmd/ipfs"
+ },
+ {
+  "id": "prism-quickstatus",
+  "lib": "grove",
+  "app": "prism",
+  "lib_repo": "provasign_grove",
+  "app_repo": "provasign_prism",
+  "lib_base": "b14e43c5122f86a7f8e05c4bee1122827f2a4a4d",
+  "lib_gold": "0df7c41b933a97ee62e14ada7d023137a8834a53",
+  "lib_test_commits": [
+   "fc39867b9c8d35abdaaca696ea84de5c2d651ae0"
+  ],
+  "app_base": "eea1e296654d16d139555cae4e8302fbcce6a615",
+  "app_gold": "d8bc7249ab6b9a75e4c93f01551db9a7d4324bb1",
+  "app_test_commits": [
+   "d8bc7249ab6b9a75e4c93f01551db9a7d4324bb1"
+  ],
+  "statement": "`prism status` takes 1.3 s on a large index (500k edges) because it asks Grove for a full status, which loads the graph. Status only needs what the store already records. Add a store-only status to Grove's public API (`pkg/grove`, `QuickStatus`) that answers without building the graph, and use it for `prism status`."
+ },
+ {
+  "id": "prism-doctor-capabilities",
+  "lib": "grove",
+  "app": "prism",
+  "lib_repo": "provasign_grove",
+  "app_repo": "provasign_prism",
+  "lib_base": "c467cfd60f12d73bc869420d5108bec11e947fb5",
+  "lib_gold": "1a9d0f137beefd74af4b4b18e68ee894bb9f8e90",
+  "lib_test_commits": [
+   "c65ce2db92cba49b0d14820e74cb6e7841c969d6"
+  ],
+  "app_base": "25d1040ab28075b97fdbbc5b90b40fea48a0459d",
+  "app_gold": "da8e4510e1f10c6a19e3c3a552e7b24308b7fe98",
+  "app_test_commits": [
+   "da8e4510e1f10c6a19e3c3a552e7b24308b7fe98"
+  ],
+  "statement": "`prism doctor` cannot say which languages get compiler-backed analysis and which fall back to name matching: Grove computes a per-language capability manifest for `grove doctor`, but it is not exported to embedders. Export the capability manifest from Grove's public package (`pkg/grove`) and have `prism doctor` surface it per language."
+ },
+ {
+  "id": "prism-heuristic-refs-field",
+  "lib": "grove",
+  "app": "prism",
+  "lib_repo": "provasign_grove",
+  "app_repo": "provasign_prism",
+  "lib_base": "09e95c032fdb24862f7c1e493f6d50b065fce0c2",
+  "lib_gold": "c78007fa61b66dc015a1dc99da33d040aed7d809",
+  "lib_test_commits": [
+   "b635684936ca3382c2f1510e765088da91a1e57e"
+  ],
+  "app_base": "5f113fa92f489cbfb5672639f9057ed05585650c",
+  "app_gold": "ca551b10aa2aa278a7a5d78e8ad52fd717e18c94",
+  "app_test_commits": [
+   "ca551b10aa2aa278a7a5d78e8ad52fd717e18c94"
+  ],
+  "statement": "Grove reports that a change-impact result includes heuristic (name-matched) references by appending a suffix to the `Completeness` string. Consumers that compare Completeness values (\"closed\", \"type-level\", ...) break on the suffixed value, and prism cannot reliably tell agents when heuristic references are present. Report it as its own boolean field on the change-impact result instead (`HasHeuristicRefs`), keep Completeness to its plain values, and carry the field through prism's change-impact answer."
+ },
+ {
+  "id": "clientgolang-openmetrics2-rc",
+  "lib": "common",
+  "app": "client_golang",
+  "lib_repo": "prometheus_common",
+  "app_repo": "prometheus_client_golang",
+  "lib_base": "25bdf5c3eaf9318d916a29cca8aeeea4fcd9bf4d",
+  "lib_gold": "983d50981d14d136bf5770ede264415d6d56316b",
+  "lib_test_commits": [
+   "220c51a799c52cc5ba42efd2bce8a4e59bfb8547"
+  ],
+  "app_base": "0b2f01f00376e550fd4ec64b705d0375b5fa2bc4",
+  "app_gold": "3538594ac3cd46db50d63f0b94d1c7786722cf56",
+  "app_test_commits": [
+   "3538594ac3cd46db50d63f0b94d1c7786722cf56"
+  ],
+  "statement": "promhttp should support OpenMetrics 2.0-rc: when `EnableOpenMetrics` is set and `AcceptedFormats` is unset, the handler should offer the OpenMetrics 2.0.0-rc format ahead of the stable OpenMetrics formats. expfmt in prometheus/common has no format constant for it yet; add `FmtOpenMetrics_2_0_0_rc` there next to the other OpenMetrics formats."
+ }
+]

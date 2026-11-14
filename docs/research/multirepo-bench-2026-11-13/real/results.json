@@ -1,0 +1,5206 @@
+{
+ "clientgolang-openmetrics2-rc": {
+  "cells": {
+   "native": {
+    "wall_s": 112.9,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 18,
+    "cost_usd": 1.3590816,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "c91e1463-99ee-47a8-b55f-4e39578d3880",
+     "tokens": {
+      "input_uncached": 628157,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 8297
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 628157,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 628157,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 8297,
+      "output_tokens_details": {
+       "thinking_tokens": 2389
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 56128,
+        "output_tokens": 1007,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 628157,
+       "outputTokens": 8297,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 1.339284,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 2389,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      },
+      "claude-haiku-5-5": {
+       "inputTokens": 79716,
+       "outputTokens": 3652,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 1,
+       "costUSD": 0.0197976,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 1729,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-haiku-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 1.3590816,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-clientgolang-openmetrics2-rc-native-9unjbjck-client-golang/c91e1463-99ee-47a8-b55f-4e39578d3880.jsonl",
+      "messages": 15,
+      "requests": 15,
+      "tokens": {
+       "input_uncached": 628157,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1o9Fv5BzcjhE1opiz4W",
+        "request_id": "req_011Ch1o9FivCmNRT9Qu6Dn5W",
+        "input_uncached": 23078,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 426,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1o9VGG557wMRosgghU5",
+        "request_id": "req_011Ch1o9V4byxyiYjtDBixXB",
+        "input_uncached": 26009,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 257,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1o9eSQz2uW9qs4dTBpz",
+        "request_id": "req_011Ch1o9eCH6EeRX6Chv3hCK",
+        "input_uncached": 28333,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 303,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1o9ppW4dDi2htLVFsD7",
+        "request_id": "req_011Ch1o9pc6oWMLuhYCaaHfr",
+        "input_uncached": 34553,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 468,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oA5zJyRRZgEyCCCPgS",
+        "request_id": "req_011Ch1oA5kRNjbbhJ4cRgZZS",
+        "input_uncached": 39917,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 316,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oATshB8RYtGWC6qLhE",
+        "request_id": "req_011Ch1oATe4RWdHKSG2mVWip",
+        "input_uncached": 40581,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 146,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oAbQdN28KAgtePvfYe",
+        "request_id": "req_011Ch1oAb5H2FY61BreTEQPD",
+        "input_uncached": 41193,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 114,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oB1G5rLja8VRvLLQZP",
+        "request_id": "req_011Ch1oB14R9YYsjWhxKbmPb",
+        "input_uncached": 42689,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 469,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oCG8ZMyeXcF36o8vV1",
+        "request_id": "req_011Ch1oCFsBhpXW4fZuGfjCi",
+        "input_uncached": 44317,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1831,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oDBjfwPmPLSwvL8Gef",
+        "request_id": "req_011Ch1oDBVnqcVXKqazencYJ",
+        "input_uncached": 46858,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 542,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oDb3dq34DXotSrEjiW",
+        "request_id": "req_011Ch1oDaqEX49RwTvQmGKii",
+        "input_uncached": 48193,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 213,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oDpiQaMF1WaxRUy78T",
+        "request_id": "req_011Ch1oDpTmkpajfXxWTcbs3",
+        "input_uncached": 50220,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1178,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oFF888YgrfEfdWH3X4",
+        "request_id": "req_011Ch1oFEvirgULFscWDK4gp",
+        "input_uncached": 51715,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 506,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oGRAedMKUivjjxnrb2",
+        "request_id": "req_011Ch1oGQcttVh7MZdDkURgb",
+        "input_uncached": 54373,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 521,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oGo1JVbkjUJcBnCw55",
+        "request_id": "req_011Ch1oGnoe9RWwareZi9zs6",
+        "input_uncached": 56128,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1007,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-haiku-5-5",
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "c91e1463-99ee-47a8-b55f-4e39578d3880",
+    "api_calls": 15,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23078,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 426
+     },
+     "startup_usd": 0.046156,
+     "task_usd": 1.312926,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 5,
+      "read": 4,
+      "ToolSearch": 1,
+      "WebSearch": 1,
+      "Agent": 1,
+      "build/test": 5
+     },
+     "prism_calls": 0,
+     "tool_calls": 17,
+     "transcript": true
+    },
+    "tokens_request": 628157,
+    "tokens_out": 8297,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Grep": 4,
+     "Bash": 8,
+     "Read": 2,
+     "ToolSearch": 1,
+     "WebSearch": 1,
+     "Agent": 1
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-probe/transcripts/clientgolang-openmetrics2-rc.native",
+    "task": "clientgolang-openmetrics2-rc",
+    "arm": "native",
+    "setup_s": 1.9,
+    "resolved": false,
+    "tests": {
+     "lib:./expfmt:TestNewEncoder_OpenMetricsVersionDispatch": "pass",
+     "lib:./expfmt:TestTextDecoderWithBufioReader": "pass",
+     "lib:./expfmt:TestNegotiateAcceptEncodeUTF8Names": "fail",
+     "lib:./expfmt:TestNegotiateAccept": "fail",
+     "lib:./expfmt:TestNewDecoder": "pass",
+     "lib:./expfmt:TestFormat_Version": "fail",
+     "lib:./expfmt:TestToFormatType": "pass",
+     "app:./prometheus/promhttp:TestHandlerOpenMetricsNegotiation": "fail"
+    },
+    "lib_files": [
+     "expfmt/expfmt.go"
+    ],
+    "app_files": [
+     "prometheus/promhttp/http.go",
+     "prometheus/promhttp/http_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.280493,
+      "requests": 15,
+      "startup_usd": 0.057695
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.364685,
+      "requests": 15,
+      "startup_usd": 0.092312
+     }
+    }
+   },
+   "prism_cli": {
+    "wall_s": 106.6,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 43,
+    "cost_usd": 2.328414,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "7d2e7c87-039f-401e-8f08-c56964b5fb4e",
+     "tokens": {
+      "input_uncached": 1095297,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 13782
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 1095297,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 1095297,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 13782,
+      "output_tokens_details": {
+       "thinking_tokens": 1601
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 62049,
+        "output_tokens": 909,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 1095297,
+       "outputTokens": 13782,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 2.328414,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 1601,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 2.328414,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-clientgolang-openmetrics2-rc-prism-cli-dr-7x-fs-client-golang/7d2e7c87-039f-401e-8f08-c56964b5fb4e.jsonl",
+      "messages": 23,
+      "requests": 23,
+      "tokens": {
+       "input_uncached": 1095297,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1oHuv4TkKSQnZoy9aAe",
+        "request_id": "req_011Ch1oHugv2SFD1ztsbf1no",
+        "input_uncached": 23929,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 139,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oJ5KMH4poUrW6Eek6M",
+        "request_id": "req_011Ch1oJ57Ci4G84deHddtAs",
+        "input_uncached": 26427,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 294,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oJF5ydBtq1eFwThgA8",
+        "request_id": "req_011Ch1oJEpc7YjFnfxv4qFjk",
+        "input_uncached": 29482,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 358,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oJSGv86Hy11LEigjhY",
+        "request_id": "req_011Ch1oJS33DiQbEcw8n8nzC",
+        "input_uncached": 35054,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 330,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oJe1NZqk1VUYDg8vfF",
+        "request_id": "req_011Ch1oJdmjKhRdc4JAa41aW",
+        "input_uncached": 36952,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 489,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oJuG9JbjFZgh18Dz1A",
+        "request_id": "req_011Ch1oJu3Ep1CCvsAxZeo9y",
+        "input_uncached": 40476,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 267,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oK6mgqZGLC2meqGsnm",
+        "request_id": "req_011Ch1oK6XoGt1UHNcWDJEAt",
+        "input_uncached": 41254,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 2447,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oL2B9gMqHth7dXx3fX",
+        "request_id": "req_011Ch1oL1xFFFhXNyEX8UcV7",
+        "input_uncached": 44539,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 507,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oLGnUGNj7KtYGnnWSa",
+        "request_id": "req_011Ch1oLGJTcnssejwhc2DJC",
+        "input_uncached": 45256,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 463,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oLWqKmYishmKyF1P3y",
+        "request_id": "req_011Ch1oLWbBctx7CARbvgDX2",
+        "input_uncached": 46191,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 829,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oLs2ktjTHDKpCHtjnz",
+        "request_id": "req_011Ch1oLrbhojwHFVL7k22Pp",
+        "input_uncached": 47346,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 169,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oM8b8Mktys7PgVP1Nv",
+        "request_id": "req_011Ch1oM8NEQLcwazWBq8Rbg",
+        "input_uncached": 48108,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 341,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oMSn2TdBnT4BrSJttG",
+        "request_id": "req_011Ch1oMSYsfJxvKug7C1989",
+        "input_uncached": 48995,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 290,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oMf7fkTArBWzb4ZShk",
+        "request_id": "req_011Ch1oMeuXGmuwTDFWh5QEX",
+        "input_uncached": 51813,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1245,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oNJsYKJjH9kTxvVnTk",
+        "request_id": "req_011Ch1oNJeQSoBJum7Sx7fC2",
+        "input_uncached": 53919,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 812,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oNpEsyUrNg4N8ppqjz",
+        "request_id": "req_011Ch1oNp2ykrQ5QTyZFkgMK",
+        "input_uncached": 55723,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 871,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oPJ3hsGvx1NYHbymzK",
+        "request_id": "req_011Ch1oPHpZXT2yZ7NBgg4Xe",
+        "input_uncached": 57206,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 184,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oPTbh6D6G37f7yvjrU",
+        "request_id": "req_011Ch1oPTNHtj6BTbZaNAUct",
+        "input_uncached": 57897,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1151,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oPz5VqPo9f3RCtMC6t",
+        "request_id": "req_011Ch1oPyo8PCQRan2fDAU9E",
+        "input_uncached": 59386,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 908,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oQWwd7m73Ad3dcwPUJ",
+        "request_id": "req_011Ch1oQWijF1aHEzqneBKs1",
+        "input_uncached": 60531,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 252,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oQj685ft4x2ZaFj9Pb",
+        "request_id": "req_011Ch1oQirzCA3Jk8eSg4CKU",
+        "input_uncached": 61166,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 348,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oQwvoUgHjYntQ26Z6e",
+        "request_id": "req_011Ch1oQwi9ZHN1rsvGfxS28",
+        "input_uncached": 61598,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 179,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oRFMY9kQSz4ma1uXu7",
+        "request_id": "req_011Ch1oRF7ektKNYKuQ8r3hE",
+        "input_uncached": 62049,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 909,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "7d2e7c87-039f-401e-8f08-c56964b5fb4e",
+    "api_calls": 23,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23929,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 139
+     },
+     "startup_usd": 0.047858,
+     "task_usd": 2.280556,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "bash other": 2,
+      "read": 11,
+      "search": 2,
+      "edit": 20,
+      "build/test": 7
+     },
+     "prism_calls": 0,
+     "tool_calls": 42,
+     "transcript": true
+    },
+    "tokens_request": 1095297,
+    "tokens_out": 13782,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 14,
+     "Read": 9,
+     "Grep": 1,
+     "Edit": 18
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-probe/transcripts/clientgolang-openmetrics2-rc.prism_cli",
+    "task": "clientgolang-openmetrics2-rc",
+    "arm": "prism_cli",
+    "setup_s": 6.1,
+    "resolved": true,
+    "tests": {
+     "lib:./expfmt:TestNewEncoder_OpenMetricsVersionDispatch": "pass",
+     "lib:./expfmt:TestTextDecoderWithBufioReader": "pass",
+     "lib:./expfmt:TestNegotiateAcceptEncodeUTF8Names": "pass",
+     "lib:./expfmt:TestNegotiateAccept": "pass",
+     "lib:./expfmt:TestNewDecoder": "pass",
+     "lib:./expfmt:TestFormat_Version": "pass",
+     "lib:./expfmt:TestToFormatType": "pass",
+     "app:./prometheus/promhttp:TestHandlerOpenMetricsNegotiation": "pass"
+    },
+    "lib_files": [
+     "expfmt/decode.go",
+     "expfmt/encode.go",
+     "expfmt/encode_test.go",
+     "expfmt/expfmt.go",
+     "expfmt/expfmt_test.go"
+    ],
+    "app_files": [
+     "prometheus/promhttp/http.go",
+     "prometheus/promhttp/http_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.396267,
+      "requests": 23,
+      "startup_usd": 0.059823
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.489341,
+      "requests": 23,
+      "startup_usd": 0.095716
+     }
+    }
+   }
+  }
+ },
+ "kubo-bootstrap-empty-list": {
+  "cells": {
+   "native": {
+    "wall_s": 54.2,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 15,
+    "cost_usd": 1.143458,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "607396f7-9c1a-485d-9b2c-ab217d586034",
+     "tokens": {
+      "input_uncached": 540929,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 6160
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 540929,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 540929,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 6160,
+      "output_tokens_details": {
+       "thinking_tokens": 1260
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 49349,
+        "output_tokens": 630,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 540929,
+       "outputTokens": 6160,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 1.143458,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 1260,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 1.143458,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-kubo-bootstrap-empty-list-native-25ubjapp-kubo/607396f7-9c1a-485d-9b2c-ab217d586034.jsonl",
+      "messages": 13,
+      "requests": 13,
+      "tokens": {
+       "input_uncached": 540929,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1oTbCx2gJqtTv2TDKnw",
+        "request_id": "req_011Ch1oTb22UHFAcHwWAVYGp",
+        "input_uncached": 23128,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 222,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oTjPotQMcskMpGGBmq",
+        "request_id": "req_011Ch1oTj9RnDao2kRBcxB9r",
+        "input_uncached": 27927,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 303,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oTu7xrVHfraW1MJEpa",
+        "request_id": "req_011Ch1oTtuK9YKRaq9oYDRdr",
+        "input_uncached": 35066,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 511,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oUCXxK9nkcS6Lz4pCt",
+        "request_id": "req_011Ch1oUBXBwMRi11KXcfLMs",
+        "input_uncached": 39642,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1217,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oUoMDvLgzuh453mmAW",
+        "request_id": "req_011Ch1oUo8Zv4BkGNHuac8yz",
+        "input_uncached": 40939,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1284,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oVf2CMjTKMVTrDnAuQ",
+        "request_id": "req_011Ch1oVeYuozo8ysEaxHq3n",
+        "input_uncached": 42409,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 360,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oVunhhvURRmXhJx8uf",
+        "request_id": "req_011Ch1oVuTMNyqxjN5GtW6Gm",
+        "input_uncached": 43893,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 346,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oWG7aCfNcroJ8XSji3",
+        "request_id": "req_011Ch1oWFsvsT87GahCt22R8",
+        "input_uncached": 45171,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 314,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oWV3wQLR9XoUBgrNAu",
+        "request_id": "req_011Ch1oWUh7ZUhi7AWVsVYrx",
+        "input_uncached": 47800,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 214,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oWgifFAmsYJGchWZH7",
+        "request_id": "req_011Ch1oWgUHeHfHXbRMCwgJZ",
+        "input_uncached": 48206,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 119,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oWoArXH5pg2ADbrMxf",
+        "request_id": "req_011Ch1oWnuUqupaprmB86sUQ",
+        "input_uncached": 48501,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 297,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oWzCP9xvzD7V2q8TBG",
+        "request_id": "req_011Ch1oWyxVcwcND2Qj5dss6",
+        "input_uncached": 48898,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 343,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oXAeBrpp9pfi4sR9fP",
+        "request_id": "req_011Ch1oXAPoiPdL74BEjto2G",
+        "input_uncached": 49349,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 630,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "607396f7-9c1a-485d-9b2c-ab217d586034",
+    "api_calls": 13,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23128,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 222
+     },
+     "startup_usd": 0.046256,
+     "task_usd": 1.097202,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 3,
+      "read": 5,
+      "build/test": 4,
+      "edit": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 14,
+     "transcript": true
+    },
+    "tokens_request": 540929,
+    "tokens_out": 6160,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Grep": 1,
+     "Read": 4,
+     "Bash": 7,
+     "Edit": 2
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/kubo-bootstrap-empty-list.native",
+    "task": "kubo-bootstrap-empty-list",
+    "arm": "native",
+    "setup_s": 3.5,
+    "resolved": true,
+    "tests": {
+     "lib:./bootstrap:TestHasCircuitProtocol": "pass",
+     "lib:./bootstrap:TestBootstrapRoundDialsBackupWhenBootstrapPeersPresent": "pass",
+     "lib:./bootstrap:TestBootstrapRoundSkipsBackupWhenNoBootstrapPeers": "pass",
+     "app:./core:TestBootstrapEmptyListSkipsBackupPeers": "pass",
+     "app:./core:TestHasActiveDHTClient": "pass"
+    },
+    "lib_files": [
+     "CHANGELOG.md",
+     "bootstrap/bootstrap.go",
+     "bootstrap/bootstrap_test.go"
+    ],
+    "app_files": [],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.23413,
+      "requests": 13,
+      "startup_usd": 0.05782
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.308154,
+      "requests": 13,
+      "startup_usd": 0.092512
+     }
+    }
+   },
+   "prism_cli": {
+    "wall_s": 35.6,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 9,
+    "cost_usd": 0.588018,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "211cb626-d711-4b04-bcbf-676fd7b6911f",
+     "tokens": {
+      "input_uncached": 276154,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 3571
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 276154,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 276154,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 3571,
+      "output_tokens_details": {
+       "thinking_tokens": 643
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 35750,
+        "output_tokens": 601,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 276154,
+       "outputTokens": 3571,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.588018,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 643,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.588018,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-kubo-bootstrap-empty-list-prism-cli-17wbeuex-kubo/211cb626-d711-4b04-bcbf-676fd7b6911f.jsonl",
+      "messages": 9,
+      "requests": 9,
+      "tokens": {
+       "input_uncached": 276154,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1oYn5CApqnu5soPhgxi",
+        "request_id": "req_011Ch1oYms2cCuxyCBYnHNqs",
+        "input_uncached": 24014,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 97,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oYuWAhwFEU3nbsYbsA",
+        "request_id": "req_011Ch1oYuHmMvsuTGbdbhHSZ",
+        "input_uncached": 24586,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 153,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oZ273YcaxjL5i6uMuk",
+        "request_id": "req_011Ch1oZ1str1EXLzZSZKvAJ",
+        "input_uncached": 27197,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 101,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oZ7sJm3BwDmP1CaE5n",
+        "request_id": "req_011Ch1oZ7fQYyykTuEFXGgzZ",
+        "input_uncached": 31454,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 519,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oZUS5Nms13B14328Rp",
+        "request_id": "req_011Ch1oZUEAmjwaAHH54M8r3",
+        "input_uncached": 32015,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 153,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oZbP2G4sNRdbhje23w",
+        "request_id": "req_011Ch1oZb9Q2zDh4jCvZeoLz",
+        "input_uncached": 32323,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 952,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oa4J2T63ChfBFdzVRU",
+        "request_id": "req_011Ch1oa45NuedNgapZWpdLE",
+        "input_uncached": 33916,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 819,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oaoiTf336Qwepgq56j",
+        "request_id": "req_011Ch1oaoVKqB66Es14VJqkF",
+        "input_uncached": 34899,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 176,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oaycHFYbEmNAYFumRN",
+        "request_id": "req_011Ch1oayCj8wMnsr2aEKpZx",
+        "input_uncached": 35750,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 601,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "211cb626-d711-4b04-bcbf-676fd7b6911f",
+    "api_calls": 9,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 24014,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 97
+     },
+     "startup_usd": 0.048028,
+     "task_usd": 0.53999,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "bash other": 1,
+      "read": 2,
+      "search": 3,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 8,
+     "transcript": true
+    },
+    "tokens_request": 276154,
+    "tokens_out": 3571,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 7,
+     "Read": 1
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/kubo-bootstrap-empty-list.prism_cli",
+    "task": "kubo-bootstrap-empty-list",
+    "arm": "prism_cli",
+    "setup_s": 12.2,
+    "resolved": true,
+    "tests": {
+     "lib:./bootstrap:TestHasCircuitProtocol": "pass",
+     "lib:./bootstrap:TestBootstrapRoundDialsBackupWhenBootstrapPeersPresent": "pass",
+     "lib:./bootstrap:TestBootstrapRoundSkipsBackupWhenNoBootstrapPeers": "pass",
+     "app:./core:TestBootstrapEmptyListSkipsBackupPeers": "pass",
+     "app:./core:TestHasActiveDHTClient": "pass"
+    },
+    "lib_files": [
+     "bootstrap/bootstrap.go",
+     "bootstrap/bootstrap_test.go"
+    ],
+    "app_files": [],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.149125,
+      "requests": 9,
+      "startup_usd": 0.060035
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.20275,
+      "requests": 9,
+      "startup_usd": 0.096056
+     }
+    }
+   }
+  }
+ },
+ "kubo-ipfs-uri-header": {
+  "cells": {
+   "native": {
+    "wall_s": 250.2,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 33,
+    "cost_usd": 3.4443,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "4c81f477-4fac-432a-a01b-3d926ec5f7b6",
+     "tokens": {
+      "input_uncached": 1622265,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 19977
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 1622265,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 1622265,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 19977,
+      "output_tokens_details": {
+       "thinking_tokens": 4069
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 78650,
+        "output_tokens": 1045,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 1622265,
+       "outputTokens": 19977,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 3.4443,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 4069,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 3.4443,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-kubo-ipfs-uri-header-native-v58yzpk7-kubo/4c81f477-4fac-432a-a01b-3d926ec5f7b6.jsonl",
+      "messages": 29,
+      "requests": 29,
+      "tokens": {
+       "input_uncached": 1622265,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1obzGyyckVPPxPEoRye",
+        "request_id": "req_011Ch1obz3beFCnbCypt1uXn",
+        "input_uncached": 23143,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 404,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ocDH5U6B7jii9KX9S4",
+        "request_id": "req_011Ch1ocD4wNmymD1KdWkibW",
+        "input_uncached": 24040,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 487,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ocU1bdTaH3RWr8dW5d",
+        "request_id": "req_011Ch1ocTnD5gPnRoMUJ2W5z",
+        "input_uncached": 28023,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 393,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ocgSDZwREs8uae4Ufh",
+        "request_id": "req_011Ch1ocg97Usx1z3kjYrjTz",
+        "input_uncached": 34729,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 277,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ocwBVLwkvgx1WzMYQP",
+        "request_id": "req_011Ch1ocvw6XoJQ1uDfRcHLo",
+        "input_uncached": 35082,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1991,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oe5LeTWGg2VzQHY9Kq",
+        "request_id": "req_011Ch1oe56Wf1ooVGms65zgS",
+        "input_uncached": 41614,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 285,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oeHWPJX18v2fPHdYJD",
+        "request_id": "req_011Ch1oeHB3GWPfEeKKNrghk",
+        "input_uncached": 44690,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1682,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1of3TJxvw8mEXit4q1X",
+        "request_id": "req_011Ch1of2u5LqwLFCLEeEaRJ",
+        "input_uncached": 47026,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 651,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ofQmjCcXK2LbqnEY2C",
+        "request_id": "req_011Ch1ofQRtXX1kS5Bdau1Cj",
+        "input_uncached": 47910,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 524,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ofiw7kCmCST8wGmAMu",
+        "request_id": "req_011Ch1ofiiUABSBzHMGS8FzB",
+        "input_uncached": 49978,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 237,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ofv1Nvi1hp8cF2wfY9",
+        "request_id": "req_011Ch1ofukzPGcr4cAL8CT4U",
+        "input_uncached": 51600,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 292,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ogAW1ZFtR8hW8Vhhhz",
+        "request_id": "req_011Ch1ogAHMabzu9UoawsQw7",
+        "input_uncached": 52488,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1979,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ohKMbSQGRAxn4Gdyj3",
+        "request_id": "req_011Ch1ohK6DwRVgJ1g2qRapm",
+        "input_uncached": 54848,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 521,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oi6TUrnLBvNtCcbmLz",
+        "request_id": "req_011Ch1oi6C7HhAeZLNhEQ1CH",
+        "input_uncached": 56190,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 269,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ojZnKXM96UKQvpF2zA",
+        "request_id": "req_011Ch1ojZZfmkhM4S7yrLf4y",
+        "input_uncached": 57766,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 378,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1okmp911JkiAbJqK8S6",
+        "request_id": "req_011Ch1okmV43GyoXHikVkxvy",
+        "input_uncached": 58726,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 474,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1omZqqctZ3UHv733AXF",
+        "request_id": "req_011Ch1omZchixS8Yzn7f913d",
+        "input_uncached": 60164,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1423,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1onDQ4LpVVRVssmH4Zp",
+        "request_id": "req_011Ch1onD8vym1rRzDpEhGNC",
+        "input_uncached": 62702,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 749,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1onbMuHwDrsKpA2Hisz",
+        "request_id": "req_011Ch1onbAFWwivGGpf8xcGu",
+        "input_uncached": 65193,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 2361,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ooceKVGdLpbersmKGy",
+        "request_id": "req_011Ch1oocSAytUxy9bwb6f5Z",
+        "input_uncached": 68177,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 368,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oq43pVv5ua5fVAMG13",
+        "request_id": "req_011Ch1oq3dG3Wb3QdqLzzS6r",
+        "input_uncached": 68841,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 717,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oqX61on6K2zHDLzgtT",
+        "request_id": "req_011Ch1oqWkB3Qw7QEWudGBWY",
+        "input_uncached": 69757,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 424,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1orKGddcYDMnUa5WVgB",
+        "request_id": "req_011Ch1orJz21erbKuvcwpKib",
+        "input_uncached": 70240,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 433,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1osfnCESabt3hUwpCNG",
+        "request_id": "req_011Ch1osfZJ63uauqG5HyDiv",
+        "input_uncached": 71860,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 364,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ot8S5MjD4HVVjpz4dF",
+        "request_id": "req_011Ch1ot8DBGNnKQhLNyiiAf",
+        "input_uncached": 72763,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 406,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ouAjW8BvArkiAj7KMC",
+        "request_id": "req_011Ch1ouAUt98kUq86JoiJFv",
+        "input_uncached": 73778,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 279,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ouRsqXUxb15GmreioK",
+        "request_id": "req_011Ch1ouRbxshUNRU9DMhuBj",
+        "input_uncached": 74423,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 172,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ouaK6ZwCDqhEHWTGg9",
+        "request_id": "req_011Ch1oua5xMrD95jS8xoLar",
+        "input_uncached": 77864,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 392,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ourUgxTKAE4FZYJ2CH",
+        "request_id": "req_011Ch1ourFnmBcMJbfTESV7m",
+        "input_uncached": 78650,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1045,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "4c81f477-4fac-432a-a01b-3d926ec5f7b6",
+    "api_calls": 29,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23143,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 404
+     },
+     "startup_usd": 0.046286,
+     "task_usd": 3.398014,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 15,
+      "read": 4,
+      "build/test": 12,
+      "edit": 1
+     },
+     "prism_calls": 0,
+     "tool_calls": 32,
+     "transcript": true
+    },
+    "tokens_request": 1622265,
+    "tokens_out": 19977,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Grep": 3,
+     "Bash": 27,
+     "Read": 2
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/kubo-ipfs-uri-header.native",
+    "task": "kubo-ipfs-uri-header",
+    "arm": "native",
+    "setup_s": 3.4,
+    "resolved": false,
+    "tests": {
+     "lib:./gateway:TestIpfsUriHeaderValue": "fail",
+     "lib:./gateway:TestHeaders": "fail",
+     "lib:./gateway:TestEncodeIpfsUriSegment": "fail",
+     "lib:./gateway:TestIsFieldValueSafe": "fail"
+    },
+    "lib_files": [
+     "CHANGELOG.md",
+     "gateway/gateway.go",
+     "gateway/handler.go",
+     "gateway/handler_ipfs_uri_test.go",
+     "gateway/headers.go"
+    ],
+    "app_files": [
+     "config/gateway.go",
+     "core/corehttp/gateway.go",
+     "docs/changelogs/v0.42.md",
+     "docs/config.md",
+     "test/cli/gateway_test.go",
+     "test/sharness/t0112-gateway-cors.sh"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.550756,
+      "requests": 29,
+      "startup_usd": 0.057858
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.668732,
+      "requests": 29,
+      "startup_usd": 0.092572
+     }
+    }
+   },
+   "prism_cli": {
+    "wall_s": 137.7,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 22,
+    "cost_usd": 1.9893679999999998,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "897be001-6909-4a00-badb-b1005c2fcaf9",
+     "tokens": {
+      "input_uncached": 931689,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 12599
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 931689,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 931689,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 12599,
+      "output_tokens_details": {
+       "thinking_tokens": 2207
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 68314,
+        "output_tokens": 857,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 931689,
+       "outputTokens": 12599,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 1.9893679999999998,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 2207,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 1.9893679999999998,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-kubo-ipfs-uri-header-prism-cli-3ytf826t-kubo/897be001-6909-4a00-badb-b1005c2fcaf9.jsonl",
+      "messages": 19,
+      "requests": 19,
+      "tokens": {
+       "input_uncached": 931689,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1ow8EzbHsrEbsgKR3fG",
+        "request_id": "req_011Ch1ow8175W6UMgmGhtoGS",
+        "input_uncached": 24025,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 298,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1owKNip49mL3Fj5pGxJ",
+        "request_id": "req_011Ch1owKAKNBQwzTuc3YaSh",
+        "input_uncached": 25937,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 256,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1owXM3xbch7MSes2ViQ",
+        "request_id": "req_011Ch1owX8ATq7xsTkxUuq9L",
+        "input_uncached": 30825,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 230,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1owhCsmRdjZjw7EtNuF",
+        "request_id": "req_011Ch1owgzUeeNU1T7JxpY3r",
+        "input_uncached": 32722,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 120,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1owrK5C2nYziNZhhDuL",
+        "request_id": "req_011Ch1owr5RpPe8GUWKf7RAm",
+        "input_uncached": 35375,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 205,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1owzmJqtfGZnyaWheht",
+        "request_id": "req_011Ch1owzYB2Q7NRgZg8vTLJ",
+        "input_uncached": 41463,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1161,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oxgzWHHDX8GrAhrK4j",
+        "request_id": "req_011Ch1oxgkNpjc5SvZFXR7mJ",
+        "input_uncached": 43924,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1815,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1oySHzrGEzupkXrsZ8R",
+        "request_id": "req_011Ch1oyS56wgVCjPFnuhbAf",
+        "input_uncached": 46336,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 978,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ozULZYAkUzrTaAw7rr",
+        "request_id": "req_011Ch1ozTo4jLLiVmR7dXghS",
+        "input_uncached": 47344,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1486,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p18AeLX1pKL3F65Kn5",
+        "request_id": "req_011Ch1p17rXtu6YSq2WMo3k9",
+        "input_uncached": 49585,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 240,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p1KHcz5UGEPHPssBhu",
+        "request_id": "req_011Ch1p1JyX6pudGYYEroWdZ",
+        "input_uncached": 52091,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 137,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p1SHoXWWxknDRhCEVf",
+        "request_id": "req_011Ch1p1S5ukK6fc9SAASJ5e",
+        "input_uncached": 54294,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 2280,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p2P7M5wEF51enYhCD1",
+        "request_id": "req_011Ch1p2NkWaokYbUNzQUNs1",
+        "input_uncached": 58763,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 426,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p2nDA5dKfZV2WKNpWe",
+        "request_id": "req_011Ch1p2myWe7phhYzbvwTaL",
+        "input_uncached": 59939,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 434,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p3GbxMuPqjLs7SZpuv",
+        "request_id": "req_011Ch1p3GMKYnxZeUGFVR28f",
+        "input_uncached": 60691,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 556,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p3eTrUFy3hMAj4Z1pP",
+        "request_id": "req_011Ch1p3eCy6YuU2ApTiHjPY",
+        "input_uncached": 65087,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 484,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p4v6iiMaXKD9XNDQZG",
+        "request_id": "req_011Ch1p4urqWGuTTLWPsLQbH",
+        "input_uncached": 67236,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 346,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p69X8rn8LZ7EhCq4sB",
+        "request_id": "req_011Ch1p69JFcfzkEypWHtpA3",
+        "input_uncached": 67738,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 290,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p6nzQEV1ooVhfRgUdR",
+        "request_id": "req_011Ch1p6nmFY7We97eQM1VvY",
+        "input_uncached": 68314,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 857,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "897be001-6909-4a00-badb-b1005c2fcaf9",
+    "api_calls": 19,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 24025,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 298
+     },
+     "startup_usd": 0.04805,
+     "task_usd": 1.941318,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "read": 8,
+      "search": 6,
+      "build/test": 7
+     },
+     "prism_calls": 0,
+     "tool_calls": 21,
+     "transcript": true
+    },
+    "tokens_request": 931689,
+    "tokens_out": 12599,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 21
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/kubo-ipfs-uri-header.prism_cli",
+    "task": "kubo-ipfs-uri-header",
+    "arm": "prism_cli",
+    "setup_s": 8.6,
+    "resolved": false,
+    "tests": {
+     "lib:./gateway:TestIpfsUriHeaderValue": "fail",
+     "lib:./gateway:TestHeaders": "fail",
+     "lib:./gateway:TestEncodeIpfsUriSegment": "fail",
+     "lib:./gateway:TestIsFieldValueSafe": "fail"
+    },
+    "lib_files": [
+     "CHANGELOG.md",
+     "gateway/gateway.go",
+     "gateway/handler.go",
+     "gateway/handler_uri_test.go",
+     "gateway/headers.go"
+    ],
+    "app_files": [
+     "config/gateway.go",
+     "core/corehttp/gateway.go",
+     "docs/changelogs/v0.43.md",
+     "docs/config.md",
+     "test/cli/gateway_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.383113,
+      "requests": 19,
+      "startup_usd": 0.060063
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.485584,
+      "requests": 19,
+      "startup_usd": 0.0961
+     }
+    }
+   }
+  }
+ },
+ "kubo-native-ipfs-uris": {
+  "cells": {
+   "prism_cli": {
+    "wall_s": 230.1,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 45,
+    "cost_usd": 4.466408,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "1ee32cf5-d716-4ee5-b6a3-1aef3ee9ee19",
+     "tokens": {
+      "input_uncached": 2111934,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 24254
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 2111934,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 2111934,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 24254,
+      "output_tokens_details": {
+       "thinking_tokens": 5692
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 85085,
+        "output_tokens": 1020,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 2111934,
+       "outputTokens": 24254,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 4.466408,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 5692,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 4.466408,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-kubo-native-ipfs-uris-prism-cli-earkzh2p-kubo/1ee32cf5-d716-4ee5-b6a3-1aef3ee9ee19.jsonl",
+      "messages": 34,
+      "requests": 34,
+      "tokens": {
+       "input_uncached": 2111934,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1p87wwdFjejxjz8BQQB",
+        "request_id": "req_011Ch1p87kXu6qsWBTSCHHy3",
+        "input_uncached": 23939,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 220,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p8L2Dj35oeVuJWFrU7",
+        "request_id": "req_011Ch1p8Km6e4qmtANdrJecF",
+        "input_uncached": 25351,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 221,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p8ZAFeLH86q2TvbFQx",
+        "request_id": "req_011Ch1p8Yv7tVPLN4nsVB5U3",
+        "input_uncached": 29422,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 305,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p8jFyS3iE1wgnNR57U",
+        "request_id": "req_011Ch1p8j34pkJwaZFuMmE6k",
+        "input_uncached": 32344,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 425,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1p99JpvzzsfjbWVcaCn",
+        "request_id": "req_011Ch1p996BW6sDSfxWCtMmN",
+        "input_uncached": 38366,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 2338,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pAdLaDcY4yxUjuDZDy",
+        "request_id": "req_011Ch1pAcuHhPD3h6rPZPDJU",
+        "input_uncached": 44475,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 690,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pAy4EuoW8kmHh48kxn",
+        "request_id": "req_011Ch1pAxpMDQybeHturMKHm",
+        "input_uncached": 48821,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 301,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pBBsQnCX6z3SYZk6NZ",
+        "request_id": "req_011Ch1pBBeGw7fC7UN9Wf9ZJ",
+        "input_uncached": 49700,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1963,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pC5f8mfqyDpTJDcJPD",
+        "request_id": "req_011Ch1pC5FKop2qky5S2gWxM",
+        "input_uncached": 51957,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 158,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pCEirFFwgrRLrnBNAs",
+        "request_id": "req_011Ch1pCEPWC1h1zwU4ekiAP",
+        "input_uncached": 53902,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 2862,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pDWQSnk1fEmkhxiExb",
+        "request_id": "req_011Ch1pDWA47z5t2SPiqNcZP",
+        "input_uncached": 56968,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 121,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pDfGzo5GquP4SLBgxd",
+        "request_id": "req_011Ch1pDf4LwLBkdnXsr7fhR",
+        "input_uncached": 58197,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 525,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pE3UEAFjFRwxYe6UiZ",
+        "request_id": "req_011Ch1pE3Fav94snCDcuWSgo",
+        "input_uncached": 58933,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1133,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pEmRNA4rTkrLKBekxJ",
+        "request_id": "req_011Ch1pEmCiJLd9y5jMUCGHL",
+        "input_uncached": 61104,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 191,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pEujfoLeSDhZmtEBWr",
+        "request_id": "req_011Ch1pEuXXVBhV4x3gmJcaF",
+        "input_uncached": 62432,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 288,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pF9zB8j6tJgasb6hyM",
+        "request_id": "req_011Ch1pF9k3XfhRFuLvCQgUS",
+        "input_uncached": 63360,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1680,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pFvz6opFRUxnjEe9HA",
+        "request_id": "req_011Ch1pFvmTJRiTsh6yzLoiV",
+        "input_uncached": 66313,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 412,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pGGfY4jpF7NXTgNtN3",
+        "request_id": "req_011Ch1pGGS9ceeeEBd5YKEhi",
+        "input_uncached": 67157,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 444,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pGdh5RNeg5m5w7nYwm",
+        "request_id": "req_011Ch1pGdMF7GYpPVtPq1wpA",
+        "input_uncached": 67934,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 532,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pH1qLC8AJL3rmPmHFU",
+        "request_id": "req_011Ch1pH1cT5MTw2j9S3g5vk",
+        "input_uncached": 68929,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 420,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pHi1JYxsoBY23uencC",
+        "request_id": "req_011Ch1pHhoQdCemzy5qS3cNA",
+        "input_uncached": 69358,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 672,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pJ4veSBCdZ2ad9XGFV",
+        "request_id": "req_011Ch1pJ4en9z61bX7t5paS6",
+        "input_uncached": 70738,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 226,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pJFUAbEhax9GRhr6Bx",
+        "request_id": "req_011Ch1pJFGFQzjufcZ6BcJBk",
+        "input_uncached": 71066,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1543,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pJuzAbnKNV4zcLXVEQ",
+        "request_id": "req_011Ch1pJummhfbejxTzHzcLZ",
+        "input_uncached": 72822,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 210,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pKx9ffBntFAzq5yF4a",
+        "request_id": "req_011Ch1pKwjcpshdAVzBJgddo",
+        "input_uncached": 73069,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 737,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pLvTzAJpyFUxD4YA5W",
+        "request_id": "req_011Ch1pLvFqNFcN4vkk6Wn2R",
+        "input_uncached": 74592,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 497,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pMF2Tbhgmgo1AQvZLR",
+        "request_id": "req_011Ch1pMEgcmg5cnvQUSrYqa",
+        "input_uncached": 76353,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 154,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pMPXvVU6EtqZGofWPv",
+        "request_id": "req_011Ch1pMPHYMpX2Qnyp1Va2z",
+        "input_uncached": 77466,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 229,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pMa6vM1wcATMduH2KZ",
+        "request_id": "req_011Ch1pMZs2Lsz4uWZmY78P3",
+        "input_uncached": 79011,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 2155,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pNYQzXkp9jFtpNSeZK",
+        "request_id": "req_011Ch1pNY6eXbztpbnjrj7Pi",
+        "input_uncached": 81181,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 659,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pPC79672tftWNoxsY9",
+        "request_id": "req_011Ch1pPBnHffpi1xd3qQAU8",
+        "input_uncached": 83303,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 298,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pPVCnUJJtez35Jd5pf",
+        "request_id": "req_011Ch1pPUy9aj6zSAaCMYK8F",
+        "input_uncached": 83978,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 295,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pPzuENMG7RPBw2GpgB",
+        "request_id": "req_011Ch1pPzgaTNafVGDpB3ZyH",
+        "input_uncached": 84308,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 330,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pQUJFZY16pAmbtgFT8",
+        "request_id": "req_011Ch1pQU5bdKgwYm26AvL9S",
+        "input_uncached": 85085,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1020,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "1ee32cf5-d716-4ee5-b6a3-1aef3ee9ee19",
+    "api_calls": 34,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23939,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 220
+     },
+     "startup_usd": 0.047878,
+     "task_usd": 4.41853,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "read": 16,
+      "bash other": 2,
+      "edit": 7,
+      "search": 6,
+      "build/test": 13
+     },
+     "prism_calls": 0,
+     "tool_calls": 44,
+     "transcript": true
+    },
+    "tokens_request": 2111934,
+    "tokens_out": 24254,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 30,
+     "Read": 7,
+     "Edit": 7
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/kubo-native-ipfs-uris.prism_cli",
+    "task": "kubo-native-ipfs-uris",
+    "arm": "prism_cli",
+    "setup_s": 10.8,
+    "resolved": false,
+    "tests": {
+     "lib:./path:TestNewPathFromURI": "fail",
+     "lib:./path:TestNewPathStaysStrict": "fail",
+     "app:./core/commands/cmdutils:TestCidFromArg": "fail",
+     "app:./core/commands/cmdutils:TestPathOrCidPath": "fail"
+    },
+    "lib_files": [
+     "CHANGELOG.md",
+     "path/error.go",
+     "path/path.go",
+     "path/path_test.go"
+    ],
+    "app_files": [
+     "core/commands/cmdutils/utils.go",
+     "core/commands/cmdutils/utils_test.go",
+     "core/commands/files.go",
+     "core/commands/name/ipns.go",
+     "core/commands/resolve.go",
+     "docs/changelogs/v0.42.md",
+     "test/cli/ipfs_uri_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.657937,
+      "requests": 34,
+      "startup_usd": 0.059848
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.785565,
+      "requests": 34,
+      "startup_usd": 0.095756
+     }
+    }
+   },
+   "native": {
+    "wall_s": 184.7,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 28,
+    "cost_usd": 2.9606920000000003,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "6b389830-8e28-421e-a580-0fcf26bec43d",
+     "tokens": {
+      "input_uncached": 1387686,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 18532
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 1387686,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 1387686,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 18532,
+      "output_tokens_details": {
+       "thinking_tokens": 5224
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 75941,
+        "output_tokens": 1036,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 1387686,
+       "outputTokens": 18532,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 2.9606920000000003,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 5224,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 2.9606920000000003,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-kubo-native-ipfs-uris-native-eaypo65u-kubo/6b389830-8e28-421e-a580-0fcf26bec43d.jsonl",
+      "messages": 25,
+      "requests": 25,
+      "tokens": {
+       "input_uncached": 1387686,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1pRNYFhDVAr12KUoc9m",
+        "request_id": "req_011Ch1pRNLqrxvbDjMan9EmN",
+        "input_uncached": 23054,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 391,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pRbCkRurLKGKCh3BEk",
+        "request_id": "req_011Ch1pRaz7AcS9hPEmmrBtx",
+        "input_uncached": 24033,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 215,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pRivbJww5qVcWQXnFN",
+        "request_id": "req_011Ch1pRibWYcNZNHJ6RQtYk",
+        "input_uncached": 28823,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 470,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pRy8NFW9gaXeBHky2r",
+        "request_id": "req_011Ch1pRxsFbAH2RN6e9d3Gx",
+        "input_uncached": 34358,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1580,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pSrQqVDJmKSCWQTQD2",
+        "request_id": "req_011Ch1pSrACtHZG9BMsV2Pgg",
+        "input_uncached": 39177,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1268,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pTeMp35C1RWFh61yC7",
+        "request_id": "req_011Ch1pTeAAXKCoQtT28XRGR",
+        "input_uncached": 44817,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1257,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pUEDnFKbyT4pov82pq",
+        "request_id": "req_011Ch1pUDxQKV6ML33WkyJN7",
+        "input_uncached": 48824,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 2254,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pVGcvZGxG7v4e87u3M",
+        "request_id": "req_011Ch1pVGBNXgAMMnkAEXdc3",
+        "input_uncached": 51134,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 259,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pVSuYYdExzvBrapDQ3",
+        "request_id": "req_011Ch1pVShdwxoF4bjPfMvRJ",
+        "input_uncached": 53265,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 955,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pVycztH6ZUNVQx4HPN",
+        "request_id": "req_011Ch1pVyNs7S3Mwsv7b7t5m",
+        "input_uncached": 55145,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 268,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pXXQDaX4S7j1rS7ED5",
+        "request_id": "req_011Ch1pXX7MXixizLYh7VU2z",
+        "input_uncached": 57174,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 490,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pXrHmqiyhfn11fhHcw",
+        "request_id": "req_011Ch1pXr58ptMao2829B7m4",
+        "input_uncached": 58535,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 424,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pY8rBgmJXhyHaefEKg",
+        "request_id": "req_011Ch1pY8X66BeDnavveruA4",
+        "input_uncached": 59070,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 214,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pYYMZ6BhYWxp5JchdH",
+        "request_id": "req_011Ch1pYY99NQ9anor3rNRek",
+        "input_uncached": 59328,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 276,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pYmETNUNcdmAgS868q",
+        "request_id": "req_011Ch1pYm14fK8bS6Jz55zto",
+        "input_uncached": 60760,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 955,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pZLXw94uv31iUFZgf1",
+        "request_id": "req_011Ch1pZLGobyegjgGWzunKt",
+        "input_uncached": 63127,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 505,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pZhWFP6skxtEp3DX8j",
+        "request_id": "req_011Ch1pZhFNCbcrviEUkQbxB",
+        "input_uncached": 64269,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1183,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1paGoxvbqbojhksJf39",
+        "request_id": "req_011Ch1paGbpeHkgVmrPBF6z4",
+        "input_uncached": 65596,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 201,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1paTAZXq9VGkAK1CmsU",
+        "request_id": "req_011Ch1paSwfMzvJ2uPjjqT8T",
+        "input_uncached": 66368,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 546,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pbLfuoeDvNVejKLapV",
+        "request_id": "req_011Ch1pbLU2G6Cg9H71Mf41U",
+        "input_uncached": 66979,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 235,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pbXextKuNf2XN9q75b",
+        "request_id": "req_011Ch1pbXSKooqkjKmmHxpHs",
+        "input_uncached": 69388,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1480,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pcTzV6PRnPdPoekg8v",
+        "request_id": "req_011Ch1pcTfsvQGqmgR6XwGXV",
+        "input_uncached": 70938,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 830,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pdRdNLbJm46wiHmLVi",
+        "request_id": "req_011Ch1pdRQyqh343vEP2aEmk",
+        "input_uncached": 72743,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 379,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pdvAc6Vq2Lh7QeE3Ai",
+        "request_id": "req_011Ch1pduxiHUmNeuu31hR43",
+        "input_uncached": 74840,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 861,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pePkHor8t44xTea2kS",
+        "request_id": "req_011Ch1pePJFTMYhcBZ52nmHj",
+        "input_uncached": 75941,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1036,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "6b389830-8e28-421e-a580-0fcf26bec43d",
+    "api_calls": 25,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23054,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 391
+     },
+     "startup_usd": 0.046108,
+     "task_usd": 2.914584,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 9,
+      "read": 9,
+      "build/test": 9
+     },
+     "prism_calls": 0,
+     "tool_calls": 27,
+     "transcript": true
+    },
+    "tokens_request": 1387686,
+    "tokens_out": 18532,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 23,
+     "Grep": 2,
+     "Read": 2
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/kubo-native-ipfs-uris.native",
+    "task": "kubo-native-ipfs-uris",
+    "arm": "native",
+    "setup_s": 3.2,
+    "resolved": false,
+    "tests": {
+     "lib:./path:TestNewPathFromURI": "fail",
+     "lib:./path:TestNewPathStaysStrict": "fail",
+     "app:./core/commands/cmdutils:TestCidFromArg": "fail",
+     "app:./core/commands/cmdutils:TestPathOrCidPath": "fail"
+    },
+    "lib_files": [
+     "CHANGELOG.md",
+     "path/error.go",
+     "path/path.go",
+     "path/path_test.go"
+    ],
+    "app_files": [
+     "core/commands/cmdenv/cidbase.go",
+     "core/commands/cmdenv/cidbase_test.go",
+     "core/commands/cmdutils/utils.go",
+     "core/commands/cmdutils/utils_test.go",
+     "core/commands/files.go",
+     "core/commands/name/ipns.go",
+     "core/commands/resolve.go",
+     "docs/changelogs/v0.43.md"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.506347,
+      "requests": 25,
+      "startup_usd": 0.057635
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.620259,
+      "requests": 25,
+      "startup_usd": 0.092216
+     }
+    }
+   }
+  }
+ },
+ "kubo-ipns-lifetime-bounds": {
+  "cells": {
+   "prism_cli": {
+    "wall_s": 102.4,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 25,
+    "cost_usd": 2.1476979999999997,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "4dfc62ad-a41f-4f05-9107-43dceadc6f33",
+     "tokens": {
+      "input_uncached": 1022804,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 10209
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 1022804,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 1022804,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 10209,
+      "output_tokens_details": {
+       "thinking_tokens": 2477
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 60641,
+        "output_tokens": 819,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 1022804,
+       "outputTokens": 10209,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 2.1476979999999997,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 2477,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 2.1476979999999997,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-kubo-ipns-lifetime-bounds-prism-cli-l49delur-kubo/4dfc62ad-a41f-4f05-9107-43dceadc6f33.jsonl",
+      "messages": 21,
+      "requests": 21,
+      "tokens": {
+       "input_uncached": 1022804,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1pfosQ3RcBbbo3xxScC",
+        "request_id": "req_011Ch1pfogVLfhFQ3E8do9op",
+        "input_uncached": 23958,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 362,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pg3zChYc6sMr2wHUn1",
+        "request_id": "req_011Ch1pg3n4eF5nSBwB7N1Mb",
+        "input_uncached": 27965,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 473,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pgJNedjQqj25KgB62T",
+        "request_id": "req_011Ch1pgJ8ke2nA3aosxRjuy",
+        "input_uncached": 35948,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 207,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pgTquqhKy86MGL715G",
+        "request_id": "req_011Ch1pgTd223A8qJPnQ6NWA",
+        "input_uncached": 38406,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 205,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pgeU8ShW7ooKSUZvSZ",
+        "request_id": "req_011Ch1pgeEypa2gQnXy8gU8c",
+        "input_uncached": 40888,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 663,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ph3f9KyvQLwpeTmEz1",
+        "request_id": "req_011Ch1ph3KZ4w9xh35X5AsBT",
+        "input_uncached": 43318,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 306,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1phGL9aEK4MJ11PyNnW",
+        "request_id": "req_011Ch1phG4WfZH2ZDUMtc4TU",
+        "input_uncached": 45576,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 77,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1phPPJCmRaM74RrKLgB",
+        "request_id": "req_011Ch1phPAu6cH1cLwP2f6dz",
+        "input_uncached": 46714,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1442,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pi6DTuoMKYSVa4p7U1",
+        "request_id": "req_011Ch1pi5z5QQEkRNGZJEgTF",
+        "input_uncached": 48241,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 757,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pidNhtQwdX9tp8nb4r",
+        "request_id": "req_011Ch1pidAZ4Ynx8QevkatZo",
+        "input_uncached": 49814,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1080,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pj93e53aJaEcmss87m",
+        "request_id": "req_011Ch1pj8pWc9PxETHskJwMM",
+        "input_uncached": 51074,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 268,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pjPnvFXBmH5shGBcDb",
+        "request_id": "req_011Ch1pjPYY2bv6X3N5hrHT3",
+        "input_uncached": 51677,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 122,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pjX1FHHHroUpdhMEWG",
+        "request_id": "req_011Ch1pjWg9wX2THjdNmoVqB",
+        "input_uncached": 52964,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 835,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pjvJxUECHpboQcgUqC",
+        "request_id": "req_011Ch1pjv1bMYZXcKV2waZRQ",
+        "input_uncached": 54800,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 734,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pkHeMnnPrnRsENoboX",
+        "request_id": "req_011Ch1pkHHmGBK5h4MzdNg3a",
+        "input_uncached": 56882,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 265,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pkhJtSoeTnbinYxGfh",
+        "request_id": "req_011Ch1pkh4WKzAyGuW67wtvg",
+        "input_uncached": 57709,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 222,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pmxv2t6eXbN3VBSuon",
+        "request_id": "req_011Ch1pmxaC2eH4itzzpJvH7",
+        "input_uncached": 58180,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 178,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pn9oNhmvqV2MMxyTfK",
+        "request_id": "req_011Ch1pn9bxndv1ZmdhibpDs",
+        "input_uncached": 58505,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 852,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pnc8uAZwuntUerCsAh",
+        "request_id": "req_011Ch1pnbu1bXBcoUxZWpT2B",
+        "input_uncached": 59553,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 72,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pnhRtphfMzcFhAi8UB",
+        "request_id": "req_011Ch1pnhD1D3eTsaHSekzbP",
+        "input_uncached": 59991,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 270,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pnskkH94VJuBXhxS72",
+        "request_id": "req_011Ch1pnsY6zQwwtHWT6fvp6",
+        "input_uncached": 60641,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 819,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "4dfc62ad-a41f-4f05-9107-43dceadc6f33",
+    "api_calls": 21,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23958,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 362
+     },
+     "startup_usd": 0.047916,
+     "task_usd": 2.099782,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "read": 12,
+      "search": 7,
+      "build/test": 5
+     },
+     "prism_calls": 0,
+     "tool_calls": 24,
+     "transcript": true
+    },
+    "tokens_request": 1022804,
+    "tokens_out": 10209,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 22,
+     "Read": 2
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/kubo-ipns-lifetime-bounds.prism_cli",
+    "task": "kubo-ipns-lifetime-bounds",
+    "arm": "prism_cli",
+    "setup_s": 10.4,
+    "resolved": false,
+    "tests": {
+     "lib:./gateway:TestIPNSRecordMaxAge": "fail",
+     "lib:./ipns:TestValidateRejectsNegativeTTL": "fail",
+     "lib:./ipns:TestNewRecordFloorsNegativeTTL": "fail",
+     "lib:./ipns:TestValidateWithName": "pass",
+     "lib:./namesys:TestResolver": "pass",
+     "lib:./namesys:TestCacheGetClampsTTLToCacheEOL": "fail",
+     "lib:./namesys:TestCalculateBestTTL": "fail",
+     "lib:./namesys:TestPublishWithTTL": "pass",
+     "lib:./routing/http/server:TestIPNS": "fail"
+    },
+    "lib_files": [
+     "CHANGELOG.md",
+     "gateway/handler_ipns_record.go",
+     "routing/http/server/server.go",
+     "routing/http/server/server_test.go"
+    ],
+    "app_files": [
+     "core/commands/name/publish.go",
+     "core/node/ipns.go",
+     "docs/changelogs/v0.43.md",
+     "docs/config.md",
+     "test/cli/name_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.349909,
+      "requests": 21,
+      "startup_usd": 0.059895
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.44087,
+      "requests": 21,
+      "startup_usd": 0.095832
+     }
+    }
+   },
+   "native": {
+    "wall_s": 215.1,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 39,
+    "cost_usd": 4.33552,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "224ac631-aad6-4803-a5e7-3717266bac07",
+     "tokens": {
+      "input_uncached": 2068740,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 19804
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 2068740,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 2068740,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 19804,
+      "output_tokens_details": {
+       "thinking_tokens": 4125
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 85218,
+        "output_tokens": 836,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 2068740,
+       "outputTokens": 19804,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 4.33552,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 4125,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 4.33552,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-kubo-ipns-lifetime-bounds-native-13tdtbyp-kubo/224ac631-aad6-4803-a5e7-3717266bac07.jsonl",
+      "messages": 33,
+      "requests": 33,
+      "tokens": {
+       "input_uncached": 2068740,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1pogSPc7N3gr5Ny2Fs2",
+        "request_id": "req_011Ch1pog3LMQsUg8EBtFm58",
+        "input_uncached": 23080,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 248,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pos2NSqyF2L2oaKPq2",
+        "request_id": "req_011Ch1pormFemK77YnhBZk6v",
+        "input_uncached": 23603,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 479,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pp6vJJahqtdttWvWJc",
+        "request_id": "req_011Ch1pp6gA3R3hzpRNUKa3X",
+        "input_uncached": 30875,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 421,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ppJnBQHoYn7nW4AbFa",
+        "request_id": "req_011Ch1ppJZnBofzhLHKQgd1v",
+        "input_uncached": 34762,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 170,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ppSEtm4g1yaRZQAcib",
+        "request_id": "req_011Ch1ppS2VF4okJuEQPxYxm",
+        "input_uncached": 38122,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 375,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1ppeFwuqGrehtMRNYmN",
+        "request_id": "req_011Ch1ppe4HzEe5pHbaKhdzj",
+        "input_uncached": 44762,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1458,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pqVCGx8zc4s128oxMi",
+        "request_id": "req_011Ch1pqUydQ8Mkv2kGN4KLR",
+        "input_uncached": 50226,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1903,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1prW1uPuVyvYeSCpRqb",
+        "request_id": "req_011Ch1prVeLfaBxK9xvXZgMY",
+        "input_uncached": 53929,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 402,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1prnHTdpkhW1qS3q7Gv",
+        "request_id": "req_011Ch1prn5okWFVaVFz67LUQ",
+        "input_uncached": 55488,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 748,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1psGMf8imAQHfWdpCMr",
+        "request_id": "req_011Ch1psG9WRApxzUsUUQw8r",
+        "input_uncached": 56707,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1773,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pt57G8cekcdBwuzUEQ",
+        "request_id": "req_011Ch1pt4sNa9pPDJTxwvKwn",
+        "input_uncached": 60308,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 328,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1puAKaQS11eo1ot9GXL",
+        "request_id": "req_011Ch1pu9yV8Me6FaC1pHHj5",
+        "input_uncached": 61196,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 395,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1puVvHeqtNqc1w7E9sW",
+        "request_id": "req_011Ch1puVefQ652BLNerfW9z",
+        "input_uncached": 61963,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 263,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1putKRSVUd4Tf2mnN6d",
+        "request_id": "req_011Ch1put53HTKwVQ1XaASdZ",
+        "input_uncached": 63029,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 599,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pvH3Qrq7HkVeUnSmte",
+        "request_id": "req_011Ch1pvGrG3z9UY2BGTDiDu",
+        "input_uncached": 63659,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 243,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pveEsi9H2bQByyk23v",
+        "request_id": "req_011Ch1pve1yVEVExuGBjQFGZ",
+        "input_uncached": 63965,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 391,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pvui47dfbAmxXECLGt",
+        "request_id": "req_011Ch1pvuRvZ7ZG8yKEi6jEA",
+        "input_uncached": 65245,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 246,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pw6rWr8oW7LpfozKem",
+        "request_id": "req_011Ch1pw6RxoQMR5Sdt5GKSs",
+        "input_uncached": 66933,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 178,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pwGd8ptHAr1BL1fbna",
+        "request_id": "req_011Ch1pwGPFUdeUZaX9fD5iw",
+        "input_uncached": 68094,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1292,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pwsNBXeBUp6QKyTqX9",
+        "request_id": "req_011Ch1pws8oCFMAbjVitb31L",
+        "input_uncached": 69444,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 991,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pxRANrnp1ibxxGszTc",
+        "request_id": "req_011Ch1pxQwV2hbh7AHp4CKA4",
+        "input_uncached": 70696,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 703,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pxrLTKDUc1z4Vpg75r",
+        "request_id": "req_011Ch1pxqtAznUmAba2q6QNi",
+        "input_uncached": 71721,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 220,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pyFBtCLv8362UksN8c",
+        "request_id": "req_011Ch1pyEwkFHg7Fyb3KZBE8",
+        "input_uncached": 72999,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 177,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pyUYJomMT7sxdVhN9f",
+        "request_id": "req_011Ch1pyULACWys4frwpFdgr",
+        "input_uncached": 73409,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 325,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pzF9BWbwKs2kLfAwfD",
+        "request_id": "req_011Ch1pzEuXwuyNjqn6oeWEN",
+        "input_uncached": 74591,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 382,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1pzWCJGmccdjXTtpnpg",
+        "request_id": "req_011Ch1pzVxuU4aj9NfGPQzNL",
+        "input_uncached": 76309,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1409,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q1Lvy3ZNByE1Kpc7CN",
+        "request_id": "req_011Ch1q1LgaZPoqWo3cffTeJ",
+        "input_uncached": 77850,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1040,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q2tDgGAKtsZqxsBRYY",
+        "request_id": "req_011Ch1q2swYrCTZnDM2q6fGN",
+        "input_uncached": 80197,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 274,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q36kyw59Tm2oovV8TC",
+        "request_id": "req_011Ch1q36WM2FTGrwmXoY6id",
+        "input_uncached": 80728,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 230,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q3Rwu2Utk7DKaoYy2R",
+        "request_id": "req_011Ch1q3RikqReaFfzjaNbfp",
+        "input_uncached": 82345,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 375,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q4SaNXhsWPMM4Xrxpp",
+        "request_id": "req_011Ch1q4SLje9HTdUwaK3pmb",
+        "input_uncached": 82972,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 277,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q4fVFpqJHVgsaedhVK",
+        "request_id": "req_011Ch1q4fFcb8paqUeps8gFQ",
+        "input_uncached": 84315,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 653,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q51wKv8qZwaAzxpL64",
+        "request_id": "req_011Ch1q51hwEyWyNRkDAoAwE",
+        "input_uncached": 85218,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 836,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "224ac631-aad6-4803-a5e7-3717266bac07",
+    "api_calls": 33,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23080,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 248
+     },
+     "startup_usd": 0.04616,
+     "task_usd": 4.28936,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 14,
+      "read": 6,
+      "build/test": 14,
+      "edit": 3,
+      "bash other": 1
+     },
+     "prism_calls": 0,
+     "tool_calls": 38,
+     "transcript": true
+    },
+    "tokens_request": 2068740,
+    "tokens_out": 19804,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 29,
+     "Grep": 2,
+     "Read": 4,
+     "Edit": 3
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/kubo-ipns-lifetime-bounds.native",
+    "task": "kubo-ipns-lifetime-bounds",
+    "arm": "native",
+    "setup_s": 3.2,
+    "resolved": false,
+    "tests": {
+     "lib:./gateway:TestIPNSRecordMaxAge": "fail",
+     "lib:./ipns:TestValidateRejectsNegativeTTL": "fail",
+     "lib:./ipns:TestNewRecordFloorsNegativeTTL": "fail",
+     "lib:./ipns:TestValidateWithName": "pass",
+     "lib:./namesys:TestResolver": "pass",
+     "lib:./namesys:TestCacheGetClampsTTLToCacheEOL": "fail",
+     "lib:./namesys:TestCalculateBestTTL": "fail",
+     "lib:./namesys:TestPublishWithTTL": "pass",
+     "lib:./routing/http/server:TestIPNS": "fail"
+    },
+    "lib_files": [
+     "CHANGELOG.md",
+     "gateway/handler_ipns_record.go",
+     "gateway/handler_ipns_record_test.go",
+     "namesys/namesys_cache.go",
+     "namesys/namesys_test.go"
+    ],
+    "app_files": [
+     "core/commands/name/publish.go",
+     "core/coreapi/name.go",
+     "core/node/groups.go",
+     "core/node/ipns.go",
+     "core/node/ipns_test.go",
+     "docs/changelogs/v0.43.md",
+     "docs/config.md",
+     "test/cli/name_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.609437,
+      "requests": 33,
+      "startup_usd": 0.0577
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.737264,
+      "requests": 33,
+      "startup_usd": 0.09232
+     }
+    }
+   }
+  }
+ },
+ "prism-quickstatus": {
+  "cells": {
+   "native": {
+    "wall_s": 65.8,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 20,
+    "cost_usd": 1.078124,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "974ababa-f4bd-4131-b159-9a902e84ca3e",
+     "tokens": {
+      "input_uncached": 500747,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 7663
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 500747,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 500747,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 7663,
+      "output_tokens_details": {
+       "thinking_tokens": 1117
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 52160,
+        "output_tokens": 778,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 500747,
+       "outputTokens": 7663,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 1.078124,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 1117,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 1.078124,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-prism-quickstatus-native-ju99h1r4-prism/974ababa-f4bd-4131-b159-9a902e84ca3e.jsonl",
+      "messages": 12,
+      "requests": 12,
+      "tokens": {
+       "input_uncached": 500747,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1q5yHbja8udm7NGsCzR",
+        "request_id": "req_011Ch1q5y3yNBCKTAwvnVzkj",
+        "input_uncached": 23015,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 282,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q68AtzyHNhNxkwP91S",
+        "request_id": "req_011Ch1q67s32SNjkcQP2Xh2M",
+        "input_uncached": 27370,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 441,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q6JynV48hzutP3Z7jU",
+        "request_id": "req_011Ch1q6JksoG2YjpZnERJBM",
+        "input_uncached": 28341,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 423,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q6VWY4s1ZsL7gZTdBt",
+        "request_id": "req_011Ch1q6VJeKKUJnWMezsCgd",
+        "input_uncached": 38335,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 486,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q6iuhE6DJpySmpqZMe",
+        "request_id": "req_011Ch1q6if4pZyG4o2K1cH9f",
+        "input_uncached": 40771,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 295,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q6u4PFHTZFWLZG8uro",
+        "request_id": "req_011Ch1q6tjXp3rXpQtaubFpW",
+        "input_uncached": 44065,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1376,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q7ez5nCb3MaEyAvEKe",
+        "request_id": "req_011Ch1q7eW4oTicPYyoM6oYq",
+        "input_uncached": 46657,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 857,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q88AxBZL2bMEYCpibw",
+        "request_id": "req_011Ch1q87mtduV4cZgNvSKJ7",
+        "input_uncached": 47657,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1541,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q96JN4CZUQ1bRnxNKZ",
+        "request_id": "req_011Ch1q963V7X1tktgcoFnd7",
+        "input_uncached": 49724,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 249,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1q9FnsMw8h6usKwyJP1",
+        "request_id": "req_011Ch1q9FZjJNk1TLDSuEFiF",
+        "input_uncached": 50801,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 756,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qADcRYh8EhDyT9N9bH",
+        "request_id": "req_011Ch1qADJarTZjAASbz7hDq",
+        "input_uncached": 51851,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 179,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qALNyEoim9PFKtYAGR",
+        "request_id": "req_011Ch1qAL9qBGpepCkRAjWES",
+        "input_uncached": 52160,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 778,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "974ababa-f4bd-4131-b159-9a902e84ca3e",
+    "api_calls": 12,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23015,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 282
+     },
+     "startup_usd": 0.04603,
+     "task_usd": 1.032094,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 6,
+      "read": 8,
+      "edit": 1,
+      "build/test": 3,
+      "bash other": 1
+     },
+     "prism_calls": 0,
+     "tool_calls": 19,
+     "transcript": true
+    },
+    "tokens_request": 500747,
+    "tokens_out": 7663,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Grep": 6,
+     "Bash": 6,
+     "Read": 6,
+     "Edit": 1
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/prism-quickstatus.native",
+    "task": "prism-quickstatus",
+    "arm": "native",
+    "setup_s": 4.5,
+    "resolved": true,
+    "tests": {
+     "lib:./pkg/grove:TestQuickStatusMatchesEngineStatus": "pass"
+    },
+    "lib_files": [
+     "pkg/grove/grove.go",
+     "pkg/grove/grove_test.go"
+    ],
+    "app_files": [
+     "internal/cli/commands.go",
+     "internal/grove/client.go",
+     "internal/grove/client_test.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.251889,
+      "requests": 12,
+      "startup_usd": 0.057538
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.330129,
+      "requests": 12,
+      "startup_usd": 0.09206
+     }
+    }
+   },
+   "prism_cli": {
+    "wall_s": 43.0,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 11,
+    "cost_usd": 0.640018,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "c12bfe3c-9efe-4b58-b91d-0dcaf6f5f418",
+     "tokens": {
+      "input_uncached": 296359,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 4730
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 296359,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 296359,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 4730,
+      "output_tokens_details": {
+       "thinking_tokens": 708
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 38578,
+        "output_tokens": 746,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 296359,
+       "outputTokens": 4730,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.640018,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 708,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.640018,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-prism-quickstatus-prism-cli-ae28xlvv-prism/c12bfe3c-9efe-4b58-b91d-0dcaf6f5f418.jsonl",
+      "messages": 9,
+      "requests": 9,
+      "tokens": {
+       "input_uncached": 296359,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1qBVdNQKGpsAxEnhdet",
+        "request_id": "req_011Ch1qBVSTLCUGqHv3VzPAp",
+        "input_uncached": 23892,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 254,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qBfYRpTTyYMUe2bDCo",
+        "request_id": "req_011Ch1qBfKmoNVa3eJotusVc",
+        "input_uncached": 26011,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 319,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qBsgS9XX1nHw4t4FC8",
+        "request_id": "req_011Ch1qBsUGjTibFqckpexXV",
+        "input_uncached": 29488,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 271,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qC5Az2zCXvNdiviiTa",
+        "request_id": "req_011Ch1qC4vrYSp7UhkA5nkYG",
+        "input_uncached": 32472,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 323,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qCHG1eWfutadeVN7wN",
+        "request_id": "req_011Ch1qCGtBq4qr7pknWzgGy",
+        "input_uncached": 34522,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1411,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qDC7j4F1hdsxPyP6VV",
+        "request_id": "req_011Ch1qDBuLAv35Wa3XXsFXr",
+        "input_uncached": 36013,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 277,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qDPdH5HHNXSkHMXWvU",
+        "request_id": "req_011Ch1qDPLf3g25rmmfjUGqH",
+        "input_uncached": 37126,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 887,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qE2BxThamhfn7Q8QsJ",
+        "request_id": "req_011Ch1qE1yK65NdeEjY7e4sM",
+        "input_uncached": 38257,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 242,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qEDboPJan6Ub4tpZ4V",
+        "request_id": "req_011Ch1qEDNtwbo9yDsAreFEc",
+        "input_uncached": 38578,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 746,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "c12bfe3c-9efe-4b58-b91d-0dcaf6f5f418",
+    "api_calls": 9,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23892,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 254
+     },
+     "startup_usd": 0.047784,
+     "task_usd": 0.592234,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "read": 4,
+      "bash other": 2,
+      "search": 2,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 10,
+     "transcript": true
+    },
+    "tokens_request": 296359,
+    "tokens_out": 4730,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 10
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/prism-quickstatus.prism_cli",
+    "task": "prism-quickstatus",
+    "arm": "prism_cli",
+    "setup_s": 8.2,
+    "resolved": true,
+    "tests": {
+     "lib:./pkg/grove:TestQuickStatusMatchesEngineStatus": "pass"
+    },
+    "lib_files": [
+     "pkg/grove/grove.go",
+     "pkg/grove/grove_test.go"
+    ],
+    "app_files": [
+     "internal/cli/commands.go",
+     "internal/grove/client.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.169523,
+      "requests": 9,
+      "startup_usd": 0.05973
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.22739,
+      "requests": 9,
+      "startup_usd": 0.095568
+     }
+    }
+   }
+  }
+ },
+ "prism-doctor-capabilities": {
+  "cells": {
+   "prism_cli": {
+    "wall_s": 45.9,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 12,
+    "cost_usd": 0.80425,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "6516cb9a-b436-479f-a14e-9f24e7bc7b50",
+     "tokens": {
+      "input_uncached": 378140,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 4797
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 378140,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 378140,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 4797,
+      "output_tokens_details": {
+       "thinking_tokens": 510
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 39839,
+        "output_tokens": 653,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 378140,
+       "outputTokens": 4797,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 0.80425,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 510,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 0.80425,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-prism-doctor-capabilities-prism-cli-yrbyizzk-prism/6516cb9a-b436-479f-a14e-9f24e7bc7b50.jsonl",
+      "messages": 11,
+      "requests": 11,
+      "tokens": {
+       "input_uncached": 378140,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1qFNzd78mWgZ1fhzJfY",
+        "request_id": "req_011Ch1qFNoxozX27ud1Qe6kX",
+        "input_uncached": 23831,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 190,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qFXZKPXGkYUsWRMgnT",
+        "request_id": "req_011Ch1qFXLRxqovM8HUQtDou",
+        "input_uncached": 26790,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 181,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qFekQf7SeZiexxbAwo",
+        "request_id": "req_011Ch1qFePqCeici8dP8EFgt",
+        "input_uncached": 30287,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 365,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qFrLArnxWQFP41wMvo",
+        "request_id": "req_011Ch1qFr5JSU5MZBkVo7y5Y",
+        "input_uncached": 32175,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 249,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qG1XpFHCr297BuJdQt",
+        "request_id": "req_011Ch1qG1LQaZ2RUQxrvRqMa",
+        "input_uncached": 34751,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 501,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qGJDuiUb2by8EWL2ok",
+        "request_id": "req_011Ch1qGJ2GP7BVBcHUhaRxz",
+        "input_uncached": 36115,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1323,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qHGm8aoD9Eh9kqd7NN",
+        "request_id": "req_011Ch1qHGKqmhns6M77mh3Uk",
+        "input_uncached": 37737,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 204,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qHTkSJKVXD67hZf9ec",
+        "request_id": "req_011Ch1qHTW3agstTXg7qo3Mc",
+        "input_uncached": 38195,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 730,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qHqjkyna8uWpj2XGAq",
+        "request_id": "req_011Ch1qHqX7zyFx8pmPDtj4B",
+        "input_uncached": 39051,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 124,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qHvayKH4Gc8LBy4Wjb",
+        "request_id": "req_011Ch1qHvNpnJYHAc8MT9pbK",
+        "input_uncached": 39369,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 277,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qJNFJvCDprCvrnhtNN",
+        "request_id": "req_011Ch1qJMzRnNf5oHLHbs2TP",
+        "input_uncached": 39839,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 653,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "6516cb9a-b436-479f-a14e-9f24e7bc7b50",
+    "api_calls": 11,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 23831,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 190
+     },
+     "startup_usd": 0.047662,
+     "task_usd": 0.756588,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "read": 6,
+      "search": 2,
+      "build/test": 3
+     },
+     "prism_calls": 0,
+     "tool_calls": 11,
+     "transcript": true
+    },
+    "tokens_request": 378140,
+    "tokens_out": 4797,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 11
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/prism-doctor-capabilities.prism_cli",
+    "task": "prism-doctor-capabilities",
+    "arm": "prism_cli",
+    "setup_s": 8.7,
+    "resolved": false,
+    "tests": {
+     "app:./internal/cli:TestCmdIndexAndStatus_Smoke": "fail"
+    },
+    "lib_files": [
+     "pkg/grove/grove.go",
+     "pkg/grove/grove_test.go"
+    ],
+    "app_files": [
+     "internal/cli/commands.go",
+     "internal/cli/coverage_test.go",
+     "internal/grove/preview.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.181398,
+      "requests": 11,
+      "startup_usd": 0.059578
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.241156,
+      "requests": 11,
+      "startup_usd": 0.095324
+     }
+    }
+   },
+   "native": {
+    "wall_s": 55.3,
+    "runtimes": {
+     "go": "auto"
+    },
+    "turns": 19,
+    "cost_usd": 1.004352,
+    "usage": {
+     "usage_version": 3,
+     "session_id": "08b6eb73-7627-4479-b0c9-c77b217fa26f",
+     "tokens": {
+      "input_uncached": 467721,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 6891
+     },
+     "cache_ttl": {
+      "cache_5m": 0,
+      "cache_1h": 0
+     },
+     "input_total": 467721,
+     "usage_complete": true,
+     "raw_usage": {
+      "input_tokens": 467721,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 6891,
+      "output_tokens_details": {
+       "thinking_tokens": 680
+      },
+      "server_tool_use": {
+       "web_search_requests": 0,
+       "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+       "ephemeral_1h_input_tokens": 0,
+       "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+       {
+        "input_tokens": 40762,
+        "output_tokens": 807,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+       }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+     },
+     "model_usage": {
+      "claude-sonnet-5-5": {
+       "inputTokens": 467721,
+       "outputTokens": 6891,
+       "cacheReadInputTokens": 0,
+       "cacheCreationInputTokens": 0,
+       "webSearchRequests": 0,
+       "costUSD": 1.004352,
+       "contextWindow": 1000000,
+       "maxOutputTokens": 128000,
+       "thinkingTokens": 680,
+       "cacheCreationEphemeral5mInputTokens": 0,
+       "cacheCreationEphemeral1hInputTokens": 0,
+       "canonicalModel": "claude-sonnet-5-5",
+       "provider": "firstParty",
+       "costBasis": "list"
+      }
+     },
+     "cost_usd_cli": 1.004352,
+     "pricing_source": "claude-cli total_cost_usd (2.1.325 (Claude Code))",
+     "transcript": {
+      "transcript": "/Users/tapabratapal/.claude/projects/-Users-tapabratapal--cache-prism-research-mrcells-prism-doctor-capabilities-native-qii5vb6x-prism/08b6eb73-7627-4479-b0c9-c77b217fa26f.jsonl",
+      "messages": 14,
+      "requests": 14,
+      "tokens": {
+       "input_uncached": 467721,
+       "cache_creation": 0,
+       "cache_read": 0,
+       "output": null
+      },
+      "cache_ttl": {
+       "cache_5m": 0,
+       "cache_1h": 0
+      },
+      "per_request": [
+       {
+        "message_id": "msg_011Ch1qKBZ9jAxcvbwVfsnxH",
+        "request_id": "req_011Ch1qKBLmBzkdyeGz3MxqQ",
+        "input_uncached": 22948,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 138,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qKJ268beDTtsMvNNEB",
+        "request_id": "req_011Ch1qKHmhx9dsRiyLEJ1MV",
+        "input_uncached": 23242,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 342,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qKShyv649t4VQ3djfs",
+        "request_id": "req_011Ch1qKSVLSB4bxFPa5ixpx",
+        "input_uncached": 23987,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 333,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qKbSqTwbPP5cHeq5pZ",
+        "request_id": "req_011Ch1qKbFgqY5138m8UUQoA",
+        "input_uncached": 27678,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 275,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qKkATvLd3rQikWiDhN",
+        "request_id": "req_011Ch1qKjwpUsLGpqm9eJfXt",
+        "input_uncached": 32326,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 317,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qKuvb4D8QExKDNJwtB",
+        "request_id": "req_011Ch1qKuigrPmc8tdqjF9WF",
+        "input_uncached": 34245,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 835,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qLLd9A9kSDV2QUvRK6",
+        "request_id": "req_011Ch1qLLQVWpQeHiYiNMqRU",
+        "input_uncached": 35254,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1014,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qLpXAm5vMF1gjU5r3g",
+        "request_id": "req_011Ch1qLpK2S9syGPyYX1ho3",
+        "input_uncached": 36343,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 769,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qMAH4auKJjT63eSdc7",
+        "request_id": "req_011Ch1qMA4Afiu7Jpt6oBPHw",
+        "input_uncached": 37214,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 148,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qMG64VtYWXLVVgLwE4",
+        "request_id": "req_011Ch1qMFsv7goqtF1SrFivb",
+        "input_uncached": 37549,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 382,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qMamiT8kAe58qNP6MR",
+        "request_id": "req_011Ch1qMaZJvY6PGvgpwsbZM",
+        "input_uncached": 38205,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 243,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qMjaYDJzzaEHyfb6ag",
+        "request_id": "req_011Ch1qMjEDMqkaGf7T4scuj",
+        "input_uncached": 38553,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 148,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qMpo59QiPhnQpkcvD5",
+        "request_id": "req_011Ch1qMpZBjhzR8kdAceNn9",
+        "input_uncached": 39415,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 1140,
+        "cache_5m": 0,
+        "cache_1h": 0
+       },
+       {
+        "message_id": "msg_011Ch1qNnzTCwDShQTW4LCLc",
+        "request_id": "req_011Ch1qNnn48Chv89wqFvLHB",
+        "input_uncached": 40762,
+        "cache_creation": 0,
+        "cache_read": 0,
+        "output": 807,
+        "cache_5m": 0,
+        "cache_1h": 0
+       }
+      ],
+      "cache_hit_rate": 0.0,
+      "warnings": []
+     }
+    },
+    "models_used": [
+     "claude-sonnet-5-5"
+    ],
+    "model": "claude-sonnet-5-5",
+    "session_id": "08b6eb73-7627-4479-b0c9-c77b217fa26f",
+    "api_calls": 14,
+    "startup": {
+     "cold_by_design": false,
+     "was_cold": true,
+     "first_request": {
+      "input_uncached": 22948,
+      "cache_creation": 0,
+      "cache_5m": 0,
+      "cache_1h": 0,
+      "cache_read": 0,
+      "output": 138
+     },
+     "startup_usd": 0.045896,
+     "task_usd": 0.958456,
+     "status": "ok"
+    },
+    "tool_usage": {
+     "prism_ops": {},
+     "native": {
+      "search": 10,
+      "read": 3,
+      "edit": 3,
+      "build/test": 2
+     },
+     "prism_calls": 0,
+     "tool_calls": 18,
+     "transcript": true
+    },
+    "tokens_request": 467721,
+    "tokens_out": 6891,
+    "tokens_cache_read": 0,
+    "tokens_cache_write": 0,
+    "tool_trace": {
+     "Bash": 9,
+     "Grep": 3,
+     "Read": 3,
+     "Edit": 3
+    },
+    "transcript_copy": "/Users/tapabratapal/.cache/prism-research/mrreal-2026-11-13/transcripts/prism-doctor-capabilities.native",
+    "task": "prism-doctor-capabilities",
+    "arm": "native",
+    "setup_s": 4.3,
+    "resolved": false,
+    "tests": {
+     "app:./internal/cli:TestCmdIndexAndStatus_Smoke": "fail"
+    },
+    "lib_files": [
+     "pkg/grove/grove.go",
+     "pkg/grove/grove_test.go"
+    ],
+    "app_files": [
+     "internal/cli/commands.go",
+     "internal/cli/coverage_test.go",
+     "internal/grove/client.go",
+     "internal/grove/types.go"
+    ],
+    "repriced": {
+     "5m": {
+      "status": "ok",
+      "ttl": "5m",
+      "usd": 0.213511,
+      "requests": 14,
+      "startup_usd": 0.05737
+     },
+     "1h": {
+      "status": "ok",
+      "ttl": "1h",
+      "usd": 0.274654,
+      "requests": 14,
+      "startup_usd": 0.091792
+     }
+    }
+   }
+  }
+ }
+}

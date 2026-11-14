@@ -1,0 +1,93 @@
+{
+ "prism-quickstatus": {
+  "FAIL_TO_PASS": [
+   "lib:./pkg/grove:TestQuickStatusMatchesEngineStatus"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": []
+ },
+ "clientgolang-openmetrics2-rc": {
+  "FAIL_TO_PASS": [
+   "app:./prometheus/promhttp:TestHandlerOpenMetricsNegotiation",
+   "lib:./expfmt:TestFormat_Version",
+   "lib:./expfmt:TestNegotiateAccept",
+   "lib:./expfmt:TestNegotiateAcceptEncodeUTF8Names",
+   "lib:./expfmt:TestNewDecoder",
+   "lib:./expfmt:TestNewEncoder_OpenMetricsVersionDispatch",
+   "lib:./expfmt:TestTextDecoderWithBufioReader",
+   "lib:./expfmt:TestToFormatType"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": []
+ },
+ "kubo-bootstrap-empty-list": {
+  "FAIL_TO_PASS": [
+   "app:./core:TestBootstrapEmptyListSkipsBackupPeers",
+   "lib:./bootstrap:TestBootstrapRoundSkipsBackupWhenNoBootstrapPeers"
+  ],
+  "PASS_TO_PASS": [
+   "app:./core:TestHasActiveDHTClient",
+   "lib:./bootstrap:TestBootstrapRoundDialsBackupWhenBootstrapPeersPresent",
+   "lib:./bootstrap:TestHasCircuitProtocol"
+  ],
+  "gold_failing": []
+ },
+ "kubo-ipfs-uri-header": {
+  "FAIL_TO_PASS": [
+   "lib:./gateway:TestEncodeIpfsUriSegment",
+   "lib:./gateway:TestHeaders",
+   "lib:./gateway:TestIpfsUriHeaderValue",
+   "lib:./gateway:TestIsFieldValueSafe"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [
+   "app:./test/cli:TestGateway"
+  ]
+ },
+ "kubo-native-ipfs-uris": {
+  "FAIL_TO_PASS": [
+   "app:./core/commands/cmdutils:TestCidFromArg",
+   "app:./core/commands/cmdutils:TestPathOrCidPath",
+   "lib:./path:TestNewPathFromURI",
+   "lib:./path:TestNewPathStaysStrict"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [
+   "app:./test/cli:TestNativeIPFSURIs",
+   "app:./test/cli:TestTelemetry"
+  ]
+ },
+ "kubo-ipns-lifetime-bounds": {
+  "FAIL_TO_PASS": [
+   "lib:./gateway:TestIPNSRecordMaxAge",
+   "lib:./ipns:TestNewRecordFloorsNegativeTTL",
+   "lib:./ipns:TestValidateRejectsNegativeTTL",
+   "lib:./namesys:TestCacheGetClampsTTLToCacheEOL",
+   "lib:./namesys:TestCalculateBestTTL",
+   "lib:./routing/http/server:TestIPNS"
+  ],
+  "PASS_TO_PASS": [
+   "lib:./ipns:TestValidateWithName",
+   "lib:./namesys:TestPublishWithTTL",
+   "lib:./namesys:TestResolver"
+  ],
+  "gold_failing": [
+   "app:./test/cli:TestNameGetPut",
+   "app:./test/cli:TestNamePublishFlagValidation",
+   "app:./test/cli:TestNamePublishTTLClamp",
+   "app:./test/cli:TestNameRepublishConfigValidation"
+  ]
+ },
+ "prism-doctor-capabilities": {
+  "FAIL_TO_PASS": [
+   "app:./internal/cli:TestCmdIndexAndStatus_Smoke"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": []
+ },
+ "prism-heuristic-refs-field": {
+  "FAIL_TO_PASS": [],
+  "PASS_TO_PASS": [],
+  "gold_failing": []
+ }
+}

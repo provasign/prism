@@ -1,0 +1,47 @@
+18:33:31 CELL kubo-bootstrap-empty-list native start
+18:34:32 CELL kubo-bootstrap-empty-list native resolved=True 5m=$0.23413 startup=$0.05782 requests=13 raw=$1.143458 lib_files=3 app_files=0 err=
+18:34:32 CELL kubo-bootstrap-empty-list prism_cli start
+18:35:25 CELL kubo-bootstrap-empty-list prism_cli resolved=True 5m=$0.149125 startup=$0.060035 requests=9 raw=$0.588018 lib_files=2 app_files=0 err=
+18:35:25 PAIR kubo-bootstrap-empty-list: native: resolved=True task5m=$0.176 req=13 | prism_cli: resolved=True task5m=$0.089 req=9
+18:35:25 CELL kubo-ipfs-uri-header native start
+18:39:39 CELL kubo-ipfs-uri-header native resolved=False 5m=$0.550756 startup=$0.057858 requests=29 raw=$3.4443 lib_files=5 app_files=6 err=
+18:39:39 CELL kubo-ipfs-uri-header prism_cli start
+18:42:06 CELL kubo-ipfs-uri-header prism_cli resolved=False 5m=$0.383113 startup=$0.060063 requests=19 raw=$1.9893679999999998 lib_files=5 app_files=5 err=
+18:42:06 PAIR kubo-ipfs-uri-header: native: resolved=False task5m=$0.493 req=29 | prism_cli: resolved=False task5m=$0.323 req=19
+18:42:06 CELL kubo-native-ipfs-uris prism_cli start
+18:46:08 CELL kubo-native-ipfs-uris prism_cli resolved=False 5m=$0.657937 startup=$0.059848 requests=34 raw=$4.466408 lib_files=4 app_files=7 err=
+18:46:08 CELL kubo-native-ipfs-uris native start
+18:49:17 CELL kubo-native-ipfs-uris native resolved=False 5m=$0.506347 startup=$0.057635 requests=25 raw=$2.9606920000000003 lib_files=4 app_files=8 err=
+18:49:17 PAIR kubo-native-ipfs-uris: native: resolved=False task5m=$0.449 req=25 | prism_cli: resolved=False task5m=$0.598 req=34
+18:49:17 CELL kubo-ipns-lifetime-bounds prism_cli start
+18:51:10 CELL kubo-ipns-lifetime-bounds prism_cli resolved=False 5m=$0.349909 startup=$0.059895 requests=21 raw=$2.1476979999999997 lib_files=4 app_files=5 err=
+18:51:10 CELL kubo-ipns-lifetime-bounds native start
+18:54:50 CELL kubo-ipns-lifetime-bounds native resolved=False 5m=$0.609437 startup=$0.0577 requests=33 raw=$4.33552 lib_files=5 app_files=8 err=
+18:54:50 PAIR kubo-ipns-lifetime-bounds: native: resolved=False task5m=$0.552 req=33 | prism_cli: resolved=False task5m=$0.290 req=21
+18:54:50 CELL prism-quickstatus native start
+18:56:01 CELL prism-quickstatus native resolved=True 5m=$0.251889 startup=$0.057538 requests=12 raw=$1.078124 lib_files=2 app_files=3 err=
+18:56:01 CELL prism-quickstatus prism_cli start
+18:56:54 CELL prism-quickstatus prism_cli resolved=True 5m=$0.169523 startup=$0.05973 requests=9 raw=$0.640018 lib_files=2 app_files=2 err=
+18:56:54 PAIR prism-quickstatus: native: resolved=True task5m=$0.194 req=12 | prism_cli: resolved=True task5m=$0.110 req=9
+18:56:54 CELL prism-doctor-capabilities prism_cli start
+18:57:50 CELL prism-doctor-capabilities prism_cli resolved=False 5m=$0.181398 startup=$0.059578 requests=11 raw=$0.80425 lib_files=2 app_files=3 err=
+18:57:50 CELL prism-doctor-capabilities native start
+18:58:51 CELL prism-doctor-capabilities native resolved=False 5m=$0.213511 startup=$0.05737 requests=14 raw=$1.004352 lib_files=2 app_files=4 err=
+18:58:51 PAIR prism-doctor-capabilities: native: resolved=False task5m=$0.156 req=14 | prism_cli: resolved=False task5m=$0.122 req=11
+18:58:51 SKIP prism-heuristic-refs-field: no validated FAIL_TO_PASS tests ()
+18:58:51 PAIR clientgolang-openmetrics2-rc: native: resolved=False task5m=$0.223 req=15 | prism_cli: resolved=True task5m=$0.336 req=23
+18:58:51 ALLDONE
+19:01:02 RESCORE kubo-bootstrap-empty-list native resolved=True failing=[]
+19:01:11 RESCORE kubo-bootstrap-empty-list prism_cli resolved=True failing=[]
+19:01:15 RESCORE kubo-ipfs-uri-header native resolved=False failing=['lib:./gateway:TestEncodeIpfsUriSegment', 'lib:./gateway:TestHeaders', 'lib:./gateway:TestIpfsUriHeaderValue', 'lib:./gateway:TestIsFieldValueSafe']
+19:01:19 RESCORE kubo-ipfs-uri-header prism_cli resolved=False failing=['lib:./gateway:TestEncodeIpfsUriSegment', 'lib:./gateway:TestHeaders', 'lib:./gateway:TestIpfsUriHeaderValue', 'lib:./gateway:TestIsFieldValueSafe']
+19:01:24 RESCORE kubo-native-ipfs-uris prism_cli resolved=False failing=['app:./core/commands/cmdutils:TestCidFromArg', 'app:./core/commands/cmdutils:TestPathOrCidPath', 'lib:./path:TestNewPathFromURI', 'lib:./path:TestNewPathStaysStrict']
+19:01:28 RESCORE kubo-native-ipfs-uris native resolved=False failing=['app:./core/commands/cmdutils:TestCidFromArg', 'app:./core/commands/cmdutils:TestPathOrCidPath', 'lib:./path:TestNewPathFromURI', 'lib:./path:TestNewPathStaysStrict']
+19:01:35 RESCORE kubo-ipns-lifetime-bounds prism_cli resolved=False failing=['lib:./gateway:TestIPNSRecordMaxAge', 'lib:./ipns:TestNewRecordFloorsNegativeTTL', 'lib:./ipns:TestValidateRejectsNegativeTTL', 'lib:./namesys:TestCacheGetClampsTTLToCacheEOL', 'lib:./namesys:TestCalculateBestTTL', 'lib:./routing/http/server:TestIPNS']
+19:01:42 RESCORE kubo-ipns-lifetime-bounds native resolved=False failing=['lib:./gateway:TestIPNSRecordMaxAge', 'lib:./ipns:TestNewRecordFloorsNegativeTTL', 'lib:./ipns:TestValidateRejectsNegativeTTL', 'lib:./namesys:TestCacheGetClampsTTLToCacheEOL', 'lib:./namesys:TestCalculateBestTTL', 'lib:./routing/http/server:TestIPNS']
+19:01:48 RESCORE prism-quickstatus native resolved=True failing=[]
+19:01:54 RESCORE prism-quickstatus prism_cli resolved=True failing=[]
+19:02:01 RESCORE prism-doctor-capabilities prism_cli resolved=False failing=['app:./internal/cli:TestCmdIndexAndStatus_Smoke']
+19:02:07 RESCORE prism-doctor-capabilities native resolved=False failing=['app:./internal/cli:TestCmdIndexAndStatus_Smoke']
+19:02:11 RESCORE clientgolang-openmetrics2-rc native resolved=False failing=['app:./prometheus/promhttp:TestHandlerOpenMetricsNegotiation', 'lib:./expfmt:TestFormat_Version', 'lib:./expfmt:TestNegotiateAccept', 'lib:./expfmt:TestNegotiateAcceptEncodeUTF8Names']
+19:02:15 RESCORE clientgolang-openmetrics2-rc prism_cli resolved=True failing=[]
