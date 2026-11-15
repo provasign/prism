@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -54,6 +55,58 @@ func toStrings(in []any) []string {
 	return out
 }
 
+// Detailed rows name each path once per file, lose no row, and survive the
+// budget steps that drop 4-space lines and absorb "  path:" headers.
+func TestEditSitesGroupedByFile(t *testing.T) {
+	rows := []any{
+		"src/a.ts:10:5: a.parse(x)",
+		"src/a.ts:22:9:   return b.parse(y)",
+		"src/b.ts:3:1: parse(z)",
+		"src/a.ts:30:2: c.parse()",
+	}
+	got := formatEditSitesText(map[string]any{"editSites": rows, "editSiteCount": 4})
+	want := "editSites (4 in 2 files; every occurrence this change touches, by file as path (count): then line:col: text; one-row files as path:line:col: text):\n" +
+		"  src/a.ts (3):\n   10:5: a.parse(x)\n   22:9:   return b.parse(y)\n   30:2: c.parse()\n" +
+		"  src/b.ts:3:1: parse(z)\n"
+	if got != want {
+		t.Fatalf("grouped form wrong:\n%s", got)
+	}
+	for _, step := range []string{strings.Join(dropImpactEvidence(got), "\n"), groupImpactSites(dropImpactEvidence(got), siteNames)} {
+		for _, keep := range []string{"src/a.ts (3):", "10:5: a.parse(x)", "22:9:", "30:2:", "src/b.ts:3:1:"} {
+			if !strings.Contains(step, keep) {
+				t.Errorf("budget step lost %q:\n%s", keep, step)
+			}
+		}
+	}
+	flat := formatEditSitesText(map[string]any{"editSites": []any{"a.go:1:1: x", "b.go:2:2: y"}, "editSiteCount": 2})
+	if flat != "editSites (2; every occurrence this change touches, as path:line:col: text):\n  a.go:1:1: x\n  b.go:2:2: y\n" {
+		t.Errorf("one row per file must stay flat:\n%s", flat)
+	}
+}
+
+// expandEditSites rewrites grouped editSites rows ("  path (n):" then
+// "   line:col: text") back to "  path:line:col: text", so assertions on
+// a row's flat spelling check the same content.
+func expandEditSites(text string) string {
+	var b strings.Builder
+	path := ""
+	for _, l := range strings.Split(text, "\n") {
+		if m := editSiteGroupHeader.FindStringSubmatch(l); m != nil {
+			path = m[1]
+			continue
+		}
+		if path != "" && strings.HasPrefix(l, "   ") && !strings.HasPrefix(l, "    ") {
+			b.WriteString("  " + path + ":" + l[3:] + "\n")
+			continue
+		}
+		path = ""
+		b.WriteString(l + "\n")
+	}
+	return b.String()
+}
+
+var editSiteGroupHeader = regexp.MustCompile(`^  (\S+) \(\d+\):$`)
+
 // evidenceOnly drops the line lists (editSites and the every-line
 // partition, which name other symbols' lines on purpose) so a test can
 // check what the evidence sections say.
@@ -103,7 +156,7 @@ func TestChangeImpactEditSitesField(t *testing.T) {
 		t.Errorf("partition wrong:\n%s", other)
 	}
 	rendered, ok := renderChangeImpactAsText(out)
-	if !ok || !strings.Contains(rendered, "editSites (3;") {
+	if !ok || !strings.Contains(rendered, "editSites (3") || !strings.Contains(expandEditSites(rendered), "editSites (") {
 		t.Fatalf("editSites not rendered:\n%s", rendered)
 	}
 }

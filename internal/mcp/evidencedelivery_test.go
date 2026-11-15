@@ -76,7 +76,7 @@ func TestImpactEvidencePreservesSitesAndSource(t *testing.T) {
 			}
 			continue
 		}
-		if !strings.Contains(text, want) {
+		if !strings.Contains(expandEditSites(text), want) {
 			t.Errorf("missing %q:\n%s", want, text)
 		}
 	}

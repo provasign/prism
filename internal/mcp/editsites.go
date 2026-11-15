@@ -285,18 +285,73 @@ func (h *Handler) attachEditSites(ctx context.Context, out map[string]any, r *gr
 	}
 }
 
+// editSiteRow splits a detailed row "path:line:col: text".
+var editSiteRow = regexp.MustCompile(`^(\S+?):(\d+:\d+:.*)$`)
+
+// writeEditSiteRows prints detailed rows, naming each path once when a file
+// has more than one row (2026-11-15: full paths repeated on every row were
+// 4.5% of the bytes of the release bench's impact answers). The file header
+// "  path (n):" and the 3-space row indent stay clear of the budget
+// compaction patterns (impactbudget.go), which drop 4-space lines and
+// absorb "  path:" headers. Unparsed rows print unchanged.
+func writeEditSiteRows(b *strings.Builder, rows []any) {
+	type group struct {
+		path string
+		rest []string
+	}
+	var groups []*group
+	byPath := map[string]*group{}
+	var raw []string
+	for _, r := range rows {
+		s := fmt.Sprint(r)
+		m := editSiteRow.FindStringSubmatch(s)
+		if m == nil {
+			raw = append(raw, s)
+			continue
+		}
+		g := byPath[m[1]]
+		if g == nil {
+			g = &group{path: m[1]}
+			byPath[m[1]] = g
+			groups = append(groups, g)
+		}
+		g.rest = append(g.rest, m[2])
+	}
+	if len(groups) == len(rows)-len(raw) {
+		fmt.Fprintf(b, "editSites (%d; every occurrence this change touches, as path:line:col: text):\n", len(rows))
+		for _, r := range rows {
+			fmt.Fprintf(b, "  %v\n", r)
+		}
+		return
+	}
+	fmt.Fprintf(b, "editSites (%d in %d files; every occurrence this change touches, by file as path (count): then line:col: text; one-row files as path:line:col: text):\n", len(rows), len(groups)+len(raw))
+	for _, g := range groups {
+		if len(g.rest) == 1 {
+			fmt.Fprintf(b, "  %s:%s\n", g.path, g.rest[0])
+			continue
+		}
+		fmt.Fprintf(b, "  %s (%d):\n", g.path, len(g.rest))
+		for _, r := range g.rest {
+			fmt.Fprintf(b, "   %s\n", r)
+		}
+	}
+	for _, s := range raw {
+		fmt.Fprintf(b, "  %s\n", s)
+	}
+}
+
 // formatEditSitesText renders editSites and the line partition.
 func formatEditSitesText(out map[string]any) string {
 	var b strings.Builder
 	if rows := anySlice(out["editSites"]); len(rows) > 0 {
 		n, _ := out["editSiteCount"].(int)
-		if n <= len(rows) {
-			fmt.Fprintf(&b, "editSites (%d; every occurrence this change touches, as path:line:col: text):\n", len(rows))
-		} else {
+		if n > len(rows) {
 			fmt.Fprintf(&b, "editSites (%d in %d files; every occurrence this change touches, by file as path (count): line:col ...):\n", n, len(rows))
-		}
-		for _, l := range rows {
-			fmt.Fprintf(&b, "  %v\n", l)
+			for _, l := range rows {
+				fmt.Fprintf(&b, "  %v\n", l)
+			}
+		} else {
+			writeEditSiteRows(&b, rows)
 		}
 	}
 	for _, l := range anySlice(out["otherMentions"]) {

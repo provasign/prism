@@ -19,7 +19,7 @@ func TestRenderToolTextKeepsEditSitesForCLIAndMCP(t *testing.T) {
 	}
 	for _, compact := range []bool{true, false} {
 		text, ok := h.RenderToolText(compact, "prism_change_impact", args, out)
-		if !ok || !strings.Contains(text, "editSites (") || !strings.Contains(text, "pkg/core.py:2:9:") {
+		if !ok || !strings.Contains(text, "editSites (") || !strings.Contains(expandEditSites(text), "pkg/core.py:2:9:") {
 			t.Errorf("compact=%v lost edit sites (rendered=%v):\n%s", compact, ok, text)
 		}
 	}
