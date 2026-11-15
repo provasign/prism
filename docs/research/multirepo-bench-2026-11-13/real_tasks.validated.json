@@ -4,7 +4,8 @@
    "lib:./pkg/grove:TestQuickStatusMatchesEngineStatus"
   ],
   "PASS_TO_PASS": [],
-  "gold_failing": []
+  "gold_failing": [],
+  "app_needs_lib": []
  },
  "clientgolang-openmetrics2-rc": {
   "FAIL_TO_PASS": [
@@ -18,7 +19,10 @@
    "lib:./expfmt:TestToFormatType"
   ],
   "PASS_TO_PASS": [],
-  "gold_failing": []
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./prometheus/promhttp:TestHandlerOpenMetricsNegotiation"
+  ]
  },
  "kubo-bootstrap-empty-list": {
   "FAIL_TO_PASS": [
@@ -30,7 +34,10 @@
    "lib:./bootstrap:TestBootstrapRoundDialsBackupWhenBootstrapPeersPresent",
    "lib:./bootstrap:TestHasCircuitProtocol"
   ],
-  "gold_failing": []
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./core:TestBootstrapEmptyListSkipsBackupPeers"
+  ]
  },
  "kubo-ipfs-uri-header": {
   "FAIL_TO_PASS": [
@@ -42,7 +49,8 @@
   "PASS_TO_PASS": [],
   "gold_failing": [
    "app:./test/cli:TestGateway"
-  ]
+  ],
+  "app_needs_lib": []
  },
  "kubo-native-ipfs-uris": {
   "FAIL_TO_PASS": [
@@ -55,6 +63,10 @@
   "gold_failing": [
    "app:./test/cli:TestNativeIPFSURIs",
    "app:./test/cli:TestTelemetry"
+  ],
+  "app_needs_lib": [
+   "app:./core/commands/cmdutils:TestCidFromArg",
+   "app:./core/commands/cmdutils:TestPathOrCidPath"
   ]
  },
  "kubo-ipns-lifetime-bounds": {
@@ -76,18 +88,692 @@
    "app:./test/cli:TestNamePublishFlagValidation",
    "app:./test/cli:TestNamePublishTTLClamp",
    "app:./test/cli:TestNameRepublishConfigValidation"
-  ]
+  ],
+  "app_needs_lib": []
  },
  "prism-doctor-capabilities": {
   "FAIL_TO_PASS": [
    "app:./internal/cli:TestCmdIndexAndStatus_Smoke"
   ],
   "PASS_TO_PASS": [],
-  "gold_failing": []
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./internal/cli:TestCmdIndexAndStatus_Smoke"
+  ]
  },
  "prism-heuristic-refs-field": {
   "FAIL_TO_PASS": [],
   "PASS_TO_PASS": [],
   "gold_failing": []
+ },
+ "crush-gzip-requests": {
+  "FAIL_TO_PASS": [
+   "app:./internal/agent:TestHyperProviderCompressesRequests",
+   "lib:./providers/openai:TestCompressedBodyCandidate",
+   "lib:./providers/openai:TestGzipForWire",
+   "lib:./providers/openai:TestRequestCompression",
+   "lib:./providers/openai:TestRequestWithBody",
+   "lib:./providers/openai:TestWithRequestCompressionKeepsClientBehavior"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./internal/agent:TestHyperProviderCompressesRequests"
+  ]
+ },
+ "crush-brotli-requests": {
+  "FAIL_TO_PASS": [
+   "app:./internal/agent:TestHyperProviderCompressesRequests",
+   "lib:./providers/openai:TestBrotliForWire",
+   "lib:./providers/openai:TestGzipForWire",
+   "lib:./providers/openai:TestRequestCompression",
+   "lib:./providers/openai:TestRequestWithBody",
+   "lib:./providers/openai:TestWithRequestCompressionKeepsClientBehavior"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./internal/agent:TestHyperProviderCompressesRequests"
+  ]
+ },
+ "crush-stream-reset": {
+  "FAIL_TO_PASS": [
+   "app:./internal/message:TestResetStreamedContent",
+   "app:./internal/message:TestResetStreamedContentEmpty",
+   "lib:./.:TestCleanHTTP2ErrorMessage",
+   "lib:./.:TestIsRetryableError",
+   "lib:./.:TestIsTransportError",
+   "lib:./.:TestNewTransportError",
+   "lib:./.:TestNewTransportErrorWrapped",
+   "lib:./.:TestRetryWithExponentialBackoff_ConnectionErrors",
+   "lib:./providers/openai:TestStreamHTTP2StreamReset"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": []
+ },
+ "prism-readiness": {
+  "FAIL_TO_PASS": [
+   "app:./internal/grove:TestJSInstallCommandFollowsLockfile",
+   "app:./internal/grove:TestReadinessIgnoresCompletedAndCarriedPasses",
+   "app:./internal/grove:TestReadinessJavaClasspath",
+   "app:./internal/grove:TestReadinessNamesDegradedLanguagesWithFixes",
+   "lib:./internal/index:TestGoModuleDependencyTypeChecksFully",
+   "lib:./internal/index:TestGoPartialPackageKeepsCompilerEdges",
+   "lib:./internal/index:TestGoSyntaxErrorKeepsPackageCompilerEdges",
+   "lib:./internal/index:TestJavacIncrementalMatchesFullIndex",
+   "lib:./internal/index:TestJavacResolverCallsAndFields",
+   "lib:./internal/index:TestNativeCompleteRecordedAfterFirstIndex",
+   "lib:./internal/index:TestSymbolRemapMatchesOverloadsBySignature",
+   "lib:./internal/native:TestCSharpAnalyzeWithCsproj",
+   "lib:./internal/native:TestJavaAvailableNeedsJDKOrProjectFiles",
+   "lib:./internal/native:TestJavaBatchesSeparateDuplicateClassRoots",
+   "lib:./internal/native:TestJavacClasspathCacheFollowsBuildFiles",
+   "lib:./internal/native:TestProbeJDKRequiresJava11",
+   "lib:./internal/native:TestTSPayloadSkipsStrayStdout",
+   "lib:./internal/parser:TestTSCallsInTestCallbacksReachInheritedAliasedMethod",
+   "lib:./internal/parser:TestTSOverloadSignaturesJoinTheDeclaration"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [
+   "lib:./eval:TestJavaCallTruthResolvesInheritedMethods",
+   "lib:./eval:TestParseJavapSupersStripsTypeArguments",
+   "lib:./internal/index:TestTSNativeMemberReferences"
+  ],
+  "app_needs_lib": []
+ },
+ "prism-stale-refresh": {
+  "FAIL_TO_PASS": [
+   "app:./internal/cli:TestPrintAgentConfig_CodexIsProjectScoped",
+   "app:./internal/cli:TestSteeringBlock_PrismAccessFallbacks",
+   "app:./internal/cli:TestSteeringRetainsImpactAndVerificationObligations",
+   "app:./internal/cli:TestSteeringRoutesDiscoveryAndBatchesKnownInputs",
+   "app:./internal/cli:TestWriteSteeringInstructions_UpgradesStaleSection",
+   "app:./internal/grove:TestClient_AutoIndexRefreshesOldResolverVersion",
+   "app:./internal/mcp:TestCompactBatchedSearchInlinesUniqueExactFirstSymbol",
+   "app:./internal/mcp:TestCompactGuidanceBatchesKnownPhrasesAndReusesSource",
+   "app:./internal/mcp:TestCompactQueryHonorsPathsAndGlob",
+   "app:./internal/mcp:TestCompactReadBatchesMultipleFiles",
+   "app:./internal/mcp:TestCompactReadClampsInsteadOfFailing",
+   "app:./internal/mcp:TestCompactReadOversizedLineDegradesWithWarning",
+   "app:./internal/mcp:TestCompactReadRejectsMalformedBatchesWithoutCaching",
+   "app:./internal/mcp:TestCompactSearchBodiesIncludesTightEnclosingMethod",
+   "app:./internal/mcp:TestCompactSearchBodyEligibilityRejectsBroadOrExplicitlyShapedSearches",
+   "app:./internal/mcp:TestCompactSearchDefaultsToTwoContextLines",
+   "app:./internal/mcp:TestCompactServerAdvertisesAndDispatchesGateway",
+   "app:./internal/mcp:TestCompactServerRejectsArgumentsForWrongOperation",
+   "app:./internal/mcp:TestCompactServerRejectsLegacyToolName",
+   "app:./internal/mcp:TestCompactSymbolLocatorInlinesSmallBodies",
+   "app:./internal/mcp:TestCompactToolSchemasExposeOneSmallerGateway",
+   "app:./internal/mcp:TestSymbolWindowsSignatureDisclosureCapsSpan",
+   "app:./internal/mcp:TestSymbolWindowsTopLevelLocatorDoesNotInlineWholeModule",
+   "app:./internal/mcp:TestToolSearchCompletesSmallPayloadAboveFormerCountThreshold",
+   "app:./internal/mcp:TestToolSearchDefaultCompletesSmallExactResult",
+   "app:./internal/mcp:TestToolSearchDefaultContextCompletesOverTwoHundredShortHits",
+   "app:./internal/mcp:TestToolSearchLargeSampleReportsExactCount",
+   "app:./internal/textsearch:TestSearchAdaptiveCompletesShortInventoryAboveTwoHundredHits",
+   "app:./internal/textsearch:TestSearchAdaptiveReturnsCompletePayloadAboveFormerCountThreshold",
+   "lib:./internal/graph:TestJavaArityCountsGenericParameters",
+   "lib:./internal/graph:TestJavaCallEdgesDoNotBindDifferentArityOverload",
+   "lib:./internal/graph:TestJavaNestedBareCallBindsEnclosingMethod",
+   "lib:./pkg/grove:TestIncompleteIndexRequiresRecoveryBeforeQuery",
+   "lib:./pkg/grove:TestLazyRehydrationServesQueriesBeforeIndex",
+   "lib:./pkg/grove:TestResolverUpgradeDiscardsPersistedFalsePythonCall"
+  ],
+  "PASS_TO_PASS": [
+   "app:./internal/textsearch:TestSearchAdaptiveReturnsCompleteSmallResult"
+  ],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./internal/cli:TestPrintAgentConfig_CodexIsProjectScoped",
+   "app:./internal/cli:TestSteeringBlock_PrismAccessFallbacks",
+   "app:./internal/cli:TestSteeringRetainsImpactAndVerificationObligations",
+   "app:./internal/cli:TestSteeringRoutesDiscoveryAndBatchesKnownInputs",
+   "app:./internal/cli:TestWriteSteeringInstructions_UpgradesStaleSection",
+   "app:./internal/grove:TestClient_AutoIndexRefreshesOldResolverVersion",
+   "app:./internal/mcp:TestCompactBatchedSearchInlinesUniqueExactFirstSymbol",
+   "app:./internal/mcp:TestCompactGuidanceBatchesKnownPhrasesAndReusesSource",
+   "app:./internal/mcp:TestCompactQueryHonorsPathsAndGlob",
+   "app:./internal/mcp:TestCompactReadBatchesMultipleFiles",
+   "app:./internal/mcp:TestCompactReadClampsInsteadOfFailing",
+   "app:./internal/mcp:TestCompactReadOversizedLineDegradesWithWarning",
+   "app:./internal/mcp:TestCompactReadRejectsMalformedBatchesWithoutCaching",
+   "app:./internal/mcp:TestCompactSearchBodiesIncludesTightEnclosingMethod",
+   "app:./internal/mcp:TestCompactSearchBodyEligibilityRejectsBroadOrExplicitlyShapedSearches",
+   "app:./internal/mcp:TestCompactSearchDefaultsToTwoContextLines",
+   "app:./internal/mcp:TestCompactServerAdvertisesAndDispatchesGateway",
+   "app:./internal/mcp:TestCompactServerRejectsArgumentsForWrongOperation",
+   "app:./internal/mcp:TestCompactServerRejectsLegacyToolName",
+   "app:./internal/mcp:TestCompactSymbolLocatorInlinesSmallBodies",
+   "app:./internal/mcp:TestCompactToolSchemasExposeOneSmallerGateway",
+   "app:./internal/mcp:TestSymbolWindowsSignatureDisclosureCapsSpan",
+   "app:./internal/mcp:TestSymbolWindowsTopLevelLocatorDoesNotInlineWholeModule",
+   "app:./internal/mcp:TestToolSearchCompletesSmallPayloadAboveFormerCountThreshold",
+   "app:./internal/mcp:TestToolSearchDefaultCompletesSmallExactResult",
+   "app:./internal/mcp:TestToolSearchDefaultContextCompletesOverTwoHundredShortHits",
+   "app:./internal/mcp:TestToolSearchLargeSampleReportsExactCount",
+   "app:./internal/textsearch:TestSearchAdaptiveCompletesShortInventoryAboveTwoHundredHits",
+   "app:./internal/textsearch:TestSearchAdaptiveReturnsCompletePayloadAboveFormerCountThreshold"
+  ]
+ },
+ "prism-graph-correctness": {
+  "FAIL_TO_PASS": [
+   "app:./internal/cli:TestImpactTextPreservesCoverageAndWiderNote",
+   "app:./internal/cli:TestQueryTextPrintsContentNotJustFiles",
+   "app:./internal/mcp:TestChangeImpact_RelatedWiderAnchor",
+   "app:./internal/mcp:TestChangeImpact_WiderAnchorHintOnDisconnectedAnchor",
+   "app:./internal/mcp:TestCompactSearchBodiesIncludesTightEnclosingMethod",
+   "app:./internal/mcp:TestCompactSearchBodyEligibilityRejectsBroadOrExplicitlyShapedSearches",
+   "app:./internal/mcp:TestCompactServerRejectsArgumentsForWrongOperation",
+   "app:./internal/mcp:TestGitChangedRangesIncludesUntrackedNonIgnoredFiles",
+   "app:./internal/mcp:TestImpactCoveragePreservesTiersAndInput",
+   "app:./internal/mcp:TestImpactSiteInventoryDeduplicatesSupers",
+   "app:./internal/mcp:TestImpactSupersCountAndCoverageSurviveDelivery",
+   "app:./internal/mcp:TestInterleaveUniqueTermSeedsPreservesLaterExactMatch",
+   "app:./internal/mcp:TestPromoteSingleTermSeeds_FewExactTiesArePinnedEvenUnconfirmed",
+   "app:./internal/mcp:TestRenderQuerySourceAsText",
+   "app:./internal/mcp:TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow",
+   "app:./internal/mcp:TestToolVerify_CompleteChangePasses",
+   "app:./internal/mcp:TestVerifyBaseGraphDoesNotInventSameNameFamily",
+   "app:./internal/mcp:TestVerifyBaseSitesDoNotTreatMovementAsCallMigration",
+   "app:./internal/mcp:TestVerifyBaseSitesUseCurrentCoordinates",
+   "app:./internal/mcp:TestVerifyPythonCoverageRequiresReview",
+   "lib:./internal/graph:TestImpactScopedFreeFunctionDoesNotUnionNamesakes",
+   "lib:./internal/graph:TestJavaCallResult_DoesNotGuessFromSameNamedMethod",
+   "lib:./internal/graph:TestPythonGenericReceiverAnnotations",
+   "lib:./internal/native:TestScrubbedEnvPreservesWindowsLocalAppData",
+   "lib:./internal/parser:TestGoImportAliasesDisambiguateCalls",
+   "lib:./internal/parser:TestJSImportAliasesResolveCalls",
+   "lib:./internal/parser:TestPythonCompletionDispatch",
+   "lib:./internal/parser:TestPythonImportAliasesResolveCallsAndTypes",
+   "lib:./internal/parser:TestPythonUnindexedNestedFunctionDoesNotBindClassMember",
+   "lib:./pkg/grove:TestPreviewGoMethodInDifferentFileThanType",
+   "lib:./pkg/grove:TestPreviewImpactRestoresBaseWithoutChangingIndex",
+   "lib:./pkg/grove:TestResolverUpgradeDiscardsPersistedFalsePythonCall"
+  ],
+  "PASS_TO_PASS": [
+   "lib:./internal/graph:TestJavaCallResult_ExplicitOwnerReachesOutOfScopeReturnType",
+   "lib:./internal/graph:TestJavaCallResult_OwnMethodReachesOutOfScopeReturnType"
+  ],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./internal/mcp:TestVerifyBaseSitesUseCurrentCoordinates"
+  ]
+ },
+ "prism-stale-delta": {
+  "FAIL_TO_PASS": [
+   "app:./internal/compression:TestSemanticDelta_StaleIndexCannotMaskEdit",
+   "app:./internal/compression:TestSymbolKey_PrefersQualifiedName",
+   "app:./internal/textsearch:TestNativeSearchDoesNotFollowSymlinksOutsideRoot",
+   "lib:./internal/index:TestIndexerNonexistentRootFails",
+   "lib:./internal/index:TestIndexerShieldsUnreadableSubtreeFromPruning",
+   "lib:./internal/store:TestOpenCreatesPrivateStore",
+   "lib:./pkg/grove:TestFileSymbols",
+   "lib:./pkg/grove:TestFreshRepoQueryBeforeIndexIsEmptyNotFatal",
+   "lib:./pkg/grove:TestIncrementalIndexMatchesFullRebuild",
+   "lib:./pkg/grove:TestLazyRehydrationServesQueriesBeforeIndex",
+   "lib:./pkg/grove:TestSnapshotGraph"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./internal/compression:TestSemanticDelta_StaleIndexCannotMaskEdit",
+   "app:./internal/compression:TestSymbolKey_PrefersQualifiedName"
+  ]
+ },
+ "prism-test-discovery": {
+  "FAIL_TO_PASS": [
+   "app:./internal/cli:TestSteeringRoutesDiscoveryAndBatchesKnownInputs",
+   "app:./internal/mcp:TestCategorize",
+   "app:./internal/mcp:TestDispatch_Initialize",
+   "app:./internal/mcp:TestRelatedTestProbesRecoverCompoundWithoutGenericEdges",
+   "app:./internal/mcp:TestScopedSymbolScanChecksCancellation",
+   "app:./internal/mcp:TestScopedSymbolScanHasItsOwnDeadlineAndKeepsLastPrefix",
+   "app:./internal/mcp:TestToolQuery_IndirectRelatedTestFileIsPointerOnly",
+   "app:./internal/mcp:TestToolQuery_TestedByPointer",
+   "lib:./internal/graph:TestKotlinCalls_ImplicitThisResolvesWithinClass",
+   "lib:./internal/graph:TestKotlinCalls_SamePackageScope",
+   "lib:./internal/graph:TestKotlinExtendsImplements_ConstructorCallMarksSuperclass",
+   "lib:./internal/graph:TestObjCCalls_CrossFileWholeRepoScope",
+   "lib:./internal/graph:TestObjCCalls_SelfMessageSendResolvesWithinClass",
+   "lib:./internal/graph:TestObjCExtendsImplements_ProtocolExtendsProtocol",
+   "lib:./internal/graph:TestObjCExtendsImplements_SuperclassAndProtocols",
+   "lib:./internal/graph:TestObjCLocalTypes_PointerLocalNarrowsCall",
+   "lib:./internal/graph:TestReplaceStatusAndSearch",
+   "lib:./internal/graph:TestSearchScopedFiltersBeforeLimit",
+   "lib:./internal/graph:TestSwiftCalls_CrossFileWholeModuleScope",
+   "lib:./internal/graph:TestSwiftCalls_ImplicitSelfResolvesWithinClass",
+   "lib:./internal/graph:TestSwiftExtendsImplements_ClassAndProtocol",
+   "lib:./internal/graph:TestSwiftExtendsImplements_StructCanOnlyConformNotExtend",
+   "lib:./internal/parser:TestDetectLanguageFile_HeaderSniff",
+   "lib:./pkg/grove:TestFileSymbols",
+   "lib:./pkg/grove:TestSymbolsScopedHonorsContextDuringLazyGraphLoad"
+  ],
+  "PASS_TO_PASS": [
+   "lib:./internal/parser:TestDetectLanguageFile_ExtensionlessMember"
+  ],
+  "gold_failing": [
+   "app:./internal/mcp:TestFormatGreeting",
+   "app:./internal/mcp:TestMissingRequiredOutput"
+  ],
+  "app_needs_lib": [
+   "app:./internal/cli:TestSteeringRoutesDiscoveryAndBatchesKnownInputs",
+   "app:./internal/mcp:TestCategorize",
+   "app:./internal/mcp:TestDispatch_Initialize",
+   "app:./internal/mcp:TestRelatedTestProbesRecoverCompoundWithoutGenericEdges",
+   "app:./internal/mcp:TestScopedSymbolScanChecksCancellation",
+   "app:./internal/mcp:TestScopedSymbolScanHasItsOwnDeadlineAndKeepsLastPrefix",
+   "app:./internal/mcp:TestToolQuery_IndirectRelatedTestFileIsPointerOnly",
+   "app:./internal/mcp:TestToolQuery_TestedByPointer"
+  ]
+ },
+ "prism-map-cycles": {
+  "FAIL_TO_PASS": [
+   "app:./internal/cli:TestCmdIndexAndStatus_Smoke",
+   "app:./internal/mcp:TestServerToolsList",
+   "app:./internal/mcp:TestToolCycles_ChainHasNone",
+   "app:./internal/mcp:TestToolMap_ExpandEdge",
+   "app:./internal/mcp:TestToolMap_ImportChainOracle",
+   "app:./internal/mcp:TestToolMap_IncludeTestsRevealsTestOnlyEdge",
+   "app:./internal/mcp:TestToolSchemasReturnsAdvertisedTools",
+   "app:./internal/view:TestBuild_DepthTruncation",
+   "app:./internal/view:TestBuild_Deterministic",
+   "app:./internal/view:TestBuild_PartitionAndInduction",
+   "app:./internal/view:TestBuild_ProvenanceSites",
+   "app:./internal/view:TestBuild_SiteCapKeepsWeight",
+   "app:./internal/view:TestBuild_TestFilesExcludedByDefault",
+   "app:./internal/view:TestComponentOf",
+   "app:./internal/view:TestCycles",
+   "app:./internal/view:TestCycles_TwoIndependentSCCs",
+   "app:./internal/view:TestIsTestPath",
+   "lib:./pkg/grove:TestFileSymbols",
+   "lib:./pkg/grove:TestSnapshotGraph"
+  ],
+  "PASS_TO_PASS": [
+   "app:./internal/mcp:TestSafePathWithinRoot_EquivalentSymlinkRoots"
+  ],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./internal/cli:TestCmdIndexAndStatus_Smoke",
+   "app:./internal/mcp:TestServerToolsList",
+   "app:./internal/mcp:TestToolCycles_ChainHasNone",
+   "app:./internal/mcp:TestToolMap_ExpandEdge",
+   "app:./internal/mcp:TestToolMap_ImportChainOracle",
+   "app:./internal/mcp:TestToolMap_IncludeTestsRevealsTestOnlyEdge",
+   "app:./internal/mcp:TestToolSchemasReturnsAdvertisedTools",
+   "app:./internal/view:TestBuild_DepthTruncation",
+   "app:./internal/view:TestBuild_Deterministic",
+   "app:./internal/view:TestBuild_PartitionAndInduction",
+   "app:./internal/view:TestBuild_ProvenanceSites",
+   "app:./internal/view:TestBuild_SiteCapKeepsWeight",
+   "app:./internal/view:TestBuild_TestFilesExcludedByDefault",
+   "app:./internal/view:TestComponentOf",
+   "app:./internal/view:TestCycles",
+   "app:./internal/view:TestCycles_TwoIndependentSCCs",
+   "app:./internal/view:TestIsTestPath"
+  ]
+ },
+ "cosign-user-agent": {
+  "FAIL_TO_PASS": [
+   "app:./internal/useragent:TestGet",
+   "lib:./pkg/sign:TestUserAgent"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": []
+ },
+ "ice-turn-context": {
+  "FAIL_TO_PASS": [
+   "app:./.:TestLoopbackCandidate",
+   "app:./.:TestTURNContext",
+   "lib:./.:TestClientAllocateContext",
+   "lib:./.:TestClientE2E",
+   "lib:./internal/client:TestCreatePermissions",
+   "lib:./internal/client:TestTCPConn",
+   "lib:./internal/client:TestUDPConn"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./.:TestLoopbackCandidate",
+   "app:./.:TestTURNContext"
+  ]
+ },
+ "turn-unknown-attrs": {
+  "FAIL_TO_PASS": [
+   "app:./.:TestServerHandleComprehensionRequiredAttribute",
+   "lib:./.:TestUnknownAttributesEncoding"
+  ],
+  "PASS_TO_PASS": [
+   "lib:./.:TestUnknownAttributes"
+  ],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./.:TestServerHandleComprehensionRequiredAttribute"
+  ]
+ },
+ "webtransport-capsule-api": {
+  "FAIL_TO_PASS": [
+   "app:./.:TestAppendCloseSessionCapsuleMessageTruncation",
+   "app:./.:TestCloseSessionCapsuleRoundTrip",
+   "app:./.:TestCloseWithErrorTruncatesSendMessage",
+   "app:./.:TestMaxStreamsCapsuleRoundTrip",
+   "app:./.:TestParseCloseSessionCapsuleMessageTruncation",
+   "app:./.:TestParseMaxStreamsCapsuleTooLarge",
+   "app:./.:TestParseMaxStreamsCapsuleTrailingData",
+   "app:./.:TestParseStreamsBlockedCapsuleTooLarge",
+   "app:./.:TestParseStreamsBlockedCapsuleTrailingData",
+   "app:./.:TestSessionSendsQueuedCapsules",
+   "app:./.:TestStreamsBlockedCapsuleRoundTrip",
+   "lib:./http3:TestCapsuleParserRequiresConsumption",
+   "lib:./http3:TestCapsuleParsing",
+   "lib:./http3:TestCapsuleTruncation",
+   "lib:./http3:TestCapsuleWriteEmpty",
+   "lib:./http3:TestCopiedCapsuleReadersShareProgress",
+   "lib:./http3:TestEmptyCapsuleParsing"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./.:TestAppendCloseSessionCapsuleMessageTruncation",
+   "app:./.:TestCloseSessionCapsuleRoundTrip",
+   "app:./.:TestCloseWithErrorTruncatesSendMessage",
+   "app:./.:TestMaxStreamsCapsuleRoundTrip",
+   "app:./.:TestParseCloseSessionCapsuleMessageTruncation",
+   "app:./.:TestParseMaxStreamsCapsuleTooLarge",
+   "app:./.:TestParseMaxStreamsCapsuleTrailingData",
+   "app:./.:TestParseStreamsBlockedCapsuleTooLarge",
+   "app:./.:TestParseStreamsBlockedCapsuleTrailingData",
+   "app:./.:TestSessionSendsQueuedCapsules",
+   "app:./.:TestStreamsBlockedCapsuleRoundTrip"
+  ]
+ },
+ "webtransport-trywriteall": {
+  "FAIL_TO_PASS": [
+   "lib:./http3:TestRequestStream",
+   "lib:./http3:TestStreamTryWriteAll",
+   "lib:./http3:TestStreamWrite"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": []
+ },
+ "ts-injection-queue": {
+  "FAIL_TO_PASS": [
+   "app:./feature/conn25:TestHandlePacketFromWireGuard",
+   "app:./net/tstun:TestCloseBeforeStart",
+   "app:./net/tstun:TestCloseDuringInject",
+   "app:./net/tstun:TestCloseIdempotent",
+   "app:./net/tstun:TestCloseReturnsAllQueueReads",
+   "app:./net/tstun:TestFilter",
+   "app:./net/tstun:TestInjectAfterClose",
+   "app:./net/tstun:TestInjectOutboundRecordsUDPFlowState",
+   "app:./net/tstun:TestInjectedReadCallsAppConnectorHook",
+   "app:./net/tstun:TestInterceptOrdering",
+   "app:./net/tstun:TestOutboundTSMPRecordsRejection",
+   "app:./net/tstun:TestReadAndInject",
+   "app:./net/tstun:TestSetConnRejectCallbackUninstall",
+   "app:./net/tstun:TestWrappedQueuesMatch",
+   "app:./net/tstun:TestWriteToForwardsFlow"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": []
+ },
+ "ts-multisocketbind": {
+  "FAIL_TO_PASS": [
+   "app:./wgengine/magicsock:TestBlockForeverConnNoSocket",
+   "app:./wgengine/magicsock:TestMaybeRebindOnError",
+   "app:./wgengine/magicsock:TestNewConn",
+   "app:./wgengine/magicsock:TestRebindStress",
+   "app:./wgengine/magicsock:TestRebindingUDPConn",
+   "app:./wgengine/magicsock:TestRebindingUDPConnCloseErrors",
+   "app:./wgengine/magicsock:TestRebindingUDPConnPadding",
+   "app:./wgengine/magicsock:TestReceiveNamesClosed",
+   "lib:./conn:TestNamesOf",
+   "lib:./conn:TestPrettyName",
+   "lib:./conn:TestSendToOf",
+   "lib:./conn:TestSocketName",
+   "lib:./conn:TestStdNetBindNames",
+   "lib:./conn:TestStdNetBindNamesAfterClose",
+   "lib:./conn:TestStdNetBindReceiveFuncAfterClose",
+   "lib:./device:TestDeviceOptions",
+   "lib:./device:TestDeviceOptionsResolve"
+  ],
+  "PASS_TO_PASS": [
+   "app:./net/sockopts:TestControlEach"
+  ],
+  "gold_failing": [
+   "app:./wgengine/magicsock:TestUDPSockets",
+   "app:./wgengine/magicsock:TestUDPSocketsDontFragment",
+   "app:./wgengine/magicsock:TestUDPSocketsOne",
+   "lib:./conn:TestStdNetBindOpenRefusesExistingGroup"
+  ],
+  "app_needs_lib": [
+   "app:./wgengine/magicsock:TestBlockForeverConnNoSocket",
+   "app:./wgengine/magicsock:TestMaybeRebindOnError",
+   "app:./wgengine/magicsock:TestNewConn",
+   "app:./wgengine/magicsock:TestRebindStress",
+   "app:./wgengine/magicsock:TestRebindingUDPConn",
+   "app:./wgengine/magicsock:TestRebindingUDPConnCloseErrors",
+   "app:./wgengine/magicsock:TestRebindingUDPConnPadding",
+   "app:./wgengine/magicsock:TestReceiveNamesClosed"
+  ]
+ },
+ "ts-per-peer-psk": {
+  "FAIL_TO_PASS": [
+   "app:./wgengine/wgcfg:TestNewPeerLookupFunc",
+   "lib:./device:TestLookupPeerConfig"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [
+   "lib:./device:TestLookupPeerPinsEndpoint"
+  ],
+  "app_needs_lib": [
+   "app:./wgengine/wgcfg:TestNewPeerLookupFunc"
+  ]
+ },
+ "ts-batch-buf": {
+  "FAIL_TO_PASS": [
+   "app:./feature/conn25:TestHandlePacketFromWireGuard",
+   "app:./net/tstun:TestFilter",
+   "app:./net/tstun:TestInjectOutboundRecordsUDPFlowState",
+   "app:./net/tstun:TestInjectedReadCallsAppConnectorHook",
+   "app:./net/tstun:TestInterceptOrdering",
+   "app:./net/tstun:TestReadAndInject",
+   "app:./wgengine/magicsock:TestConn_receiveIP",
+   "app:./wgengine/magicsock:TestNewConn",
+   "app:./wgengine/magicsock:TestRebindStress",
+   "app:./wgengine/magicsock:TestRebindingUDPConn",
+   "lib:./conn:TestStdNetBindReceiveFuncAfterClose",
+   "lib:./conn:Test_fillReceivedPackets",
+   "lib:./device:TestGetPacketBufOwnsReference",
+   "lib:./device:TestPacketBufRefCount",
+   "lib:./device:TestPacketBufRefCountUnderflow",
+   "lib:./tun:TestGSOSplitMinimumGSOSize",
+   "lib:./tun:TestGSOSplitOverlappingInput",
+   "lib:./tun:TestGSOSplitPartialCapacity"
+  ],
+  "PASS_TO_PASS": [
+   "app:./tstest/membudget:TestBackendPerPeerMemory"
+  ],
+  "gold_failing": [
+   "app:./net/batching:TestMinReadBatchMsgsLen",
+   "app:./net/batching:Test_fillReceivedPackets",
+   "app:./net/batching:Test_linuxBatchingConn_WriteBatchTo_offsetStableOnNonCoalesceRetry",
+   "app:./net/batching:Test_linuxBatchingConn_WriteBatchTo_resetsBuffersOnGSORetry",
+   "app:./net/batching:Test_linuxBatchingConn_handleRXQOverflowCounter",
+   "app:./net/batching:Test_linuxBatchingConn_splitCoalescedMessages",
+   "lib:./conn:Test_splitCoalescedMessages",
+   "lib:./tun:Test_handleVirtioRead"
+  ],
+  "app_needs_lib": [
+   "app:./feature/conn25:TestHandlePacketFromWireGuard",
+   "app:./net/tstun:TestFilter",
+   "app:./net/tstun:TestInjectOutboundRecordsUDPFlowState",
+   "app:./net/tstun:TestInjectedReadCallsAppConnectorHook",
+   "app:./net/tstun:TestInterceptOrdering",
+   "app:./net/tstun:TestReadAndInject",
+   "app:./wgengine/magicsock:TestConn_receiveIP",
+   "app:./wgengine/magicsock:TestNewConn",
+   "app:./wgengine/magicsock:TestRebindStress",
+   "app:./wgengine/magicsock:TestRebindingUDPConn"
+  ]
+ },
+ "webrtc-sctp-startcontext": {
+  "FAIL_TO_PASS": [
+   "app:./.:TestGenerateDataChannelID",
+   "app:./.:TestSCTPTransportStartContextCancelAfterConnected",
+   "app:./.:TestSCTPTransportStartContextCanceled",
+   "app:./.:TestSCTPTransportStartContextInterrupted",
+   "lib:./.:TestAssociationSNAP",
+   "lib:./.:TestAssociation_Abort",
+   "lib:./.:TestClientContextAlreadyDone",
+   "lib:./.:TestClientContextCancelBlockingConnection",
+   "lib:./.:TestClientContextCancelShutdownWrite",
+   "lib:./.:TestClientContextDeadlineExceeded",
+   "lib:./.:TestClientContextSNAPCanceledDuringSetup"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./.:TestGenerateDataChannelID",
+   "app:./.:TestSCTPTransportStartContextCancelAfterConnected",
+   "app:./.:TestSCTPTransportStartContextCanceled",
+   "app:./.:TestSCTPTransportStartContextInterrupted"
+  ]
+ },
+ "webrtc-nil-interceptor-attrs": {
+  "FAIL_TO_PASS": [
+   "lib:./.:TestAttributesGetRTCPPackets",
+   "lib:./.:TestAttributesGetRTPHeader"
+  ],
+  "PASS_TO_PASS": [
+   "app:./.:TestPeerConnection_Simulcast_Probe_PacketLoss"
+  ],
+  "gold_failing": [],
+  "app_needs_lib": []
+ },
+ "cosign-x509-chain": {
+  "FAIL_TO_PASS": [
+   "app:./pkg/cosign/bundle:TestLocalCertChainProvider_GetCertificateChain",
+   "app:./pkg/cosign:TestCheckOptsBundleOptions",
+   "app:./pkg/cosign:TestVerifyBundleWithSigVerifier",
+   "app:./pkg/oci/remote:TestOptions",
+   "lib:./pkg/bundle:TestNewBundleWithAllowCertificateChain",
+   "lib:./pkg/bundle:TestTlogEntriesCountAtCap",
+   "lib:./pkg/bundle:TestVerificationContentIntermediates",
+   "lib:./pkg/bundle:TestVerificationContentIntermediatesParseError"
+  ],
+  "PASS_TO_PASS": [
+   "app:./cmd/cosign/cli/attest:TestAttestBlobCmdLocalKeyAndCert"
+  ],
+  "gold_failing": [
+   "app:./test:TestSignVerifyBlobWithCertificateChain",
+   "app:./test:TestSignVerifyContainerWithCertificateChain",
+   "app:./test:TestSignVerifyContainerWithSigningConfigWithCertificate",
+   "app:./test:TestTSAMTLS",
+   "app:./test:TestTSAMTLSWithSigningConfig"
+  ],
+  "app_needs_lib": [
+   "app:./pkg/cosign/bundle:TestLocalCertChainProvider_GetCertificateChain",
+   "app:./pkg/cosign:TestCheckOptsBundleOptions",
+   "app:./pkg/cosign:TestVerifyBundleWithSigVerifier",
+   "app:./pkg/oci/remote:TestOptions"
+  ]
+ },
+ "lk-webhook-drain": {
+  "FAIL_TO_PASS": [
+   "app:./pkg/telemetry:Test_OnRoomEnded_ReasonIsSent",
+   "app:./pkg/telemetry:Test_Stop_SendsWebhookEventsOfDrainedWebhooks",
+   "app:./test:TestWebhookRoomFinishedOnShutdown"
+  ],
+  "PASS_TO_PASS": [
+   "app:./test:TestWebhooks"
+  ],
+  "gold_failing": [
+   "lib:./webhook:TestResourceURLNotifierLifecycle"
+  ],
+  "app_needs_lib": [
+   "app:./test:TestWebhookRoomFinishedOnShutdown"
+  ]
+ },
+ "lk-h264-profiles": {
+  "FAIL_TO_PASS": [
+   "app:./pkg/rtc:TestIsCodecEnabled",
+   "app:./pkg/rtc:TestRegisterCodecsH264Profiles",
+   "app:./pkg/rtc:TestRegisterCodecsPayloadTypesAreUnique"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./pkg/rtc:TestIsCodecEnabled",
+   "app:./pkg/rtc:TestRegisterCodecsH264Profiles",
+   "app:./pkg/rtc:TestRegisterCodecsPayloadTypesAreUnique"
+  ]
+ },
+ "lk-h264-baseline-default": {
+  "FAIL_TO_PASS": [
+   "app:./pkg/rtc:TestRegisterCodecsH264Profiles"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./pkg/rtc:TestRegisterCodecsH264Profiles"
+  ]
+ },
+ "lk-red-depacketize": {
+  "FAIL_TO_PASS": [
+   "app:./pkg/sfu:TestExtractPrimaryEncodingForRED",
+   "app:./pkg/sfu:TestRedReceiverReusedReadBuffer",
+   "lib:./pkg/red:TestDepacketizer",
+   "lib:./pkg/red:TestExtractPackets",
+   "lib:./pkg/red:TestExtractPrimaryEncoding",
+   "lib:./pkg/red:TestTruncated"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./pkg/sfu:TestExtractPrimaryEncodingForRED",
+   "app:./pkg/sfu:TestRedReceiverReusedReadBuffer"
+  ]
+ },
+ "lk-harden-inputs": {
+  "FAIL_TO_PASS": [
+   "app:./pkg/rtc/dynacast:TestCodecRegressionWithoutTarget",
+   "app:./pkg/sfu/buffer:TestVP9EmptyFramePayload",
+   "app:./pkg/sfu/rtpextension/dependencydescriptor:TestDependencyDescriptorMarshalMissingChainDiffs",
+   "app:./pkg/sfu/videolayerselector:TestDDForwarderChainMismatch",
+   "app:./pkg/sfu:TestForwarderSetRefSenderReportNil",
+   "lib:./pkg/codec:TestIsVP9KeyFrame_EmptyPayload",
+   "lib:./pkg/codec:TestParseH264SPS_CropLargerThanFrame"
+  ],
+  "PASS_TO_PASS": [
+   "app:./pkg/rtc/dynacast:TestCodecRegression",
+   "app:./pkg/sfu/buffer:TestNackOnRTX",
+   "app:./pkg/sfu/rtpextension/dependencydescriptor:TestDependencyDescriptorUnmarshalIntoStorage",
+   "app:./pkg/sfu/videolayerselector:TestDDForwarder",
+   "app:./pkg/sfu:TestForwarderLayersAudio",
+   "lib:./pkg/codec:TestParseH264SPS_EmptyAfterStripStartCode"
+  ],
+  "gold_failing": [],
+  "app_needs_lib": [
+   "app:./pkg/sfu/buffer:TestVP9EmptyFramePayload"
+  ]
+ },
+ "kubo-unixfs-v1-2026-profile": {
+  "FAIL_TO_PASS": [
+   "lib:./ipld/merkledag:TestPBNodeFieldOrder",
+   "lib:./ipld/merkledag:TestPBNodeFieldOrderRandomNodes",
+   "lib:./ipld/merkledag:TestPBNodeFieldOrderUnknown",
+   "lib:./ipld/unixfs/io:TestProfilePBNodeFieldOrderEndToEnd",
+   "lib:./ipld/unixfs/io:TestProfilePBNodeFieldOrderFixtures",
+   "lib:./ipld/unixfs/io:TestUnixFSProfiles"
+  ],
+  "PASS_TO_PASS": [],
+  "gold_failing": [
+   "app:./test/cli:TestUnixFSPBNodeFieldOrder"
+  ],
+  "app_needs_lib": []
  }
 }

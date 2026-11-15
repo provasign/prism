@@ -1,0 +1,15 @@
+task                           native                                           prism_cli
+cosign-user-agent              OK $0.323 req=19 tools=19 prism=0 app=11 | OK $0.297 req=20 tools=22 prism=5 app=10
+kubo-bootstrap-empty-list      OK $0.199 req=14 tools=19 prism=0 app=1 | NO $0.139 req=13 tools=12 prism=2 app=1
+kubo-ipfs-uri-header           NO $0.477 req=29 tools=29 prism=0 app=7 | NO $0.407 req=26 tools=25 prism=4 app=6
+kubo-native-ipfs-uris          NO $0.179 req=15 tools=14 prism=0 app=7 | NO $0.216 req=18 tools=17 prism=2 app=7
+kubo-ipns-lifetime-bounds      NO $0.260 req=22 tools=21 prism=0 app=4 | NO $0.230 req=16 tools=20 prism=2 app=3
+crush-gzip-requests            NO $0.136 req=8 tools=7 prism=0 app=1 | NO $0.145 req=9 tools=8 prism=1 app=2
+crush-brotli-requests          OK $0.408 req=22 tools=22 prism=0 app=4 | NO $0.542 req=28 tools=31 prism=4 app=4
+crush-stream-reset             NO $0.272 req=15 tools=16 prism=0 app=3 | NO $0.273 req=19 tools=25 prism=5 app=3
+ts-per-peer-psk                OK $0.305 req=17 tools=31 prism=0 app=10 | OK $0.248 req=15 tools=17 prism=10 app=10
+
+native     resolved 4/9  task@5m $2.559  prism calls 0
+prism_cli  resolved 2/9  task@5m $2.497  prism calls 35
+prism/native: task cost 0.976x
+Sources: ~/.cache/prism-research/mr-real-fix{-probe,,-b,-c,-d}-2026-11-14 (crush-brotli from -c; -b cells were empty, rate limit)

@@ -66,6 +66,11 @@ def setup_cell(task, arm):
         md = (app / "CLAUDE.md").read_text() if (app / "CLAUDE.md").exists() else ""
         if "Linked repositories" not in md:
             raise RuntimeError(f"prism init did not link {task['lib']}: {r.stdout[-800:]}")
+        if os.environ.get("MR_GO_MOD_DOWNLOAD") == "1":
+            # grove's Go analyzer runs with GOWORK=off, so it type-checks against the module
+            # cache, not the linked checkout; download what each go.mod pins (prism's own fix hint).
+            for repo in (lib, app):
+                rt.sh(["go", "mod", "download"], cwd=repo, env={**env, "GOWORK": "off"}, timeout=3600)
         rt.sh([PRISM, "index", str(app)], env=env, timeout=3600)
         if not (lib / ".grove" / "grove.db").exists():
             raise RuntimeError("library was linked but not indexed")

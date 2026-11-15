@@ -45,7 +45,7 @@ import usage_account  # noqa: E402
 CORPUS = Path("~/.cache/prism-research/multirepo-corpus").expanduser()
 BED = Path("~/.cache/prism-research/multirepo-bed").expanduser()
 CELLS = Path("~/.cache/prism-research/mrcells").expanduser()
-GO_BIN = "/usr/local/go/bin"
+GO_BIN = os.environ.get("MR_GO_BIN", "/usr/local/go/bin")
 MODEL = "claude-sonnet-5-5"
 PRISM = os.environ.get("MR_PRISM_BIN", str(Path("~/Projects/provasign-mr/bin/prism-mr").expanduser()))
 SPEND_CAP = float(os.environ.get("MR_SPEND_CAP_USD", "40"))

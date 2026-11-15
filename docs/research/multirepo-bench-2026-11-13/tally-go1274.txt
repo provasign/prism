@@ -1,0 +1,13 @@
+task                                                 native                          prism_cli
+kubo-bootstrap-empty-list      NO $0.209 req=16 tools=18 prism=0 app=1 | OK $0.174 req=13 tools=15 prism=3 app=1
+kubo-ipfs-uri-header           NO $0.190 req=13 tools=13 prism=0 app=3 | NO $0.259 req=15 tools=18 prism=7 app=5
+kubo-native-ipfs-uris          NO $0.238 req=19 tools=19 prism=0 app=6 | NO $0.180 req=12 tools=14 prism=4 app=6
+crush-gzip-requests            NO $0.163 req=9 tools=9 prism=0 app=1 | NO $0.186 req=9 tools=12 prism=3 app=1
+crush-brotli-requests          OK $0.464 req=20 tools=24 prism=0 app=4 | NO $0.452 req=26 tools=30 prism=4 app=4
+crush-stream-reset             NO $0.386 req=24 tools=27 prism=0 app=4 | NO $0.246 req=18 tools=20 prism=7 app=3
+cosign-user-agent              OK $0.326 req=18 tools=18 prism=0 app=8 | OK $0.275 req=19 tools=21 prism=6 app=10
+ts-per-peer-psk                OK $0.267 req=15 tools=23 prism=0 app=10 | OK $0.341 req=18 tools=31 prism=16 app=10
+
+native     resolved 3/8  task@5m $2.244  startup $0.465  requests 134  output tokens 99061  tool calls 151  prism calls 0  grep calls 82
+prism_cli  resolved 3/8  task@5m $2.114  startup $0.483  requests 130  output tokens 93259  tool calls 161  prism calls 50  grep calls 48
+prism/native: task cost 0.942x, total incl. startup 0.959x, requests 130/134

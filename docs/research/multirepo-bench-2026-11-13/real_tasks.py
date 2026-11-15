@@ -27,7 +27,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CORPUS = Path("~/.cache/prism-research/multirepo-corpus").expanduser()
 CELLS = Path("~/.cache/prism-research/mrcells").expanduser()
-GO_BIN = "/usr/local/go/bin"
+GO_BIN = os.environ.get("MR_GO_BIN", "/usr/local/go/bin")
 
 
 def sh(cmd, cwd=None, env=None, timeout=1800, check=True):
@@ -130,7 +130,8 @@ def setup(task: dict, which: str, arm: str = "validate") -> tuple[Path, Path, Pa
     CELLS.mkdir(parents=True, exist_ok=True)
     parent = Path(tempfile.mkdtemp(prefix=f"{task['id']}-{arm}-", dir=CELLS)).resolve()
     lib, app = parent / task["lib"], parent / task["app"]
-    clone_at(task["lib_repo"], task["lib_base"] if which == "base" else task["lib_gold"], lib)
+    # "mixed": library at base, app at gold -- shows which app tests need the library change
+    clone_at(task["lib_repo"], task["lib_base"] if which in ("base", "mixed") else task["lib_gold"], lib)
     clone_at(task["app_repo"], task["app_base"] if which == "base" else task["app_gold"], app)
     sh(["go", "work", "init", f"./{task['lib']}", f"./{task['app']}"], cwd=parent, env=go_env(parent))
     return parent, lib, app
@@ -175,7 +176,18 @@ def validate(task: dict) -> dict:
     f2p = sorted(t for t in gold if gold[t] == "pass" and base.get(t) == "fail")
     p2p = sorted(t for t in gold if gold[t] == "pass" and base.get(t) == "pass")
     broken = sorted(t for t in gold if gold[t] != "pass")
-    return {"FAIL_TO_PASS": f2p, "PASS_TO_PASS": p2p, "gold_failing": broken}
+    # App F2P tests that still fail with the library at base need the library change:
+    # those (plus library F2P tests) make the task cross-repository.
+    app_f2p = [t for t in f2p if t.startswith("app:")]
+    needs_lib = []
+    if app_f2p:
+        parent, lib, app = setup(task, "mixed")
+        try:
+            mixed = score_tree(task, parent, lib, app, select=app_f2p)
+        finally:
+            shutil.rmtree(parent, ignore_errors=True)
+        needs_lib = sorted(t for t in app_f2p if mixed.get(t) != "pass")
+    return {"FAIL_TO_PASS": f2p, "PASS_TO_PASS": p2p, "gold_failing": broken, "app_needs_lib": needs_lib}
 
 
 def main():

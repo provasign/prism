@@ -1,0 +1,27 @@
+task                                                 native                          prism_cli
+lk-h264-baseline-default       OK $0.157 req=11 tools=16 prism=0 app=2 | OK $0.122 req=10 tools=9 prism=9 app=2
+ts-per-peer-psk                OK $0.214 req=13 tools=16 prism=0 app=10 | OK $0.273 req=17 tools=17 prism=7 app=10
+kubo-bootstrap-empty-list      OK $0.228 req=15 tools=18 prism=0 app=1 | NO $0.133 req=12 tools=11 prism=2 app=1
+kubo-ipfs-uri-header           NO $0.466 req=27 tools=28 prism=0 app=6 | NO $0.605 req=36 tools=50 prism=15 app=5
+kubo-native-ipfs-uris          NO $0.295 req=23 tools=23 prism=0 app=7 | NO $0.153 req=12 tools=12 prism=5 app=2
+kubo-ipns-lifetime-bounds      NO $0.240 req=15 tools=15 prism=0 app=5 | NO $0.236 req=14 tools=18 prism=5 app=5
+prism-quickstatus              OK $0.160 req=10 tools=19 prism=0 app=3 | OK $0.169 req=11 tools=14 prism=8 app=3
+prism-doctor-capabilities      NO $0.163 req=14 tools=17 prism=0 app=3 | NO $0.100 req=11 tools=10 prism=5 app=3
+clientgolang-openmetrics2-rc   OK $0.261 req=22 tools=21 prism=0 app=2 | OK $0.318 req=23 tools=25 prism=7 app=2
+crush-gzip-requests            NO $0.243 req=14 tools=15 prism=0 app=3 | NO $0.206 req=10 tools=14 prism=5 app=1
+crush-brotli-requests          OK $0.478 req=29 tools=32 prism=0 app=4 | NO $0.561 req=29 tools=41 prism=2 app=4
+crush-stream-reset             NO $0.250 req=16 tools=17 prism=0 app=3 | NO $0.229 req=12 tools=16 prism=5 app=3
+cosign-user-agent              OK $0.272 req=20 tools=20 prism=0 app=12 | OK $0.377 req=22 tools=23 prism=5 app=12
+ice-turn-context               NO $0.324 req=25 tools=26 prism=0 app=3 | NO $0.301 req=22 tools=24 prism=9 app=2
+turn-unknown-attrs             OK $0.100 req=9 tools=12 prism=0 app=1 | OK $0.070 req=7 tools=8 prism=3 app=1
+webtransport-capsule-api       NO $0.292 req=12 tools=11 prism=0 app=4 | NO $0.266 req=12 tools=16 prism=6 app=4
+webrtc-sctp-startcontext       NO $0.210 req=18 tools=17 prism=0 app=2 | NO $0.199 req=18 tools=17 prism=8 app=3
+cosign-x509-chain              NO $1.696 req=69 tools=72 prism=0 app=24 | NO $0.930 req=50 tools=53 prism=18 app=22
+lk-webhook-drain               OK $0.561 req=29 tools=29 prism=0 app=7 | OK $0.610 req=31 tools=39 prism=14 app=5
+lk-h264-profiles               OK $0.199 req=12 tools=13 prism=0 app=2 | OK $0.222 req=11 tools=12 prism=9 app=2
+lk-red-depacketize             NO $0.236 req=12 tools=15 prism=0 app=2 | NO $0.310 req=15 tools=16 prism=3 app=2
+lk-harden-inputs               NO $0.609 req=43 tools=43 prism=0 app=9 | OK $0.523 req=35 tools=45 prism=3 app=9
+
+native     resolved 10/22  task@5m $7.653  startup $1.277  requests 458  output tokens 284042  tool calls 495  prism calls 0  grep calls 273
+prism_cli  resolved 9/22  task@5m $6.914  startup $1.326  requests 420  output tokens 274511  tool calls 490  prism calls 153  grep calls 155
+prism/native: task cost 0.903x, total incl. startup 0.923x, requests 420/458
