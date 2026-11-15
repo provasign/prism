@@ -1758,12 +1758,25 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		routed["repo"], routed["path"] = id, rels
 		args = routed
 	}
+	var pathNote string
+	if routed, note, listing, ok := h.pathScopeTerms(args); ok {
+		// A term like "sigstore-go/" names a directory: scope the search
+		// to it instead of searching the literal text.
+		if routed == nil {
+			return map[string]any{"linkedSearch": listing}, nil
+		}
+		args, pathNote = routed, note
+	}
 	if repo := stringArg(args, "repo", ""); repo != "" && repo != "all" {
 		roots, err := h.linkedSearchRoots(repo)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"linkedSearch": h.linkedSearchListing(ctx, roots, args)}, nil
+		listing := h.linkedSearchListing(ctx, roots, args)
+		if pathNote != "" {
+			listing = "// " + pathNote + "\n" + listing
+		}
+		return map[string]any{"linkedSearch": listing}, nil
 	} else if repo == "all" {
 		if _, err := h.linkedSearchRoots(repo); err != nil {
 			return nil, err
@@ -1781,14 +1794,14 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		// returned an arbitrary slice of the index as if it were a result.
 		return nil, errors.New("query is required (a name, a name fragment, or an array of them)")
 	}
-	var termNote string
+	termNote := pathNote
 	var omittedTerms []string
 	if len(queries) > searchTermCap {
 		// Never drop silently. A filter that quietly narrows the request is
 		// the failure mode SWE-Explore measures as the expensive one: missing
 		// evidence costs far more than noise.
-		termNote = fmt.Sprintf("only the first %d of %d terms were searched; re-run with the rest",
-			searchTermCap, len(queries))
+		termNote = appendNote(termNote, fmt.Sprintf("only the first %d of %d terms were searched; re-run with the rest",
+			searchTermCap, len(queries)))
 		omittedTerms = queries[searchTermCap:]
 		queries = queries[:searchTermCap]
 	}

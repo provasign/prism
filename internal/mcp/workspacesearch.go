@@ -3,7 +3,10 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -275,4 +278,149 @@ func (h *Handler) outsideRootHint() string {
 		return "a linked repository is searched with " + flag + " and paths of that repository; linked: " + strings.Join(ids, ", ")
 	}
 	return "for another repository run the prism CLI there or use its own prism MCP server"
+}
+
+// pathScopeListCap bounds a file listing answered for a path-only search.
+const pathScopeListCap = 200
+
+// pathScopeTerms turns a search term that ends in "/" and names a real
+// directory into a path scope, in a project with linked repositories.
+// `prism search sigstore-go/` searched the literal text (about 10k characters
+// of unrelated hits in the multi-repo bench); the agent meant "look in that
+// repository". A term must end in "/" and exist as a directory: the primary
+// root's, or a linked repository named by its id or folder name. Dropping
+// the slash searches the text.
+//
+// routed carries the term's scope (repo/path) with the remaining terms. When
+// no term remains, listing is the scope's files and routed is nil. ok=false
+// leaves the search untouched.
+func (h *Handler) pathScopeTerms(args map[string]any) (routed map[string]any, note, listing string, ok bool) {
+	if h.Workspace == nil || len(h.Workspace.Linked()) == 0 || boolArg(args, "regex") ||
+		stringArg(args, "repo", "") != "" || len(stringsArg(args, "path")) > 0 {
+		return nil, "", "", false
+	}
+	var rest, scoped, rels []string
+	scopeRepo, first := "", true
+	for _, t := range stringsArg(args, "query") {
+		id, rel, hit := h.resolvePathTerm(t)
+		if !hit || (!first && id != scopeRepo) {
+			rest = append(rest, t)
+			continue
+		}
+		first, scopeRepo = false, id
+		scoped = append(scoped, t)
+		if rel != "" {
+			rels = append(rels, rel)
+		}
+	}
+	if len(scoped) == 0 {
+		return nil, "", "", false
+	}
+	where := "this repository"
+	if scopeRepo != "" {
+		where = "--repo " + scopeRepo
+	}
+	note = fmt.Sprintf("treated %q as a path scope (%s); drop the trailing slash to search it as text", strings.Join(scoped, `", "`), where)
+	if len(rest) == 0 {
+		base, display := h.Root, ""
+		if scopeRepo != "" {
+			roots, err := h.linkedSearchRoots(scopeRepo)
+			if err != nil || len(roots) == 0 {
+				return nil, "", "", false
+			}
+			base, display = roots[0].Path, h.Workspace.RelPath(roots[0].Path)
+		}
+		subs := rels
+		if len(subs) == 0 {
+			subs = []string{""}
+		}
+		var b strings.Builder
+		fmt.Fprintf(&b, "// %s\n", note)
+		for _, sub := range subs {
+			b.WriteString(scopeFiles(base, sub, display))
+		}
+		return nil, note, b.String(), true
+	}
+	routed = make(map[string]any, len(args)+2)
+	for k, v := range args {
+		routed[k] = v
+	}
+	routed["query"] = rest
+	if scopeRepo != "" {
+		routed["repo"] = scopeRepo
+	}
+	if len(rels) > 0 {
+		routed["path"] = rels
+	}
+	return routed, note, "", true
+}
+
+// resolvePathTerm reports whether term is "<dir>/" naming an existing
+// directory, and where: a linked repository's id ("" for this repository)
+// with the path inside it ("" for its root).
+func (h *Handler) resolvePathTerm(term string) (repo, rel string, ok bool) {
+	if !strings.HasSuffix(term, "/") || strings.ContainsAny(term, " \t*?[]{}()|^$:\\") {
+		return "", "", false
+	}
+	clean := strings.Trim(strings.TrimPrefix(term, "./"), "/")
+	if clean == "" || filepath.IsAbs(term) || clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", "", false
+	}
+	isDir := func(p string) bool { info, err := os.Stat(p); return err == nil && info.IsDir() }
+	if isDir(filepath.Join(h.Root, filepath.FromSlash(clean))) {
+		return "", clean, true
+	}
+	segs := strings.SplitN(clean, "/", 2)
+	for _, r := range h.Workspace.Linked() {
+		if segs[0] != r.ID && segs[0] != filepath.Base(r.Path) {
+			continue
+		}
+		sub := ""
+		if len(segs) == 2 {
+			sub = segs[1]
+		}
+		if isDir(filepath.Join(r.Path, filepath.FromSlash(sub))) {
+			return r.ID, sub, true
+		}
+	}
+	return "", "", false
+}
+
+// scopeFiles lists the files under base/sub (paths shown under display),
+// skipping hidden and vendored folders, capped at pathScopeListCap.
+func scopeFiles(base, sub, display string) string {
+	start := filepath.Join(base, filepath.FromSlash(sub))
+	var files []string
+	_ = filepath.WalkDir(start, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		name := d.Name()
+		if d.IsDir() {
+			if p != start && (strings.HasPrefix(name, ".") || name == "node_modules" || name == "vendor") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if rel, err := filepath.Rel(base, p); err == nil {
+			files = append(files, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	sort.Strings(files)
+	var b strings.Builder
+	for i, f := range files {
+		if i == pathScopeListCap {
+			fmt.Fprintf(&b, "// %d more file(s) not shown; add a search term to narrow\n", len(files)-i)
+			break
+		}
+		if display != "" {
+			f = display + "/" + f
+		}
+		b.WriteString(f + "\n")
+	}
+	if len(files) == 0 {
+		b.WriteString("// no files\n")
+	}
+	return b.String()
 }

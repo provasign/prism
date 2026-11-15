@@ -161,3 +161,65 @@ func TestSearchLinkedPathAndPreview(t *testing.T) {
 		t.Fatalf("tail:\n%s", tail)
 	}
 }
+
+// "lib/" names a linked repository and "sub/" a directory of this one: both
+// scope the search instead of searching the literal text (multi-repo bench
+// 2026-11-14: `search sigstore-go/` returned ~10k characters of noise).
+func TestSearchPathLikeTermsScope(t *testing.T) {
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	for rel, content := range map[string]string{
+		"app/prism.yaml": "version: 2\nworkspace_repo: lib=../lib\n", "app/a.go": "package app\n\n// NeedleShared lib/ mention\n",
+		"app/sub/s.go": "package sub\n\n// NeedleShared in app sub\n",
+		"lib/go.mod":   "module example.com/lib\n", "lib/sub/lib.go": "package sub\n\n// NeedleShared in lib\n",
+	} {
+		p := filepath.Join(parent, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	root := filepath.Join(parent, "app")
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	cfg, _ := config.LoadFromDir(root)
+	workspace.ConfirmLinks(root, cfg)
+	h := NewHandlerWithLedger(cfg, root, nil, session.NewLedger("t"))
+
+	// A linked repository with a term: searched there, with a note.
+	out, err := h.toolSearch(t.Context(), map[string]any{"query": []string{"NeedleShared", "lib/"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, _ := out.(map[string]any)
+	got, _ := m["linkedSearch"].(string)
+	if !strings.Contains(got, `treated "lib/" as a path scope (--repo lib)`) || !strings.Contains(got, "../lib/sub/lib.go:3:") || strings.Contains(got, "app") {
+		t.Fatalf("lib/ + term:\n%s", got)
+	}
+	// Only the directory: its files are listed.
+	out, err = h.toolSearch(t.Context(), map[string]any{"query": "lib/sub/"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ = out.(map[string]any)["linkedSearch"].(string)
+	if !strings.Contains(got, "../lib/sub/lib.go") || strings.Contains(got, "go.mod") {
+		t.Fatalf("lib/sub/ listing:\n%s", got)
+	}
+	// A directory of this repository.
+	out, err = h.toolSearch(t.Context(), map[string]any{"query": "sub/"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ = out.(map[string]any)["linkedSearch"].(string)
+	if !strings.Contains(got, "sub/s.go") || strings.Contains(got, "lib.go") {
+		t.Fatalf("sub/ listing:\n%s", got)
+	}
+	// No trailing slash, nothing real, or a regex: left as text.
+	for _, args := range []map[string]any{
+		{"query": "lib/sub"}, {"query": "nosuch/"}, {"query": "lib/", "regex": true}, {"query": "lib/", "repo": "lib"},
+	} {
+		if _, note, _, ok := h.pathScopeTerms(args); ok {
+			t.Fatalf("%v rewritten: %s", args, note)
+		}
+	}
+}
