@@ -282,7 +282,7 @@ func TestChangeImpactRelaysTSReExports(t *testing.T) {
 		"src/mini/checks.ts:3:3: _gte as minimum,",
 		"_nonnegative  src/core/api.ts:5",
 	} {
-		if !strings.Contains(text, want) {
+		if !strings.Contains(expandEditSites(text), want) {
 			t.Fatalf("impact lacks %q:\n%s", want, text)
 		}
 	}
