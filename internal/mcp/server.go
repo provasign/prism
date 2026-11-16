@@ -722,6 +722,12 @@ func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any,
 	var text string
 	var rendered bool
 	var stale string
+	if qr, ok := out.(queryResult); ok && tool == "prism_query" && len(qr.Symbols) == 0 && len(qr.TextMatches) == 0 && qr.Note != "" {
+		// An empty query answer is a struct, not a map, so it fell through
+		// to JSON ({"budgetUsed":..,"symbols":[],"note":..}) even with
+		// --format text: say the miss in the form that was asked for.
+		return "// " + qr.Note + "\n", true
+	}
 	if m, ok := out.(map[string]any); ok {
 		if tool != "prism_change_impact" {
 			// Only change_impact's renderer knows staleWarning; the others

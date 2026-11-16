@@ -1238,3 +1238,33 @@ func TestLookupLinkedFileHintRequiresConfirmedRoot(t *testing.T) {
 		t.Fatalf("lookup opened the local graph after refusing the linked path: %v", err)
 	}
 }
+
+// A name this repository does not define is answered from the linked
+// repository that does, instead of failing until the agent reruns --repo
+// (2 of 10 change-impact calls in the 11-16 cross-repo run).
+func TestChangeImpactFallsThroughToLinkedRepository(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go toolchain not available")
+	}
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc OnlyInLib() int { return 1 }\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.3.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, parent, "app/prism.yaml", "version: 2\nworkspace_repo: lib=../lib\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nimport \"example.com/lib\"\n\nfunc main() { println(lib.OnlyInLib()) }\n")
+	for _, d := range []string{lib, app} {
+		if rc := cmdIndex([]string{d}); rc != 0 {
+			t.Fatalf("index %s rc=%d", d, rc)
+		}
+	}
+	t.Chdir(app)
+	out := captureStdout(func() {
+		if rc := cmdChangeImpact([]string{"OnlyInLib", "--format", "text"}); rc != 0 {
+			t.Fatalf("change-impact rc=%d", rc)
+		}
+	})
+	if !strings.Contains(out, "// repository lib") || !strings.Contains(out, "OnlyInLib") {
+		t.Fatalf("expected the linked repository's answer:\n%s", out)
+	}
+}

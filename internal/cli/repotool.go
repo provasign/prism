@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,19 +113,20 @@ func (s *repoToolSession) invoke(tool string, args map[string]any) (out any, tex
 			if hint := graphRepoHint(tool, call, s.handler.Workspace); hint != "" {
 				err = fmt.Errorf("%w; %s", err, hint)
 			}
-		} else if tool == "prism_query" {
-			data, _ := json.Marshal(out)
-			if strings.Contains(string(data), "no symbols matched") {
-				if hint := graphRepoHint(tool, call, s.handler.Workspace); hint != "" {
-					fmt.Fprintln(os.Stderr, "query: "+hint)
-				}
-			}
 		}
 	}
 	if err != nil {
 		return nil, "", false, err
 	}
 	text, rendered = s.handler.RenderToolText(true, tool, call, out)
+	if s.repo == "" && tool == "prism_query" && rendered && strings.Contains(text, "no symbols matched") {
+		// On stdout with the miss, not stderr: an agent that pipes or
+		// discards stderr otherwise never learns the symbol may live in a
+		// linked repository (it did on the 11-15 ice-turn-context cell).
+		if hint := graphRepoHint(tool, call, s.handler.Workspace); hint != "" {
+			text += "// " + hint + "\n"
+		}
+	}
 	if s.repo != "" {
 		out = map[string]any{"repository": s.repo, "root": s.selected, "result": out}
 		if rendered {

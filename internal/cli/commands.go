@@ -3162,6 +3162,15 @@ func cmdChangeImpact(args []string) int {
 			callArgs["file"] = file
 		}
 		out, text, rendered, err := session.invoke("prism_change_impact", callArgs)
+		if err != nil && repo == "" {
+			// The name is not defined here but a linked repository may define
+			// it (lookup already answers that way). Ask them in turn instead
+			// of making the agent rerun with --repo: that rerun was 2 of 10
+			// change-impact calls in the 11-16 cross-repo run.
+			if lo, lt, lr, ok := changeImpactInLinked(dir, session, callArgs, err); ok {
+				out, text, rendered, err = lo, lt, lr, nil
+			}
+		}
 		if len(queries) == 1 {
 			if err != nil {
 				fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
@@ -3191,6 +3200,39 @@ func cmdChangeImpact(args []string) int {
 	}
 	return 0
 }
+
+// changeImpactInLinked retries a change-impact whose name this repository
+// does not index against the linked repository that defines it. lookup finds
+// that repository from the existing indexes, so a name nobody defines opens
+// no second graph client (a batch keeps its one-client rule). Only the "is
+// indexed" miss is retried; any other error is the real answer.
+func changeImpactInLinked(dir string, session *repoToolSession, callArgs map[string]any, miss error) (any, string, bool, bool) {
+	var none any
+	if !strings.Contains(miss.Error(), "is indexed") || session.handler.Workspace == nil || len(session.handler.Workspace.Linked()) == 0 {
+		return none, "", false, false
+	}
+	name, _ := callArgs["query"].(string)
+	found, err := session.handler.Invoke("prism_lookup", map[string]any{"name": name})
+	m, _ := found.(map[string]any)
+	note, _ := m["note"].(string)
+	const marker = "shown from linked repository "
+	i := strings.Index(note, marker)
+	if err != nil || i < 0 {
+		return none, "", false, false
+	}
+	id := strings.Fields(note[i+len(marker):])[0]
+	linked, err := newRepoToolSession(dir, id)
+	if err != nil {
+		return none, "", false, false
+	}
+	defer linked.close()
+	out, text, rendered, err := linked.invoke("prism_change_impact", callArgs)
+	if err != nil {
+		return none, "", false, false
+	}
+	return out, text, rendered, true
+}
+
 func cmdRenamePlan(args []string) int {
 	if len(args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: prism rename-plan <Type.method | bare-name | file:line> <NewName> [dir]")

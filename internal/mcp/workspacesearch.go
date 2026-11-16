@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/provasign/prism/internal/textsearch"
+	"github.com/provasign/prism/internal/view"
 	"github.com/provasign/prism/internal/workspace"
 )
 
@@ -85,6 +86,14 @@ func (h *Handler) linkedSearchListing(ctx context.Context, roots []workspace.Roo
 	for _, r := range roots {
 		rel := h.Workspace.RelPath(r.Path)
 		for _, t := range terms {
+			if len(opts.Paths) > 0 || len(opts.Glob) > 0 {
+				// A scope that names no file of the repository tested no term.
+				// "0 match(es)" there read as "not in boxo" (kubo-ipns, 11-15).
+				if miss := scopeFilterCheck(r.Path, opts.Paths, opts.Glob, true); miss.noFiles {
+					fmt.Fprintf(&b, "// repo %s  %s  %q: %s\n", r.ID, rel, t, miss.note)
+					continue
+				}
+			}
 			res := textsearch.Search(ctx, r.Path, t, opts)
 			total := res.TotalHits
 			if total < len(res.Hits) {
@@ -102,7 +111,16 @@ func (h *Handler) linkedSearchListing(ctx context.Context, roots []workspace.Roo
 				fmt.Fprintf(&b, "// path %q is not inside %s; ignored\n", p, r.ID)
 			}
 			seen := map[string]bool{}
+			// Test-file lines are counted per file, not listed, as in a local
+			// search: they were 40% of linked-repo lines in the 11-15/11-16
+			// runs. exhaustive and files_only still list everything.
+			testHits, testFiles := 0, map[string]bool{}
 			for _, hit := range res.Hits {
+				if !filesOnly && !opts.Exhaustive && view.IsTestPath(hit.File) {
+					testHits++
+					testFiles[hit.File] = true
+					continue
+				}
 				if filesOnly {
 					if !seen[hit.File] {
 						seen[hit.File] = true
@@ -111,6 +129,9 @@ func (h *Handler) linkedSearchListing(ctx context.Context, roots []workspace.Roo
 					continue
 				}
 				fmt.Fprintf(&b, "%s/%s:%d: %s\n", rel, hit.File, hit.Line, hit.Text)
+			}
+			if testHits > 0 {
+				fmt.Fprintf(&b, "// test files: %d hit(s) in %d file(s) of %s, lines omitted (--exhaustive lists them)\n", testHits, len(testFiles), r.ID)
 			}
 		}
 	}
@@ -209,6 +230,9 @@ func (h *Handler) linkedPreview(ctx context.Context, r workspace.Root, terms []s
 		for _, hit := range textsearch.Search(ctx, r.Path, t, opts).Hits {
 			if len(lines) >= linkedPreviewLines {
 				break
+			}
+			if view.IsTestPath(hit.File) {
+				continue
 			}
 			lines = append(lines, fmt.Sprintf("%s/%s:%d: %s\n", rel, hit.File, hit.Line, strings.TrimSpace(hit.Text)))
 		}

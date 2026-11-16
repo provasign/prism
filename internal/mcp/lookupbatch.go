@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -143,6 +144,10 @@ func (h *Handler) toolLookupBatch(ctx context.Context, args map[string]any, requ
 	return out, nil
 }
 
+// lookupSpanLine matches the header line of a delivered symbol body:
+// "// method Type.name  path/file.go:10-40".
+var lookupSpanLine = regexp.MustCompile(`(?m)^// (?:\w+) (\S+)\s+(\S+:\d+-\d+)$`)
+
 func renderLookupBatchAsText(out map[string]any) (string, bool) {
 	switch out["results"].(type) {
 	case []any, []map[string]any:
@@ -155,6 +160,7 @@ func renderLookupBatchAsText(out map[string]any) (string, bool) {
 		}
 	}
 	var b strings.Builder
+	seenSpans := map[string]string{}
 	for _, raw := range anySlice(out["results"]) {
 		entry, ok := raw.(map[string]any)
 		if !ok {
@@ -186,6 +192,15 @@ func renderLookupBatchAsText(out map[string]any) (string, bool) {
 		text, ok := renderLookupAsText(result)
 		if !ok {
 			return "", false
+		}
+		// Two names that resolve to one symbol (Type.m and m) printed the
+		// body twice (crush-gzip, ts-per-peer-psk). Say so instead.
+		if m := lookupSpanLine.FindStringSubmatch(text); m != nil {
+			if first, dup := seenSpans[m[2]]; dup {
+				fmt.Fprintf(&b, "// same symbol as lookup %s: %s (body shown above)\n", first, m[2])
+				continue
+			}
+			seenSpans[m[2]] = label
 		}
 		b.WriteString(text)
 	}
