@@ -5,7 +5,38 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/textsearch"
 )
+
+func TestCondensedCompleteSearchDoesNotClaimAllLinesDelivered(t *testing.T) {
+	h := newTestHandler(t)
+	var hits []textsearch.Hit
+	productionHits := searchBudgetTermLines + 22
+	for i := 1; i <= productionHits; i++ {
+		hits = append(hits, textsearch.Hit{File: "production.go", Line: i, Text: "Target()"})
+	}
+	for i := 1; i <= 27; i++ {
+		hits = append(hits, textsearch.Hit{File: "production_test.go", Line: i, Text: "Target()"})
+	}
+	r := map[string]any{
+		"textHits":        h.renderExhaustiveLines(t.Context(), hits),
+		"resultsComplete": true, "totalHits": productionHits + 27, "filesMatched": 2,
+	}
+	budgetTermHits(r, false)
+	out, ok := renderSearchAsText(r)
+	if !ok {
+		t.Fatal("condensed search did not render as text")
+	}
+	for _, want := range []string{fmt.Sprintf("%d exact matches", productionHits+27), "22 more matching line(s) not shown", "27 hit(s) in 1 file(s), lines omitted"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "every match line is shown") {
+		t.Fatalf("condensed search claims complete source delivery:\n%s", out)
+	}
+}
 
 // budgetRouterFixture reproduces the echo pr3006 shape: a config type used
 // by a little production code and many test functions.

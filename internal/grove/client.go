@@ -104,6 +104,16 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	return nil
 }
 
+// IndexNeedsRefresh reports whether the stored graph needs an explicit build
+// or version refresh. It never indexes source files.
+func (c *Client) IndexNeedsRefresh(ctx context.Context) (bool, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return false, err
+	}
+	return e.IndexNeedsRefresh(ctx)
+}
+
 // AutoIndexIfEmpty builds the index for a never-indexed repo or refreshes one
 // whose extractor/resolver version is old (or whose edge write was interrupted).
 // Query paths call this after EnsureRunning; index paths index explicitly.

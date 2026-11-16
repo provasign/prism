@@ -77,20 +77,41 @@ Gradle files are read by pattern: computed dependencies are not seen. `.csproj` 
 - `lookup Name` — a name this repository does not define is shown from the linked repository that
   does. A package qualifier must match (`store.Normalize` is looked for in a `store` package), a
   repository this one requires ranks first, and candidates that still tie are listed as ambiguous.
-  `--repo <id>` asks one linked repository directly.
+  `--repo <id>` asks one linked repository directly. `--path <path>` is an alias for the
+  `--file` disambiguator; it also works with an explicit linked repository. A copied
+  linked path selects that repository even without `--repo`, so a local homonym does not win.
 - `read ../grove/pkg/x.go` — reads a file in a linked repository.
+  `read pkg/x.go --repo grove` also selects that repository, supports line ranges and file
+  batches, and keeps output paths relative to the current project. Text reads do not need an index.
 - `search term` — ends with one line counting matches in each linked repository. `--repo <id>`
   lists them; `--repo all` appends every linked repository.
 - `change-impact Name` — leads with the sites in other repositories, then this repository's.
+  `--repo <id>` anchors the query in that repository's graph. Up to ten names can be batched
+  in one invocation, sharing one graph client and handler, with a separate result or error
+  for each name. Bare words are names even when a directory has the same name; select a
+  directory with `./path`, `../path`, an absolute path, or `--dir <path>`. `--path` is also an alias
+  for its existing `--file` disambiguator.
 - `verify` — its first line says when linked repositories reference a contract the diff changed or
   removed, looked up under the old name. `--strict` fails on that. `verify --removed` counts
   whole-identifier lines in linked repositories.
 - `test-plan` — lists tests in other repositories that reference a changed symbol.
 - `query` — answers for this repository and says so in one line when repositories are linked.
+  `query --terms Name --repo <id>` selects a linked repository's graph instead. It does not
+  merge unrelated graphs; use `change-impact` for consumers of the selected contract.
 
 Paths into a linked checkout are relative to this repository's root (`../app/main.go`), so they
-can be passed straight to an editor. Cache clones are printed with absolute paths, under a line
+can be passed straight to an editor. Explicit `query --repo`, `change-impact --repo`, and
+`lookup` with a selected repository and a `--file` or `--path` disambiguator name the selected root and use
+paths relative to that root; their JSON output contains `repository`, `root`, and `result`.
+Cache clones are printed with absolute paths, under a line
 saying they are read-only reference source.
+
+Graph selection by `--repo` (including lookup selected by a copied linked file path)
+requires an existing, current index in a writable checkout. A missing, empty, incomplete,
+or old index returns the exact `prism index '<path>'` command to run explicitly. It is
+not built implicitly by the selected-repository request. Cache clones are refused before
+opening a graph client through this path; `read --repo` can still read their source without
+an index. Queries rooted in the current repository use the normal auto-index behavior.
 
 ## How strong each answer is
 

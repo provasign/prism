@@ -906,6 +906,14 @@ func (h *Handler) resolvedRefNote(ctx context.Context, query string, hits []text
 		len(hits), n, qn)
 }
 
+// exhaustiveCompleteNote is true only while every line is delivered; the
+// budget (budgetTermHits) rewrites it to exhaustiveCondensedNote when lines
+// are condensed or omitted, so "COMPLETE" is never claimed for a partial view.
+const (
+	exhaustiveCompleteNote  = "COMPLETE — every match line is shown above with its enclosing symbol (%d lines in %d files)"
+	exhaustiveCondensedNote = "Search inventory: %d matching lines in %d files; omission notes identify any lines not displayed."
+)
+
 // renderExhaustiveLines delivers every match line, no context, in the
 // backend's file order, each tagged with its indexed enclosing symbol (the
 // receiver evidence the capped inventory carried). Only called under
@@ -943,7 +951,7 @@ func (h *Handler) renderExhaustiveLines(ctx context.Context, rawHits []textsearc
 		out = append(out, map[string]any{"file": file, "hits": byFile[file]})
 	}
 	out = append(out, map[string]any{
-		"note": fmt.Sprintf("COMPLETE — every match line is shown above with its enclosing symbol (%d lines in %d files)", len(rawHits), len(order)),
+		"note": fmt.Sprintf(exhaustiveCompleteNote, len(rawHits), len(order)),
 	})
 	return out
 }

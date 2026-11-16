@@ -78,6 +78,7 @@ Usage:
                                   [--format text|json]
   prism query --terms a,b,c [dir]  Find related implementations, callers,
                                   and tests around explicit anchors (edit-ready)
+                                  [--repo <id>]  use the linked repository's graph
                                   --terms a,b,c      REQUIRED: anchor on specific symbol
                                   names (grep-precision); use prism search first when
                                   no anchor is known
@@ -86,6 +87,7 @@ Usage:
                                   --max-files N      source delivery: max files shown (default: 5)
                                   --format text|lean|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
+                                  [--repo <id>]  read paths inside a linked repository
                                   --from N --to M  Line range (inclusive);
                                   --offset N --limit N also work; --dir <path>
                                   --format text|lean|json  Output format (default: text)
@@ -104,6 +106,7 @@ Usage:
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
                                   [--repo <id>|all]  answer from a linked repository
+                                  [--file <path> | --path <path>]  disambiguate a symbol
                                   Multiple names: prism lookup <name>... [--dir <path>]
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
                                   its neighbours, or a file's source + the
@@ -138,6 +141,10 @@ Usage:
 	                                  declaration(s), override/implementation family (subtype
 	                                  closure), super-declarations, and indexed callers.
                                   query format: Type.method or Type.method(ParamType, ...)
+                                  Up to 10 query names may be batched; bare words are names
+                                  [./dir | --dir <path>]  select a repository
+                                  [--repo <id>]  anchor in a linked repository
+                                  [--file <path> | --path <path>]  disambiguate a symbol
                                   --format text|lean|json  Output format (default: json)
   prism rename-plan <query> <NewName> [dir]     Change-set as line edits with substitutions
                                                 (--format text|lean|json; query: Type.method or Type.method(ParamType, ...))
@@ -2302,12 +2309,16 @@ func cmdQuery(args []string) int {
 	maxFiles := 0
 	delivery := ""
 	format := formatText
+	repo := ""
 	var terms []string
 	var include []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		var err error
 		switch a {
+		case "--repo":
+			repo, err = flagValue("query", args, i)
+			i++
 		case "--profile":
 			profile, err = flagValue("query", args, i)
 			i++
@@ -2372,7 +2383,7 @@ func cmdQuery(args []string) int {
 	if len(include) > 0 {
 		invokeArgs["include"] = include
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_query", invokeArgs)
+	out, text, rendered, err := invokeRepoToolText(dir, repo, "prism_query", invokeArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "query:", err)
 		return 1
@@ -2383,7 +2394,7 @@ func cmdQuery(args []string) int {
 
 func cmdRead(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism read <file> [file...] [--from N --to M | --offset N --limit N] [--dir <path>]")
+		fmt.Fprintln(os.Stderr, "usage: prism read <file> [file...] [--from N --to M | --offset N --limit N] [--repo <id>] [--dir <path>]")
 		return 2
 	}
 	file := args[0]
@@ -2391,6 +2402,7 @@ func cmdRead(args []string) int {
 		return usageError(fmt.Errorf("read: the file comes first: prism read <file> [flags], got %q", file))
 	}
 	dir := "."
+	repo := ""
 	dirSet := false
 	var extra []string
 	format := formatText
@@ -2416,6 +2428,9 @@ func cmdRead(args []string) int {
 			} else {
 				to = n
 			}
+			i++
+		case "--repo":
+			repo, err = flagValue("read", args, i)
 			i++
 		case "--dir":
 			dir, err = flagValue("read", args, i)
@@ -2458,6 +2473,14 @@ func cmdRead(args []string) int {
 		if fi, err := os.Stat(extra[0]); err == nil && fi.IsDir() {
 			dir, extra = extra[0], nil
 		}
+	}
+	if repo != "" {
+		root, files, err := readRepoPaths(dir, repo, append([]string{file}, extra...))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "read:", err)
+			return 1
+		}
+		dir, file, extra = root, files[0], files[1:]
 	}
 	if len(extra) > 0 {
 		return cmdReadFiles(dir, append([]string{file}, extra...), from, to, offset, limit, format)
@@ -2779,7 +2802,7 @@ func cmdLookup(args []string) int {
 			}
 			repo = v
 			i++
-		case "--file":
+		case "--file", "--path":
 			v, err := flagValue("lookup", args, i)
 			if err != nil {
 				return usageError(err)
@@ -2835,6 +2858,14 @@ func cmdLookup(args []string) int {
 	for _, n := range bare {
 		warnShellExpandedName("lookup", n)
 	}
+	if repo == "" && fileHint != "" {
+		selected, err := repoForFileHint(dir, fileHint)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "lookup:", err)
+			return 1
+		}
+		repo = selected
+	}
 	callArgs := map[string]any{"name": names}
 	if len(fields) > 0 {
 		callArgs["fields"] = fields
@@ -2845,7 +2876,16 @@ func cmdLookup(args []string) int {
 	if fileHint != "" {
 		callArgs["file"] = fileHint
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_lookup", callArgs)
+	var out any
+	var text string
+	var rendered bool
+	var err error
+	if repo != "" && repo != "all" && fileHint != "" {
+		delete(callArgs, "repo")
+		out, text, rendered, err = invokeRepoToolText(dir, repo, "prism_lookup", callArgs)
+	} else {
+		out, text, rendered, err = invokeToolText(dir, "prism_lookup", callArgs)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
 		return 1
@@ -3048,17 +3088,32 @@ func cmdReferences(args []string) int {
 
 func cmdChangeImpact(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism change-impact <Type.method | bare-name | file:line> [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism change-impact <Type.method | bare-name | file:line>... [./dir | --dir <path>]")
 		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
 		return 2
 	}
-	query := args[0]
+	queries := []string{args[0]}
 	dir, dirSet := ".", false
 	format := formatJSON
 	file := ""
+	repo := ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
+		case "--dir":
+			v, err := flagValue("change-impact", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			dir, dirSet = v, true
+			i++
+		case "--repo":
+			v, err := flagValue("change-impact", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			repo = v
+			i++
 		case "--format":
 			f, err := formatFlag("change-impact", args, i)
 			if err != nil {
@@ -3066,7 +3121,7 @@ func cmdChangeImpact(args []string) int {
 			}
 			format = f
 			i++
-		case "--file":
+		case "--file", "--path":
 			// Disambiguate same-named types in different packages: only
 			// types declared in a matching file seed the closure.
 			v, err := flagValue("change-impact", args, i)
@@ -3079,31 +3134,63 @@ func cmdChangeImpact(args []string) int {
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("change-impact", a)
 			}
-			// Agents pass several names (`change-impact A B`); the second
-			// one used to be read as the directory, and a third failed with
-			// "takes one directory".
-			if info, statErr := os.Stat(a); statErr != nil || !info.IsDir() {
-				return usageError(fmt.Errorf("change-impact: takes one symbol name per call, and %q is not a directory; run `prism change-impact %s --format text` for it separately", a, a))
-			}
-			if err := positionalDir("change-impact", &dir, &dirSet, a); err != nil {
-				return usageError(err)
+			if lookupArgIsPath(a) {
+				if err := positionalDir("change-impact", &dir, &dirSet, a); err != nil {
+					return usageError(err)
+				}
+			} else {
+				queries = append(queries, a)
 			}
 		}
 	}
-	warnShellExpandedName("change-impact", query)
-	callArgs := map[string]any{"query": query}
-	if file != "" {
-		callArgs["file"] = file
+	if len(queries) > maxBatchTerms {
+		return usageError(fmt.Errorf("change-impact: at most %d names per call", maxBatchTerms))
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_change_impact", callArgs)
+	session, err := newRepoToolSession(dir, repo)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
 		return 1
 	}
-	printToolResult("change-impact", out, text, rendered, format)
+	defer session.close()
+	var results []map[string]any
+	var texts strings.Builder
+	allRendered, failed := true, false
+	for _, query := range queries {
+		warnShellExpandedName("change-impact", query)
+		callArgs := map[string]any{"query": query}
+		if file != "" {
+			callArgs["file"] = file
+		}
+		out, text, rendered, err := session.invoke("prism_change_impact", callArgs)
+		if len(queries) == 1 {
+			if err != nil {
+				fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
+				return 1
+			}
+			printToolResult("change-impact", out, text, rendered, format)
+			return 0
+		}
+		entry := map[string]any{"query": query}
+		if err != nil {
+			entry["error"] = err.Error()
+			fmt.Fprintf(&texts, "// %s: ERROR: %v\n", query, err)
+			failed = true
+		} else {
+			entry["result"] = out
+			allRendered = allRendered && rendered
+			texts.WriteString(text)
+			if !strings.HasSuffix(text, "\n") {
+				texts.WriteByte('\n')
+			}
+		}
+		results = append(results, entry)
+	}
+	printToolResult("change-impact", map[string]any{"results": results}, texts.String(), allRendered, format)
+	if failed {
+		return 1
+	}
 	return 0
 }
-
 func cmdRenamePlan(args []string) int {
 	if len(args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: prism rename-plan <Type.method | bare-name | file:line> <NewName> [dir]")

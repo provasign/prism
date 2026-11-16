@@ -229,6 +229,15 @@ func budgetTermHits(r map[string]any, testsTargeted bool) []map[string]any {
 	if total <= searchBudgetContextHits {
 		return all
 	}
+	for _, raw := range groups {
+		if g, ok := raw.(map[string]any); ok && g["file"] == nil {
+			if note, _ := g["note"].(string); strings.HasPrefix(note, "COMPLETE — every match line") {
+				var lines, files int
+				fmt.Sscanf(note[strings.Index(note, "("):], "(%d lines in %d files)", &lines, &files)
+				g["note"] = fmt.Sprintf(exhaustiveCondensedNote, lines, files)
+			}
+		}
+	}
 	if inv, ok := r["fileInventory"].(map[string]any); ok && intArg(inv, "total", 0) <= searchBudgetBestLineFiles &&
 		len(anySlice(inv["files"])) == intArg(inv, "total", 0) && !sampleCoversInventory(all, inv) {
 		// Sampled lines plus a small inventory: one line per file carries

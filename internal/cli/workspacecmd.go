@@ -425,7 +425,7 @@ func workspaceSteeringLine(root string) string {
 		return ""
 	}
 	return "Linked repositories: " + ws.Describe() + ". change-impact, verify and test-plan also list their " +
-		"consumers; lookup and read reach their source; search takes --repo <id>."
+		"consumers; lookup and read reach their source. search, lookup, read, query and change-impact take --repo <id>; query and change-impact use that repository's graph."
 }
 
 // refreshSteering rewrites the steering block of a repository Prism was set

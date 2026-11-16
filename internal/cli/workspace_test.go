@@ -1126,3 +1126,115 @@ func TestWorkspaceSteeringFollowsLinks(t *testing.T) {
 		t.Fatalf("MCP steering file names links:\n%s", steering(app))
 	}
 }
+
+func TestWorkspaceGraphRepoSelectionAndLookupPath(t *testing.T) {
+	parent, app := workspaceFixture(t)
+	for _, repo := range []string{"app", "lib"} {
+		if err := os.Remove(filepath.Join(parent, repo, ".git")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.21\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\n\nfunc Target() int { return 7 }\nfunc Caller() int { return Target() }\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.21\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nfunc Main() {}\nfunc Target() int { return 99 }\n")
+	if rc := cmdIndex([]string{app}); rc != 0 {
+		t.Fatalf("index app: %d", rc)
+	}
+	if rc := cmdIndex([]string{filepath.Join(parent, "lib")}); rc != 0 {
+		t.Fatalf("index lib: %d", rc)
+	}
+	t.Chdir(app)
+	for _, args := range [][]string{
+		{"query", "--terms", "Target", "--repo", "lib", "--format", "text"},
+		{"change-impact", "Target", "--repo", "lib", "--format", "text"},
+		{"change-impact", "Target", "--repo", "lib", "--path", "../lib/lib.go", "--format", "text"},
+		{"lookup", "Target", "--repo", "lib", "--path", "../lib/lib.go", "--format", "text"},
+		{"lookup", "Target", "--path", "../lib/lib.go", "--format", "text"},
+		{"change-impact", "Target", "Caller", "--repo", "lib", "--format", "text"},
+	} {
+		out := captureStdout(func() {
+			if rc := Run(args); rc != 0 {
+				t.Fatalf("%v: rc=%d", args, rc)
+			}
+		})
+		if !strings.Contains(out, "repository lib") || !strings.Contains(out, "lib.go") || strings.Contains(out, "return 99") {
+			t.Fatalf("wrong repository for %v:\n%s", args, out)
+		}
+		if args[0] != "lookup" && !strings.Contains(out, "Caller") {
+			t.Fatalf("linked caller missing for %v:\n%s", args, out)
+		}
+	}
+	for _, op := range []string{"query", "change-impact"} {
+		args := []string{op, "Target", "--repo", "missing", "--format", "text"}
+		if op == "query" {
+			args = []string{op, "--terms", "Target", "--repo", "missing", "--format", "text"}
+		}
+		if rc := Run(args); rc == 0 {
+			t.Fatalf("%s silently accepted unknown repository", op)
+		}
+	}
+}
+
+func TestWorkspaceReadRepoSelectionWithoutGraph(t *testing.T) {
+	parent, app := workspaceFixture(t)
+	workspace.LinkReverse(app, filepath.Join(parent, "lib"))
+	writeCLIFile(t, parent, "lib/README.md", "LinkedReadMarker\nsecond\n")
+	writeCLIFile(t, parent, "app/lib.go", "WrongRepositoryMarker\n")
+	writeCLIFile(t, parent, "app/.grove/grove.db", "invalid database bytes")
+	if err := os.MkdirAll(filepath.Join(app, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(filepath.Join(app, "nested"))
+	for _, files := range [][]string{{"lib.go"}, {"../lib/lib.go"}, {filepath.Join(parent, "lib/lib.go")}, {"lib.go", "README.md"}} {
+		args := append(append([]string{}, files...), "--repo", "lib", "--format", "text")
+		out := captureStdout(func() {
+			if rc := cmdRead(args); rc != 0 {
+				t.Fatalf("%v: rc=%d", args, rc)
+			}
+		})
+		if !strings.Contains(out, "../lib/lib.go") || !strings.Contains(out, "LibMarker") || strings.Contains(out, "WrongRepositoryMarker") {
+			t.Fatalf("wrong source or paths for %v:\n%s", args, out)
+		}
+		if len(files) > 1 && !strings.Contains(out, "LinkedReadMarker") {
+			t.Fatalf("second file missing:\n%s", out)
+		}
+	}
+	out := captureStdout(func() {
+		if rc := cmdRead([]string{"README.md", "--repo=lib", "--from", "2", "--to", "2", "--format", "text"}); rc != 0 {
+			t.Fatalf("ranged read rc=%d", rc)
+		}
+	})
+	if !strings.Contains(out, "second") || strings.Contains(out, "LinkedReadMarker") {
+		t.Fatalf("range not preserved:\n%s", out)
+	}
+	for _, args := range [][]string{
+		{"lib.go", "--repo", "missing"},
+		{"lib.go", "--repo", "all"},
+		{"../other/secret.go", "--repo", "lib"},
+		{filepath.Join(parent, "other/secret.go"), "--repo", "lib"},
+	} {
+		if rc := cmdRead(args); rc == 0 {
+			t.Fatalf("accepted invalid repository/path: %v", args)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(parent, "lib/.grove")); !os.IsNotExist(err) {
+		t.Fatalf("linked read opened the graph: %v", err)
+	}
+}
+
+func TestLookupLinkedFileHintRequiresConfirmedRoot(t *testing.T) {
+	_, app := workspaceFixture(t)
+	t.Chdir(app)
+	var rc int
+	stderr := captureStderr(func() {
+		_ = captureStdout(func() { rc = cmdLookup([]string{"Main", "--path", "../lib/lib.go", "--format", "text"}) })
+	})
+	if rc == 0 || !strings.Contains(stderr, "NOT SEARCHED") {
+		t.Fatalf("unconfirmed linked path was silently ignored: rc=%d\n%s", rc, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(app, ".grove")); !os.IsNotExist(err) {
+		t.Fatalf("lookup opened the local graph after refusing the linked path: %v", err)
+	}
+}
