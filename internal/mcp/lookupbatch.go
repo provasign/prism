@@ -160,7 +160,7 @@ func renderLookupBatchAsText(out map[string]any) (string, bool) {
 		}
 	}
 	var b strings.Builder
-	seenSpans := map[string]string{}
+	seenSpans := map[string]struct{ label, content string }{}
 	for _, raw := range anySlice(out["results"]) {
 		entry, ok := raw.(map[string]any)
 		if !ok {
@@ -193,14 +193,28 @@ func renderLookupBatchAsText(out map[string]any) (string, bool) {
 		if !ok {
 			return "", false
 		}
-		// Two names that resolve to one symbol (Type.m and m) printed the
-		// body twice (crush-gzip, ts-per-peer-psk). Say so instead.
-		if m := lookupSpanLine.FindStringSubmatch(text); m != nil {
-			if first, dup := seenSpans[m[2]]; dup {
-				fmt.Fprintf(&b, "// same symbol as lookup %s: %s (body shown above)\n", first, m[2])
+		// Suppress only an identical primary body already delivered for this
+		// symbol. Each request retains its own warnings, candidates, and
+		// overloads, even when its primary symbol was shown earlier.
+		content, _ := result["content"].(string)
+		if m := lookupSpanLine.FindStringSubmatch(text); m != nil && content != "" {
+			key := m[1] + " " + m[2]
+			if first, dup := seenSpans[key]; dup && first.content == content {
+				withoutBody := make(map[string]any, len(result))
+				for key, value := range result {
+					if key != "content" {
+						withoutBody[key] = value
+					}
+				}
+				metadata, ok := renderLookupAsText(withoutBody)
+				if !ok {
+					return "", false
+				}
+				b.WriteString(metadata)
+				fmt.Fprintf(&b, "// same symbol as lookup %s: %s (body shown above)\n", first.label, m[2])
 				continue
 			}
-			seenSpans[m[2]] = label
+			seenSpans[key] = struct{ label, content string }{label, content}
 		}
 		b.WriteString(text)
 	}

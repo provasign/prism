@@ -23,6 +23,7 @@ type repoToolSession struct {
 	root, selected, sub, repo string
 	client                    *grove.Client
 	handler                   *mcp.Handler
+	linked                    map[string]*repoToolSession
 }
 
 func newRepoToolSession(dir, repo string) (*repoToolSession, error) {
@@ -89,7 +90,12 @@ func repoShellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
-func (s *repoToolSession) close() { s.client.Shutdown() }
+func (s *repoToolSession) close() {
+	for _, linked := range s.linked {
+		linked.close()
+	}
+	s.client.Shutdown()
+}
 
 func (s *repoToolSession) invoke(tool string, args map[string]any) (out any, text string, rendered bool, err error) {
 	call := make(map[string]any, len(args))

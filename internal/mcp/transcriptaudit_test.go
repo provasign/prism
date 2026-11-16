@@ -77,3 +77,29 @@ func TestLinkedSearchFoldsTestsAndReportsMissingPath(t *testing.T) {
 		t.Fatalf("missing path:\n%s", miss)
 	}
 }
+
+func TestLookupBatchDedupPreservesAmbiguity(t *testing.T) {
+	sym := map[string]any{"kind": "method", "qualifiedName": "A.Foo", "filePath": "x.go", "span": map[string]any{"start": 10, "end": 10}}
+	out := map[string]any{"results": []map[string]any{
+		{"name": "A.Foo", "result": map[string]any{"symbol": sym, "content": "func (a A) Foo() {}"}},
+		{"name": "Foo", "result": map[string]any{"symbol": sym, "content": "func (a A) Foo() {}", "ambiguous": true, "candidates": []string{"A.Foo x.go:10", "B.Foo x.go:20"}}},
+	}}
+	text, ok := renderLookupBatchAsText(out)
+	if !ok || strings.Count(text, "func (a A) Foo() {}") != 1 || !strings.Contains(text, "same symbol as lookup A.Foo") || !strings.Contains(text, "AMBIGUOUS") || !strings.Contains(text, "B.Foo") {
+		t.Fatalf("duplicate body suppression erased ambiguity: %s", text)
+	}
+}
+
+func TestLookupBatchDedupRequiresDeliveredIdenticalBody(t *testing.T) {
+	sym := map[string]any{"kind": "method", "qualifiedName": "A.Foo", "filePath": "x.go", "span": map[string]any{"start": 10, "end": 10}}
+	for _, first := range []string{"", "old body"} {
+		out := map[string]any{"results": []map[string]any{
+			{"name": "A.Foo", "result": map[string]any{"symbol": sym, "content": first}},
+			{"name": "Foo", "result": map[string]any{"symbol": sym, "content": "new body"}},
+		}}
+		text, ok := renderLookupBatchAsText(out)
+		if !ok || !strings.Contains(text, "new body") || strings.Contains(text, "same symbol as") {
+			t.Fatalf("first=%q: undelivered body suppressed: %s", first, text)
+		}
+	}
+}

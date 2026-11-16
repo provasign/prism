@@ -3167,9 +3167,7 @@ func cmdChangeImpact(args []string) int {
 			// it (lookup already answers that way). Ask them in turn instead
 			// of making the agent rerun with --repo: that rerun was 2 of 10
 			// change-impact calls in the 11-16 cross-repo run.
-			if lo, lt, lr, ok := changeImpactInLinked(dir, session, callArgs, err); ok {
-				out, text, rendered, err = lo, lt, lr, nil
-			}
+			out, text, rendered, err = changeImpactInLinked(dir, session, callArgs, err)
 		}
 		if len(queries) == 1 {
 			if err != nil {
@@ -3201,36 +3199,45 @@ func cmdChangeImpact(args []string) int {
 	return 0
 }
 
-// changeImpactInLinked retries a change-impact whose name this repository
-// does not index against the linked repository that defines it. lookup finds
-// that repository from the existing indexes, so a name nobody defines opens
-// no second graph client (a batch keeps its one-client rule). Only the "is
-// indexed" miss is retried; any other error is the real answer.
-func changeImpactInLinked(dir string, session *repoToolSession, callArgs map[string]any, miss error) (any, string, bool, bool) {
-	var none any
+// changeImpactInLinked retries an indexed-name miss in the linked repository
+// selected by lookup. Ambiguous definitions remain errors; linked clients are
+// owned by the parent session and reused for the rest of the batch.
+func changeImpactInLinked(dir string, session *repoToolSession, callArgs map[string]any, miss error) (any, string, bool, error) {
 	if !strings.Contains(miss.Error(), "is indexed") || session.handler.Workspace == nil || len(session.handler.Workspace.Linked()) == 0 {
-		return none, "", false, false
+		return nil, "", false, miss
 	}
 	name, _ := callArgs["query"].(string)
 	found, err := session.handler.Invoke("prism_lookup", map[string]any{"name": name})
 	m, _ := found.(map[string]any)
+	if err != nil || m == nil {
+		return nil, "", false, miss
+	}
+	if ambiguous, _ := m["ambiguous"].(bool); ambiguous {
+		return nil, "", false, fmt.Errorf("%q is ambiguous across linked definitions: %v; select a repository with --repo <id> and, if needed, a declaration with --file <path>", name, m["candidates"])
+	}
 	note, _ := m["note"].(string)
 	const marker = "shown from linked repository "
 	i := strings.Index(note, marker)
-	if err != nil || i < 0 {
-		return none, "", false, false
+	if i < 0 {
+		return nil, "", false, miss
 	}
-	id := strings.Fields(note[i+len(marker):])[0]
-	linked, err := newRepoToolSession(dir, id)
-	if err != nil {
-		return none, "", false, false
+	ids := strings.Fields(note[i+len(marker):])
+	if len(ids) == 0 {
+		return nil, "", false, miss
 	}
-	defer linked.close()
-	out, text, rendered, err := linked.invoke("prism_change_impact", callArgs)
-	if err != nil {
-		return none, "", false, false
+	id := ids[0]
+	linked := session.linked[id]
+	if linked == nil {
+		linked, err = newRepoToolSession(dir, id)
+		if err != nil {
+			return nil, "", false, err
+		}
+		if session.linked == nil {
+			session.linked = make(map[string]*repoToolSession)
+		}
+		session.linked[id] = linked
 	}
-	return out, text, rendered, true
+	return linked.invoke("prism_change_impact", callArgs)
 }
 
 func cmdRenamePlan(args []string) int {

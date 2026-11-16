@@ -202,3 +202,81 @@ func TestImpactBatchOpensOneClientAndKeepsPerNameErrors(t *testing.T) {
 	}
 
 }
+
+func reviewLinkedFixture(t *testing.T, two bool) (string, string) {
+	t.Helper()
+	t.Setenv("PRISM_STATE_DIR", filepath.Join(t.TempDir(), "state"))
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/lib.go", "package lib\nfunc First() {}\nfunc Second() {}\n")
+	mod := "module example.com/app\n\ngo 1.22\nrequire example.com/lib v0.3.0\nreplace example.com/lib => ../lib\n"
+	cfg := "version: 2\nworkspace_repo: lib=../lib\n"
+	if two {
+		writeCLIFile(t, parent, "other/go.mod", "module example.com/other\n\ngo 1.22\n")
+		writeCLIFile(t, parent, "other/other.go", "package other\nfunc First() {}\n")
+		mod += "require example.com/other v0.3.0\nreplace example.com/other => ../other\n"
+		cfg += "workspace_repo: other=../other\n"
+	}
+	writeCLIFile(t, parent, "app/go.mod", mod)
+	writeCLIFile(t, parent, "app/prism.yaml", cfg)
+	writeCLIFile(t, parent, "app/main.go", "package main\nfunc main() {}\n")
+	dirs := []string{lib, app}
+	if two {
+		dirs = append(dirs, filepath.Join(parent, "other"))
+	}
+	for _, d := range dirs {
+		_ = captureStdout(func() {
+			if rc := cmdIndex([]string{d}); rc != 0 {
+				t.Fatalf("index %s: %d", d, rc)
+			}
+		})
+	}
+	t.Chdir(app)
+	return app, lib
+}
+func TestLinkedImpactBatchReusesSelectedClient(t *testing.T) {
+	app, lib := reviewLinkedFixture(t, false)
+	old := openRepoGraphClient
+	defer func() { openRepoGraphClient = old }()
+	for _, format := range []string{"text", "json"} {
+		opens := map[string]int{}
+		var clients []*grove.Client
+		openRepoGraphClient = func(dir string) (*config.Config, *grove.Client, error) {
+			opens[dir]++
+			cfg, c, err := old(dir)
+			if c != nil {
+				clients = append(clients, c)
+			}
+			return cfg, c, err
+		}
+		var rc int
+		out := captureStdout(func() { rc = cmdChangeImpact([]string{"First", "MissingBatchName", "Second", "--format", format}) })
+		if rc != 1 || !strings.Contains(out, "First") || !strings.Contains(out, "Second") || !strings.Contains(out, "MissingBatchName") {
+			t.Fatalf("format=%s: batch lost per-name results: rc=%d %s", format, rc, out)
+		}
+		if opens[lib] != 1 || opens[app] != 1 {
+			t.Fatalf("format=%s: graph opens=%v; want one per repository", format, opens)
+		}
+		for _, c := range clients {
+			if c.Health(t.Context()) == nil {
+				t.Fatal("batch left a graph client open")
+			}
+		}
+	}
+}
+
+func TestLinkedImpactPreservesAmbiguity(t *testing.T) {
+	reviewLinkedFixture(t, true)
+	var rc int
+	var stdout string
+	stderr := captureStderr(func() { stdout = captureStdout(func() { rc = cmdChangeImpact([]string{"First", "--format", "text"}) }) })
+	if rc == 0 || !strings.Contains(stderr, "ambiguous") || !strings.Contains(stderr, "../lib/lib.go") || !strings.Contains(stderr, "../other/other.go") || strings.Contains(stdout, "// repository lib") {
+		t.Fatalf("ambiguous linked definition not reported: rc=%d %s %s", rc, stdout, stderr)
+	}
+	_ = captureStdout(func() {
+		if rc := cmdChangeImpact([]string{"First", "--repo", "lib", "--format", "text"}); rc != 0 {
+			t.Fatalf("explicit repository rc=%d", rc)
+		}
+	})
+}

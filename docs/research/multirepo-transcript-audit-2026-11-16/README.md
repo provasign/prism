@@ -10,7 +10,7 @@ Scripts (run in order; all take paths as arguments):
   `an3.py` classifies pre/post-edit discovery and lists miss/error lines. `an4.py` sizes the runs and lists post-edit commands.
   Each expects `c15.json` / `c16.json` (mine.py output) in the directory given as its first argument.
 
-Findings and the fixes made (commit on the multi-repo branch):
+Findings and the fixes made (working tree on the multi-repo branch):
 1. `change-impact` of a name defined only in a linked repo missed (2 of 10 calls) -> now falls through to that repo (found via lookup).
 2. `query` miss printed JSON under `--format text` -> text, and the linked-repo hint is on stdout.
 3. Linked-repo search listed test-file lines (40% of lines) -> counted per file like local search; `--exhaustive` lists them.
@@ -18,3 +18,8 @@ Findings and the fixes made (commit on the multi-repo branch):
 5. Batched `lookup` of two names for one symbol printed the body twice -> second says "same symbol as ...".
 
 Not changed (measured, no fix tested): module-cache reads (11 cells), near-zero Prism use after the first edit (13 Prism vs 132 grep).
+
+Follow-up regression fixes:
+- Linked impact preserves lookup ambiguity and lists the candidate definitions instead of choosing the first repository.
+- A batch reuses one graph client per selected repository and closes all clients when the batch ends.
+- Batched lookup suppresses only an identical primary body already delivered for that symbol; warnings, candidates, and overloads remain visible.
