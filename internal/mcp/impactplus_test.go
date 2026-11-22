@@ -13,7 +13,15 @@ import (
 
 func newImpactPlusHandler(t *testing.T, files map[string]string) *Handler {
 	t.Helper()
+	return newImpactPlusHandlerWith(t, nil, files)
+}
+
+func newImpactPlusHandlerWith(t *testing.T, setup func(dir string), files map[string]string) *Handler {
+	t.Helper()
 	dir := t.TempDir()
+	if setup != nil {
+		setup(dir)
+	}
 	for name, body := range files {
 		if err := os.MkdirAll(filepath.Join(dir, filepath.Dir(name)), 0o755); err != nil {
 			t.Fatal(err)
@@ -285,5 +293,33 @@ func TestChangeImpactRelaysTSReExports(t *testing.T) {
 		if !strings.Contains(expandEditSites(text), want) {
 			t.Fatalf("impact lacks %q:\n%s", want, text)
 		}
+	}
+}
+
+// BUG-21: an object literal implementing the method is an edit site; it is
+// not also listed as another declaration "not in this change".
+func TestChangeImpactObjectLiteralNotListedAsOtherDeclaration(t *testing.T) {
+	// The object literal is an edit site only with the TypeScript checker:
+	// PRISM_TEST_TS_NODE_MODULES names a node_modules holding typescript@5.
+	nm := os.Getenv("PRISM_TEST_TS_NODE_MODULES")
+	if nm == "" {
+		t.Skip("PRISM_TEST_TS_NODE_MODULES not set")
+	}
+	h := newImpactPlusHandlerWith(t, func(dir string) {
+		if err := os.Symlink(nm, filepath.Join(dir, "node_modules")); err != nil {
+			t.Fatal(err)
+		}
+	}, map[string]string{
+		"package.json":  `{"devDependencies":{"typescript":"^5"}}`,
+		"tsconfig.json": `{"compilerOptions":{"strict":true}}`,
+		"shape.ts": "export interface Shape {\n  area(): number;\n}\n\nexport class Square implements Shape {\n  constructor(private s: number) {}\n  area(): number { return this.s * this.s; }\n}\n\nexport const unit: Shape = {\n  area(): number { return 1; },\n};\n\nexport function total(shapes: Shape[]): number {\n  return shapes.reduce((n, s) => n + s.area(), 0);\n}\n",
+	})
+	text := invokeCompactText(t, h, "change_impact", map[string]any{"name": "Shape.area"})
+	full := expandEditSites(text)
+	if !strings.Contains(full, "shape.ts:11:3: area(): number { return 1; },") {
+		t.Fatalf("object literal is not an edit site:\n%s", text)
+	}
+	if strings.Contains(text, "not in this change): unit.area") {
+		t.Fatalf("object literal listed both as an edit site and as not in this change:\n%s", text)
 	}
 }

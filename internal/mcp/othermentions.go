@@ -74,7 +74,11 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 	if h.Grove != nil {
 		if cands, err := h.Grove.Resolve(ctx, leaf); err == nil {
 			for _, c := range cands {
-				if leafName(c.Name) != leaf || inSet[normalizePath(c.File)+"\x00"+c.Name] {
+				// A declaration already in editSites (a TypeScript object
+				// literal implementing the method) is in this change; listing
+				// it as "not in this change" contradicted editSites (BUG-21).
+				if leafName(c.Name) != leaf || inSet[normalizePath(c.File)+"\x00"+c.Name] ||
+					editKeys[fmt.Sprintf("%s:%d", normalizePath(c.File), c.Line)] {
 					continue
 				}
 				otherDecl[normalizePath(c.File)+":"+fmt.Sprint(c.Line)] = c.Name
