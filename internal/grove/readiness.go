@@ -63,6 +63,12 @@ func Readiness(root string, native []string) []ReadinessIssue {
 		case strings.HasPrefix(d, "js-ts: "):
 			reason := strings.TrimPrefix(d, "js-ts: ")
 			switch {
+			case strings.Contains(reason, "is the native (Go) compiler"):
+				add("typescript", "the project's TypeScript is version 7, the native compiler, which has no JavaScript API for prism to drive",
+					"run `"+jsAddDevCommand(root, "typescript@5")+"` in "+root+", then `prism index`")
+			case strings.Contains(reason, "typescript not resolvable") && !packageJSONNamesTypeScript(root):
+				add("typescript", "the project has a tsconfig.json or jsconfig.json but no typescript dependency",
+					"run `"+jsAddDevCommand(root, "typescript")+"` in "+root+", then `prism index`")
 			case strings.Contains(reason, "typescript not resolvable"):
 				add("typescript", "the project's own TypeScript compiler is not installed (dependencies missing)",
 					"run `"+jsInstallCommand(root)+"` in "+root+", then `prism index`")
@@ -157,6 +163,28 @@ func Readiness(root string, native []string) []ReadinessIssue {
 		}
 	}
 	return out
+}
+
+// packageJSONNamesTypeScript reports whether root's package.json lists
+// typescript; `npm install` brings it only then.
+func packageJSONNamesTypeScript(root string) bool {
+	data, err := os.ReadFile(filepath.Join(root, "package.json"))
+	return err == nil && strings.Contains(string(data), `"typescript"`)
+}
+
+// jsAddDevCommand is the command that adds pkg as a dev dependency with
+// the project's package manager.
+func jsAddDevCommand(root, pkg string) string {
+	switch jsInstallCommand(root) {
+	case "pnpm install":
+		return "pnpm add -D " + pkg
+	case "bun install":
+		return "bun add -d " + pkg
+	case "yarn install":
+		return "yarn add -D " + pkg
+	default:
+		return "npm install -D " + pkg
+	}
 }
 
 // jsInstallCommand picks the project's package manager from its lockfile.

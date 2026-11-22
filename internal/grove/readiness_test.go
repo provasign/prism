@@ -12,6 +12,9 @@ func TestReadinessNamesDegradedLanguagesWithFixes(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "pnpm-lock.yaml"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"devDependencies":{"typescript":"^5"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	got := Readiness(root, []string{
 		"js-ts: skipped: typescript not resolvable in the project (previous native edges carried forward)",
 		"java: skipped: no JDK 11+ found and no Maven or Gradle project config",
@@ -216,5 +219,22 @@ func TestReadinessGoListFailedAndExportData(t *testing.T) {
 	// Typed from source instead: not an issue.
 	if got := Readiness(t.TempDir(), []string{"go: go export data unreadable; dependencies typed from source instead: x"}); len(got) != 0 {
 		t.Fatalf("source fallback reported: %+v", got)
+	}
+}
+
+// BUG-06: a project without a typescript dependency is told to add one;
+// TypeScript 7 is told to install typescript@5.
+func TestReadinessTypeScriptDependencyAndVersion(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"name":"app"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := Readiness(root, []string{"js-ts: skipped: typescript not resolvable in the project"})
+	if len(got) != 1 || !strings.Contains(got[0].Fix, "npm install -D typescript") {
+		t.Fatalf("no dependency: %+v", got)
+	}
+	got = Readiness(root, []string{"js-ts: skipped: typescript 7.0.2 is the native (Go) compiler and has no JavaScript compiler API; install typescript@5 as a dev dependency for compiler-backed analysis"})
+	if len(got) != 1 || !strings.Contains(got[0].Fix, "npm install -D typescript@5") || !strings.Contains(got[0].Problem, "version 7") {
+		t.Fatalf("typescript 7: %+v", got)
 	}
 }
