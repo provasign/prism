@@ -144,10 +144,20 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		}
 	}
 	var b strings.Builder
+	// The header counts what editSites lists when it is present: the
+	// symbol count (declarations + callers) sat above a larger line count
+	// and the two read as a contradiction (BUG-19).
+	sites, symbols := fmt.Sprintf("%v site(s)", out["totalSites"]), ""
+	if n := impactEditSiteCount(out); n > 0 {
+		sites = fmt.Sprintf("%d edit site(s)", n)
+		if fmt.Sprint(n) != fmt.Sprint(out["totalSites"]) {
+			symbols = fmt.Sprintf(" (%v declaring or calling symbol(s))", out["totalSites"])
+		}
+	}
 	if linked := intArg(out, "linkedSites", 0); linked > 0 {
-		fmt.Fprintf(&b, "// %v — change-impact: %v site(s) in this repository + %d in linked repositories\n", out["query"], out["totalSites"], linked)
+		fmt.Fprintf(&b, "// %v — change-impact: %s in this repository + %d in linked repositories%s\n", out["query"], sites, linked, symbols)
 	} else {
-		fmt.Fprintf(&b, "// %v — change-impact: %v site(s)\n", out["query"], out["totalSites"])
+		fmt.Fprintf(&b, "// %v — change-impact: %s%s\n", out["query"], sites, symbols)
 	}
 	b.WriteString(FormatImpactHeaderNotesText(out))
 	if note, _ := out["resolvedAmbiguity"].(string); note != "" {

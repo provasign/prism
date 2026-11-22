@@ -277,7 +277,7 @@ func TestChangeImpactRelaysTSReExports(t *testing.T) {
 	})
 	text := invokeCompactText(t, h, "change_impact", map[string]any{"name": "_gte"})
 	for _, want := range []string{
-		"change-impact: 4 site(s)",
+		"change-impact: 4 edit site(s)",
 		"src/mini/checks.ts:2:3: _gte as gte,",
 		"src/mini/checks.ts:3:3: _gte as minimum,",
 		"_nonnegative  src/core/api.ts:5",

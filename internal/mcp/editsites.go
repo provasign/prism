@@ -340,12 +340,24 @@ func writeEditSiteRows(b *strings.Builder, rows []any) {
 	}
 }
 
+// impactEditSiteCount is the number formatEditSitesText prints in its
+// "editSites (N ..." line, or 0 when there are no edit rows.
+func impactEditSiteCount(out map[string]any) int {
+	rows := anySlice(out["editSites"])
+	if len(rows) == 0 {
+		return 0
+	}
+	if n, _ := out["editSiteCount"].(int); n > len(rows) {
+		return n
+	}
+	return len(rows)
+}
+
 // formatEditSitesText renders editSites and the line partition.
 func formatEditSitesText(out map[string]any) string {
 	var b strings.Builder
 	if rows := anySlice(out["editSites"]); len(rows) > 0 {
-		n, _ := out["editSiteCount"].(int)
-		if n > len(rows) {
+		if n := impactEditSiteCount(out); n > len(rows) {
 			fmt.Fprintf(&b, "editSites (%d in %d files; every occurrence this change touches, by file as path (count): line:col ...):\n", n, len(rows))
 			for _, l := range rows {
 				fmt.Fprintf(&b, "  %v\n", l)

@@ -317,7 +317,7 @@ func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
 	if strings.Index(out, "../app/main.go:6:14") > strings.Index(out, "declarations (") {
 		t.Fatalf("linked consumers are printed after this repository's lists:\n%s", out)
 	}
-	if !strings.Contains(out, "site(s) in this repository + 1 in linked repositories") {
+	if !strings.Contains(out, "edit site(s) in this repository + 1 in linked repositories") {
 		t.Fatalf("the first line does not count the linked site:\n%s", out)
 	}
 }
