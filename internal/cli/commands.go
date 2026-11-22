@@ -108,6 +108,7 @@ Usage:
   prism search <term>... [dir]    Search symbol names AND raw source text (a real
                                   rg/grep pass). Pass SEVERAL terms to search them
                                   in one call (up to 10), grouped by term.
+                                  [-- term...]  arguments after -- are terms, never flags
                                   --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
                                   [--path|--paths <file-or-dir>]  scope the search (repeatable)
@@ -2680,10 +2681,16 @@ func cmdSearch(args []string) int {
 	contextSet := false
 	repo := ""
 	var bare []string
+args:
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		var err error
 		switch a {
+		case "--":
+			// End of flags: every later argument is a term, so a term that
+			// starts with "-" can be searched (BUG-18).
+			bare = append(bare, args[i+1:]...)
+			break args
 		case "--dir":
 			// The unambiguous way to say where to search, now that bare
 			// arguments are terms rather than "term then directory".

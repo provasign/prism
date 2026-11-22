@@ -45,3 +45,19 @@ func TestMissingSymbolNamesItNotADirectory(t *testing.T) {
 		t.Fatal("a directory named after the flag value was created")
 	}
 }
+
+// BUG-18: a term that starts with "-" is searchable after "--".
+func TestSearchDoubleDashEndsFlags(t *testing.T) {
+	dir := setupCLIProject(t)
+	_ = writeCLIFile(t, dir, "notes.txt", "pass --scope text here\n")
+	var rc int
+	out := captureStdout(func() {
+		stderr := captureStderr(func() { rc = cmdSearch([]string{"--dir", dir, "--", "--scope"}) })
+		if strings.Contains(stderr, "unknown flag") {
+			t.Errorf("stderr = %q", stderr)
+		}
+	})
+	if rc != 0 || !strings.Contains(out, "notes.txt") {
+		t.Fatalf("rc=%d out=%s", rc, out)
+	}
+}
