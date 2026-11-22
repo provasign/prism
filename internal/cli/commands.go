@@ -48,7 +48,11 @@ Usage:
                                   when a language's compiler-backed analysis
                                   could not run (dependencies not installed,
                                   toolchain missing) and prints the fix;
-                                  [--allow-heuristic] accepts name-based results
+                                  [--allow-heuristic] accepts name-based results;
+                                  [--force] re-extracts every file and re-runs
+                                  every analyzer now, skipping retry waits;
+                                  [--rebuild] deletes the index and builds it
+                                  from scratch (repair for a broken index)
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
   prism status [dir]              Show graph stats from Grove
@@ -2130,7 +2134,7 @@ func containsString(list []any, s string) bool {
 }
 
 func cmdIndex(args []string) int {
-	dir, flags, rc := dirOnlyArgs("index", args, "--allow-heuristic")
+	dir, flags, rc := dirOnlyArgs("index", args, "--allow-heuristic", "--force", "--rebuild")
 	if rc != 0 {
 		return rc
 	}
@@ -2141,7 +2145,22 @@ func cmdIndex(args []string) int {
 	if own, err := config.LoadFromDir(mustAbs(dir)); err == nil {
 		workspace.ConfirmLinks(mustAbs(dir), own)
 	}
-	cfg, client, err := newClient(dir)
+	if flags["--rebuild"] {
+		// Before any engine opens the store: a broken index may not open.
+		if err := requireDir(mustAbs(dir)); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		removed, err := grove.RemoveIndex(context.Background(), mustAbs(dir))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "index --rebuild:", err)
+			return 1
+		}
+		if len(removed) > 0 {
+			fmt.Fprintf(os.Stderr, "prism: removed the index (%s); building it from scratch\n", strings.Join(removed, ", "))
+		}
+	}
+	cfg, client, err := newClientOpts(dir, true, flags["--force"])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -3699,6 +3718,12 @@ func newClient(dir string) (*config.Config, *grove.Client, error) {
 // newClientMode opens a client; long-lived commands (watch) pass
 // oneShot=false so the engine keeps resident workers between runs.
 func newClientMode(dir string, oneShot bool) (*config.Config, *grove.Client, error) {
+	return newClientOpts(dir, oneShot, false)
+}
+
+// newClientOpts is newClientMode with force: every Index call on the
+// client re-extracts every file and re-runs every analyzer.
+func newClientOpts(dir string, oneShot, force bool) (*config.Config, *grove.Client, error) {
 	root := mustAbs(dir)
 	if err := requireDir(root); err != nil {
 		return nil, nil, err
@@ -3711,7 +3736,13 @@ func newClientMode(dir string, oneShot bool) (*config.Config, *grove.Client, err
 	if oneShot {
 		client.OneShot()
 	}
+	if force {
+		client.Force()
+	}
 	if err := client.EnsureRunning(context.Background()); err != nil {
+		if msg := err.Error(); strings.Contains(msg, "file is not a database") || strings.Contains(msg, "malformed") {
+			return nil, nil, fmt.Errorf("grove: %w\n  fix: the index is damaged; run `prism index --rebuild`", err)
+		}
 		return nil, nil, fmt.Errorf("grove: %w", err)
 	}
 	return cfg, client, nil

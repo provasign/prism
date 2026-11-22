@@ -26,6 +26,7 @@ import (
 type Client struct {
 	root    string
 	oneShot bool
+	force   bool // Force: every Index re-extracts and re-runs analyzers
 	// linked: other repositories linked to root (absolute paths). The
 	// engine never indexes them; a compiler pass may read a dependency's
 	// declarations from their sources.
@@ -62,6 +63,20 @@ func (c *Client) OneShot() *Client {
 	return c
 }
 
+// Force makes every Index call re-extract every file and re-run every
+// analyzer, ignoring the unchanged-file shortcut and analyzer retry waits.
+// Call before EnsureRunning.
+func (c *Client) Force() *Client {
+	c.force = true
+	return c
+}
+
+// RemoveIndex deletes root's index files under the index lock so the next
+// index builds from scratch. Call it with no engine open on root.
+func RemoveIndex(ctx context.Context, root string) ([]string, error) {
+	return groveeng.RemoveIndex(ctx, root)
+}
+
 // WithLinkedRoots names the repositories linked to this one. Call before
 // EnsureRunning.
 func (c *Client) WithLinkedRoots(roots []string) *Client {
@@ -96,7 +111,7 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	if c.root == "" {
 		return errors.New("grove: WithTokenFromDir(root) must be called before EnsureRunning")
 	}
-	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root, OneShot: c.oneShot, LinkedRoots: c.linked})
+	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root, OneShot: c.oneShot, ForceIndex: c.force, LinkedRoots: c.linked})
 	if err != nil {
 		return fmt.Errorf("grove open: %w", err)
 	}
