@@ -17,7 +17,7 @@ import (
 	"github.com/provasign/prism/internal/grove"
 )
 
-const testPlanBoundary = "Static graph candidates, not measured test coverage. Test identification uses file-path conventions; inline or framework tests may not be recognized. Runtime dispatch, reflection, external consumers, and dependencies absent from the index may be missed. Choose test commands and broader validation using these gaps and repository requirements."
+const testPlanBoundary = "Static graph candidates, not measured test coverage. Tests are identified by file-path conventions and by test attributes (Rust #[test], Python test_*, JUnit @Test); other framework tests may not be recognized. Runtime dispatch, reflection, external consumers, and dependencies absent from the index may be missed. Choose test commands and broader validation using these gaps and repository requirements."
 
 // These records intentionally omit source bodies and runner-specific selectors.
 type testPlanSymbol struct {
@@ -44,6 +44,11 @@ type testPlanTarget struct {
 	Origins        []string        `json:"origins"`
 	Evidence       []testPlanStep  `json:"evidence"`
 	Reason         string          `json:"reason,omitempty"`
+	// CallHops: call, type-use and inheritance steps on the evidence
+	// path from the nearest changed symbol (structural steps not counted).
+	CallHops int `json:"callHops"`
+	// seedHops: per changed symbol, the call hops on its shortest path.
+	seedHops map[string]int
 }
 
 type testPlanResult struct {
@@ -60,6 +65,8 @@ type testPlanResult struct {
 	// searched there.
 	LinkedTests []string `json:"linkedTests,omitempty"`
 	LinkedScope string   `json:"linkedScope,omitempty"`
+	// root: the repository root, for reading test attributes.
+	root string
 }
 
 func planSymbol(s grove.SymbolRecord) testPlanSymbol {
@@ -136,7 +143,7 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 	if err != nil {
 		return nil, err
 	}
-	r := testPlanResult{Base: base, Status: "no changes", ChangedFiles: []string{}, ChangedSymbols: []testPlanSymbol{}, Candidates: []testPlanTarget{}, FileTargets: []testPlanTarget{}, Gaps: []string{}, Boundary: testPlanBoundary}
+	r := testPlanResult{Base: base, Status: "no changes", ChangedFiles: []string{}, ChangedSymbols: []testPlanSymbol{}, Candidates: []testPlanTarget{}, FileTargets: []testPlanTarget{}, Gaps: []string{}, Boundary: testPlanBoundary, root: h.Root}
 	for p := range changes {
 		r.ChangedFiles = append(r.ChangedFiles, p)
 	}
@@ -157,10 +164,19 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 	if statusErr != nil {
 		r.Gaps = append(r.Gaps, "analysis status unavailable: "+statusErr.Error())
 	} else {
+		// Only the languages this diff touches: a C# analyzer note on a Go
+		// change is noise (BUG-15).
+		langs := planDiffLanguages(changes)
 		for _, issue := range status.Readiness {
+			if !planLanguageInDiff(langs, issue.Language) {
+				continue
+			}
 			r.Gaps = append(r.Gaps, fmt.Sprintf("analysis readiness (%s): %s; %s", issue.Language, issue.Problem, issue.Fix))
 		}
 		for _, note := range status.Native {
+			if name, _, ok := strings.Cut(note, ":"); ok && !planLanguageInDiff(langs, name) {
+				continue
+			}
 			lower := strings.ToLower(note)
 			if strings.Contains(lower, "no file changes") || strings.Contains(lower, "no changed files in its languages") || strings.Contains(lower, "not applicable") {
 				continue
@@ -350,6 +366,7 @@ type planArc struct {
 
 // All traversals use graph IDs. A name is presentation, never a lookup key.
 func planTraverse(ctx context.Context, r *testPlanResult, syms []grove.SymbolRecord, edges []grove.Edge, seeds map[string]bool) {
+	tests := &testCodeClassifier{root: r.root}
 	nodes := map[string]grove.SymbolRecord{}
 	files := map[string][]string{}
 	for _, s := range syms {
@@ -421,7 +438,7 @@ func planTraverse(ctx context.Context, r *testPlanResult, syms []grove.SymbolRec
 	}
 	for _, seed := range ids {
 		if _, ok := nodes[seed]; !ok {
-			r.Gaps = append(r.Gaps, "changed symbol absent from refreshed graph: "+seed)
+			r.Gaps = append(r.Gaps, "changed symbol absent from refreshed graph: "+planIDName(seed))
 			continue
 		}
 		depth := map[string]int{seed: 0}
@@ -444,17 +461,18 @@ func planTraverse(ctx context.Context, r *testPlanResult, syms []grove.SymbolRec
 			queue = queue[1:]
 			s, ok := nodes[id]
 			if !ok {
-				r.Gaps = append(r.Gaps, "unresolved graph endpoint: "+id)
+				r.Gaps = append(r.Gaps, "unresolved graph endpoint: "+planIDName(id))
 				continue
 			}
 			p := normalizePath(s.FilePath)
-			if isTestFilePath(p) {
-				if s.Kind == "function" || s.Kind == "method" || s.Kind == "constructor" {
+			kind := tests.kind(s)
+			if isTestFilePath(p) || kind != "" {
+				if (s.Kind == "function" || s.Kind == "method" || s.Kind == "constructor") && kind != "" {
 					t := targets[id]
 					if t == nil {
 						ps := planSymbol(s)
 						classification := "symbol candidate"
-						if s.Language == "go" && !strings.HasPrefix(s.Name, "Test") && !strings.HasPrefix(s.Name, "Example") && !strings.HasPrefix(s.Name, "Fuzz") && !strings.HasPrefix(s.Name, "Benchmark") {
+						if kind == "helper" {
 							classification = "helper candidate"
 						}
 						t = &testPlanTarget{Symbol: &ps, File: p, Classification: classification, Origins: []string{}, Evidence: pathTo(id)}
@@ -467,12 +485,22 @@ func planTraverse(ctx context.Context, r *testPlanResult, syms []grove.SymbolRec
 				}
 				ft := fileTargets[p]
 				if ft == nil {
-					ft = &testPlanTarget{File: p, Classification: "file", Origins: []string{}, Evidence: pathTo(id), Reason: "reached test file; individual runnable cases may not be indexed"}
+					reason := "reached test file; individual runnable cases may not be indexed"
+					if !isTestFilePath(p) {
+						reason = "inline tests in this file reach the change"
+					}
+					ft = &testPlanTarget{File: p, Classification: "file", Origins: []string{}, Evidence: pathTo(id), Reason: reason}
 					fileTargets[p] = ft
 				}
 				ft.Origins = append(ft.Origins, seed)
 				if depth[id] < len(ft.Evidence) {
 					ft.Evidence = pathTo(id)
+				}
+				if ft.seedHops == nil {
+					ft.seedHops = map[string]int{}
+				}
+				if h, ok := ft.seedHops[seed]; !ok || planCallHops(pathTo(id)) < h {
+					ft.seedHops[seed] = planCallHops(pathTo(id))
 				}
 			}
 			for _, a := range adj[id] {
@@ -534,20 +562,45 @@ func planInventory(ctx context.Context, r *testPlanResult, syms []grove.SymbolRe
 			}
 		}
 	}
-	precise := testPlanResult{FileTargets: append([]testPlanTarget(nil), r.FileTargets...)}
+	precise := testPlanResult{FileTargets: append([]testPlanTarget(nil), r.FileTargets...), root: r.root}
 	planTraverse(ctx, &precise, syms, preciseEdges, preciseSeeds)
 	planTraverse(ctx, r, syms, edges, seeds)
 	files := map[string]testPlanTarget{}
 	for _, t := range precise.FileTargets {
 		files[t.File] = t
 	}
+	// Precise call paths run through dispatchers: in this repository a
+	// change three calls from its own tests also reached 105 other test
+	// files through the tool dispatcher, all labelled focused (BUG-15).
+	// Per changed symbol, a file is focused when it is at most one call
+	// hop farther than that symbol's nearest test file; the rest are
+	// transitive, listed nearest first.
+	nearest := map[string]int{}
+	for _, t := range precise.FileTargets {
+		for seed, h := range t.seedHops {
+			if n, ok := nearest[seed]; !ok || h < n {
+				nearest[seed] = h
+			}
+		}
+	}
 	for i, t := range r.FileTargets {
 		if p, ok := files[t.File]; ok {
-			r.FileTargets[i].Classification = "focused file"
 			r.FileTargets[i].Evidence = p.Evidence
-			r.FileTargets[i].Reason = "changed test or non-heuristic dependency from an innermost changed symbol; run first"
+			r.FileTargets[i].CallHops = planCallHops(p.Evidence)
+			focused := len(p.seedHops) == 0
+			for seed, h := range p.seedHops {
+				focused = focused || h <= nearest[seed]+1
+			}
+			if focused {
+				r.FileTargets[i].Classification = "focused file"
+				r.FileTargets[i].Reason = "changed test or non-heuristic dependency from an innermost changed symbol; run first"
+			} else {
+				r.FileTargets[i].Classification = "transitive file"
+				r.FileTargets[i].Reason = fmt.Sprintf("reached through %d call hops, farther than the nearest tests of the same change; run after the focused files", r.FileTargets[i].CallHops)
+			}
 		} else {
 			r.FileTargets[i].Classification = "coarse fallback"
+			r.FileTargets[i].CallHops = planCallHops(t.Evidence)
 			r.FileTargets[i].Reason = "import, heuristic, or enclosing-symbol reachability; review for broader validation"
 		}
 	}
@@ -582,13 +635,24 @@ func renderTestPlanAsText(out map[string]any) (string, bool) {
 		byFile[c.File] = append(byFile[c.File], c)
 	}
 	ordered := append([]testPlanTarget(nil), r.FileTargets...)
+	rank := map[string]int{"focused file": 0, "transitive file": 1, "coarse fallback": 2}
 	sort.SliceStable(ordered, func(i, j int) bool {
-		return ordered[i].Classification != "coarse fallback" && ordered[j].Classification == "coarse fallback"
+		a, b := ordered[i], ordered[j]
+		if rank[a.Classification] != rank[b.Classification] {
+			return rank[a.Classification] < rank[b.Classification]
+		}
+		if a.Classification == "transitive file" && a.CallHops != b.CallHops {
+			return a.CallHops < b.CallHops
+		}
+		return false
 	})
 	section := ""
 	for _, t := range ordered {
 		group := "Focused targets: changed tests or non-heuristic paths from innermost changed symbols. Run these first."
-		if t.Classification == "coarse fallback" {
+		switch t.Classification {
+		case "transitive file":
+			group = "Transitive targets: precise paths, but farther than the focused files (often through a dispatcher); nearest first, with call hops. Run after the focused files."
+		case "coarse fallback":
 			group = "Broader fallback inventory: import, heuristic, or enclosing-symbol paths. Review against gaps; these are not additional mandatory test files."
 		}
 		if group != section {
@@ -596,6 +660,10 @@ func renderTestPlanAsText(out map[string]any) (string, bool) {
 			section = group
 		}
 		fmt.Fprint(&b, t.File)
+		if t.Classification == "transitive file" {
+			fmt.Fprintf(&b, " (%d hops)\n", t.CallHops)
+			continue
+		}
 		if t.Classification == "coarse fallback" {
 			b.WriteByte('\n')
 			continue
@@ -621,6 +689,73 @@ func renderTestPlanAsText(out map[string]any) (string, bool) {
 	}
 	fmt.Fprintf(&b, "End of test-plan: %d file targets, %d gaps. If this footer is missing, read the remaining output before choosing tests.\n", len(r.FileTargets), len(r.Gaps))
 	return b.String(), true
+}
+
+// planDiffLanguages maps the changed files to analyzer and language names.
+func planDiffLanguages(changes map[string]string) map[string]bool {
+	out := map[string]bool{}
+	for p := range changes {
+		switch strings.ToLower(filepath.Ext(p)) {
+		case ".go":
+			out["go"] = true
+		case ".py", ".pyi":
+			out["python"] = true
+		case ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts":
+			out["js-ts"], out["typescript"], out["javascript"], out["tsx"] = true, true, true, true
+		case ".java":
+			out["java"] = true
+		case ".kt", ".kts":
+			out["kotlin"] = true
+		case ".rs":
+			out["rust"] = true
+		case ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh":
+			out["c-cpp"], out["c"], out["cpp"] = true, true, true
+		case ".cs":
+			out["csharp"] = true
+		case ".rb":
+			out["ruby"] = true
+		case ".php":
+			out["php"] = true
+		}
+	}
+	return out
+}
+
+// planLanguageInDiff keeps a note for a language of the diff, and any note
+// whose prefix is not a language name this plan knows.
+func planLanguageInDiff(langs map[string]bool, name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	switch name {
+	case "go", "python", "js-ts", "typescript", "javascript", "tsx", "java", "kotlin", "rust", "c-cpp", "c", "cpp", "csharp", "ruby", "php":
+		return langs[name]
+	}
+	return true
+}
+
+// planCallHops counts the dependency steps on an evidence path; the
+// structural steps (in-file, file-member, contains) are not calls.
+func planCallHops(path []testPlanStep) int {
+	n := 0
+	for _, s := range path {
+		switch {
+		case strings.HasPrefix(s.Relation, "calls"), strings.HasPrefix(s.Relation, "uses-type"),
+			strings.HasPrefix(s.Relation, "implements"), strings.HasPrefix(s.Relation, "extends"),
+			strings.HasPrefix(s.Relation, "overrides"), strings.HasPrefix(s.Relation, "imports"):
+			n++
+		}
+	}
+	return n
+}
+
+// planIDName renders a symbol ID (path::Name@hash) as "Name (path)".
+func planIDName(id string) string {
+	if i := strings.LastIndexByte(id, '@'); i > 0 {
+		id = id[:i]
+	}
+	if path, name, ok := strings.Cut(id, "::"); ok {
+		return name + " (" + path + ")"
+	}
+	return id
 }
 
 func writePlanEvidence(b *strings.Builder, path []testPlanStep) {
