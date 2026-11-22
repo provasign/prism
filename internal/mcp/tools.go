@@ -767,8 +767,9 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"name": map[string]any{
 					"type":        "string",
-					"description": "Symbol name to find usages of (a class/type/function/constant).",
+					"description": "Symbol name to find usages of (a class/type/function/constant). Type.member, or a file, resolves one symbol and returns its sites; a bare name returns every use of the name.",
 				},
+				"file": scopeFileProp,
 			},
 		}
 	case "prism_resolve":
@@ -2619,25 +2620,93 @@ func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any,
 	if name == "" {
 		return nil, errors.New("name is required")
 	}
+	file := stringArg(args, "file", "")
+	// A qualified name or a file names one symbol: answer from its resolved
+	// sites, not from every use of the bare name. references Client.Status
+	// returned 29 hits for "Status", FileDrift.Status fields included
+	// (BUG-14).
+	if strings.Contains(name, ".") || file != "" {
+		ciArgs := map[string]any{"query": name}
+		if file != "" {
+			ciArgs["file"] = file
+		}
+		ci, err := h.toolChangeImpact(ctx, ciArgs)
+		if err != nil {
+			return nil, err
+		}
+		if m, ok := ci.(map[string]any); ok {
+			if rows := anySlice(m["editSites"]); len(rows) > 0 {
+				out := map[string]any{
+					"name":     name,
+					"resolved": true,
+					"sites":    rows,
+					"count":    impactEditSiteCount(m),
+					"note": "sites resolved to " + name + ": its declaration(s), the implementations in its family, and every call or reference position tied to it; " +
+						"otherMentions sorts the remaining lines naming " + leafName(name),
+				}
+				for _, k := range []string{"completeness", "completenessScope", "callerEvidence", "otherMentions", "degradedAnalysis"} {
+					if v, ok := m[k]; ok {
+						out[k] = v
+					}
+				}
+				return out, nil
+			}
+		}
+	}
 	res, err := h.Grove.References(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	// Group by file for a compact, agent-friendly shape.
+	// One row per occurrence: path:line:col: text. The engine reports a
+	// line once per occurrence and without a column, so a line naming the
+	// symbol twice printed twice with nothing to tell the rows apart.
+	leaf := leafName(name)
+	word := regexp.MustCompile(`\b` + regexp.QuoteMeta(leaf) + `\b`)
 	byFile := map[string][]map[string]any{}
+	var sites []string
+	seen := map[string]bool{}
+	files := map[string][]string{}
 	for _, r := range res.Refs {
+		key := fmt.Sprintf("%s:%d", r.File, r.Line)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
 		entry := map[string]any{"line": r.Line}
 		if r.Enclosing != "" {
 			entry["in"] = r.Enclosing
 		}
 		byFile[r.File] = append(byFile[r.File], entry)
+		lines, ok := files[r.File]
+		if !ok {
+			if data, err := os.ReadFile(filepath.Join(h.Root, r.File)); err == nil {
+				lines = strings.Split(string(data), "\n")
+			}
+			files[r.File] = lines
+		}
+		text := ""
+		if r.Line >= 1 && r.Line <= len(lines) {
+			text = strings.TrimRight(lines[r.Line-1], "\r")
+		}
+		cols := word.FindAllStringIndex(text, -1)
+		if len(cols) == 0 {
+			sites = append(sites, fmt.Sprintf("%s:%d: %s", normalizePath(r.File), r.Line, clipRunes(strings.TrimSpace(text), 160)))
+			continue
+		}
+		for _, c := range cols {
+			sites = append(sites, fmt.Sprintf("%s:%d:%d: %s", normalizePath(r.File), r.Line, c[0]+1, clipRunes(strings.TrimSpace(text), 160)))
+		}
 	}
 	out := map[string]any{
 		"name":        res.Name,
-		"count":       len(res.Refs),
+		"count":       len(sites),
 		"definitions": res.DefCount,
 		"ambiguous":   res.Ambiguous,
 		"byFile":      byFile,
+		"sites":       sites,
+	}
+	if res.Ambiguous {
+		out["note"] = fmt.Sprintf("uses of the name %s, not resolved to one symbol (%d definitions share it); pass Type.member or file to get one symbol's sites", leaf, res.DefCount)
 	}
 	if res.SkippedFiles > 0 {
 		out["skippedFiles"] = res.SkippedFiles

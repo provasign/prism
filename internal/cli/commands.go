@@ -135,7 +135,8 @@ Usage:
                                   [--file <path>]  disambiguate a symbol
                                   --format text|lean|json  Output format (default: text)
   prism references <name> [dir]   Find indexed syntactic uses of a name
-                                  (comments/strings excluded), grouped by file
+                                  (comments/strings excluded) as path:line:col: text;
+                                  Type.member or [--file <path> | --path <path>] resolves one symbol
                                   --format text|lean|json  Output format (default: text)
   prism resolve <name> [dir]      Resolve a name to its definition(s): file:line + kind
                                   --format text|lean|json  Output format (default: text)
@@ -3172,13 +3173,14 @@ func cmdEdges(args []string) int {
 }
 
 func cmdReferences(args []string) int {
-	args, rc := positionalsFirst("references", "a name", "prism references <name> [dir]", 1, args, "--format")
+	args, rc := positionalsFirst("references", "a name", "prism references <name> [dir]", 1, args, "--format", "--file", "--path")
 	if rc != 0 {
 		return rc
 	}
 	name := args[0]
 	dir, dirSet := ".", false
 	format := formatText
+	file := ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -3189,6 +3191,13 @@ func cmdReferences(args []string) int {
 			}
 			format = f
 			i++
+		case "--file", "--path":
+			v, err := flagValue("references", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			file = v
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("references", a)
@@ -3198,7 +3207,11 @@ func cmdReferences(args []string) int {
 			}
 		}
 	}
-	out, err := invokeTool(dir, "prism_references", map[string]any{"name": name})
+	callArgs := map[string]any{"name": name}
+	if file != "" {
+		callArgs["file"] = file
+	}
+	out, err := invokeTool(dir, "prism_references", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "references:", err)
 		return 1
@@ -4403,6 +4416,27 @@ func printTextOutput(m map[string]any) {
 		printTaskText(m, mode)
 		return
 	}
+	// prism_references: "sites" rows path:line:col: text.
+	if sites, ok := m["sites"].([]any); ok && m["name"] != nil {
+		name, _ := m["name"].(string)
+		switch {
+		case m["resolved"] == true:
+			fmt.Printf("// %s — %d reference site(s), resolved to this symbol\n", name, jsonInt(m["count"]))
+			printNotes(m, "completeness", "completenessScope", "callerEvidence", "degradedAnalysis")
+		case m["ambiguous"] == true:
+			fmt.Printf("// %s — %d use(s) of the name (ambiguous — %d definitions share it)\n", name, jsonInt(m["count"]), jsonInt(m["definitions"]))
+		default:
+			fmt.Printf("// %s — %d use(s) of the name (one definition)\n", name, jsonInt(m["count"]))
+		}
+		for _, r := range sites {
+			fmt.Printf("  %v\n", r)
+		}
+		for _, l := range anySliceCLI(m["otherMentions"]) {
+			fmt.Printf("%v\n", l)
+		}
+		printNotes(m, "note", "warning")
+		return
+	}
 	// prism_references: "byFile" map of file -> [{line, in}]
 	if rawByFile, ok := m["byFile"].(map[string]any); ok {
 		name, _ := m["name"].(string)
@@ -4534,6 +4568,20 @@ func printChangeImpactText(m map[string]any) {
 	if hint, ok := m["widerAnchor"].(map[string]any); ok {
 		fmt.Printf("widerAnchor: %v\n", hint["note"])
 	}
+}
+
+func anySliceCLI(v any) []any {
+	switch x := v.(type) {
+	case []any:
+		return x
+	case []string:
+		out := make([]any, len(x))
+		for i, s := range x {
+			out[i] = s
+		}
+		return out
+	}
+	return nil
 }
 
 // wireTestTag renders a symbol's testLabel ("[test]" or "[test double]");
