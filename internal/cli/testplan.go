@@ -19,6 +19,14 @@ func cmdTestPlan(args []string) int {
 			}
 			callArgs["base"] = v
 			i++
+		case "--coverage":
+			v, err := flagValue("test-plan", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			cov, _ := callArgs["coverage"].([]any)
+			callArgs["coverage"] = append(cov, v)
+			i++
 		case "--format":
 			f, err := formatFlag("test-plan", args, i)
 			if err != nil {

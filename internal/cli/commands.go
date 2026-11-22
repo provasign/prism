@@ -149,6 +149,11 @@ Usage:
                                   --format text|lean|json  Output format (default: text)
   prism test-plan [dir]          Impacted test symbols, file targets, evidence, and gaps
                                   --base <ref>  Compare working tree with ref (default: HEAD)
+                                  Two tiers: run first (resolved call paths, nearest first) and
+                                  run for safety (every test in a package that depends on the change)
+                                  --coverage <file>  read recorded coverage (Go profile, lcov,
+                                  JaCoCo XML, coverage.py .coverage; repeatable). Without it the
+                                  conventional names at the root are read when present
                                   --format text|json  Output format (default: text)
                                   Construct runner commands; judge broader validation from gaps
   prism workspace                Linked repositories: path, branch, commit, index, how linked

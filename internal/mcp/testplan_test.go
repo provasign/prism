@@ -238,20 +238,28 @@ func TestTestPlanSeparatesImportFallback(t *testing.T) {
 		{From: "precise", To: "value", Type: "imports"},
 		{From: "coarse", To: "value", Type: "imports"},
 	}
-	r := testPlanResult{}
+	r := testPlanResult{ChangedFiles: []string{"prod.py"}}
 	planInventory(t.Context(), &r, syms, edges, map[string]bool{"value": true})
-	if len(r.FileTargets) != 2 || len(r.Candidates) != 2 {
-		t.Fatalf("lost conservative targets: %+v", r)
+	planSafety(&r, syms, edges, &testCodeClassifier{})
+	// Run first holds only the precise path; the import-only test is not
+	// dropped, it is in the run-for-safety tier.
+	if len(r.FileTargets) != 1 || r.FileTargets[0].File != "tests/test_precise.py" || r.FileTargets[0].Classification != "focused file" {
+		t.Fatalf("run first: %+v", r.FileTargets)
 	}
-	for _, f := range r.FileTargets {
-		want := "focused file"
-		if f.File == "tests/test_coarse.py" {
-			want = "coarse fallback"
-		}
-		if f.Classification != want {
-			t.Fatalf("incorrect evidence classification: %+v", f)
+	if !planSafetyHas(r, "tests/test_coarse.py") || !planSafetyHas(r, "tests/test_precise.py") {
+		t.Fatalf("lost conservative targets: %+v", r.Safety)
+	}
+}
+
+func planSafetyHas(r testPlanResult, file string) bool {
+	for _, p := range r.Safety {
+		for _, f := range p.TestFiles {
+			if f == file {
+				return true
+			}
 		}
 	}
+	return false
 }
 
 func TestTestPlanEnclosingAndHeuristicFallback(t *testing.T) {
@@ -267,18 +275,15 @@ func TestTestPlanEnclosingAndHeuristicFallback(t *testing.T) {
 		{From: "classuser", To: "class", Type: "uses-type", Source: "native"},
 		{From: "heuristic", To: "method", Type: "calls", Source: "heuristic"},
 	}
-	r := testPlanResult{}
+	r := testPlanResult{ChangedFiles: []string{"prod.py"}}
 	planInventory(t.Context(), &r, syms, edges, map[string]bool{"class": true, "method": true})
-	if len(r.FileTargets) != 3 {
-		t.Fatalf("lost fallback targets: %+v", r)
+	planSafety(&r, syms, edges, &testCodeClassifier{})
+	if len(r.FileTargets) != 1 || r.FileTargets[0].File != "tests/test_direct.py" || r.FileTargets[0].Classification != "focused file" {
+		t.Fatalf("run first: %+v", r.FileTargets)
 	}
-	for _, f := range r.FileTargets {
-		want := "coarse fallback"
-		if f.File == "tests/test_direct.py" {
-			want = "focused file"
-		}
-		if f.Classification != want {
-			t.Fatalf("incorrect focused target: %+v", f)
+	for _, f := range []string{"tests/test_direct.py", "tests/test_class.py", "tests/test_heuristic.py"} {
+		if !planSafetyHas(r, f) {
+			t.Fatalf("lost fallback target %s: %+v", f, r.Safety)
 		}
 	}
 }
@@ -358,7 +363,7 @@ func TestTestPlanTextPrioritizesDecisions(t *testing.T) {
 	}
 	r.FileTargets = []testPlanTarget{{File: "tests/test_api.py"}, {File: "tests/test_other.py"}}
 	text, ok := renderTestPlanAsText(testPlanMap(r))
-	if !ok || len(text) > 2000 || strings.Index(text, "gap:") > strings.Index(text, "tests/test_api.py") || !strings.Contains(text, "tests/test_other.py") || !strings.Contains(text, "End of test-plan: 2 file targets, 1 gaps") {
+	if !ok || len(text) > 2000 || strings.Index(text, "gap:") > strings.Index(text, "tests/test_api.py") || !strings.Contains(text, "tests/test_other.py") || !strings.Contains(text, "End of test-plan: 2 run-first files, 0 run-for-safety files, 1 gaps") {
 		t.Fatalf("decision summary missing or buried: %s", text)
 	}
 	if strings.Contains(text, "long-identity") || !strings.Contains(text, "100 symbol candidates (details in JSON)") {

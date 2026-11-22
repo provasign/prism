@@ -17,7 +17,7 @@ import (
 	"github.com/provasign/prism/internal/grove"
 )
 
-const testPlanBoundary = "Static graph candidates, not measured test coverage. Tests are identified by file-path conventions and by test attributes (Rust #[test], Python test_*, JUnit @Test); other framework tests may not be recognized. Runtime dispatch, reflection, external consumers, and dependencies absent from the index may be missed. Choose test commands and broader validation using these gaps and repository requirements."
+const testPlanBoundary = "Static graph candidates, not measured test coverage. Tests are identified by file-path conventions and by test attributes (Rust #[test], Python test_*, JUnit @Test); other framework tests may not be recognized. Run-first tiers follow resolved call paths and order tests; the run-for-safety tier is the package-level dependency closure and is the set to treat as complete over the indexed graph. Runtime dispatch, reflection, external consumers, and dependencies absent from the index may be missed. Choose test commands and broader validation using these gaps and repository requirements."
 
 // These records intentionally omit source bodies and runner-specific selectors.
 type testPlanSymbol struct {
@@ -47,6 +47,8 @@ type testPlanTarget struct {
 	// CallHops: call, type-use and inheritance steps on the evidence
 	// path from the nearest changed symbol (structural steps not counted).
 	CallHops int `json:"callHops"`
+	// Sources: what selected the file: "graph", "coverage", or both.
+	Sources []string `json:"sources,omitempty"`
 	// seedHops: per changed symbol, the call hops on its shortest path.
 	seedHops map[string]int
 }
@@ -65,8 +67,18 @@ type testPlanResult struct {
 	// searched there.
 	LinkedTests []string `json:"linkedTests,omitempty"`
 	LinkedScope string   `json:"linkedScope,omitempty"`
+	// Safety: the "run for safety" tier, every test file in a package
+	// that transitively depends on a changed file, by package distance.
+	Safety          []testPlanPackage `json:"safety"`
+	SafetyFileCount int               `json:"safetyFileCount"`
+	// SafetyNotCovered: what the package closure cannot see.
+	SafetyNotCovered string `json:"safetyNotCovered,omitempty"`
+	// Coverage: what recorded coverage files say about the changed lines.
+	Coverage []planCoverage `json:"coverage,omitempty"`
 	// root: the repository root, for reading test attributes.
 	root string
+	// changes: changed symbols' spans on both sides, for coverage.
+	changes []planChange
 }
 
 func planSymbol(s grove.SymbolRecord) testPlanSymbol {
@@ -99,7 +111,9 @@ func testPlanChanges(ctx context.Context, root, base string) (map[string]string,
 		}
 	}
 	for p := range changes {
-		if p == ".grove" || strings.HasPrefix(p, ".grove/") {
+		// Bytecode caches are build output, not changes (an unignored
+		// __pycache__ listed .pyc files as changed tests).
+		if p == ".grove" || strings.HasPrefix(p, ".grove/") || strings.Contains("/"+p, "/__pycache__/") || strings.HasSuffix(p, ".pyc") {
 			delete(changes, p)
 		}
 	}
@@ -253,15 +267,35 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 			continue
 		}
 		start := len(r.ChangedSymbols)
+		span := func(s *grove.SymbolRecord) *[2]int {
+			if s == nil || s.Kind == "document" || s.Kind == "file" {
+				return nil
+			}
+			return &[2]int{s.Span.Start, s.Span.End}
+		}
+		record := func(before, after *grove.SymbolRecord) {
+			name := ""
+			for _, s := range []*grove.SymbolRecord{after, before} {
+				if s != nil && name == "" {
+					name = displayQN(*s)
+				}
+			}
+			if b, a := span(before), span(after); b != nil || a != nil {
+				r.changes = append(r.changes, planChange{File: p, Name: name, Before: b, After: a})
+			}
+		}
 		for _, s := range fd.Added {
 			addSeed(s)
+			record(nil, &s)
 		}
 		for _, c := range fd.Changed {
 			if c.After != nil {
 				addSeed(*c.After)
 			}
+			record(c.Before, c.After)
 		}
 		for _, c := range fd.Renamed {
+			record(c.Before, c.After)
 			if c.After != nil {
 				addSeed(*c.After)
 			}
@@ -271,6 +305,7 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 			}
 		}
 		for _, s := range fd.Removed {
+			record(&s, nil)
 			r.ChangedSymbols = append(r.ChangedSymbols, planSymbol(s))
 			r.Gaps = append(r.Gaps, p+": removed "+displayQN(s)+"; old graph dependencies unavailable")
 		}
@@ -287,9 +322,11 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 		}
 	}
 	planInventory(ctx, &r, syms, edges, seeds)
+	planSafety(&r, syms, edges, &testCodeClassifier{root: h.Root})
+	planApplyCoverage(&r, h.Root, stringsArg(args, "coverage"), syms)
 	r.Gaps = uniqueSorted(r.Gaps)
 	sort.Slice(r.ChangedSymbols, func(i, j int) bool { return planSymbolKey(r.ChangedSymbols[i]) < planSymbolKey(r.ChangedSymbols[j]) })
-	if len(r.Candidates)+len(r.FileTargets) > 0 {
+	if len(r.Candidates)+len(r.FileTargets)+r.SafetyFileCount > 0 {
 		r.Status = "candidates found"
 	}
 	h.planLinkedTests(ctx, &r)
@@ -600,16 +637,34 @@ func planInventory(ctx context.Context, r *testPlanResult, syms []grove.SymbolRe
 			}
 		} else {
 			r.FileTargets[i].Classification = "coarse fallback"
-			r.FileTargets[i].CallHops = planCallHops(t.Evidence)
-			r.FileTargets[i].Reason = "import, heuristic, or enclosing-symbol reachability; review for broader validation"
 		}
 	}
+	// Import, heuristic and enclosing-symbol reach is covered by the
+	// package-level "run for safety" tier (planSafety); the run-first
+	// tiers keep only precise call paths.
+	kept := r.FileTargets[:0]
+	runFirst := map[string]bool{}
+	for _, t := range r.FileTargets {
+		if t.Classification != "coarse fallback" {
+			kept = append(kept, t)
+			runFirst[t.File] = true
+		}
+	}
+	r.FileTargets = kept
+	cands := r.Candidates[:0]
+	for _, c := range r.Candidates {
+		if runFirst[c.File] {
+			cands = append(cands, c)
+		}
+	}
+	r.Candidates = cands
 }
 
 func renderTestPlanAsText(out map[string]any) (string, bool) {
 	for key := range out {
 		switch key {
-		case "base", "status", "changedFiles", "changedSymbols", "candidates", "fileTargets", "gaps", "boundary", "linkedTests", "linkedScope":
+		case "base", "status", "changedFiles", "changedSymbols", "candidates", "fileTargets", "gaps", "boundary", "linkedTests", "linkedScope",
+			"safety", "safetyFileCount", "safetyNotCovered", "coverage":
 		default:
 			return "", false
 		}
@@ -623,50 +678,77 @@ func renderTestPlanAsText(out map[string]any) (string, bool) {
 		return "", false
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "test-plan vs %s: %s\n%d changed files, %d changed symbols, %d symbol candidates, %d file targets\n", r.Base, r.Status, len(r.ChangedFiles), len(r.ChangedSymbols), len(r.Candidates), len(r.FileTargets))
-	b.WriteString("Run focused file targets first; choose runner syntax from the repository. Coarse fallbacks are separate: broaden for applicable gaps or required checks, explaining why. Test helpers/fixtures are not necessarily runnable files.\n")
+	focused, transitive, covered := 0, 0, 0
+	for _, t := range r.FileTargets {
+		switch t.Classification {
+		case "transitive file":
+			transitive++
+		case "coverage file":
+			covered++
+		default:
+			focused++
+		}
+	}
+	runFirst := fmt.Sprintf("%d focused + %d transitive", focused, transitive)
+	if covered > 0 {
+		runFirst += fmt.Sprintf(" + %d from coverage only", covered)
+	}
+	fmt.Fprintf(&b, "test-plan vs %s: %s\n%d changed files, %d changed symbols; run first: %s test files; run for safety: %d test files in %d packages\n",
+		r.Base, r.Status, len(r.ChangedFiles), len(r.ChangedSymbols), runFirst, r.SafetyFileCount, len(r.Safety))
+	b.WriteString("Run the focused files first, then the transitive ones; the run-for-safety tier is the complete set over the indexed dependency graph. Choose runner syntax from the repository. Test helpers/fixtures are not necessarily runnable files.\n")
 	fmt.Fprintf(&b, "boundary: %s\n", r.Boundary)
 	for _, g := range r.Gaps {
 		fmt.Fprintf(&b, "gap: %s\n", g)
 	}
-	b.WriteString("Complete file targets follow. Symbol IDs, origins, and graph evidence are available with --format json.\n")
 	byFile := map[string][]testPlanTarget{}
 	for _, c := range r.Candidates {
 		byFile[c.File] = append(byFile[c.File], c)
 	}
 	ordered := append([]testPlanTarget(nil), r.FileTargets...)
-	rank := map[string]int{"focused file": 0, "transitive file": 1, "coarse fallback": 2}
+	tier := func(t testPlanTarget) int {
+		switch t.Classification {
+		case "coverage file":
+			return 1
+		case "transitive file":
+			return 2
+		}
+		return 0
+	}
 	sort.SliceStable(ordered, func(i, j int) bool {
 		a, b := ordered[i], ordered[j]
-		if rank[a.Classification] != rank[b.Classification] {
-			return rank[a.Classification] < rank[b.Classification]
+		if tier(a) != tier(b) {
+			return tier(a) < tier(b)
 		}
-		if a.Classification == "transitive file" && a.CallHops != b.CallHops {
+		if tier(a) == 2 && a.CallHops != b.CallHops {
 			return a.CallHops < b.CallHops
 		}
 		return false
 	})
+	const transitiveShown = 15
+	shown := 0
 	section := ""
 	for _, t := range ordered {
-		group := "Focused targets: changed tests or non-heuristic paths from innermost changed symbols. Run these first."
+		group := "Run first — focused: changed tests, or tests a resolved call path ties to an innermost changed symbol."
 		switch t.Classification {
 		case "transitive file":
-			group = "Transitive targets: precise paths, but farther than the focused files (often through a dispatcher); nearest first, with call hops. Run after the focused files."
-		case "coarse fallback":
-			group = "Broader fallback inventory: import, heuristic, or enclosing-symbol paths. Review against gaps; these are not additional mandatory test files."
+			group = "Run first — transitive: resolved call paths, farther than the focused files (often through a dispatcher); nearest first, with call hops."
+		case "coverage file":
+			group = "Run first — from recorded coverage only: a test here ran a changed line; the static graph did not reach it."
 		}
 		if group != section {
 			fmt.Fprintln(&b, group)
 			section = group
 		}
-		fmt.Fprint(&b, t.File)
 		if t.Classification == "transitive file" {
-			fmt.Fprintf(&b, " (%d hops)\n", t.CallHops)
+			if shown++; shown > transitiveShown {
+				continue
+			}
+			fmt.Fprintf(&b, "%s (%d hops)\n", t.File, t.CallHops)
 			continue
 		}
-		if t.Classification == "coarse fallback" {
-			b.WriteByte('\n')
-			continue
+		fmt.Fprint(&b, t.File)
+		if len(t.Sources) == 2 {
+			b.WriteString(" [graph + coverage]")
 		}
 		cs := byFile[t.File]
 		if len(cs) <= 5 {
@@ -678,6 +760,45 @@ func renderTestPlanAsText(out map[string]any) (string, bool) {
 		}
 		b.WriteByte('\n')
 	}
+	if shown > transitiveShown {
+		fmt.Fprintf(&b, "... %d more transitive files, farther away (listed with --format json)\n", shown-transitiveShown)
+	}
+	if len(r.Safety) > 0 {
+		b.WriteString("Run for safety — every test in a package that depends, directly or through other packages, on a changed file (package, test files, package hops; files listed with --format json):\n")
+		for _, p := range r.Safety {
+			fmt.Fprintf(&b, "  %s (%d, %d hops)\n", p.Package, len(p.TestFiles), p.Hops)
+		}
+		fmt.Fprintf(&b, "not covered by either tier: %s\n", r.SafetyNotCovered)
+	}
+	for _, c := range r.Coverage {
+		kind := "suite-level (no per-test data)"
+		if c.PerTest {
+			kind = "per test"
+		}
+		fmt.Fprintf(&b, "coverage %s (%s, %s; matched against %s line numbers):\n", c.Source, c.Format, kind, c.Matched)
+		for _, sym := range c.Symbols {
+			switch {
+			case sym.Instrumented < 0:
+				fmt.Fprintf(&b, "  %s (%s): %d line(s) executed", sym.Symbol, sym.File, sym.Executed)
+			default:
+				fmt.Fprintf(&b, "  %s (%s): %d of %d instrumented line(s) executed", sym.Symbol, sym.File, sym.Executed, sym.Instrumented)
+			}
+			if sym.Executed == 0 {
+				b.WriteString(" — not run by the recorded tests")
+			}
+			if n := len(sym.Tests); n > 0 {
+				shown := sym.Tests
+				if n > 5 {
+					shown = shown[:5]
+				}
+				fmt.Fprintf(&b, "; by %s", strings.Join(shown, ", "))
+				if n > 5 {
+					fmt.Fprintf(&b, " +%d more", n-5)
+				}
+			}
+			b.WriteByte('\n')
+		}
+	}
 	if len(r.LinkedTests) > 0 {
 		b.WriteString("Tests in linked repositories that reference a changed symbol (run them from their own repository):\n")
 		for _, l := range r.LinkedTests {
@@ -687,7 +808,7 @@ func renderTestPlanAsText(out map[string]any) (string, bool) {
 	if r.LinkedScope != "" {
 		fmt.Fprintf(&b, "linked repositories: %s\n", r.LinkedScope)
 	}
-	fmt.Fprintf(&b, "End of test-plan: %d file targets, %d gaps. If this footer is missing, read the remaining output before choosing tests.\n", len(r.FileTargets), len(r.Gaps))
+	fmt.Fprintf(&b, "End of test-plan: %d run-first files, %d run-for-safety files, %d gaps. If this footer is missing, read the remaining output before choosing tests.\n", len(r.FileTargets), r.SafetyFileCount, len(r.Gaps))
 	return b.String(), true
 }
 
