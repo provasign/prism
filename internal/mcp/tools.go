@@ -1803,15 +1803,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		return nil, errors.New("query is required (a name, a name fragment, or an array of them)")
 	}
 	termNote := pathNote
-	var omittedTerms []string
 	if len(queries) > searchTermCap {
-		// Never drop silently. A filter that quietly narrows the request is
-		// the failure mode SWE-Explore measures as the expensive one: missing
-		// evidence costs far more than noise.
-		termNote = appendNote(termNote, fmt.Sprintf("only the first %d of %d terms were searched; re-run with the rest",
-			searchTermCap, len(queries)))
-		omittedTerms = queries[searchTermCap:]
-		queries = queries[:searchTermCap]
+		// Never narrow the request quietly: a note at the end of a long
+		// answer was missed (BUG-09). Refuse and say how to split it.
+		return nil, fmt.Errorf("search takes up to %d terms; got %d. Split into two calls", searchTermCap, len(queries))
 	}
 	limit := intArg(args, "limit", defaultSearchLimit)
 	if limit <= 0 {
@@ -1878,9 +1873,6 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		out := map[string]any{"root": h.Root}
 		if disclosure := searchScopeDisclosure(scope, sc); disclosure != "" {
 			out["scopeNote"] = disclosure
-		}
-		if len(omittedTerms) > 0 {
-			out["omittedTerms"] = omittedTerms
 		}
 		results := make([]map[string]any, 0, len(queries))
 		var failed []string

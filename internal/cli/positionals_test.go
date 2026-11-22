@@ -61,3 +61,16 @@ func TestSearchDoubleDashEndsFlags(t *testing.T) {
 		t.Fatalf("rc=%d out=%s", rc, out)
 	}
 }
+
+// BUG-09: more than 10 terms is a usage error, never a quiet truncation.
+func TestSearchOverTenTermsIsUsageError(t *testing.T) {
+	args := []string{"--dir", t.TempDir()}
+	for i := 0; i < 11; i++ {
+		args = append(args, "t"+string(rune('a'+i)))
+	}
+	var rc int
+	stderr := captureStderr(func() { rc = cmdSearch(args) })
+	if rc != 2 || !strings.Contains(stderr, "search takes up to 10 terms; got 11") {
+		t.Fatalf("rc=%d stderr=%q", rc, stderr)
+	}
+}

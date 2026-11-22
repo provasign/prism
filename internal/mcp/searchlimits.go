@@ -67,9 +67,6 @@ func searchResultPartial(m map[string]any) bool {
 	if _, invalid := m["invalidPattern"]; invalid {
 		return true
 	}
-	if len(anySlice(m["omittedTerms"])) > 0 {
-		return true
-	}
 	for _, key := range []string{"truncated", "symbolsTruncated", "timedOut"} {
 		if value, _ := m[key].(bool); value {
 			return true

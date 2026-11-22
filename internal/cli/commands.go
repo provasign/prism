@@ -2769,6 +2769,9 @@ args:
 		fmt.Fprintln(os.Stderr, "usage: prism search <term> [term...] [--dir <path>]")
 		return 2
 	}
+	if len(bare) > maxBatchTerms {
+		return usageError(fmt.Errorf("search takes up to %d terms; got %d. Split into two calls", maxBatchTerms, len(bare)))
+	}
 	if msg, ok := mcpSpelling("search", bare); ok {
 		fmt.Fprintln(os.Stderr, msg)
 		return 2

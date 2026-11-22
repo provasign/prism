@@ -87,6 +87,7 @@ func TestSearchCLIInvalidContextFails(t *testing.T) {
 
 func TestSearchCLIDoesNotInheritCompactListCaps(t *testing.T) {
 	dir := t.TempDir()
+	// Terms are capped at 10 (BUG-09); paths and globs are not.
 	terms := make([]string, 11)
 	args := make([]string, 0, 11+2+22+22)
 	for i := range terms {
@@ -95,7 +96,9 @@ func TestSearchCLIDoesNotInheritCompactListCaps(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(terms[i]+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		args = append(args, terms[i])
+		if i < 10 {
+			args = append(args, terms[i])
+		}
 	}
 	args = append(args, "--dir", dir, "--scope", "text", "--no-bodies")
 	for i := range terms {
@@ -103,7 +106,7 @@ func TestSearchCLIDoesNotInheritCompactListCaps(t *testing.T) {
 		args = append(args, "--glob", "*.txt")
 	}
 	if rc := cmdSearch(args); rc != 0 {
-		t.Fatalf("search with 11 terms, paths, and globs exited %d", rc)
+		t.Fatalf("search with 10 terms and 11 paths and globs exited %d", rc)
 	}
 }
 

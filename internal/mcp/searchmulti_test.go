@@ -105,24 +105,17 @@ func TestToolSearch_MultiTermGroupsByTerm(t *testing.T) {
 	}
 }
 
-// Over the cap the extra terms are dropped — but never silently. A quiet
-// truncation reads to the agent as "searched everything, found nothing".
-func TestToolSearch_OverCapSaysSo(t *testing.T) {
+// Over the cap the call is refused: a note at the end of a long answer
+// was missed (BUG-09), and dropping terms narrows the request.
+func TestToolSearch_OverCapIsAnError(t *testing.T) {
 	h := newTextSearchHandler(t)
-	terms := make([]any, searchTermCap+3)
+	terms := make([]any, searchTermCap+1)
 	for i := range terms {
 		terms[i] = string(rune('a'+i)) + "Term"
 	}
-	out, err := h.Invoke("prism_search", map[string]any{"query": terms, "scope": "text"})
-	if err != nil {
-		t.Fatalf("search: %v", err)
-	}
-	m := out.(map[string]any)
-	if got := len(m["results"].([]map[string]any)); got != searchTermCap {
-		t.Errorf("searched %d terms, want the cap of %d", got, searchTermCap)
-	}
-	if note, _ := m["note"].(string); note == "" {
-		t.Error("terms were dropped with no note — truncation must never be silent")
+	_, err := h.Invoke("prism_search", map[string]any{"query": terms, "scope": "text"})
+	if err == nil || !strings.Contains(err.Error(), "search takes up to 10 terms; got 11. Split into two calls") {
+		t.Fatalf("err = %v", err)
 	}
 }
 

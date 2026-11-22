@@ -46,7 +46,6 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"fallbackOmitted":  true,
 		"fallbackFailed":   true,
 		"root":             true,
-		"omittedTerms":     true,
 		"countComplete":    true,
 		"resultsComplete":  true,
 		"inlineBodies":     true,
@@ -167,9 +166,6 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 	}
 	for _, f := range anySlice(out["failedTerms"]) {
 		fmt.Fprintf(&b, "// failed: %v\n", f)
-	}
-	if omitted := anySlice(out["omittedTerms"]); len(omitted) > 0 {
-		fmt.Fprintf(&b, "// NOT searched: %v\n", omitted)
 	}
 	if bodies, _ := out["inlineBodies"].(string); bodies != "" {
 		b.WriteString(bodies)

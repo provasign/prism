@@ -221,24 +221,3 @@ func TestScopedSymbolScanHasItsOwnDeadlineAndKeepsLastPrefix(t *testing.T) {
 		t.Fatalf("incomplete deadline result lacks narrowing guidance: %q", warning)
 	}
 }
-
-func TestSearchOmittedTermsAreNotDeclaredAbsent(t *testing.T) {
-	h := symbolCapFixture(t, 1)
-	queries := make([]string, searchTermCap+1)
-	for i := range queries {
-		queries[i] = fmt.Sprintf("notPresent%d", i)
-	}
-	queries[searchTermCap] = "FooThing"
-	out, err := h.Invoke("prism_search", map[string]any{"query": queries, "scope": "text"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := out.(map[string]any)
-	txt, ok := renderSearchAsText(m)
-	if !ok || !searchResultPartial(m) || !strings.Contains(txt, "NOT searched: [FooThing]") {
-		t.Fatalf("omitted matching term was not identified: %s", txt)
-	}
-	if strings.Contains(fmt.Sprint(m["note"]), "not timed out") {
-		t.Fatalf("incomplete batch claimed an exhaustive negative: %s", txt)
-	}
-}
