@@ -142,16 +142,15 @@ func (c *Client) AutoIndexIfEmpty(ctx context.Context) error {
 		return fmt.Errorf("grove index version: %w", err)
 	}
 	if stale {
-		st, err := e.Status(ctx)
-		if err != nil {
-			return fmt.Errorf("grove status: %w", err)
-		}
-		if st.SymbolCount == 0 {
-			fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
-		} else {
-			fmt.Fprintln(os.Stderr, "prism: index is incomplete or from an older engine — rebuilding it (one-time)")
-		}
-		res, err := e.Index(ctx, c.root)
+		// Re-checked under the index lock: of several parallel first
+		// commands only one builds the index; the rest wait and read it.
+		res, err := e.IndexIfStale(ctx, c.root, func(st groveeng.Status) {
+			if st.SymbolCount == 0 {
+				fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
+			} else {
+				fmt.Fprintln(os.Stderr, "prism: index is incomplete or from an older engine — rebuilding it (one-time)")
+			}
+		})
 		if err != nil {
 			return fmt.Errorf("index refresh failed: %w", err)
 		}
