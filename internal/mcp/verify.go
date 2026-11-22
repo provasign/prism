@@ -305,6 +305,15 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	}
 	var seeds []seed
 	var unverifiedSeeds []string
+	// addedMembers: members added to an interface's body. Every type
+	// meant to implement the interface must add them; missing-
+	// implementations names the ones that do not (2026-11-22, BUG-03:
+	// these used to stay "verification not implemented for this kind").
+	type addedMember struct {
+		iface grove.SymbolRecord
+		name  string
+	}
+	var addedMembers []addedMember
 	var contentAdvisories []string
 	// testCoverage answers a DIFFERENT question than the seeds above: not
 	// "did every caller of a changed CONTRACT get updated" but "does a
@@ -438,11 +447,24 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 					// Falls back to the unverified-block seed when nothing
 					// extractable changed (fail-closed, measured: typeorm
 					// held at review/0% without this).
-					members := memberContractChanges(
-						blockText(h.Root, base, f, c.Before, true),
-						blockText(h.Root, "", f, c.After, false))
+					beforeBlock := blockText(h.Root, base, f, c.Before, true)
+					afterBlock := blockText(h.Root, "", f, c.After, false)
+					members := memberContractChanges(beforeBlock, afterBlock)
+					added, removed := memberAdditionsRemovals(beforeBlock, afterBlock)
+					if !isTestFilePath(c.After.FilePath) && c.After.Kind == "interface" {
+						for _, name := range added {
+							addedMembers = append(addedMembers, addedMember{iface: *c.After, name: name})
+						}
+					} else {
+						added = nil
+					}
+					if len(removed) > 0 {
+						addSeed(*c.After, c.Before, "member(s) "+strings.Join(removed, ", ")+" removed from declaration block "+displayQN(*c.After))
+					}
 					if len(members) == 0 {
-						addSeed(*c.After, c.Before, "declaration block "+displayQN(*c.After)+" changed (member contracts live in its body)")
+						if len(added) == 0 && len(removed) == 0 {
+							addSeed(*c.After, c.Before, "declaration block "+displayQN(*c.After)+" changed (member contracts live in its body)")
+						}
 						break
 					}
 					for _, m := range members {
@@ -762,6 +784,32 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			}
 		}
 	}
+	for _, am := range addedMembers {
+		query := displayQN(am.iface) + "." + am.name
+		because := "member " + query + " added to interface " + displayQN(am.iface)
+		mi, err := h.Grove.MissingImplementations(ctx, query)
+		if err != nil || mi == nil {
+			reason := "no answer"
+			if err != nil {
+				reason = err.Error()
+			}
+			unverifiedSeeds = append(unverifiedSeeds,
+				fmt.Sprintf("interface %s (%s) — missing-implementations could not be computed (%s); review its implementations", displayQN(am.iface), because, strings.SplitN(reason, "\n", 2)[0]))
+			continue
+		}
+		for _, t := range mi.Missing {
+			missed = append(missed, missedSite{
+				Symbol: t.Name, QualifiedName: displayQN(t),
+				File: t.FilePath, Line: t.Span.Start, Kind: t.Kind,
+				BecauseOf: because,
+				Detail:    "does not implement " + query + "; the compiler rejects every use of it as " + displayQN(am.iface),
+			})
+		}
+		for _, t := range mi.Unverifiable {
+			unverifiedSeeds = append(unverifiedSeeds,
+				fmt.Sprintf("%s %s (%s) — its implementation may come from outside the index; check it implements %s", t.Kind, displayQN(t), because, query))
+		}
+	}
 	sort.Slice(missed, func(i, j int) bool {
 		if missed[i].File != missed[j].File {
 			return missed[i].File < missed[j].File
@@ -1014,6 +1062,42 @@ type memberChange struct {
 	name      string
 	beforeSig string
 	afterSig  string
+}
+
+// memberAdditionsRemovals returns the member names a declaration block's
+// body gained and lost, sorted. It reads members the way
+// memberContractChanges does: one signature line per member name.
+func memberAdditionsRemovals(beforeText, afterText string) (added, removed []string) {
+	if beforeText == "" || afterText == "" {
+		return nil, nil
+	}
+	names := func(text string) map[string]bool {
+		out := map[string]bool{}
+		for _, ln := range strings.Split(text, "\n") {
+			t := strings.TrimSpace(ln)
+			if t == "" || strings.HasPrefix(t, "//") || strings.HasPrefix(t, "*") || strings.HasPrefix(t, "/*") || strings.HasPrefix(t, "#") {
+				continue
+			}
+			if leaf := methodLeafInSig(t); leaf != "" && strings.Contains(t, leaf+"(") {
+				out[leaf] = true
+			}
+		}
+		return out
+	}
+	b, a := names(beforeText), names(afterText)
+	for n := range a {
+		if !b[n] {
+			added = append(added, n)
+		}
+	}
+	for n := range b {
+		if !a[n] {
+			removed = append(removed, n)
+		}
+	}
+	sort.Strings(added)
+	sort.Strings(removed)
+	return added, removed
 }
 
 // memberContractChanges line-diffs two declaration-block bodies and returns
