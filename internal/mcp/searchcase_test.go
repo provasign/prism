@@ -25,24 +25,34 @@ func TestSearchCaseWordAndExcludes(t *testing.T) {
 		txt, _ := renderSearchAsText(out.(map[string]any))
 		return strings.Count(txt, "case.go") + strings.Count(txt, "\n  "), txt
 	}
+	// Default: case-insensitive. Smart case regressed the A/B (brokenPipe
+	// missed isBrokenPipe), so it is opt-in.
+	_, camel := count(map[string]any{"query": "absolute"})
+	if !strings.Contains(camel, "5: var mustAbsolute") {
+		t.Fatalf("default search must ignore case:\n%s", camel)
+	}
 	_, upper := count(map[string]any{"query": "MUSTABS"})
-	if strings.Contains(upper, "3: func mustAbs") || !strings.Contains(upper, "exact matches") {
-		t.Fatalf("uppercase term is case-sensitive:\n%s", upper)
+	if !strings.Contains(upper, "3: func mustAbs") || !strings.Contains(upper, "case-insensitive") {
+		t.Fatalf("default is case-insensitive:\n%s", upper)
 	}
-	_, lower := count(map[string]any{"query": "mustabs"})
-	if !strings.Contains(lower, "4: var MUSTABS") || !strings.Contains(lower, "case-insensitive") {
-		t.Fatalf("lowercase term is case-insensitive:\n%s", lower)
+	_, sensitive := count(map[string]any{"query": "MUSTABS", "case": "sensitive"})
+	if strings.Contains(sensitive, "3: func mustAbs") || !strings.Contains(sensitive, "exact matches") {
+		t.Fatalf("case=sensitive:\n%s", sensitive)
 	}
-	_, forced := count(map[string]any{"query": "MUSTABS", "case": "insensitive"})
-	if !strings.Contains(forced, "3: func mustAbs") {
-		t.Fatalf("case=insensitive:\n%s", forced)
+	_, smart := count(map[string]any{"query": "MUSTABS", "case": "smart"})
+	if strings.Contains(smart, "3: func mustAbs") {
+		t.Fatalf("case=smart with an uppercase term:\n%s", smart)
 	}
 	_, word := count(map[string]any{"query": "mustAbs", "word": true})
 	if strings.Contains(word, "5: var mustAbsolute") || !strings.Contains(word, "3: func mustAbs") {
 		t.Fatalf("word:\n%s", word)
 	}
-	if !strings.Contains(word, "not searched: .claude") {
-		t.Fatalf("excluded directory not named:\n%s", word)
+	if !strings.Contains(word, "not searched, has matches: .claude (1)") {
+		t.Fatalf("excluded directory with a match not named:\n%s", word)
+	}
+	_, none := count(map[string]any{"query": "mustAbsolute"})
+	if strings.Contains(none, "not searched") {
+		t.Fatalf("excluded directory without matches must not be named:\n%s", none)
 	}
 	_, all := count(map[string]any{"query": "mustAbs", "no_default_excludes": true})
 	if !strings.Contains(all, ".claude/notes.md") || strings.Contains(all, "not searched") {

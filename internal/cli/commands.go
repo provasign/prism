@@ -113,8 +113,8 @@ Usage:
                                   rg/grep pass). Pass SEVERAL terms to search them
                                   in one call (up to 10), grouped by term.
                                   [-- term...]  arguments after -- are terms, never flags
-                                  Text case is smart by default: case-sensitive when a term
-                                  has an uppercase letter. [--ignore-case|-i] [--case-sensitive|-s]
+                                  Text matches ignore case by default; [--case-sensitive|-s]
+                                  matches exact case, [--ignore-case|-i] states the default
                                   [--word|-w]  whole words only
                                   [--no-default-excludes]  also search .shale, .claude, .cursor, ...
                                   --scope text is a pure grep

@@ -716,7 +716,7 @@ func toolSchema(name string) map[string]any {
 				"case": map[string]any{
 					"type":        "string",
 					"enum":        []string{"smart", "sensitive", "insensitive"},
-					"description": "Text case: smart (default; case-sensitive when the term has an uppercase letter), sensitive, or insensitive.",
+					"description": "Text case: insensitive (default), sensitive, or smart (case-sensitive when the term has an uppercase letter).",
 				},
 				"word":                map[string]any{"type": "boolean", "description": "Whole-word text matches only."},
 				"no_default_excludes": map[string]any{"type": "boolean", "description": "Also search agent-state directories (.shale, .claude, .cursor, ...) skipped by default."},
@@ -2254,9 +2254,10 @@ type searchScope struct {
 	// budget: the default response budget applies (searchbudget.go); the
 	// sampling warnings use their short form.
 	budget bool
-	// caseMode: "smart" (default: case-sensitive when the term has an
-	// uppercase letter, as ripgrep's --smart-case), "sensitive" or
-	// "insensitive". MUSTABS used to match mustAbs (BUG-10).
+	// caseMode: "insensitive" (default), "sensitive", or "smart"
+	// (case-sensitive when the term has an uppercase letter). Smart was the
+	// default briefly and regressed the A/B: an agent's search for
+	// brokenPipe missed isBrokenPipe (2026-11-22).
 	caseMode string
 	// word: whole-word matches only.
 	word bool
@@ -2272,7 +2273,8 @@ func (sc searchScope) caseSensitive(term string, regex bool) bool {
 	switch sc.caseMode {
 	case "sensitive":
 		return true
-	case "insensitive":
+	case "smart":
+	default:
 		return false
 	}
 	if regex {
@@ -2336,8 +2338,8 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			"truncated":     r.Truncated,
 			"caseSensitive": opts.CaseSensitive,
 		}
-		if len(sc.notSearched) > 0 {
-			out["notSearched"] = sc.notSearched
+		if ns := h.excludedMatches(ctx, q, opts, sc.notSearched); len(ns) > 0 {
+			out["notSearched"] = ns
 		}
 		attachTextSearchCompleteness(out, r)
 		if r.Truncated {
@@ -2564,8 +2566,8 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked)
 		out["textBackend"] = r.Backend
 		out["caseSensitive"] = opts.CaseSensitive
-		if len(sc.notSearched) > 0 {
-			out["notSearched"] = sc.notSearched
+		if ns := h.excludedMatches(ctx, q, opts, sc.notSearched); len(ns) > 0 {
+			out["notSearched"] = ns
 		}
 		attachTextSearchCompleteness(out, r)
 		if r.Truncated {

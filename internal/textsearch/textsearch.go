@@ -252,6 +252,9 @@ func searchExcludes(opts Options) []string {
 type ExcludedDir struct {
 	Dir   string `json:"dir"`
 	Files int    `json:"files"`
+	// Matches: lines matching the search in this directory (set by the
+	// caller that searched it).
+	Matches int `json:"matches,omitempty"`
 }
 
 // DefaultExcludedPresent lists the agent-state directories at root that a

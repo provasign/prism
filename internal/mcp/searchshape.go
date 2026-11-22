@@ -195,7 +195,7 @@ func (s searchShape) scope(args map[string]any) searchScope {
 		adaptive:          s.adaptive,
 		contextAsked:      s.contextAsked,
 		budget:            s.budget,
-		caseMode:          stringArg(args, "case", "smart"),
+		caseMode:          stringArg(args, "case", "insensitive"),
 		word:              boolArg(args, "word"),
 		noDefaultExcludes: boolArg(args, "no_default_excludes"),
 	}

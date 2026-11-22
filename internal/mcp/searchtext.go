@@ -1,10 +1,12 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
 	"github.com/provasign/prism/internal/textsearch"
 	"sort"
 	"strings"
+	"time"
 )
 
 // RenderSearchText shares MCP's lossless, merged search rendering with the CLI.
@@ -692,17 +694,35 @@ func anySlice(v any) []any {
 	}
 }
 
-// notSearchedLine names the default-excluded directories a search skipped.
+// notSearchedLine names the default-excluded directories that hold
+// matches for the term. Directories without matches are not mentioned:
+// prism init's own .claude/settings.json put the line on every search.
 func notSearchedLine(v any) string {
 	dirs, _ := v.([]textsearch.ExcludedDir)
 	if len(dirs) == 0 {
 		return ""
 	}
-	names := make([]string, 0, len(dirs))
-	files := 0
+	parts := make([]string, 0, len(dirs))
 	for _, d := range dirs {
-		names = append(names, d.Dir)
-		files += d.Files
+		parts = append(parts, fmt.Sprintf("%s (%d)", d.Dir, d.Matches))
 	}
-	return fmt.Sprintf("not searched: %s (%d files; no_default_excludes=true / --no-default-excludes to include)", strings.Join(names, ", "), files)
+	return fmt.Sprintf("not searched, has matches: %s; no_default_excludes=true / --no-default-excludes to include", strings.Join(parts, ", "))
+}
+
+// excludedMatches counts the term's matches in each default-excluded
+// directory present, with the search's own case, word and glob options.
+func (h *Handler) excludedMatches(ctx context.Context, q string, opts textsearch.Options, dirs []textsearch.ExcludedDir) []textsearch.ExcludedDir {
+	var out []textsearch.ExcludedDir
+	for _, d := range dirs {
+		o := opts
+		o.Paths, o.NoDefaultExcludes, o.Exhaustive, o.Adaptive = []string{d.Dir}, true, false, false
+		cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		c := textsearch.Count(cctx, h.Root, q, o)
+		cancel()
+		if c.TotalHits > 0 {
+			d.Matches = c.TotalHits
+			out = append(out, d)
+		}
+	}
+	return out
 }
