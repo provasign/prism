@@ -61,25 +61,33 @@ Usage:
                                   induced dependency edges (weights + evidence
                                   tiers), cycles. Production shape by default
                                   ([--depth N] [--component X] [--tests]
-                                  [--expand 'A->B'] [--json])
+                                  [--expand 'A->B'] [--json | --format text|json])
+                                  [--max-sites N]  alias of --depth
+                                  [--removed a,b,c]  only report what still
+                                  references each removed identifier
   prism graph [dir]               Open the interactive graph explorer in a browser:
                                   directories -> files -> symbols -> one symbol's
                                   callers and callees, with search and the evidence
                                   behind each edge. Serves on localhost until Ctrl+C
                                   ([--port N] [--no-open] [--tests])
   prism cycles [dir]              Dependency cycles with per-edge evidence
-                                  ([--depth N] [--tests] [--json])
+                                  ([--depth N] [--tests] [--json | --format text|json])
+                                  [--removed a,b,c]  only report what still
+                                  references each removed identifier
   prism arch [dir]                Validate declared architecture rules
                                   (arch_deny: "<from> -> <to>" in prism.yaml)
                                   against the component view; violations cite
                                   file:line sites; exit 1 on violation — a CI
-                                  gate ([--deny 'A -> B'] [--depth N] [--json])
+                                  gate ([--deny 'A -> B'] [--depth N] [--tests] [--strict]
+                                  [--json | --format text|json])
+                                  [--removed a,b,c]  only report what still
+                                  references each removed identifier
   prism verify [dir]              Optionally review a diff (working tree vs
                                   --base, default HEAD) for missed sites and
                                   architecture changes. Exit 1 if incomplete;
                                   --strict also exits 1 on review.
                                   [--base REF] [--removed a,b,c] [--strict]
-                                  [--format text|json]
+                                  [--format text|json] ([--json] = --format json)
   prism query --terms a,b,c [dir]  Find related implementations, callers,
                                   and tests around explicit anchors (edit-ready)
                                   [--repo <id>]  use the linked repository's graph
@@ -89,6 +97,8 @@ Usage:
                                   --include a,b      Categories: graph,docs (default: graph)
                                   --delivery source|symbols  Force delivery shape (default: source)
                                   --max-files N      source delivery: max files shown (default: 5)
+                                  --limit N          max results
+                                  --profile <name>   compatibility name; all profiles rank alike
                                   --format text|lean|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
                                   [--repo <id>]  read paths inside a linked repository
@@ -100,9 +110,9 @@ Usage:
                                   in one call (up to 10), grouped by term.
                                   --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
-                                  [--path <file-or-dir>]  scope the search (repeatable)
-	                                  [--glob '*.py'] [--files-only] [--exhaustive] [--context N]
-	                                  [--include-bodies|--no-bodies]  bounded source by default
+                                  [--path|--paths <file-or-dir>]  scope the search (repeatable)
+                                  [--glob '*.py'] [--files-only] [--exhaustive|--all] [--context N]
+                                  [--include-bodies|--no-bodies]  bounded source by default
                                   [--rollup-only]  on a truncated search, skip the raw
                                   sample and return only the grouped-by-symbol rollup
                                   [--dir <path>]  where to search (default: .)
@@ -112,16 +122,21 @@ Usage:
                                   [--repo <id>|all]  answer from a linked repository
                                   [--file <path> | --path <path>]  disambiguate a symbol
                                   Multiple names: prism lookup <name>... [--dir <path>]
+                                  [--fields signature,doc,body,kind,parent,modifiers]
+                                  --format text|lean|json  Output format (default: text)
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
                                   its neighbours, or a file's source + the
                                   symbols it defines + the files depending on it
+                                  [--file <path>]  disambiguate a symbol
                                   --format text|lean|json  Output format (default: text)
   prism references <name> [dir]   Find indexed syntactic uses of a name
-	                                  (comments/strings excluded), grouped by file
+                                  (comments/strings excluded), grouped by file
                                   --format text|lean|json  Output format (default: text)
   prism resolve <name> [dir]      Resolve a name to its definition(s): file:line + kind
+                                  --format text|lean|json  Output format (default: text)
   prism edges <name> [dir]        Walk the graph one hop from a symbol
-                                  ([--direction in|out] [--kinds calls,uses-type,...])
+                                  ([--direction|--dir in|out|both] [--kinds calls,uses-type,...])
+                                  --format text|lean|json  Output format (default: text)
   prism test-plan [dir]          Impacted test symbols, file targets, evidence, and gaps
                                   --base <ref>  Compare working tree with ref (default: HEAD)
                                   --format text|json  Output format (default: text)
@@ -142,8 +157,8 @@ Usage:
                                   remove <id>               Unlink; the checkout is not touched
                                   discover [--link]         Related checkouts found in manifests
   prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
-	                                  declaration(s), override/implementation family (subtype
-	                                  closure), super-declarations, and indexed callers.
+                                  declaration(s), override/implementation family (subtype
+                                  closure), super-declarations, and indexed callers.
                                   query format: Type.method or Type.method(ParamType, ...)
                                   Up to 10 query names may be batched; bare words are names
                                   [./dir | --dir <path>]  select a repository
@@ -159,8 +174,10 @@ Usage:
                                   [--file <path> | --path <path>]  disambiguate a symbol
                                   --format text|lean|json  Output format (default: json)
   prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
+                                  --format text|lean|json  Output format (default: json)
   prism assist [--model <spec>] [--apply|--apply-ambiguous] [--verify "<cmd>"] "<task>"
-                                     NL task -> deterministic ops via any model (ollama:/claude:/openai:)
+                                  NL task -> deterministic ops via any model (ollama:/claude:/openai:)
+                                  [--dir <path>]  repository (default: .)
                                   (precision-first; relay the caveats)
                                   --format text|lean|json  Output format (default: json)
   prism compact [dir]             Compress conversation JSON from stdin
@@ -237,6 +254,9 @@ func Run(args []string) int {
 	// command body can execute. Only the flag spellings count — a bare `help`
 	// argument stays a search term, so `prism search help` still searches.
 	if cmd != "help" && helpRequested(rest) {
+		if !knownCommand(cmd) {
+			return unknownCommand(cmd)
+		}
 		fmt.Print(commandHelp(cmd))
 		return 0
 	}
@@ -318,9 +338,73 @@ func Run(args []string) int {
 	case "config":
 		return cmdConfig(rest)
 	}
-	fmt.Fprintln(os.Stderr, "unknown command:", cmd)
-	fmt.Print(helpText)
+	return unknownCommand(cmd)
+}
+
+// commandNames lists every command Run dispatches, aliases included.
+var commandNames = []string{
+	"help", "version", "init", "install", "cleanup-global", "watch", "index",
+	"status", "doctor", "map", "graph", "cycles", "arch", "arch-check",
+	"verify", "test-plan", "workspace", "link-server", "query", "read",
+	"search", "node", "lookup", "references", "refs", "resolve", "edges",
+	"change-impact", "missing-implementations", "rename-plan", "dead-code",
+	"assist", "compact", "feedback", "serve", "mcp", "drift", "config",
+}
+
+func knownCommand(cmd string) bool {
+	for _, c := range commandNames {
+		if c == cmd {
+			return true
+		}
+	}
+	return false
+}
+
+// unknownCommand prints one line naming the nearest command, never the
+// full help, and returns the usage exit code.
+func unknownCommand(cmd string) int {
+	msg := fmt.Sprintf("prism: unknown command %q", cmd)
+	if near := nearestCommand(cmd); near != "" {
+		msg += fmt.Sprintf("; did you mean %q?", near)
+	}
+	fmt.Fprintln(os.Stderr, msg+" (prism help lists commands)")
 	return 2
+}
+
+// nearestCommand returns the command within edit distance 3 of cmd (or
+// one that cmd prefixes), or "".
+func nearestCommand(cmd string) string {
+	best, bestD := "", 4
+	for _, c := range commandNames {
+		d := editDistance(cmd, c)
+		if len(cmd) >= 3 && strings.HasPrefix(c, cmd) && d > 1 {
+			d = 1
+		}
+		if d < bestD {
+			best, bestD = c, d
+		}
+	}
+	return best
+}
+
+func editDistance(a, b string) int {
+	prev := make([]int, len(b)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		cur := make([]int, len(b)+1)
+		cur[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
+		}
+		prev = cur
+	}
+	return prev[len(b)]
 }
 
 // helpRequested reports whether a subcommand's own arguments ask for usage.
@@ -361,7 +445,7 @@ func commandHelp(cmd string) string {
 			b.WriteString(line + "\n")
 		case !inBlock:
 			// outside a block: nothing to collect
-		case strings.HasPrefix(line, "   ") && !strings.HasPrefix(line, "  prism "):
+		case (strings.HasPrefix(line, "   ") || strings.HasPrefix(line, "\t")) && !strings.HasPrefix(line, "  prism "):
 			b.WriteString(line + "\n")
 		default:
 			inBlock = false
