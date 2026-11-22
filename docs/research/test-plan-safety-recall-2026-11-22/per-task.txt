@@ -1,0 +1,46 @@
+task                                       lang tests | focused pre-any safety | safety files/repo test files | pre any-target files
+FasterXML__jackson-databind__pr6030        java     1 |    -       Y      Y   |   764 /   774 =  99% | 750
+FasterXML__jackson-databind__pr6039        java     1 |    -       Y      Y   |   741 /   743 = 100% | 729
+FasterXML__jackson-databind__pr6042        java     1 |    -       Y      Y   |   776 /   786 =  99% | 764
+FasterXML__jackson-databind__pr6044        java     8 |    -       Y      Y   |   766 /   776 =  99% | 752
+FasterXML__jackson-databind__pr6056        java     2 |    -       Y      Y   |   742 /   744 = 100% | 730
+FasterXML__jackson-databind__pr6061        java     3 |    -       Y      Y   |   766 /   776 =  99% | 752
+FasterXML__jackson-databind__pr6076        java     3 |    -       Y      Y   |   774 /   784 =  99% | 760
+FasterXML__jackson-databind__pr6102        java     2 |    -       Y      Y   |   770 /   780 =  99% | 756
+FasterXML__jackson-databind__pr6138        java     2 |    -       Y      Y   |   784 /   794 =  99% | 772
+FasterXML__jackson-databind__pr6155        java     1 |    Y       Y      Y   |   745 /   747 = 100% | 733
+FasterXML__jackson-databind__pr6186        java     1 |    -       Y      Y   |   745 /   747 = 100% | 733
+FasterXML__jackson-databind__pr6215        java     3 |    Y       Y      Y   |   791 /   801 =  99% | 779
+FasterXML__jackson-dataformat-xml__pr885   java     2 |    -       -      Y   |   171 /   179 =  96% | 1
+apache__dubbo__pr16325                     java     4 |    Y       Y      Y   |  1464 /  1618 =  90% | 1185
+apache__dubbo__pr16350                     java     1 |    Y       Y      Y   |  1463 /  1617 =  90% | 1184
+apache__dubbo__pr16391                     java     2 |    Y       Y      Y   |  1468 /  1622 =  91% | 1189
+apache__dubbo__pr16395                     java     3 |    -       Y      Y   |  1468 /  1622 =  91% | 1190
+colinhacks__zod__pr6129                    ts       2 |    -       -      Y   |   115 /   178 =  65% | 0
+colinhacks__zod__pr6144                    ts       1 |    -       -      Y   |   115 /   178 =  65% | 2
+colinhacks__zod__pr6439                    ts       1 |    Y       Y      Y   |   131 /   194 =  68% | 13
+colinhacks__zod__pr6500                    ts       3 |    Y       Y      Y   |   133 /   196 =  68% | 5
+gin-gonic__gin__pr4698                     go       1 |    Y       Y      Y   |    40 /    41 =  98% | 6
+gin-gonic__gin__pr4702                     go       1 |    Y       Y      Y   |    40 /    41 =  98% | 2
+go-chi__chi__pr1029                        go       1 |    Y       Y      Y   |    24 /    24 = 100% | 21
+go-chi__chi__pr1158                        go       1 |    Y       Y      Y   |    24 /    24 = 100% | 2
+google__gson__pr3059                       java     1 |    Y       Y      Y   |   139 /   142 =  98% | 125
+google__gson__pr3067                       java     1 |    -       Y      Y   |   139 /   142 =  98% | 117
+google__gson__pr3098                       java     7 |    -       Y      Y   |   139 /   142 =  98% | 120
+google__gson__pr3112                       java     3 |    -       Y      Y   |   139 /   142 =  98% | 118
+google__gson__pr3116                       java     1 |    Y       Y      Y   |   139 /   142 =  98% | 120
+honojs__hono__pr5164                       ts       2 |    Y       Y      Y   |   134 /   137 =  98% | 11
+honojs__hono__pr5199                       ts       1 |    -       -      Y   |     2 /   138 =   1% | 0
+honojs__hono__pr5366                       ts       4 |    Y       Y      Y   |   137 /   140 =  98% | 10
+honojs__hono__pr5373                       ts       1 |    Y       Y      Y   |   137 /   140 =  98% | 14
+labstack__echo__pr3006                     go       1 |    -       Y      Y   |    50 /    50 = 100% | 45
+pydantic__pydantic__pr13516                py       8 |    -       Y      Y   |   296 /   289 = 102% | 2
+urfave__cli__pr2355                        go       1 |    Y       Y      Y   |    24 /    24 = 100% | 16
+urfave__cli__pr2419                        go       1 |    Y       Y      Y   |    27 /    27 = 100% | 18
+urfave__cli__pr2440                        go       1 |    Y       Y      Y   |    27 /    27 = 100% | 18
+urllib3__urllib3__pr3786                   py       6 |    -       Y      Y   |    38 /    38 = 100% | 29
+urllib3__urllib3__pr5020                   py     394 |    -       Y      Y   |    38 /    38 = 100% | 29
+urllib3__urllib3__pr5093                   py      22 |    -       Y      Y   |    38 /    38 = 100% | 29
+
+tasks with every failing test in the tier: focused 19/42, pre any-target 38/42, new safety 42/42
+safety tier share of the repo's test files: median 99%, min 1%, max 102%
