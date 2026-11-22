@@ -2746,11 +2746,11 @@ func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any,
 		}
 		cols := word.FindAllStringIndex(text, -1)
 		if len(cols) == 0 {
-			sites = append(sites, fmt.Sprintf("%s:%d: %s", normalizePath(r.File), r.Line, clipRunes(strings.TrimSpace(text), 160)))
+			sites = append(sites, fmt.Sprintf("%s:%d: %s", normalizePath(r.File), r.Line, clipRunes(strings.TrimSpace(text), 100)))
 			continue
 		}
 		for _, c := range cols {
-			sites = append(sites, fmt.Sprintf("%s:%d:%d: %s", normalizePath(r.File), r.Line, c[0]+1, clipRunes(strings.TrimSpace(text), 160)))
+			sites = append(sites, fmt.Sprintf("%s:%d:%d: %s", normalizePath(r.File), r.Line, c[0]+1, clipRunes(strings.TrimSpace(text), 100)))
 		}
 	}
 	out := map[string]any{

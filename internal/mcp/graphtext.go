@@ -151,7 +151,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if n := impactEditSiteCount(out); n > 0 {
 		sites = fmt.Sprintf("%d edit site(s)", n)
 		if fmt.Sprint(n) != fmt.Sprint(out["totalSites"]) {
-			symbols = fmt.Sprintf(" (%v declaring or calling symbol(s))", out["totalSites"])
+			symbols = fmt.Sprintf(" (%v symbols)", out["totalSites"])
 		}
 	}
 	if linked := intArg(out, "linkedSites", 0); linked > 0 {

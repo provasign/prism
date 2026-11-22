@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -4455,9 +4456,7 @@ func printTextOutput(m map[string]any) {
 		default:
 			fmt.Printf("// %s — %d use(s) of the name (one definition)\n", name, jsonInt(m["count"]))
 		}
-		for _, r := range sites {
-			fmt.Printf("  %v\n", r)
-		}
+		printReferenceRows(sites)
 		for _, l := range anySliceCLI(m["otherMentions"]) {
 			fmt.Printf("%v\n", l)
 		}
@@ -4596,6 +4595,60 @@ func printChangeImpactText(m map[string]any) {
 		fmt.Printf("widerAnchor: %v\n", hint["note"])
 	}
 }
+
+// printReferenceRows prints path:line:col: text rows with each path once.
+// Past 15 rows only line:col positions are printed per file, so a wide
+// answer stays no larger than the old line-number list.
+func printReferenceRows(sites []any) {
+	type group struct {
+		path string
+		rows []string
+	}
+	var groups []*group
+	byPath := map[string]*group{}
+	for _, r := range sites {
+		row := fmt.Sprint(r)
+		path, rest := row, ""
+		if m := referenceRow.FindStringSubmatch(row); m != nil {
+			path, rest = m[1], m[2]
+		}
+		g := byPath[path]
+		if g == nil {
+			g = &group{path: path}
+			byPath[path] = g
+			groups = append(groups, g)
+		}
+		g.rows = append(g.rows, rest)
+	}
+	compact := len(sites) > 15
+	for _, g := range groups {
+		if !compact {
+			if len(g.rows) == 1 {
+				fmt.Printf("  %s:%s\n", g.path, g.rows[0])
+				continue
+			}
+			fmt.Printf("  %s:\n", g.path)
+			for _, r := range g.rows {
+				fmt.Printf("    %s\n", r)
+			}
+			continue
+		}
+		pos := make([]string, 0, len(g.rows))
+		for _, r := range g.rows {
+			if i := strings.Index(r, ": "); i >= 0 {
+				r = r[:i]
+			}
+			pos = append(pos, r)
+		}
+		fmt.Printf("  %s (%d): %s\n", g.path, len(pos), strings.Join(pos, " "))
+	}
+	if compact {
+		fmt.Println("  (line:col positions; --format json has each line's text)")
+	}
+}
+
+// referenceRow splits "path:line:col: text" or "path:line: text".
+var referenceRow = regexp.MustCompile(`^(.+?):(\d+(?::\d+)?: .*|\d+(?::\d+)?)$`)
 
 func anySliceCLI(v any) []any {
 	switch x := v.(type) {
