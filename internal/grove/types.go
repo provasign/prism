@@ -50,6 +50,9 @@ type Edge struct {
 	// tree_sitter, heuristic, regex). Derived views map it to a capability
 	// tier so aggregated results can report their weakest constituent.
 	Source string `json:"source,omitempty"`
+	// Lines holds the reference positions an edge was recorded at
+	// ("line:col,..."), when the engine knows them.
+	Lines string `json:"lines,omitempty"`
 }
 
 // StatusResult mirrors Grove's /status response.

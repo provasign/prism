@@ -830,7 +830,7 @@ func (c *Client) SnapshotGraph(ctx context.Context) ([]SymbolRecord, []Edge, err
 	for _, ed := range edges {
 		out = append(out, Edge{
 			From: ed.From, To: ed.To, Type: string(ed.Type),
-			Confidence: ed.Confidence, Source: string(ed.Source),
+			Confidence: ed.Confidence, Source: string(ed.Source), Lines: ed.Lines,
 		})
 	}
 	return convertSymbols(syms), out, nil

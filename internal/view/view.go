@@ -23,6 +23,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/provasign/prism/internal/grove"
@@ -38,6 +39,11 @@ var dependencyKinds = map[string]bool{
 	"uses-type":  true,
 	"implements": true,
 	"extends":    true,
+	// A function used as a value, a package variable or constant read or
+	// written: a dependency like a call (prism cli -> version is only
+	// version.Version).
+	"reads":  true,
+	"writes": true,
 }
 
 // Tier is the capability tier of one piece of edge evidence, mapped from
@@ -224,6 +230,7 @@ func Build(symbols []grove.SymbolRecord, edges []grove.Edge, opts Options) *View
 	}
 	stats := map[string]*compStats{}
 	excludedTestFiles := map[string]bool{}
+	fileHasSymbols := map[string]bool{} // partitioned files: not documents, not excluded tests
 	for i := range symbols {
 		s := &symbols[i]
 		if s.Kind == "document" {
@@ -235,6 +242,7 @@ func Build(symbols []grove.SymbolRecord, edges []grove.Edge, opts Options) *View
 		}
 		comp := componentOf(s.FilePath, opts.Depth)
 		byID[s.ID] = symInfo{comp: comp, sym: s}
+		fileHasSymbols[s.FilePath] = true
 		cs := stats[comp]
 		if cs == nil {
 			cs = &compStats{files: map[string]bool{}}
@@ -253,14 +261,44 @@ func Build(symbols []grove.SymbolRecord, edges []grove.Edge, opts Options) *View
 	// to indexed, partitioned symbols (external targets are out of scope for
 	// a project-local view); only crossings (A != B).
 	induced := map[[2]string]*InducedEdge{}
+	// File endpoints ("file:path"): the engine records imports between
+	// files, which are not symbols. They were dropped here, so the view
+	// held no import at all and an import-only dependency (a package used
+	// only through a variable) was invisible to map and arch (2026-11-22).
+	fileSyms := map[string]*grove.SymbolRecord{}
+	resolve := func(id string) (symInfo, bool) {
+		if si, ok := byID[id]; ok {
+			return si, true
+		}
+		path, ok := strings.CutPrefix(id, "file:")
+		if !ok || path == "" || !fileHasSymbols[path] {
+			return symInfo{}, false
+		}
+		fs := fileSyms[path]
+		if fs == nil {
+			fs = &grove.SymbolRecord{ID: id, Name: pathBase(path), Kind: "file", FilePath: path}
+			fileSyms[path] = fs
+		}
+		return symInfo{comp: componentOf(path, opts.Depth), sym: fs}, true
+	}
+	// An import names every library file of the imported package; it is one
+	// dependency of the importing file.
+	importSeen := map[[3]string]bool{}
 	for _, e := range edges {
 		if !dependencyKinds[e.Type] {
 			continue
 		}
-		from, okF := byID[e.From]
-		to, okT := byID[e.To]
+		from, okF := resolve(e.From)
+		to, okT := resolve(e.To)
 		if !okF || !okT || from.comp == to.comp {
 			continue
+		}
+		if e.Type == "imports" {
+			k := [3]string{from.sym.FilePath, to.comp, e.Lines}
+			if importSeen[k] {
+				continue
+			}
+			importSeen[k] = true
 		}
 		key := [2]string{from.comp, to.comp}
 		ie := induced[key]
@@ -274,7 +312,7 @@ func Build(symbols []grove.SymbolRecord, edges []grove.Edge, opts Options) *View
 		ie.Kinds[e.Type]++
 		ie.Tiers[tier]++
 		ie.Sites = append(ie.Sites, Site{
-			FromSymbol: displayName(from.sym), FromFile: from.sym.FilePath, FromLine: from.sym.Span.Start,
+			FromSymbol: displayName(from.sym), FromFile: from.sym.FilePath, FromLine: siteLine(e.Lines, from.sym.Span.Start),
 			ToSymbol: displayName(to.sym), ToFile: to.sym.FilePath, ToLine: to.sym.Span.Start,
 			Kind: e.Type, Tier: tier,
 		})
@@ -443,4 +481,27 @@ func (v *View) Cycles() []Cycle {
 		cycles = append(cycles, cy)
 	}
 	return cycles
+}
+
+// siteLine is the first position an edge was recorded at ("136:38,..." or
+// "Name@136:38"), else fallback: the crossing's own line, not the line of
+// the function that contains it.
+func siteLine(lines string, fallback int) int {
+	first, _, _ := strings.Cut(lines, ",")
+	if _, after, ok := strings.Cut(first, "@"); ok {
+		first = after
+	}
+	lineText, _, _ := strings.Cut(first, ":")
+	if n, err := strconv.Atoi(lineText); err == nil && n > 0 {
+		return n
+	}
+	return fallback
+}
+
+// pathBase is the last element of a slash path.
+func pathBase(p string) string {
+	if i := strings.LastIndexByte(p, '/'); i >= 0 {
+		return p[i+1:]
+	}
+	return p
 }
