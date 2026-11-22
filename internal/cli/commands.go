@@ -183,11 +183,13 @@ Usage:
                                   --format text|lean|json  Output format (default: json)
   prism compact [dir]             Compress conversation JSON from stdin
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
-                                  Submit quality feedback for a Prism result
+                                  Record quality feedback for a Prism result in
+                                  .grove/feedback.jsonl; [--list] prints the records
   prism serve [--port 8888] [dir] Start the HTTP API server (stdio MCP is 'prism mcp')
   prism mcp [--compact|--legacy] [dir]
                                   Start MCP server on stdio (compact gateway is default)
-  prism drift [dir]              Report files/symbols that changed since they were delivered this session
+  prism drift                     MCP only (prism_drift): it compares files with what the
+                                  running server delivered this session; a CLI call has no session
   prism config [dir]              Show resolved configuration
   prism version                   Print version
 
@@ -3521,6 +3523,7 @@ func cmdFeedback(args []string) int {
 	queryID := ""
 	notes := ""
 	rating := -1
+	list := false
 	dir, dirSet := ".", false
 
 	for i := 0; i < len(args); i++ {
@@ -3558,6 +3561,8 @@ func cmdFeedback(args []string) int {
 			}
 			notes = v
 			i++
+		case "--list":
+			list = true
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("feedback", a)
@@ -3568,6 +3573,16 @@ func cmdFeedback(args []string) int {
 		}
 	}
 
+	if list {
+		root, _ := cliRoot(dir)
+		data, err := os.ReadFile(mcp.FeedbackPath(root))
+		if err != nil && !os.IsNotExist(err) {
+			fmt.Fprintln(os.Stderr, "feedback:", err)
+			return 1
+		}
+		fmt.Print(string(data))
+		return 0
+	}
 	if rating < 0 || rating > 5 {
 		fmt.Fprintln(os.Stderr, "usage: prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]")
 		return 2
@@ -3590,18 +3605,12 @@ func cmdFeedback(args []string) int {
 	return 0
 }
 
+// cmdDrift refuses: drift compares files with what the MCP server
+// delivered in its session, and a one-shot CLI call has none, so it always
+// reported checkedFiles: 0 as success (BUG-12).
 func cmdDrift(args []string) int {
-	dir, _, rc := dirOnlyArgs("drift", args)
-	if rc != 0 {
-		return rc
-	}
-	out, err := invokeTool(dir, "prism_drift", nil)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "drift:", err)
-		return 1
-	}
-	printJSON(out)
-	return 0
+	fmt.Fprintln(os.Stderr, "drift: MCP only. It compares files with what a running `prism mcp` server delivered this session; a CLI call has no session. Use the prism_drift tool, or rerun the reads you depend on.")
+	return 2
 }
 
 func cmdConfig(args []string) int {

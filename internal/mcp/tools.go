@@ -3136,10 +3136,35 @@ func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, err
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	}
 	h.fbMu.Lock()
+	defer h.fbMu.Unlock()
+	// Persisted: the in-memory list vanished when a CLI call exited, so
+	// "recorded" was a no-op there (BUG-12).
+	path := FeedbackPath(h.Root)
+	line, err := json.Marshal(entry)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, fmt.Errorf("feedback: %w", err)
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("feedback: %w", err)
+	}
+	_, werr := f.Write(append(line, '\n'))
+	if cerr := f.Close(); werr == nil {
+		werr = cerr
+	}
+	if werr != nil {
+		return nil, fmt.Errorf("feedback: %w", werr)
+	}
 	h.feedback = append(h.feedback, entry)
-	h.fbMu.Unlock()
+	return map[string]any{"recorded": entry, "file": path, "totalRatings": len(h.feedback)}, nil
+}
 
-	return map[string]any{"recorded": entry, "totalRatings": len(h.feedback)}, nil
+// FeedbackPath is where feedback records are appended, one JSON per line.
+func FeedbackPath(root string) string {
+	return filepath.Join(root, ".grove", "feedback.jsonl")
 }
 
 // enrichNoMethodError turns grove's terminal "type X declares no method Y"
