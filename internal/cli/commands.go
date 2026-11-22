@@ -148,9 +148,11 @@ Usage:
                                   --format text|lean|json  Output format (default: json)
   prism rename-plan <query> <NewName> [dir]     Change-set as line edits with substitutions
                                                 (--format text|lean|json; query: Type.method or Type.method(ParamType, ...))
+                                                [--file <path> | --path <path>]  disambiguate a symbol
   prism missing-implementations <query> [dir]  Types claiming the contract that do NOT
                                   implement Type.method (missing / abstract / unverifiable)
                                   — the interface-evolution companion to change-impact
+                                  [--file <path> | --path <path>]  disambiguate a symbol
                                   --format text|lean|json  Output format (default: json)
   prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
   prism assist [--model <spec>] [--apply|--apply-ambiguous] [--verify "<cmd>"] "<task>"
@@ -3249,6 +3251,7 @@ func cmdRenamePlan(args []string) int {
 	query, newName := args[0], args[1]
 	dir, dirSet := ".", false
 	format := formatJSON
+	file := ""
 	for i := 2; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -3259,6 +3262,15 @@ func cmdRenamePlan(args []string) int {
 			}
 			format = f
 			i++
+		case "--file", "--path":
+			// Disambiguate same-named types in different packages, as
+			// change-impact does: only types declared in a matching file seed.
+			v, err := flagValue("rename-plan", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			file = v
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("rename-plan", a)
@@ -3268,8 +3280,11 @@ func cmdRenamePlan(args []string) int {
 			}
 		}
 	}
-	out, err := invokeTool(dir, "prism_rename_plan",
-		map[string]any{"query": query, "newName": newName})
+	callArgs := map[string]any{"query": query, "newName": newName}
+	if file != "" {
+		callArgs["file"] = file
+	}
+	out, err := invokeTool(dir, "prism_rename_plan", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("rename-plan", err))
 		return 1
@@ -3287,6 +3302,7 @@ func cmdMissingImplementations(args []string) int {
 	query := args[0]
 	dir, dirSet := ".", false
 	format := formatJSON
+	file := ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -3297,6 +3313,15 @@ func cmdMissingImplementations(args []string) int {
 			}
 			format = f
 			i++
+		case "--file", "--path":
+			// Disambiguate same-named types in different packages, as
+			// change-impact does: only types declared in a matching file seed.
+			v, err := flagValue("missing-implementations", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			file = v
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("missing-implementations", a)
@@ -3306,7 +3331,11 @@ func cmdMissingImplementations(args []string) int {
 			}
 		}
 	}
-	out, err := invokeTool(dir, "prism_missing_implementations", map[string]any{"query": query})
+	callArgs := map[string]any{"query": query}
+	if file != "" {
+		callArgs["file"] = file
+	}
+	out, err := invokeTool(dir, "prism_missing_implementations", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("missing-implementations", err))
 		return 1

@@ -494,6 +494,13 @@ func CompactToolSchemas() []map[string]any {
 // modelProp is the shared "model" property injected into prism_query and
 // prism_read. Agents must pass their current model ID so Prism can correctly
 // size the context budget and session confidence thresholds.
+// scopeFileProp is the declaring-file scope rename_plan and
+// missing_implementations share with change_impact.
+var scopeFileProp = map[string]any{
+	"type":        "string",
+	"description": "Disambiguate same-named types in different packages: only types declared in a file whose path contains this seed the answer.",
+}
+
 var modelProp = map[string]any{
 	"type":        "string",
 	"description": "Your model ID; sizes budgets. Optional.",
@@ -764,10 +771,9 @@ func toolSchema(name string) map[string]any {
 			},
 		}
 	case "prism_missing_implementations":
-		// Same shape as change_impact MINUS file= (its handler does not read
-		// it, and the unknown-arg validator keys on this schema — sharing
-		// the case would let a silently-ignored file= through, the exact
-		// bug class rejectUnknownArgs exists to kill).
+		// Own case, not change_impact's: no signature= (its handler does not
+		// read it, and the unknown-arg validator keys on this schema). file=
+		// is read since 2026-11-22 (BUG-05).
 		return map[string]any{
 			"type":     "object",
 			"required": []string{"query"},
@@ -776,6 +782,7 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Type.method or Type.method(ParamType, ...) — the interface/abstract member to check implementations of.",
 				},
+				"file":         scopeFileProp,
 				"model":        modelProp,
 				"context_used": contextUsedProp,
 			},
@@ -814,6 +821,7 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "The new member name (bare identifier).",
 				},
+				"file":         scopeFileProp,
 				"model":        modelProp,
 				"context_used": contextUsedProp,
 			},
@@ -4020,7 +4028,7 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	if query == "" {
 		return nil, errors.New("query is required")
 	}
-	r, err := h.Grove.MissingImplementations(ctx, query)
+	r, err := h.Grove.MissingImplementationsScoped(ctx, query, stringArg(args, "file", ""))
 	if err != nil {
 		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
 			return nil, fmt.Errorf("%w\n%s", err, note)
@@ -4094,7 +4102,7 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 		return nil, fmt.Errorf("newName must be a bare identifier, got %q "+
 			"(did a directory path land in the newName position?)", newName)
 	}
-	r, err := h.Grove.RenamePlan(ctx, query, newName)
+	r, err := h.Grove.RenamePlanScoped(ctx, query, newName, stringArg(args, "file", ""))
 	if err != nil {
 		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
 			return nil, fmt.Errorf("%w\n%s", err, note)

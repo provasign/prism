@@ -726,11 +726,17 @@ func convertMemberAccesses(in []groveeng.MemberAccess) []MemberAccess {
 // MissingImplementations resolves a "Type.method" query to every type in the
 // subtype closure that fails to implement the member.
 func (c *Client) MissingImplementations(ctx context.Context, query string) (*MissingImplementationsResult, error) {
+	return c.MissingImplementationsScoped(ctx, query, "")
+}
+
+// MissingImplementationsScoped is MissingImplementations with an optional
+// declaring-file fragment for same-named types in different packages.
+func (c *Client) MissingImplementationsScoped(ctx context.Context, query, file string) (*MissingImplementationsResult, error) {
 	e, err := c.requireEngine()
 	if err != nil {
 		return nil, err
 	}
-	r, err := e.MissingImplementations(ctx, query)
+	r, err := e.MissingImplementationsScoped(ctx, query, file)
 	if err != nil {
 		return nil, err
 	}
@@ -751,11 +757,17 @@ func (c *Client) MissingImplementations(ctx context.Context, query string) (*Mis
 // RenamePlan converts the change-impact set for query into concrete line
 // edits renaming the member to newName.
 func (c *Client) RenamePlan(ctx context.Context, query, newName string) (*RenamePlanResult, error) {
+	return c.RenamePlanScoped(ctx, query, newName, "")
+}
+
+// RenamePlanScoped is RenamePlan with an optional declaring-file fragment
+// for same-named types in different packages.
+func (c *Client) RenamePlanScoped(ctx context.Context, query, newName, file string) (*RenamePlanResult, error) {
 	e, err := c.requireEngine()
 	if err != nil {
 		return nil, err
 	}
-	r, err := e.RenamePlan(ctx, query, newName)
+	r, err := e.RenamePlanScoped(ctx, query, newName, file)
 	if err != nil {
 		return nil, err
 	}
