@@ -118,3 +118,35 @@ outer:
 	}
 	return dir, set, 0
 }
+
+// positionalsFirst reorders args so the positional arguments come first,
+// in order, followed by the flags with their values. Handlers that read
+// args[0] (and args[1]) as their positionals then never take a flag, or a
+// flag's value, for one: `change-impact --format text` used to query
+// "--format" and index a directory named "text" (BUG-17). valueFlags are
+// the flags that take a value. With fewer than need positionals it prints
+// "<cmd> needs <what>" and the usage line, and returns exit code 2.
+func positionalsFirst(cmd, what, usage string, need int, args []string, valueFlags ...string) ([]string, int) {
+	takesValue := map[string]bool{}
+	for _, f := range valueFlags {
+		takesValue[f] = true
+	}
+	var pos, flags []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if strings.HasPrefix(a, "-") && a != "-" {
+			flags = append(flags, a)
+			if takesValue[a] && i+1 < len(args) {
+				flags = append(flags, args[i+1])
+				i++
+			}
+			continue
+		}
+		pos = append(pos, a)
+	}
+	if len(pos) < need {
+		fmt.Fprintf(os.Stderr, "%s needs %s\nusage: %s\n", cmd, what, usage)
+		return nil, 2
+	}
+	return append(pos, flags...), 0
+}

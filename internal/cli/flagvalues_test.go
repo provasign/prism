@@ -42,7 +42,7 @@ func TestMalformedFlagValuesAreUsageErrors(t *testing.T) {
 		{"read negative limit", []string{"read", "README.md", "--limit", "-3"}, "--limit requires a positive integer"},
 		{"read missing to", []string{"read", "README.md", "--to"}, "--to requires a positive integer"},
 		{"read range and window", []string{"read", "README.md", "--from", "2", "--limit", "3"}, "not both"},
-		{"read flag before file", []string{"read", "--from", "2", "README.md"}, "the file comes first"},
+		{"read flags but no file", []string{"read", "--from", "2"}, "read needs a file"},
 		{"read bad format", []string{"read", "README.md", "--format", "yaml"}, "--format wants text|lean|json"},
 		{"read missing repo", []string{"read", "README.md", "--repo"}, "--repo requires a value"},
 		{"read missing dir", []string{"read", "README.md", "--dir"}, "--dir requires a value"},

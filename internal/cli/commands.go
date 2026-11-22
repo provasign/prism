@@ -2498,14 +2498,11 @@ func cmdQuery(args []string) int {
 }
 
 func cmdRead(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism read <file> [file...] [--from N --to M | --offset N --limit N] [--repo <id>] [--dir <path>]")
-		return 2
+	args, rc := positionalsFirst("read", "a file", "prism read <file> [file...] [--from N --to M | --offset N --limit N] [--repo <id>] [--dir <path>]", 1, args, "--from", "--to", "--repo", "--dir", "--offset", "--limit", "--format")
+	if rc != 0 {
+		return rc
 	}
 	file := args[0]
-	if strings.HasPrefix(file, "-") {
-		return usageError(fmt.Errorf("read: the file comes first: prism read <file> [flags], got %q", file))
-	}
 	dir := "."
 	repo := ""
 	dirSet := false
@@ -3018,9 +3015,9 @@ func lookupArgIsPath(a string) bool {
 // cmdNode is the one-shot orientation view — a symbol's source + neighbours,
 // or a file's source + defined symbols + dependents.
 func cmdNode(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism node <symbol-or-file> [dir] [--file <path>] [--format text|lean|json]")
-		return 2
+	args, rc := positionalsFirst("node", "a symbol or file", "prism node <symbol-or-file> [dir] [--file <path>] [--format text|lean|json]", 1, args, "--file", "--format")
+	if rc != 0 {
+		return rc
 	}
 	name := args[0]
 	dir, dirSet := ".", false
@@ -3066,9 +3063,9 @@ func cmdNode(args []string) int {
 }
 
 func cmdResolve(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism resolve <name> [dir]")
-		return 2
+	args, rc := positionalsFirst("resolve", "a name", "prism resolve <name> [dir]", 1, args, "--format")
+	if rc != 0 {
+		return rc
 	}
 	name := args[0]
 	dir, dirSet := ".", false
@@ -3098,9 +3095,9 @@ func cmdResolve(args []string) int {
 }
 
 func cmdEdges(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism edges <name> [--dir out|in|both] [--kinds calls,uses-type,implements,...] [dir]")
-		return 2
+	args, rc := positionalsFirst("edges", "a symbol", "prism edges <name> [--direction out|in|both] [--kinds calls,uses-type,implements,...] [dir]", 1, args, "--dir", "--direction", "--kinds", "--format")
+	if rc != 0 {
+		return rc
 	}
 	name := args[0]
 	dir, dirSet := ".", false
@@ -3156,9 +3153,9 @@ func cmdEdges(args []string) int {
 }
 
 func cmdReferences(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism references <name> [dir]")
-		return 2
+	args, rc := positionalsFirst("references", "a name", "prism references <name> [dir]", 1, args, "--format")
+	if rc != 0 {
+		return rc
 	}
 	name := args[0]
 	dir, dirSet := ".", false
@@ -3192,10 +3189,9 @@ func cmdReferences(args []string) int {
 }
 
 func cmdChangeImpact(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism change-impact <Type.method | bare-name | file:line>... [./dir | --dir <path>]")
-		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
-		return 2
+	args, rc := positionalsFirst("change-impact", "a symbol", "prism change-impact Type.method [more names] [./dir | --dir <path>]", 1, args, "--dir", "--repo", "--format", "--file", "--path")
+	if rc != 0 {
+		return rc
 	}
 	queries := []string{args[0]}
 	dir, dirSet := ".", false
@@ -3346,10 +3342,9 @@ func changeImpactInLinked(dir string, session *repoToolSession, callArgs map[str
 }
 
 func cmdRenamePlan(args []string) int {
-	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: prism rename-plan <Type.method | bare-name | file:line> <NewName> [dir]")
-		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
-		return 2
+	args, rc := positionalsFirst("rename-plan", "a symbol and a new name", "prism rename-plan Type.method NewName [dir]", 2, args, "--format", "--file", "--path")
+	if rc != 0 {
+		return rc
 	}
 	query, newName := args[0], args[1]
 	dir, dirSet := ".", false
@@ -3397,10 +3392,9 @@ func cmdRenamePlan(args []string) int {
 }
 
 func cmdMissingImplementations(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism missing-implementations <Type.method | bare-name | file:line> [dir]")
-		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
-		return 2
+	args, rc := positionalsFirst("missing-implementations", "a symbol", "prism missing-implementations Type.method [dir]", 1, args, "--format", "--file", "--path")
+	if rc != 0 {
+		return rc
 	}
 	query := args[0]
 	dir, dirSet := ".", false
