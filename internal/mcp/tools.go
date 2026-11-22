@@ -928,6 +928,10 @@ func toolSchema(name string) map[string]any {
 					"type":        "boolean",
 					"description": "Include test files (excluded by default — the map shows the production shape; the result reports how many were excluded).",
 				},
+				"include_auxiliary": map[string]any{
+					"type":        "boolean",
+					"description": "Include auxiliary components (docs/examples directories, and isolated code in a language the rest does not use); excluded by default and named in the result.",
+				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
 				"from": map[string]any{

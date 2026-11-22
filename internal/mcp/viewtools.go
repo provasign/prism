@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/provasign/prism/internal/view"
 )
@@ -26,6 +27,7 @@ func (h *Handler) toolMap(ctx context.Context, args map[string]any) (any, error)
 	expandTo := stringArg(args, "to", "")
 	component := stringArg(args, "component", "")
 	includeTests := boolArg(args, "include_tests")
+	excludeAux := !boolArg(args, "include_auxiliary")
 
 	if (expandFrom == "") != (expandTo == "") {
 		return nil, fmt.Errorf("expansion needs both from and to")
@@ -48,12 +50,28 @@ func (h *Handler) toolMap(ctx context.Context, args map[string]any) (any, error)
 		}, nil
 	}
 
-	v, err := h.buildView(ctx, depth, maxSites, includeTests)
+	v, err := h.buildViewOpts(ctx, view.Options{Depth: depth, MaxSites: maxSites, IncludeTests: includeTests, ExcludeAuxiliary: excludeAux})
 	if err != nil {
 		return nil, err
 	}
 	edges := v.Edges
 	if component != "" {
+		// An unknown component used to print the whole map with no edges
+		// and succeed (BUG-21).
+		known := false
+		names := make([]string, 0, len(v.Components))
+		for _, c := range v.Components {
+			known = known || c.Name == component
+			names = append(names, c.Name)
+		}
+		if !known {
+			for _, a := range v.AuxiliaryExcluded {
+				if a == component {
+					return nil, fmt.Errorf("component %q is auxiliary and not shown by default; pass include_auxiliary=true (CLI: --all-components)", component)
+				}
+			}
+			return nil, fmt.Errorf("no component %q at depth %d; components: %s", component, v.Depth, strings.Join(names, ", "))
+		}
 		filtered := edges[:0:0]
 		for _, e := range edges {
 			if e.From == component || e.To == component {
@@ -73,6 +91,7 @@ func (h *Handler) toolMap(ctx context.Context, args map[string]any) (any, error)
 		"depth":             v.Depth,
 		"scope":             scopeLine(v),
 		"testFilesExcluded": v.TestFilesExcluded,
+		"auxiliaryExcluded": v.AuxiliaryExcluded,
 		"components":        v.Components,
 		"edges":             edges,
 		"cycles":            cycleSummary,
@@ -187,6 +206,10 @@ func (h *Handler) toolArchCheck(ctx context.Context, args map[string]any) (any, 
 }
 
 func (h *Handler) buildView(ctx context.Context, depth, maxSites int, includeTests bool) (*view.View, error) {
+	return h.buildViewOpts(ctx, view.Options{Depth: depth, MaxSites: maxSites, IncludeTests: includeTests})
+}
+
+func (h *Handler) buildViewOpts(ctx context.Context, opts view.Options) (*view.View, error) {
 	symbols, edges, err := h.Grove.SnapshotGraph(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("graph snapshot: %w", err)
@@ -194,8 +217,7 @@ func (h *Handler) buildView(ctx context.Context, depth, maxSites int, includeTes
 	if len(symbols) == 0 {
 		return nil, fmt.Errorf("repository is not indexed; run prism_index first")
 	}
-	return view.Build(symbols, edges, view.Options{
-		Depth: depth, MaxSites: maxSites, IncludeTests: includeTests}), nil
+	return view.Build(symbols, edges, opts), nil
 }
 
 // boolArg reads an optional boolean tool argument.
@@ -208,13 +230,27 @@ func boolArg(args map[string]any, key string) bool {
 // silent (a map that quietly dropped files would read as "covered
 // everything" when it didn't).
 func scopeLine(v *view.View) string {
-	if v.IncludeTests {
-		return "all indexed code including test files"
+	line := ""
+	switch {
+	case v.IncludeTests:
+		line = "all indexed code including test files"
+	case v.TestFilesExcluded == 0:
+		line = "production code (no test files present)"
+	default:
+		line = fmt.Sprintf("production code (%d test files excluded; include_tests=true to include)", v.TestFilesExcluded)
 	}
-	if v.TestFilesExcluded == 0 {
-		return "production code (no test files present)"
+	if n := len(v.AuxiliaryExcluded); n > 0 {
+		shown := v.AuxiliaryExcluded
+		if n > 5 {
+			shown = shown[:5]
+		}
+		line += fmt.Sprintf("; not shown: %d auxiliary component(s) (docs/examples, or isolated code in a language the rest does not use): %s", n, strings.Join(shown, ", "))
+		if n > 5 {
+			line += fmt.Sprintf(", +%d more", n-5)
+		}
+		line += "; include_auxiliary=true to include"
 	}
-	return fmt.Sprintf("production code (%d test files excluded; include_tests=true to include)", v.TestFilesExcluded)
+	return line
 }
 
 // completenessAtTier states the honest claim a view result can make: it is

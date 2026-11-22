@@ -99,6 +99,14 @@ type Options struct {
 	// httpapi<->mcp cycle). Excluded files are counted, not hidden —
 	// View.TestFilesExcluded reports how many were left out.
 	IncludeTests bool
+	// ExcludeAuxiliary leaves out components that are not part of the
+	// program's architecture: directories under docs/, doc/, examples/ or
+	// example/, and isolated components (no dependency edge in or out)
+	// written only in languages no connected component uses, such as
+	// helper scripts in a Go repository. They are named in
+	// View.AuxiliaryExcluded, never hidden silently. map sets it; arch and
+	// verify do not.
+	ExcludeAuxiliary bool
 }
 
 // Component is one partition cell: a directory (or depth-truncated prefix).
@@ -157,6 +165,9 @@ type View struct {
 	// TestFilesExcluded counts distinct test files left out of the view
 	// (0 when IncludeTests is true). Exclusion is reported, never silent.
 	TestFilesExcluded int `json:"testFilesExcluded"`
+	// AuxiliaryExcluded names the components Options.ExcludeAuxiliary
+	// left out.
+	AuxiliaryExcluded []string `json:"auxiliaryExcluded,omitempty"`
 }
 
 // IsTestPath reports whether a repo-relative file path is a test file by
@@ -212,6 +223,85 @@ func componentOf(filePath string, depth int) string {
 // Build constructs the quotient view from a full graph snapshot. It is a
 // pure function: identical inputs (in any order) produce identical output.
 func Build(symbols []grove.SymbolRecord, edges []grove.Edge, opts Options) *View {
+	if !opts.ExcludeAuxiliary {
+		return build(symbols, edges, opts, nil)
+	}
+	full := build(symbols, edges, opts, nil)
+	aux := auxiliaryComponents(full, symbols, opts)
+	if len(aux) == 0 {
+		return full
+	}
+	v := build(symbols, edges, opts, aux)
+	for name := range aux {
+		v.AuxiliaryExcluded = append(v.AuxiliaryExcluded, name)
+	}
+	sort.Strings(v.AuxiliaryExcluded)
+	return v
+}
+
+// auxiliaryComponents returns the components ExcludeAuxiliary leaves out.
+func auxiliaryComponents(v *View, symbols []grove.SymbolRecord, opts Options) map[string]bool {
+	langs := map[string]map[string]bool{}
+	for i := range symbols {
+		s := &symbols[i]
+		if s.Kind == "document" || s.Language == "" || (!opts.IncludeTests && IsTestPath(s.FilePath)) {
+			continue
+		}
+		comp := componentOf(s.FilePath, opts.Depth)
+		if langs[comp] == nil {
+			langs[comp] = map[string]bool{}
+		}
+		langs[comp][s.Language] = true
+	}
+	// Connected: an endpoint of an edge between two non-docs components.
+	// Docs folders that import each other do not make their language part
+	// of the program.
+	linked := map[string]bool{}
+	connected := map[string]bool{}
+	for _, e := range v.Edges {
+		if docPath(e.From) || docPath(e.To) {
+			continue
+		}
+		for _, c := range []string{e.From, e.To} {
+			linked[c] = true
+			for l := range langs[c] {
+				connected[l] = true
+			}
+		}
+	}
+	aux := map[string]bool{}
+	for _, c := range v.Components {
+		if docPath(c.Name) {
+			aux[c.Name] = true
+			continue
+		}
+		if linked[c.Name] || len(connected) == 0 || len(langs[c.Name]) == 0 {
+			continue
+		}
+		shared := false
+		for l := range langs[c.Name] {
+			shared = shared || connected[l]
+		}
+		if !shared {
+			aux[c.Name] = true
+		}
+	}
+	return aux
+}
+
+// docPath reports whether a component sits under a documentation or
+// examples directory.
+func docPath(comp string) bool {
+	for _, seg := range strings.Split(comp, "/") {
+		switch strings.ToLower(seg) {
+		case "docs", "doc", "examples", "example":
+			return true
+		}
+	}
+	return false
+}
+
+func build(symbols []grove.SymbolRecord, edges []grove.Edge, opts Options, skip map[string]bool) *View {
 	maxSites := opts.MaxSites
 	if maxSites <= 0 {
 		maxSites = 5
@@ -241,6 +331,9 @@ func Build(symbols []grove.SymbolRecord, edges []grove.Edge, opts Options) *View
 			continue
 		}
 		comp := componentOf(s.FilePath, opts.Depth)
+		if skip[comp] {
+			continue
+		}
 		byID[s.ID] = symInfo{comp: comp, sym: s}
 		fileHasSymbols[s.FilePath] = true
 		cs := stats[comp]

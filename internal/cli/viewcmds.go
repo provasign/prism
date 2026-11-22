@@ -49,6 +49,8 @@ func cmdMap(args []string) int {
 			i++
 		case "--tests":
 			callArgs["include_tests"] = true
+		case "--all-components":
+			callArgs["include_auxiliary"] = true
 		case "--removed":
 			// Mid-loop residual check: --removed a,b,c reports remaining
 			// references to each removed identifier instead of the full gate.

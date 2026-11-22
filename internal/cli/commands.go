@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/provasign/prism/internal/assist"
@@ -62,7 +64,9 @@ Usage:
                                   tiers), cycles. Production shape by default
                                   ([--depth N] [--component X] [--tests]
                                   [--expand 'A->B'] [--json | --format text|json])
-                                  [--max-sites N]  alias of --depth
+                                  [--max-sites N]  cited sites per edge (default 5)
+                                  [--all-components]  include docs/examples and isolated
+                                  other-language script folders (hidden by default)
                                   [--removed a,b,c]  only report what still
                                   references each removed identifier
   prism graph [dir]               Open the interactive graph explorer in a browser:
@@ -3677,10 +3681,20 @@ func cmdServe(args []string) int {
 	}
 	port = chosen
 
-	server := httpapi.New(h).Handler()
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	srv := &http.Server{Addr: addr, Handler: httpapi.New(h).Handler()}
+	// A shell starts a background job with SIGINT ignored; Notify installs
+	// a handler, so Ctrl+C / kill -INT stop the server either way (BUG-21).
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shutdownCtx)
+	}()
 	fmt.Fprintln(os.Stderr, "prism HTTP listening on", addr)
-	if err := http.ListenAndServe(addr, server); err != nil {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Fprintln(os.Stderr, "serve:", err)
 		return 1
 	}

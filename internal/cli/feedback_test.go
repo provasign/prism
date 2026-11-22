@@ -30,3 +30,13 @@ func TestDriftCLIRefuses(t *testing.T) {
 		t.Fatalf("rc=%d stderr=%q", rc, stderr)
 	}
 }
+
+// BUG-21: map --component with an unknown name fails and lists the names.
+func TestMapUnknownComponentFails(t *testing.T) {
+	dir := setupCLIProject(t)
+	var rc int
+	stderr := captureStderr(func() { _ = captureStdout(func() { rc = cmdMap([]string{dir, "--component", "nope"}) }) })
+	if rc == 0 || !strings.Contains(stderr, `no component "nope"`) {
+		t.Fatalf("rc=%d stderr=%q", rc, stderr)
+	}
+}
