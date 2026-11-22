@@ -74,30 +74,59 @@ func nearestAncestorWith(start, marker string) (string, bool) {
 	}
 }
 
-// rebaseArgs rewrites relative path arguments, written relative to the
-// working directory, so they name the same files relative to the root.
-func rebaseArgs(args map[string]any, sub string) {
+// rebaseArgs rewrites relative path arguments so they name files relative
+// to the root. Output paths are root-relative, so a path copied from an
+// answer and passed back from a subdirectory used to be joined onto the
+// subdirectory and fail (BUG-20). A path is read relative to the working
+// directory when it exists there, else relative to the root when it exists
+// there, else relative to the working directory. When both exist and
+// differ the working directory wins and stderr says so. Globs are
+// patterns and always scope to the working directory.
+func rebaseArgs(args map[string]any, root, sub string) {
 	if sub == "" {
 		return
 	}
+	exists := func(rel string) bool {
+		_, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel)))
+		return err == nil
+	}
 	join := func(v string) string {
+		if v == "" || filepath.IsAbs(v) {
+			return v
+		}
+		cwdRel := path.Join(sub, filepath.ToSlash(v))
+		rootRel := path.Clean(filepath.ToSlash(v))
+		if rootRel == ".." || strings.HasPrefix(rootRel, "../") || rootRel == cwdRel || !exists(rootRel) {
+			return cwdRel
+		}
+		if exists(cwdRel) {
+			fmt.Fprintf(os.Stderr, "prism: %q read as %s (relative to the current directory); %s also exists\n", v, cwdRel, rootRel)
+			return cwdRel
+		}
+		return rootRel
+	}
+	globJoin := func(v string) string {
 		if v == "" || filepath.IsAbs(v) {
 			return v
 		}
 		return path.Join(sub, filepath.ToSlash(v))
 	}
 	for _, key := range []string{"file", "symbol_file", "path", "paths", "glob"} {
+		j := join
+		if key == "glob" {
+			j = globJoin
+		}
 		switch v := args[key].(type) {
 		case string:
-			args[key] = join(v)
+			args[key] = j(v)
 		case []string:
 			for i := range v {
-				v[i] = join(v[i])
+				v[i] = j(v[i])
 			}
 		case []any:
 			for i := range v {
 				if s, ok := v[i].(string); ok {
-					v[i] = join(s)
+					v[i] = j(s)
 				}
 			}
 		}

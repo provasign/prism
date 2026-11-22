@@ -103,7 +103,7 @@ func (s *repoToolSession) invoke(tool string, args map[string]any) (out any, tex
 		call[key] = value
 	}
 	if s.repo == "" {
-		rebaseArgs(call, s.sub)
+		rebaseArgs(call, s.root, s.sub)
 	} else if file, ok := call["file"].(string); ok && file != "" {
 		absolute := file
 		if !filepath.IsAbs(absolute) {

@@ -62,7 +62,7 @@ func TestRebaseArgs(t *testing.T) {
 		"file": "a.go", "path": []string{"x", "../top.go"}, "glob": "*.go",
 		"ranges": []any{map[string]any{"file": "b.go", "from": 1, "to": 2}},
 	}
-	rebaseArgs(args, "pkg/sub")
+	rebaseArgs(args, t.TempDir(), "pkg/sub")
 	if args["file"] != "pkg/sub/a.go" || args["glob"] != "pkg/sub/*.go" {
 		t.Fatalf("%v", args)
 	}
@@ -71,5 +71,29 @@ func TestRebaseArgs(t *testing.T) {
 	}
 	if f := args["ranges"].([]any)[0].(map[string]any)["file"]; f != "pkg/sub/b.go" {
 		t.Fatalf("%v", f)
+	}
+}
+
+// BUG-20: a root-relative path copied from an answer works from a
+// subdirectory; a path that exists under the working directory wins.
+func TestRebaseArgsFallsBackToRootRelative(t *testing.T) {
+	root := t.TempDir()
+	writeCLIFile(t, root, "internal/cli/graphcmd.go", "package cli\n")
+	writeCLIFile(t, root, "internal/cli/local.go", "package cli\n")
+	writeCLIFile(t, root, "local.go", "package top\n")
+	args := map[string]any{"file": "internal/cli/graphcmd.go", "path": []any{"local.go", "missing.go"}, "glob": "*.go"}
+	stderr := captureStderr(func() { rebaseArgs(args, root, "internal/cli") })
+	if args["file"] != "internal/cli/graphcmd.go" {
+		t.Fatalf("root-relative path not kept: %v", args["file"])
+	}
+	p := args["path"].([]any)
+	if p[0] != "internal/cli/local.go" || p[1] != "internal/cli/missing.go" {
+		t.Fatalf("paths = %v", p)
+	}
+	if args["glob"] != "internal/cli/*.go" {
+		t.Fatalf("glob = %v", args["glob"])
+	}
+	if !strings.Contains(stderr, `"local.go" read as internal/cli/local.go`) {
+		t.Fatalf("ambiguity not reported: %q", stderr)
 	}
 }

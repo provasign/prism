@@ -2849,7 +2849,7 @@ args:
 
 func invokeSearchWithCompactRendering(dir string, args map[string]any, renderText bool) (any, string, bool, error) {
 	root, sub := cliRoot(dir)
-	rebaseArgs(args, sub)
+	rebaseArgs(args, root, sub)
 	noteRoot(root, sub)
 	cfg, client, err := newClient(root)
 	if err != nil {
@@ -3845,7 +3845,7 @@ func invokeTool(dir, tool string, args map[string]any) (any, error) {
 		}
 	}
 	root, sub := cliRoot(dir)
-	rebaseArgs(args, sub)
+	rebaseArgs(args, root, sub)
 	noteRoot(root, sub)
 	cfg, client, err := newClient(root)
 	if err != nil {
@@ -3867,7 +3867,7 @@ func invokeTool(dir, tool string, args map[string]any) (any, error) {
 // what an agent receives over MCP. rendered=false: caller prints out itself.
 func invokeToolText(dir, tool string, args map[string]any) (out any, text string, rendered bool, err error) {
 	root, sub := cliRoot(dir)
-	rebaseArgs(args, sub)
+	rebaseArgs(args, root, sub)
 	noteRoot(root, sub)
 	cfg, client, err := newClient(root)
 	if err != nil {
@@ -3894,7 +3894,7 @@ func invokeToolText(dir, tool string, args map[string]any) (out any, text string
 // .grove/grove.db failed a readable file with "file is not a database".
 func invokeCompactReadText(dir string, args map[string]any) (out any, text string, rendered bool, err error) {
 	root, sub := cliRoot(dir)
-	rebaseArgs(args, sub)
+	rebaseArgs(args, root, sub)
 	noteRoot(root, sub)
 	if err := requireDir(root); err != nil {
 		return nil, "", false, err
