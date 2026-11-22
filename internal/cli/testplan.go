@@ -41,7 +41,7 @@ func cmdTestPlan(args []string) int {
 	out, text, rendered, err := invokeToolText(dir, "prism_test_plan", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "test-plan:", err)
-		return 1
+		return 2
 	}
 	printToolResult("test-plan", out, text, rendered, format)
 	return 0

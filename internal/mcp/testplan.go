@@ -74,7 +74,7 @@ func testPlanChanges(ctx context.Context, root, base string) (map[string]string,
 	}
 	out, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--name-status", "-z", "--no-renames", "--end-of-options", base, "--", ".").Output()
 	if err != nil {
-		return nil, fmt.Errorf("git diff %s: %w", base, err)
+		return nil, gitDiffError(root, base, err)
 	}
 	prefix := gitPrefix(root)
 	changes := map[string]string{}
@@ -198,7 +198,7 @@ func (h *Handler) toolTestPlan(ctx context.Context, args map[string]any) (any, e
 		var old []byte
 		if status != "A" {
 			var e error
-			old, e = exec.CommandContext(ctx, "git", "-C", h.Root, "show", base+":"+gitPrefix(h.Root)+p).Output()
+			old, e = exec.CommandContext(ctx, "git", "-C", h.Root, "show", "--end-of-options", base+":"+gitPrefix(h.Root)+p).Output()
 			if e != nil {
 				r.Gaps = append(r.Gaps, p+": cannot read base content: "+e.Error())
 				continue

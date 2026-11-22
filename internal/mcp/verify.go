@@ -18,6 +18,7 @@ package mcp
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -69,6 +70,33 @@ func gitPrefix(root string) string {
 // changed line ranges per file (work-root-relative paths), then adds untracked
 // non-ignored files as whole-file ranges. A pure deletion is recorded as a
 // one-line touch marker at its after-side position.
+// gitDiffError names why a git diff against base failed. Outside a
+// repository git diff falls back to --no-index and exits 129 with its
+// usage text; an unknown ref exits 128. Both used to surface as a bare
+// "exit status N" (BUG-16).
+func gitDiffError(root, base string, err error) error {
+	var ee *exec.ExitError
+	if !errors.As(err, &ee) {
+		return fmt.Errorf("git diff %s: %w", base, err)
+	}
+	if out, rerr := exec.Command("git", "-C", root, "rev-parse", "--is-inside-work-tree").Output(); rerr != nil || strings.TrimSpace(string(out)) != "true" {
+		return fmt.Errorf("not a git repository: %s (verify and test-plan compare the working tree with a git ref)", root)
+	}
+	if ee.ExitCode() == 128 {
+		if verr := exec.Command("git", "-C", root, "rev-parse", "--verify", "--quiet", "--end-of-options", base+"^{commit}").Run(); verr != nil {
+			return fmt.Errorf("unknown revision %q: pass a branch, tag or commit with --base", base)
+		}
+	}
+	msg := strings.TrimSpace(string(ee.Stderr))
+	if i := strings.IndexByte(msg, '\n'); i >= 0 {
+		msg = msg[:i]
+	}
+	if msg == "" {
+		msg = err.Error()
+	}
+	return fmt.Errorf("git diff %s: %s", base, msg)
+}
+
 func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 	if !validGitBase(base) {
 		return nil, fmt.Errorf("invalid git base ref")
@@ -79,7 +107,7 @@ func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 	cmd := exec.Command("git", "-C", root, "diff", "--unified=0", "--no-color", "--end-of-options", base, "--", ".")
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("git diff %s: %w", base, err)
+		return nil, gitDiffError(root, base, err)
 	}
 	prefix := gitPrefix(root)
 	changed := map[string][]lineRange{}
