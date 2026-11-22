@@ -32,7 +32,7 @@ func TestSearchCaseWordAndExcludes(t *testing.T) {
 		t.Fatalf("default search must ignore case:\n%s", camel)
 	}
 	_, upper := count(map[string]any{"query": "MUSTABS"})
-	if !strings.Contains(upper, "3: func mustAbs") || !strings.Contains(upper, "case-insensitive") {
+	if !strings.Contains(upper, "3: func mustAbs") || strings.Contains(upper, "exact matches") {
 		t.Fatalf("default is case-insensitive:\n%s", upper)
 	}
 	_, sensitive := count(map[string]any{"query": "MUSTABS", "case": "sensitive"})

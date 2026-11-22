@@ -279,11 +279,11 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 		if total, ok := m["totalHits"].(int); ok && total > 0 {
 			files, _ := m["filesMatched"].(int)
 			// "exact" only when case was matched exactly (BUG-10).
+			// "exact" only for a case-sensitive search (BUG-10); the default
+			// ignores case and says plain "matches".
 			kind := "matches"
-			if cs, ok := m["caseSensitive"].(bool); ok && cs {
+			if cs, _ := m["caseSensitive"].(bool); cs {
 				kind = "exact matches"
-			} else if ok {
-				kind = "matches (case-insensitive)"
 			}
 			fmt.Fprintf(b, "// COMPLETE — %d %s across %d %s\n", total, kind, files, textMatchFileWord(files))
 		}

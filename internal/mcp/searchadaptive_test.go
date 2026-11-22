@@ -47,7 +47,7 @@ func TestToolSearchDefaultCompletesSmallExactResult(t *testing.T) {
 	if got := strings.Count(text, "Phase4Needle"); got != 42 {
 		t.Fatalf("rendered %d matching lines, want all 42:\n%s", got, text)
 	}
-	if !strings.Contains(text, "COMPLETE — 42 exact matches across 2 files") {
+	if !strings.Contains(text, "COMPLETE — 42 matches across 2 files") {
 		t.Fatalf("missing exact completion headline:\n%s", text)
 	}
 	if strings.Contains(text, "AT LEAST") || strings.Contains(text, "exhaustive=true") {
@@ -103,7 +103,7 @@ func TestToolSearchCompletesSmallPayloadAboveFormerCountThreshold(t *testing.T) 
 	if got := strings.Count(text, "ShortNeedle"); got != 66 {
 		t.Fatalf("rendered %d matching lines, want all 66:\n%s", got, text)
 	}
-	if !strings.Contains(text, "COMPLETE — 66 exact matches") || strings.Contains(text, "exhaustive=true") {
+	if !strings.Contains(text, "COMPLETE — 66 matches") || strings.Contains(text, "exhaustive=true") {
 		t.Fatalf("small payload did not render as complete:\n%s", text)
 	}
 }
