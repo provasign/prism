@@ -765,14 +765,25 @@ func (e *Engine) Query(v int) int { return v }
 		t.Fatalf("index: %v", err)
 	}
 
-	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "Engine.Query"})
-	if err != nil {
-		t.Fatalf("change_impact: %v", err)
+	// Two packages: the engine refuses to merge them (they used to come back
+	// as one closed change set with a note; 2026-11-22) and names both.
+	_, err := h.Invoke("prism_change_impact", map[string]any{"query": "Engine.Query"})
+	if err == nil {
+		t.Fatal("same-named types in two packages must not merge into one change set")
 	}
-	m := out.(map[string]any)
-	note, _ := m["ambiguityNote"].(string)
-	if !strings.Contains(note, "file=") {
-		t.Errorf("multi-file declarations must carry the ambiguity note naming file=, got %q", note)
+	for _, want := range []string{"one.Engine.Query", "pkg/one/one.go", "two.Engine.Query", "pkg/two/two.go"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("ambiguity must offer %q, got:\n%v", want, err)
+		}
+	}
+
+	// The offered package-qualified name answers for one type.
+	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "two.Engine.Query"})
+	if err != nil {
+		t.Fatalf("qualified change_impact: %v", err)
+	}
+	if decls := mustJSON(t, out.(map[string]any)["declarations"]); len(decls) != 1 || decls[0]["filePath"] != "pkg/two/two.go" {
+		t.Errorf("qualified declarations = %v, want exactly pkg/two/two.go", decls)
 	}
 
 	// Scoped call: no note, one declaration.
@@ -780,7 +791,7 @@ func (e *Engine) Query(v int) int { return v }
 	if err != nil {
 		t.Fatalf("scoped change_impact: %v", err)
 	}
-	m = out.(map[string]any)
+	m := out.(map[string]any)
 	if _, has := m["ambiguityNote"]; has {
 		t.Error("scoped call must not carry the ambiguity note")
 	}
