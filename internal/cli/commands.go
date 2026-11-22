@@ -4328,10 +4328,7 @@ func printTextOutput(m map[string]any) {
 			if !ok {
 				continue
 			}
-			tag := ""
-			if td, _ := cm["testDouble"].(bool); td {
-				tag = "  [test double]"
-			}
+			tag := wireTestTag(cm)
 			fmt.Printf("  %v  %v  %v:%v%s\n", cm["name"], cm["kind"], cm["file"], jsonInt(cm["line"]), tag)
 		}
 		return
@@ -4359,10 +4356,7 @@ func printTextOutput(m map[string]any) {
 				if !ok {
 					continue
 				}
-				tag := ""
-				if td, _ := sm["testDouble"].(bool); td {
-					tag = "  [test double]"
-				}
+				tag := wireTestTag(sm)
 				fmt.Printf("  %v  %v:%v%s\n", sm["name"], sm["file"], jsonInt(sm["line"]), tag)
 			}
 		}
@@ -4527,6 +4521,18 @@ func printChangeImpactText(m map[string]any) {
 	if hint, ok := m["widerAnchor"].(map[string]any); ok {
 		fmt.Printf("widerAnchor: %v\n", hint["note"])
 	}
+}
+
+// wireTestTag renders a symbol's testLabel ("[test]" or "[test double]");
+// a record with only testDouble predates testLabel.
+func wireTestTag(m map[string]any) string {
+	if l, _ := m["testLabel"].(string); l != "" {
+		return "  [" + l + "]"
+	}
+	if td, _ := m["testDouble"].(bool); td {
+		return "  [test double]"
+	}
+	return ""
 }
 
 func printRenamePlanText(m map[string]any) {

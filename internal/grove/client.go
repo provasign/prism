@@ -519,6 +519,23 @@ func isCallNeighborTestDouble(path string) bool {
 		strings.Contains(p, "stub") || strings.Contains(p, "/testdata/")
 }
 
+// testLabel names what isCallNeighborTestDouble matched: "test double"
+// for mock/fake/stub code, "test" for other test files. TestDouble covers
+// both, which is right for ranking but labelled ordinary test callers
+// "[test double]" (BUG-21).
+func testLabel(path, name string) string {
+	if !isCallNeighborTestDouble(path) {
+		return ""
+	}
+	p, n := strings.ToLower(path), strings.ToLower(name)
+	for _, marker := range []string{"mock", "fake", "stub"} {
+		if strings.Contains(p, marker) || strings.Contains(n, marker) {
+			return "test double"
+		}
+	}
+	return "test"
+}
+
 // EdgeRecord is one typed graph edge from a resolved seed to a neighbor symbol.
 type EdgeRecord struct {
 	Name       string  `json:"name"`     // neighbor's qualified name
@@ -529,6 +546,7 @@ type EdgeRecord struct {
 	Direction  string  `json:"direction"`
 	Confidence float64 `json:"confidence"`
 	TestDouble bool    `json:"testDouble,omitempty"`
+	TestLabel  string  `json:"testLabel,omitempty"` // "test double" or "test"
 }
 
 // ResolvedSymbol is a candidate the agent can anchor a graph query on.
@@ -539,6 +557,7 @@ type ResolvedSymbol struct {
 	File       string `json:"file"`
 	Line       int    `json:"line"`
 	TestDouble bool   `json:"testDouble,omitempty"`
+	TestLabel  string `json:"testLabel,omitempty"` // "test double" or "test"
 }
 
 // edgeKindByName maps the public edge-kind strings (the schema the agent is told)
@@ -601,6 +620,7 @@ func (c *Client) Edges(ctx context.Context, name, direction string, kinds []stri
 			Direction:  n.Direction,
 			Confidence: n.Confidence,
 			TestDouble: isCallNeighborTestDouble(n.Symbol.FilePath),
+			TestLabel:  testLabel(n.Symbol.FilePath, n.Symbol.Name),
 		})
 	}
 	return out, nil
@@ -648,6 +668,7 @@ func (c *Client) Resolve(ctx context.Context, name string) ([]ResolvedSymbol, er
 			exact = append(exact, rs)
 		case isCallNeighborTestDouble(s.FilePath):
 			rs.TestDouble = true
+			rs.TestLabel = testLabel(s.FilePath, s.Name)
 			doubles = append(doubles, rs)
 		default:
 			real = append(real, rs)

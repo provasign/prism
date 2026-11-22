@@ -2657,6 +2657,7 @@ func (h *Handler) toolResolve(ctx context.Context, args map[string]any) (any, er
 		entry := map[string]any{"name": c.Name, "kind": c.Kind, "file": c.File, "line": c.Line}
 		if c.TestDouble {
 			entry["testDouble"] = true
+			entry["testLabel"] = c.TestLabel
 		}
 		out = append(out, entry)
 	}
@@ -2705,6 +2706,7 @@ func (h *Handler) toolEdges(ctx context.Context, args map[string]any) (any, erro
 			entry := map[string]any{"name": e.Name, "file": e.File, "line": e.Line, "kind": e.Kind}
 			if e.TestDouble {
 				entry["testDouble"] = true
+				entry["testLabel"] = e.TestLabel
 			}
 			g.shown = append(g.shown, entry)
 		}
@@ -3357,6 +3359,7 @@ func (h *Handler) crossLanguageImpactChoice(ctx context.Context, query string, o
 		}
 		if candidate.TestDouble {
 			entry["testDouble"] = true
+			entry["testLabel"] = candidate.TestLabel
 		}
 		alternatives = append(alternatives, entry)
 	}

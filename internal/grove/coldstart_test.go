@@ -50,3 +50,19 @@ func TestParallelColdStartIndexesOnce(t *testing.T) {
 		t.Fatalf("%d clients built the index, want 1:\n%s", n, stderr)
 	}
 }
+
+// BUG-21: an ordinary test caller is "test", not "test double".
+func TestTestLabel(t *testing.T) {
+	cases := map[[2]string]string{
+		{"pkg/a_test.go", "TestThing"}:    "test",
+		{"pkg/mock_store.go", "Store"}:    "test double",
+		{"pkg/a_test.go", "fakeClient"}:   "test double",
+		{"pkg/testdata/x/y.go", "Helper"}: "test",
+		{"pkg/real.go", "Thing"}:          "",
+	}
+	for in, want := range cases {
+		if got := testLabel(in[0], in[1]); got != want {
+			t.Errorf("testLabel(%q, %q) = %q, want %q", in[0], in[1], got, want)
+		}
+	}
+}
