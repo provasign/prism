@@ -519,6 +519,20 @@ func isCallNeighborTestDouble(path string) bool {
 		strings.Contains(p, "stub") || strings.Contains(p, "/testdata/")
 }
 
+func dedupeResolved(in []ResolvedSymbol) []ResolvedSymbol {
+	seen := map[string]bool{}
+	out := in[:0]
+	for _, r := range in {
+		key := fmt.Sprintf("%s\x00%s:%d", r.Name, r.File, r.Line)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, r)
+	}
+	return out
+}
+
 // testLabel names what isCallNeighborTestDouble matched: "test double"
 // for mock/fake/stub code, "test" for other test files. TestDouble covers
 // both, which is right for ranking but labelled ordinary test callers
@@ -677,7 +691,8 @@ func (c *Client) Resolve(ctx context.Context, name string) ([]ResolvedSymbol, er
 	// A qualified input names one symbol — return just the exact match(es). For a
 	// bare name, return all candidates: real implementations first, doubles last.
 	if qualified && len(exact) > 0 {
-		return exact, nil
+		// The qualified and the leaf search both return the exact symbol.
+		return dedupeResolved(exact), nil
 	}
 	return append(append(exact, real...), doubles...), nil
 }

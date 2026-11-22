@@ -173,6 +173,9 @@ Usage:
   prism rename-plan <query> <NewName> [dir]     Change-set as line edits with substitutions
                                                 (--format text|lean|json; query: Type.method or Type.method(ParamType, ...))
                                                 [--file <path> | --path <path>]  disambiguate a symbol
+                                                Exits 1 with the declarations when NewName is already
+                                                declared where the member would land;
+                                                [--allow-collision] prints the plan anyway
   prism missing-implementations <query> [dir]  Types claiming the contract that do NOT
                                   implement Type.method (missing / abstract / unverifiable)
                                   — the interface-evolution companion to change-impact
@@ -3366,6 +3369,7 @@ func cmdRenamePlan(args []string) int {
 	dir, dirSet := ".", false
 	format := formatJSON
 	file := ""
+	allowCollision := false
 	for i := 2; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -3385,6 +3389,8 @@ func cmdRenamePlan(args []string) int {
 			}
 			file = v
 			i++
+		case "--allow-collision":
+			allowCollision = true
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("rename-plan", a)
@@ -3398,12 +3404,19 @@ func cmdRenamePlan(args []string) int {
 	if file != "" {
 		callArgs["file"] = file
 	}
+	if allowCollision {
+		callArgs["allow_collision"] = true
+	}
 	out, err := invokeTool(dir, "prism_rename_plan", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("rename-plan", err))
 		return 1
 	}
 	printOutput(out, format)
+	// A collision without --allow-collision returns no plan: exit 1.
+	if m := toMap(out); m["status"] == "collision" && !allowCollision {
+		return 1
+	}
 	return 0
 }
 
@@ -4370,7 +4383,7 @@ func printTextOutput(m map[string]any) {
 		printChangeImpactText(m)
 		return
 	}
-	if _, ok := m["edits"]; ok {
+	if _, ok := m["edits"]; ok || (m["status"] == "collision" && m["newName"] != nil) {
 		printRenamePlanText(m)
 		return
 	}
@@ -4536,12 +4549,24 @@ func wireTestTag(m map[string]any) string {
 }
 
 func printRenamePlanText(m map[string]any) {
+	if cols, _ := m["collisions"].([]any); len(cols) > 0 {
+		fmt.Printf("// %v → %v — rename-plan: COLLISION, %v is already declared where the renamed member would land (%d):\n", m["query"], m["newName"], m["newName"], len(cols))
+		for _, c := range cols {
+			if cm, ok := c.(map[string]any); ok {
+				fmt.Printf("  %v  %v:%d  (renaming %v)\n", cm["name"], cm["file"], jsonInt(cm["line"]), cm["renamedMember"])
+			}
+		}
+		if _, hasEdits := m["edits"]; !hasEdits {
+			printNotes(m, "note")
+			return
+		}
+	}
 	edits, _ := m["edits"].([]any)
 	amb, _ := m["ambiguous"].([]any)
 	unres, _ := m["unresolved"].([]any)
 	fmt.Printf("// %v → %v — rename-plan: %d site(s): %d edit(s), %d ambiguous, %d unresolved\n",
 		m["query"], m["newName"], len(edits)+len(amb)+len(unres), len(edits), len(amb), len(unres))
-	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary")
+	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "degradedAnalysis")
 	printEditGroup("edits", m["edits"])
 	printEditGroup("ambiguous", m["ambiguous"])
 	printSiteGroup("unresolved", m["unresolved"])

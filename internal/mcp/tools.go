@@ -870,6 +870,10 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "The new member name (bare identifier).",
 				},
+				"allow_collision": map[string]any{
+					"type":        "boolean",
+					"description": "Return the plan even when newName is already declared where the renamed member would land (status: collision lists those declarations).",
+				},
 				"file":         scopeFileProp,
 				"model":        modelProp,
 				"context_used": contextUsedProp,
@@ -4183,11 +4187,34 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_rename_plan")
+	restoreEditIndent(h.Root, r.Edits)
+	restoreEditIndent(h.Root, r.Ambiguous)
+	impact, ierr := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
+	if ierr != nil {
+		return nil, ierr
+	}
+	collisions := h.renameCollisions(ctx, impact, newName)
+	if len(collisions) > 0 && !boolArg(args, "allow_collision") {
+		return map[string]any{
+			"query":      r.Query,
+			"newName":    r.NewName,
+			"status":     "collision",
+			"collisions": collisions,
+			"note": fmt.Sprintf("%s is already declared where the renamed member would land (%d declaration(s) listed); "+
+				"the rename would not compile or would change which method is called. Pick another name, or pass "+
+				"allow_collision=true (CLI: --allow-collision) to see the plan anyway", newName, len(collisions)),
+		}, nil
+	}
 	out := map[string]any{
 		"query":      r.Query,
 		"newName":    r.NewName,
 		"totalSites": r.SitesTotal,
 		"edits":      r.Edits,
+	}
+	if len(collisions) > 0 {
+		out["status"] = "collision"
+		out["collisions"] = collisions
+		out["warning"] = newName + " is already declared where the renamed member would land; see collisions"
 	}
 	addIndexedCompletenessSafety(out)
 	if len(r.Unresolved) > 0 {
@@ -4215,6 +4242,14 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 	out["unresolvedCount"] = len(r.Unresolved)
 	if r.Completeness != "" {
 		out["completeness"] = r.Completeness
+	}
+	// The same safety verdict change-impact gives this symbol: rename-plan
+	// said safeToClaimComplete false where change-impact said true (BUG-13).
+	// A plan with unresolved sites does not cover the change set.
+	h.addDegradedNote(ctx, out, impact)
+	applyCompilerBackedCompleteness(out, impact)
+	if len(r.Unresolved) > 0 {
+		addIndexedCompletenessSafety(out)
 	}
 	if len(r.ExternalSupers) > 0 {
 		out["externalSupers"] = r.ExternalSupers
