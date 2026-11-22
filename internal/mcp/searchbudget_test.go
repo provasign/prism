@@ -28,7 +28,7 @@ func TestCondensedCompleteSearchDoesNotClaimAllLinesDelivered(t *testing.T) {
 	if !ok {
 		t.Fatal("condensed search did not render as text")
 	}
-	for _, want := range []string{fmt.Sprintf("%d exact matches", productionHits+27), "22 more matching line(s) not shown", "27 hit(s) in 1 file(s), lines omitted"} {
+	for _, want := range []string{fmt.Sprintf("%d matches", productionHits+27), "22 more matching line(s) not shown", "27 hit(s) in 1 file(s), lines omitted"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)
 		}

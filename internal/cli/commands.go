@@ -113,6 +113,10 @@ Usage:
                                   rg/grep pass). Pass SEVERAL terms to search them
                                   in one call (up to 10), grouped by term.
                                   [-- term...]  arguments after -- are terms, never flags
+                                  Text case is smart by default: case-sensitive when a term
+                                  has an uppercase letter. [--ignore-case|-i] [--case-sensitive|-s]
+                                  [--word|-w]  whole words only
+                                  [--no-default-excludes]  also search .shale, .claude, .cursor, ...
                                   --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
                                   [--path|--paths <file-or-dir>]  scope the search (repeatable)
@@ -2681,6 +2685,7 @@ func cmdSearch(args []string) int {
 	format := formatText
 	scope := ""
 	regex := false
+	caseMode, word, noDefaultExcludes := "", false, false
 	var paths, globs []string
 	filesOnly := false
 	includeBodies := true
@@ -2720,6 +2725,14 @@ args:
 			i++
 		case "--regex":
 			regex = true
+		case "--ignore-case", "-i":
+			caseMode = "insensitive"
+		case "--case-sensitive", "-s":
+			caseMode = "sensitive"
+		case "--word", "-w":
+			word = true
+		case "--no-default-excludes":
+			noDefaultExcludes = true
 		case "--path", "--paths":
 			// The grep operand, restored. `prism search alias --path
 			// octodns/manager.py` is what an agent that already knows the
@@ -2823,6 +2836,15 @@ args:
 	}
 	if regex {
 		searchArgs["regex"] = true
+	}
+	if caseMode != "" {
+		searchArgs["case"] = caseMode
+	}
+	if word {
+		searchArgs["word"] = true
+	}
+	if noDefaultExcludes {
+		searchArgs["no_default_excludes"] = true
 	}
 	if len(paths) > 0 {
 		searchArgs["path"] = paths

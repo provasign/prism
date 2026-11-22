@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/config"
@@ -712,7 +713,14 @@ func toolSchema(name string) map[string]any {
 					"type":        "boolean",
 					"description": "On a truncated search return only hitRollup (grouped counts), no sample lines.",
 				},
-				"limit": map[string]any{"type": "integer", "description": "Max results (default 25, maximum 2000; non-positive uses default)."},
+				"case": map[string]any{
+					"type":        "string",
+					"enum":        []string{"smart", "sensitive", "insensitive"},
+					"description": "Text case: smart (default; case-sensitive when the term has an uppercase letter), sensitive, or insensitive.",
+				},
+				"word":                map[string]any{"type": "boolean", "description": "Whole-word text matches only."},
+				"no_default_excludes": map[string]any{"type": "boolean", "description": "Also search agent-state directories (.shale, .claude, .cursor, ...) skipped by default."},
+				"limit":               map[string]any{"type": "integer", "description": "Max results (default 25, maximum 2000; non-positive uses default)."},
 				"context": map[string]any{
 					"type":        "integer",
 					"description": "Lines around each match (grep -C N, max 15) — instead of a follow-up read. Whole function? prism_lookup.",
@@ -1888,6 +1896,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		termNote = appendNote(termNote, note)
 	}
 	sc := shape.scope(args)
+	if !sc.noDefaultExcludes && len(sc.paths) == 0 && scope != "symbols" {
+		sc.notSearched = textsearch.DefaultExcludedPresent(h.Root)
+	}
 	budget := shape.budgetFor(sc, queries, regex)
 	if len(queries) > 1 && len(sc.paths) == 0 && len(sc.glob) == 0 {
 		filtered := queries[:0]
@@ -2243,7 +2254,40 @@ type searchScope struct {
 	// budget: the default response budget applies (searchbudget.go); the
 	// sampling warnings use their short form.
 	budget bool
+	// caseMode: "smart" (default: case-sensitive when the term has an
+	// uppercase letter, as ripgrep's --smart-case), "sensitive" or
+	// "insensitive". MUSTABS used to match mustAbs (BUG-10).
+	caseMode string
+	// word: whole-word matches only.
+	word bool
+	// noDefaultExcludes: also search .shale, .claude, .cursor and the
+	// other agent-state directories.
+	noDefaultExcludes bool
+	// notSearched: default-excluded directories present at the root.
+	notSearched []textsearch.ExcludedDir
 }
+
+// caseSensitive applies the case mode to one term.
+func (sc searchScope) caseSensitive(term string, regex bool) bool {
+	switch sc.caseMode {
+	case "sensitive":
+		return true
+	case "insensitive":
+		return false
+	}
+	if regex {
+		// \S, \W and similar escapes are not uppercase letters in the term.
+		term = regexEscape.ReplaceAllString(term, "")
+	}
+	for _, r := range term {
+		if unicode.IsUpper(r) {
+			return true
+		}
+	}
+	return false
+}
+
+var regexEscape = regexp.MustCompile(`\\.`)
 
 func searchScopeDisclosure(scope string, sc searchScope) string {
 	var filters []string
@@ -2283,12 +2327,17 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
+			CaseSensitive: sc.caseSensitive(q, regex), Word: sc.word, NoDefaultExcludes: sc.noDefaultExcludes,
 		}
 		r := textsearch.Search(ctx, h.Root, q, opts)
 		out := map[string]any{
-			"textHits":    h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked),
-			"textBackend": r.Backend,
-			"truncated":   r.Truncated,
+			"textHits":      h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked),
+			"textBackend":   r.Backend,
+			"truncated":     r.Truncated,
+			"caseSensitive": opts.CaseSensitive,
+		}
+		if len(sc.notSearched) > 0 {
+			out["notSearched"] = sc.notSearched
 		}
 		attachTextSearchCompleteness(out, r)
 		if r.Truncated {
@@ -2509,10 +2558,15 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
+			CaseSensitive: sc.caseSensitive(q, regex), Word: sc.word, NoDefaultExcludes: sc.noDefaultExcludes,
 		}
 		r := textsearch.Search(ctx, h.Root, q, opts)
 		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked)
 		out["textBackend"] = r.Backend
+		out["caseSensitive"] = opts.CaseSensitive
+		if len(sc.notSearched) > 0 {
+			out["notSearched"] = sc.notSearched
+		}
 		attachTextSearchCompleteness(out, r)
 		if r.Truncated {
 			out["truncated"] = true

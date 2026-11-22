@@ -114,6 +114,12 @@ type Options struct {
 	// uppercase letter, where "Errors" must not pull in every "errors"
 	// import line.
 	CaseSensitive bool
+	// Word matches the pattern only as a whole word (grep -w).
+	Word bool
+	// NoDefaultExcludes searches the agent-state directories (.shale,
+	// .claude, .cursor, ...) that are skipped by default. .git and .grove
+	// stay excluded.
+	NoDefaultExcludes bool
 	// Exhaustive removes both caps: every match, from every file. The agent
 	// declares this -- prism does not guess. A "where is X" question wants a
 	// sample and a count; "rewrite every .format() call" wants all 1,024
@@ -232,6 +238,53 @@ func (o Options) withDefaults() Options {
 // rg also gets these as --glob excludes (see runRg).
 var excludeDirs = []string{".git", ".grove", ".shale", ".claude", ".cursor",
 	".windsurf", ".kiro", ".devin"}
+
+// searchExcludes is excludeDirs, or only .git and .grove with
+// NoDefaultExcludes.
+func searchExcludes(opts Options) []string {
+	if opts.NoDefaultExcludes {
+		return []string{".git", ".grove"}
+	}
+	return excludeDirs
+}
+
+// ExcludedDir is a default-excluded directory present at the root.
+type ExcludedDir struct {
+	Dir   string `json:"dir"`
+	Files int    `json:"files"`
+}
+
+// DefaultExcludedPresent lists the agent-state directories at root that a
+// search skips by default, with their file counts (counting stops at
+// 10000 per directory). .git and .grove are not listed: they are never
+// source. A search used to report COMPLETE while skipping them unsaid
+// (BUG-10).
+func DefaultExcludedPresent(root string) []ExcludedDir {
+	var out []ExcludedDir
+	for _, d := range excludeDirs {
+		if d == ".git" || d == ".grove" {
+			continue
+		}
+		dir := filepath.Join(root, d)
+		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+			continue
+		}
+		n := 0
+		_ = filepath.WalkDir(dir, func(_ string, e os.DirEntry, err error) error {
+			if err == nil && !e.IsDir() {
+				n++
+				if n >= 10000 {
+					return filepath.SkipAll
+				}
+			}
+			return nil
+		})
+		if n > 0 {
+			out = append(out, ExcludedDir{Dir: d, Files: n})
+		}
+	}
+	return out
+}
 
 // gitignoreDirs approximates rg's .gitignore handling for the grep and native
 // fallbacks, which have none. Read from the repo's own .gitignore so prism
@@ -469,7 +522,7 @@ func heavyDirs(root string, opts Options) []HeavyDir {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	args := []string{"--no-config", "--files", "--no-require-git", "--hidden", "--max-filesize", "2M"}
-	for _, d := range excludeDirs {
+	for _, d := range searchExcludes(opts) {
 		args = append(args, "--glob", "!"+d+"/")
 	}
 	args = append(args, groveIgnoreArgs(root)...)
@@ -781,8 +834,11 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 	if !regexUsable(pattern, opts) {
 		args = append(args, "--fixed-strings")
 	}
+	if opts.Word {
+		args = append(args, "--word-regexp")
+	}
 	// --hidden would otherwise descend into the VCS dir and prism's state.
-	for _, d := range excludeDirs {
+	for _, d := range searchExcludes(opts) {
 		args = append(args, "--glob", "!"+d+"/")
 	}
 	args = append(args, groveIgnoreArgs(root)...)
@@ -819,7 +875,10 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 	if !opts.CaseSensitive {
 		args = append(args, "-i")
 	}
-	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
+	if opts.Word {
+		args = append(args, "-w")
+	}
+	for _, d := range append(append([]string{}, searchExcludes(opts)...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
 	// grep --include matches base names only. A path-shaped glob

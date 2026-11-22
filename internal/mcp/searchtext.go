@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"fmt"
+	"github.com/provasign/prism/internal/textsearch"
 	"sort"
 	"strings"
 )
@@ -47,6 +48,8 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"fallbackFailed":   true,
 		"root":             true,
 		"countComplete":    true,
+		"caseSensitive":    true,
+		"notSearched":      true,
 		"resultsComplete":  true,
 		"inlineBodies":     true,
 		"searchLeads":      true,
@@ -273,8 +276,18 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 	if complete, _ := m["resultsComplete"].(bool); complete {
 		if total, ok := m["totalHits"].(int); ok && total > 0 {
 			files, _ := m["filesMatched"].(int)
-			fmt.Fprintf(b, "// COMPLETE — %d exact matches across %d %s\n", total, files, textMatchFileWord(files))
+			// "exact" only when case was matched exactly (BUG-10).
+			kind := "matches"
+			if cs, ok := m["caseSensitive"].(bool); ok && cs {
+				kind = "exact matches"
+			} else if ok {
+				kind = "matches (case-insensitive)"
+			}
+			fmt.Fprintf(b, "// COMPLETE — %d %s across %d %s\n", total, kind, files, textMatchFileWord(files))
 		}
+	}
+	if ns := notSearchedLine(m["notSearched"]); ns != "" {
+		fmt.Fprintf(b, "// %s\n", ns)
 	}
 	// The graph's one-line reading of the term comes FIRST. It used to trail
 	// the hit list; measured 2026-09-05 (dubbo retest transcript): the
@@ -677,4 +690,19 @@ func anySlice(v any) []any {
 	default:
 		return nil
 	}
+}
+
+// notSearchedLine names the default-excluded directories a search skipped.
+func notSearchedLine(v any) string {
+	dirs, _ := v.([]textsearch.ExcludedDir)
+	if len(dirs) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(dirs))
+	files := 0
+	for _, d := range dirs {
+		names = append(names, d.Dir)
+		files += d.Files
+	}
+	return fmt.Sprintf("not searched: %s (%d files; no_default_excludes=true / --no-default-excludes to include)", strings.Join(names, ", "), files)
 }

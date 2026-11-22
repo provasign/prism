@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -22,33 +21,15 @@ import (
 // which backend is active so the difference is visible, never silent.
 func nativeSearch(ctx context.Context, root, pattern string, opts Options) Result {
 	res := Result{Backend: "native"}
-	needle := strings.ToLower(pattern)
-	// Regex mode: precompile case-insensitively; a non-compiling pattern
-	// already degraded to literal in regexUsable.
-	var re *regexp.Regexp
-	if regexUsable(pattern, opts) {
-		if opts.CaseSensitive {
-			re = regexp.MustCompile(pattern)
-		} else {
-			re = regexp.MustCompile("(?i)" + pattern)
-		}
-	}
-	match := func(line string) bool {
-		if re != nil {
-			return re.MatchString(line)
-		}
-		if opts.CaseSensitive {
-			return strings.Contains(line, pattern)
-		}
-		return strings.Contains(strings.ToLower(line), needle)
-	}
+	// One matcher for search and count: case, regex and whole-word rules.
+	match := countMatcher(pattern, opts)
 
 	// Same rule as the shelled-out engines: skip what the PROJECT says to
 	// skip, not what prism assumes. Hidden paths are searched (grep -r
 	// semantics, matching runRg's --hidden); only prism state, the VCS dir,
 	// and root-.gitignore directory names are excluded.
 	skip := map[string]bool{}
-	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
+	for _, d := range append(append([]string{}, searchExcludes(opts)...), gitignoreDirs(root)...) {
 		skip[d] = true
 	}
 

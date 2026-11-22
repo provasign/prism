@@ -43,7 +43,7 @@ func grepShapeEnabled() bool {
 const grepShapeBodyMatchLimit = 20
 
 var (
-	grepExactMatches = regexp.MustCompile(`^// COMPLETE — (\d+) exact matches`)
+	grepExactMatches = regexp.MustCompile(`^// COMPLETE — (\d+) (?:exact )?matches`)
 	grepHitLine      = regexp.MustCompile(`^\s+\d+:`)
 	grepContextLine  = regexp.MustCompile(`^\s+\d+- `)
 	// Broad body sections: the evidence-ranked picks over many hits. A body

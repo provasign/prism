@@ -186,15 +186,18 @@ func (s searchShape) clampNote() string {
 // scope is the searchScope this shape implies for one term's retrieval.
 func (s searchShape) scope(args map[string]any) searchScope {
 	return searchScope{
-		paths:        stringsArg(args, "path"),
-		glob:         stringsArg(args, "glob"),
-		filesOnly:    boolArg(args, "files_only"),
-		exhaustive:   boolArg(args, "exhaustive"),
-		context:      s.context,
-		rollupOnly:   boolArg(args, "rollup_only"),
-		adaptive:     s.adaptive,
-		contextAsked: s.contextAsked,
-		budget:       s.budget,
+		paths:             stringsArg(args, "path"),
+		glob:              stringsArg(args, "glob"),
+		filesOnly:         boolArg(args, "files_only"),
+		exhaustive:        boolArg(args, "exhaustive"),
+		context:           s.context,
+		rollupOnly:        boolArg(args, "rollup_only"),
+		adaptive:          s.adaptive,
+		contextAsked:      s.contextAsked,
+		budget:            s.budget,
+		caseMode:          stringArg(args, "case", "smart"),
+		word:              boolArg(args, "word"),
+		noDefaultExcludes: boolArg(args, "no_default_excludes"),
 	}
 }
 

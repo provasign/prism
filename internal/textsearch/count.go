@@ -60,8 +60,11 @@ func runRgCount(ctx context.Context, root, pattern string, opts Options) (CountR
 	if !regexUsable(pattern, opts) {
 		args = append(args, "--fixed-strings")
 	}
-	for _, d := range excludeDirs {
+	for _, d := range searchExcludes(opts) {
 		args = append(args, "--glob", "!"+d+"/")
+	}
+	if opts.Word {
+		args = append(args, "--word-regexp")
 	}
 	args = append(args, groveIgnoreArgs(root)...)
 	for _, g := range opts.Glob {
@@ -87,7 +90,10 @@ func runGrepCount(ctx context.Context, root, pattern string, opts Options) (Coun
 	if !opts.CaseSensitive {
 		args = append(args, "-i")
 	}
-	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
+	if opts.Word {
+		args = append(args, "-w")
+	}
+	for _, d := range append(append([]string{}, searchExcludes(opts)...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
 	for _, g := range opts.Glob {
@@ -154,7 +160,7 @@ func nativeCount(ctx context.Context, root, pattern string, opts Options) CountR
 		resolvedRoot = rr
 	}
 	skip := map[string]bool{}
-	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
+	for _, d := range append(append([]string{}, searchExcludes(opts)...), gitignoreDirs(root)...) {
 		skip[d] = true
 	}
 	roots, rejected := scopeArgs(root, opts.Paths)
@@ -224,6 +230,20 @@ func nativeCount(ctx context.Context, root, pattern string, opts Options) CountR
 }
 
 func countMatcher(pattern string, opts Options) func(string) bool {
+	if opts.Word {
+		// grep -w: the match is preceded and followed by a non-word
+		// character or a line edge.
+		inner := regexp.QuoteMeta(pattern)
+		if regexUsable(pattern, opts) {
+			inner = pattern
+		}
+		flags := "(?i)"
+		if opts.CaseSensitive {
+			flags = ""
+		}
+		re := regexp.MustCompile(flags + `(?:^|[^\w])(?:` + inner + `)(?:[^\w]|$)`)
+		return re.MatchString
+	}
 	if regexUsable(pattern, opts) {
 		if opts.CaseSensitive {
 			return regexp.MustCompile(pattern).MatchString
