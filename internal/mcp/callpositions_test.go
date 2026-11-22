@@ -183,12 +183,12 @@ func TestImpactCallerEvidenceCountsOnlyCompilerResolution(t *testing.T) {
 		NameMatchedCallers: []string{"c"},
 	}
 	got := impactCallerEvidence(r)
-	want := "1 of 3 callers resolved by the compiler; the others are matched by name and receiver inference; name-matched only (most likely false positives): c.ts:3:c"
+	want := "1 of 3 callers resolved by the compiler; the others are matched by name and receiver inference; name-matched only (not resolved by a compiler; check each, some may be unrelated namesakes): c.ts:3:c"
 	if got != want {
 		t.Fatalf("got %q\nwant %q", got, want)
 	}
 	r.CallerLines = nil
-	if got := impactCallerEvidence(r); got != "name-matched only (most likely false positives): c.ts:3:c" {
+	if got := impactCallerEvidence(r); got != "name-matched only (not resolved by a compiler; check each, some may be unrelated namesakes): c.ts:3:c" {
 		t.Fatalf("no compiler: got %q", got)
 	}
 }

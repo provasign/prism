@@ -4043,13 +4043,13 @@ func impactCallerEvidence(r *grove.ChangeImpactResult) string {
 	case compiled > 0 && compiled < len(r.Callers):
 		note := fmt.Sprintf("%d of %d callers resolved by the compiler; the others are matched by name and receiver inference", compiled, len(r.Callers))
 		if named != "" {
-			note += "; name-matched only (most likely false positives): " + named
+			note += "; name-matched only (not resolved by a compiler; check each, some may be unrelated namesakes): " + named
 		}
 		return note
 	case named != "":
 		// No compiler ran: the language note already says every caller is
 		// inferred; name the weakest ones.
-		return "name-matched only (most likely false positives): " + named
+		return "name-matched only (not resolved by a compiler; check each, some may be unrelated namesakes): " + named
 	}
 	return ""
 }
