@@ -177,6 +177,52 @@ type FeedbackEntry struct {
 	Timestamp string `json:"timestamp"`
 }
 
+// maxNameArg bounds a symbol name, query or path argument. A 100 KB name
+// was echoed back in full by every error that quoted it (BUG-21).
+const maxNameArg = 1000
+
+// checkArgLengths rejects an over-long name, query or path argument and
+// quotes only its first characters.
+func checkArgLengths(args map[string]any) error {
+	check := func(key, v string) error {
+		if len(v) <= maxNameArg {
+			return nil
+		}
+		return fmt.Errorf("%s is %d characters (%q…); names, queries and paths are at most %d", key, len(v), clipRunes(v, 40), maxNameArg)
+	}
+	for _, key := range []string{"name", "query", "symbol", "symbol_file", "file", "new_name", "newName", "terms", "path"} {
+		switch v := args[key].(type) {
+		case string:
+			if err := check(key, v); err != nil {
+				return err
+			}
+		case []string:
+			for _, item := range v {
+				if err := check(key, item); err != nil {
+					return err
+				}
+			}
+		case []any:
+			for _, item := range v {
+				if str, ok := item.(string); ok {
+					if err := check(key, str); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func clipRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n])
+}
+
 // --- Tool dispatch -------------------------------------------------------
 
 // DispatchableTools returns every tool name Invoke can route — the single
@@ -214,6 +260,9 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	// a monorepo both can exceed a minute legitimately. Timing out mid-verify
 	// surfaces as a tool error, which is the CI gate failing for the wrong
 	// reason.
+	if err := checkArgLengths(args); err != nil {
+		return nil, err
+	}
 	timeout := 60 * time.Second
 	switch name {
 	case "prism_verify", "prism_test_plan", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
