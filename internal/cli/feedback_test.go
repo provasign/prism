@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -51,7 +52,8 @@ func TestServeToken(t *testing.T) {
 	if err != nil || len(tok) != 64 || path != filepath.Join(root, ".grove", "serve.token") {
 		t.Fatalf("tok=%q path=%q err=%v", tok, path, err)
 	}
-	if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o600 {
+	// Windows has no Unix permission bits; the 0600 check is Unix-only.
+	if fi, err := os.Stat(path); err != nil || (runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600) {
 		t.Fatalf("token file mode: %v %v", fi, err)
 	}
 	own := filepath.Join(root, "mine")

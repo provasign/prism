@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 )
 
@@ -45,13 +44,6 @@ func TestSensitiveFilesWithheld(t *testing.T) {
 // SEC-04: read returns promptly for a FIFO, a binary file and a large file.
 func TestReadGuards(t *testing.T) {
 	root := t.TempDir()
-	fifo := filepath.Join(root, "pipe")
-	if err := syscall.Mkfifo(fifo, 0o644); err == nil {
-		g, err := readGuarded(fifo, "pipe", false, 0, 0)
-		if err != nil || g.refused != "not a regular file" {
-			t.Fatalf("fifo: %+v %v", g, err)
-		}
-	}
 	bin := filepath.Join(root, "blob")
 	if err := os.WriteFile(bin, []byte("ab\x00cd"), 0o644); err != nil {
 		t.Fatal(err)

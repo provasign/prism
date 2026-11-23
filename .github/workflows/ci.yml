@@ -70,6 +70,7 @@ jobs:
           bash -n install.sh uninstall.sh
           shellcheck -S error install.sh uninstall.sh
           bash install.sh --dry-run
+          # shellcheck disable=SC2016 # $errs is PowerShell's, not the shell's
           pwsh -NoProfile -Command '$errs = $null; foreach ($f in "install.ps1","uninstall.ps1") { [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs) | Out-Null; if ($errs) { $errs; exit 1 } }'
 
   reproducible:

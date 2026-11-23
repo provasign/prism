@@ -300,9 +300,16 @@ func TestTokenSavings(t *testing.T) {
 	if scB.savings() > 1 {
 		t.Errorf("first read must be faithful (≈0%% savings, no body-dropping), got %.1f%%", scB.savings())
 	}
-	if scB.deliveredTokens != scB.originalTokens {
-		t.Errorf("first read must deliver every token: delivered=%d original=%d",
-			scB.deliveredTokens, scB.originalTokens)
+	// Every token up to the per-file cap: a file larger than MaxTokensPerFile
+	// is truncated by design. tools.go and commands.go sit at the cap, and
+	// CRLF checkouts (Windows) push them over it.
+	wantFirst := 0
+	for _, fd := range corpus {
+		wantFirst += min(fd.tokens, MaxTokensPerFile)
+	}
+	if scB.deliveredTokens < wantFirst {
+		t.Errorf("first read must deliver every token up to the per-file cap: delivered=%d want>=%d (original %d)",
+			scB.deliveredTokens, wantFirst, scB.originalTokens)
 	}
 	if scC.savings() < 50 {
 		t.Errorf("sha-pointer (turn 2, unchanged) should save >50%% of tokens, got %.1f%%", scC.savings())

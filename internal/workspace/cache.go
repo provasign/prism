@@ -227,6 +227,14 @@ func IsGitURL(arg string) bool {
 	return strings.Contains(arg, "://") || strings.HasPrefix(arg, "git@") || strings.HasSuffix(strings.SplitN(arg, "@", 2)[0], ".git")
 }
 
+// cutPrefixFold is strings.CutPrefix ignoring ASCII case.
+func cutPrefixFold(s, prefix string) (string, bool) {
+	if len(s) >= len(prefix) && strings.EqualFold(s[:len(prefix)], prefix) {
+		return s[len(prefix):], true
+	}
+	return s, false
+}
+
 // SplitURLRef separates "url@ref". An scp-style "git@host:org/repo" keeps
 // its own "@".
 func SplitURLRef(arg string) (repo, ref string) {
@@ -240,7 +248,12 @@ func SplitURLRef(arg string) (repo, ref string) {
 // cacheSlug is the directory a remote is cached under: host/org/repo.
 func cacheSlug(repo string) string {
 	s := repo
-	if u, err := url.Parse(repo); err == nil && u.Host != "" {
+	if rest, ok := cutPrefixFold(repo, "file:"); ok {
+		// file:C:\x or file:///x: url.Parse rejects a Windows path, and
+		// the raw string put "file:C:" into a directory name (invalid on
+		// Windows).
+		s = "local/" + strings.TrimLeft(filepath.ToSlash(rest), "/")
+	} else if u, err := url.Parse(repo); err == nil && u.Host != "" {
 		s = u.Host + "/" + strings.TrimPrefix(u.Path, "/")
 	} else if u != nil && u.Scheme == "file" {
 		s = "local/" + strings.TrimPrefix(u.Path, "/")
@@ -250,7 +263,14 @@ func cacheSlug(repo string) string {
 	s = strings.TrimSuffix(s, ".git")
 	clean := make([]string, 0, 4)
 	for _, part := range strings.Split(filepath.ToSlash(s), "/") {
-		if part != "" && part != "." && part != ".." {
+		// Characters Windows refuses in a file name.
+		part = strings.Map(func(r rune) rune {
+			if strings.ContainsRune(`:*?"<>|\`, r) || r < 32 {
+				return '_'
+			}
+			return r
+		}, part)
+		if part != "" && part != "." && part != ".." && strings.Trim(part, "_") != "" {
 			clean = append(clean, part)
 		}
 	}

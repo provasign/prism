@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -884,7 +885,13 @@ func TestWorkspaceHostileLinksAreRefused(t *testing.T) {
 
 	// The user reviews the links. Only the real repository is accepted.
 	status := captureStdout(func() { cmdWorkspace(nil) })
-	for _, want := range []string{"refused: it contains this repository", "refused: it is the home directory or above it", "refused: no sign of a repository there"} {
+	wants := []string{"refused: it contains this repository", "refused: it is the home directory or above it", "refused: no sign of a repository there"}
+	if runtime.GOOS == "windows" {
+		// The temp directory is under the home directory there, so home is
+		// refused as containing this repository, which is checked first.
+		wants = []string{"refused: it contains this repository", "refused: no sign of a repository there"}
+	}
+	for _, want := range wants {
 		if !strings.Contains(status, want) {
 			t.Fatalf("status does not show %q:\n%s", want, status)
 		}

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,9 +39,10 @@ func TestInitSharedConfigIsPortable(t *testing.T) {
 // CON-06: doctor flags an absolute and a missing command in shared config.
 func TestSharedConfigWarnings(t *testing.T) {
 	dir := t.TempDir()
-	mustWriteFile(t, filepath.Join(dir, ".mcp.json"), `{"mcpServers":{"prism":{"command":"/nonexistent/bin/prism","args":["mcp"]}}}`)
+	missing, _ := json.Marshal(filepath.Join(dir, "nonexistent", "bin", "prism")) // absolute on every OS
+	mustWriteFile(t, filepath.Join(dir, ".mcp.json"), `{"mcpServers":{"prism":{"command":`+string(missing)+`,"args":["mcp"]}}}`)
 	mustWriteFile(t, filepath.Join(dir, ".cursor", "mcp.json"), `{"mcpServers":{"prism":{"command":"prism","args":["mcp"]}}}`)
-	mustWriteFile(t, filepath.Join(dir, ".codex", "config.toml"), "[mcp_servers.prism]\ncommand = \"/opt/x/prism\"\nargs = [\"mcp\"]\n")
+	mustWriteFile(t, filepath.Join(dir, ".codex", "config.toml"), "[mcp_servers.prism]\ncommand = "+string(missing)+"\nargs = [\"mcp\"]\n")
 	w := sharedConfigWarnings(dir)
 	if len(w) != 2 || !strings.Contains(w[1], ".codex/config.toml") || !strings.Contains(w[0], ".mcp.json") || !strings.Contains(w[0], "does not exist") {
 		t.Fatalf("warnings: %q", w)

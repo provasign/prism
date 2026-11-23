@@ -3,6 +3,7 @@ package trust
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -37,7 +38,8 @@ func TestTrustPrecedenceAndRepoCannotGrantItself(t *testing.T) {
 	if d := For(root); !d.Untrusted || d.Source != "PRISM_UNTRUSTED" {
 		t.Fatalf("env must override the file: %v", d)
 	}
-	if fi, err := os.Stat(Path()); err != nil || fi.Mode().Perm() != 0o600 {
+	// Windows has no Unix permission bits; the 0600 check is Unix-only.
+	if fi, err := os.Stat(Path()); err != nil || (runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600) {
 		t.Fatalf("trust file mode: %v %v", fi, err)
 	}
 }
