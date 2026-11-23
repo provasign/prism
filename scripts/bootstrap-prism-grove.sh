@@ -6,7 +6,6 @@ PRISM_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 GROVE_ROOT_DEFAULT="$(cd "$PRISM_ROOT/../grove" 2>/dev/null && pwd || true)"
 
 WORKSPACE_DIR="${1:-$PWD}"
-GLOBAL_INIT="${PRISM_GLOBAL_INIT:-1}"
 
 if ! command -v go >/dev/null 2>&1; then
   echo "error: go is required but was not found in PATH" >&2
@@ -59,21 +58,10 @@ if [[ ! -x "$PRISM_BIN" ]]; then
   exit 1
 fi
 
-if [[ "$GLOBAL_INIT" == "1" ]]; then
-  echo "[bootstrap] note: GLOBAL_INIT is obsolete; Prism configs are project-local"
-fi
 : "${HARNESS:?set HARNESS to a comma-separated list such as claude,codex; bootstrap never assumes all harnesses}"
 echo "[bootstrap] running prism init --harness $HARNESS $WORKSPACE_DIR"
 "$PRISM_BIN" cleanup-global
 "$PRISM_BIN" init --harness "$HARNESS" "$WORKSPACE_DIR"
 
-echo "[bootstrap] done"
-echo "[bootstrap] next steps:"
-echo "  1) prism index $WORKSPACE_DIR"
-echo "  2) prism query --terms YourSymbol $WORKSPACE_DIR"
-echo
-echo "[bootstrap] agent steering files written into $WORKSPACE_DIR:"
-echo "  - CLAUDE.md, AGENTS.md, GEMINI.md"
-echo "  - .github/copilot-instructions.md"
-echo "  - .vscode/mcp.json (VS Code native MCP host)"
-echo "  - compact .mcp.json (Claude Code) / .cursor/mcp.json"
+# prism init above printed each file it wrote for $HARNESS.
+echo "[bootstrap] done; next: prism index $WORKSPACE_DIR"
