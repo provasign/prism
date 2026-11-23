@@ -36,7 +36,7 @@ func TestCmdIndexAndStatus_Smoke(t *testing.T) {
 		t.Fatalf("cmdStatus=%d", got)
 	}
 	out := captureStdout(func() {
-		if got := cmdDoctor([]string{dir}); got != 0 {
+		if got := cmdDoctor([]string{dir, "--format", "json"}); got != 0 {
 			t.Fatalf("cmdDoctor=%d", got)
 		}
 	})

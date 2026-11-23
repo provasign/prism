@@ -50,7 +50,8 @@ Usage:
   prism install [--harness <ids>] [dir]
                                   Alias for 'prism init'
   prism cleanup-global            Remove Prism entries written by old global setup
-  prism index [dir]               Index codebase via Grove (delta-aware). Exits 3
+  prism index [dir]               Index codebase via Grove (delta-aware); text summary,
+                                  [--format json] [--json] for JSON. Exits 3
                                   when a language's compiler-backed analysis
                                   could not run (dependencies not installed,
                                   toolchain missing) and prints the fix;
@@ -62,8 +63,9 @@ Usage:
                                   [--untrusted|--trusted] for this run (see prism trust)
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
-  prism status [dir]              Show graph stats from Grove
+  prism status [dir]              Show graph stats from Grove ([--format text|json] [--json])
   prism doctor [dir]              Diagnose engine, index, and capabilities
+                                  ([--format text|json] [--json]; the per-language manifest is JSON only)
   prism map [dir]                 Component-level architecture map: directories,
                                   induced dependency edges (weights + evidence
                                   tiers), cycles. Production shape by default
@@ -108,12 +110,12 @@ Usage:
                                   --max-files N      source delivery: max files shown (default: 5)
                                   --limit N          max results
                                   --profile <name>   compatibility name; all profiles rank alike
-                                  --format text|lean|json  Output format (default: text)
+                                  --format text|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
                                   [--repo <id>]  read paths inside a linked repository
                                   --from N --to M  Line range (inclusive);
                                   --offset N --limit N also work; --dir <path>
-                                  --format text|lean|json  Output format (default: text)
+                                  --format text|json  Output format (default: text)
   prism search <term>... [dir]    Search symbol names AND raw source text (a real
                                   rg/grep pass). Pass SEVERAL terms to search them
                                   in one call (up to 10), grouped by term.
@@ -131,27 +133,27 @@ Usage:
                                   sample and return only the grouped-by-symbol rollup
                                   [--dir <path>]  where to search (default: .)
                                   [--repo <id>|all]  text matches in a linked repository
-                                  --format text|lean|json  Output format (default: text)
+                                  --format text|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
                                   [--repo <id>|all]  answer from a linked repository
                                   [--file <path> | --path <path>]  disambiguate a symbol
                                   Multiple names: prism lookup <name>... [--dir <path>]
                                   [--fields signature,doc,body,kind,parent,modifiers]
-                                  --format text|lean|json  Output format (default: text)
+                                  --format text|json  Output format (default: text)
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
                                   its neighbours, or a file's source + the
                                   symbols it defines + the files depending on it
                                   [--file <path>]  disambiguate a symbol
-                                  --format text|lean|json  Output format (default: text)
+                                  --format text|json  Output format (default: text)
   prism references <name> [dir]   Find indexed syntactic uses of a name
                                   (comments/strings excluded) as path:line:col: text;
                                   Type.member or [--file <path> | --path <path>] resolves one symbol
-                                  --format text|lean|json  Output format (default: text)
+                                  --format text|json  Output format (default: text)
   prism resolve <name> [dir]      Resolve a name to its definition(s): file:line + kind
-                                  --format text|lean|json  Output format (default: text)
+                                  --format text|json  Output format (default: text)
   prism edges <name> [dir]        Walk the graph one hop from a symbol
                                   ([--direction|--dir in|out|both] [--kinds calls,uses-type,...])
-                                  --format text|lean|json  Output format (default: text)
+                                  --format text|json  Output format (default: text)
   prism test-plan [dir]          Impacted test symbols, file targets, evidence, and gaps
                                   --base <ref>  Compare working tree with ref (default: HEAD)
                                   Two tiers: run first (resolved call paths, nearest first) and
@@ -184,9 +186,9 @@ Usage:
                                   [./dir | --dir <path>]  select a repository
                                   [--repo <id>]  anchor in a linked repository
                                   [--file <path> | --path <path>]  disambiguate a symbol
-                                  --format text|lean|json  Output format (default: json)
+                                  --format text|json  Output format (default: text)
   prism rename-plan <query> <NewName> [dir]     Change-set as line edits with substitutions
-                                                (--format text|lean|json; query: Type.method or Type.method(ParamType, ...))
+                                                (--format text|json; query: Type.method or Type.method(ParamType, ...))
                                                 [--file <path> | --path <path>]  disambiguate a symbol
                                                 Exits 1 with the declarations when NewName is already
                                                 declared where the member would land;
@@ -195,14 +197,14 @@ Usage:
                                   implement Type.method (missing / abstract / unverifiable)
                                   — the interface-evolution companion to change-impact
                                   [--file <path> | --path <path>]  disambiguate a symbol
-                                  --format text|lean|json  Output format (default: json)
+                                  --format text|json  Output format (default: text)
   prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
-                                  --format text|lean|json  Output format (default: json)
+                                  --format text|json  Output format (default: text)
   prism assist [--model <spec>] [--apply|--apply-ambiguous] [--verify "<cmd>"] "<task>"
                                   NL task -> deterministic ops via any model (ollama:/claude:/openai:)
                                   [--dir <path>]  repository (default: .)
                                   (precision-first; relay the caveats)
-                                  --format text|lean|json  Output format (default: json)
+                                  --format text|json  Output format (default: text)
   prism compact [dir]             Compress conversation JSON from stdin
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
                                   Record quality feedback for a Prism result in
@@ -214,7 +216,7 @@ Usage:
                                   Start MCP server on stdio (compact gateway is default)
   prism drift                     MCP only (prism_drift): it compares files with what the
                                   running server delivered this session; a CLI call has no session
-  prism config [dir]              Show resolved configuration
+  prism config [dir]              Show resolved configuration ([--format text|json] [--json])
   prism trust [dir]               Let indexing run this repository's own build tools
                                   (Maven/Gradle, its typescript, rust-analyzer, go toolchain)
   prism untrust [dir]             Never run them for this repository; also --untrusted
@@ -2261,6 +2263,10 @@ func containsString(list []any, s string) bool {
 }
 
 func cmdIndex(args []string) int {
+	args, format, rc := takeFormat("index", args)
+	if rc != 0 {
+		return rc
+	}
 	dir, flags, rc := dirOnlyArgs("index", args, "--allow-heuristic", "--force", "--rebuild", "--untrusted", "--trusted")
 	if rc != 0 {
 		return rc
@@ -2340,7 +2346,7 @@ func cmdIndex(args []string) int {
 		fmt.Fprintln(os.Stderr, "index:", err)
 		return 1
 	}
-	printJSON(res)
+	printOutput(res, format)
 	if len(res.Readiness) == 0 {
 		return 0
 	}
@@ -2358,6 +2364,35 @@ func cmdIndex(args []string) int {
 	fmt.Fprintln(os.Stderr, "prism: the index was written, but results for these languages are name-based and less accurate.\n"+
 		"       Fix the above and rerun `prism index`, or pass --allow-heuristic to accept name-based results.")
 	return 3
+}
+
+// printDoctor prints doctor's answer: JSON with --format json, else a
+// short text summary; the per-language manifest stays in JSON (CON-01).
+func printDoctor(format outputFormat, m map[string]any) {
+	if format == formatJSON {
+		printJSON(m)
+		return
+	}
+	langs := m["languages"]
+	delete(m, "languages")
+	text := genericTextOf(m)
+	fmt.Print(text)
+	if langs != nil {
+		fmt.Println("languages: per-language analysis tiers and caveats with --format json")
+	}
+}
+
+// genericTextOf renders any value (struct, map) as generic text.
+func genericTextOf(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprint(v) + "\n"
+	}
+	var x any
+	_ = json.Unmarshal(b, &x)
+	var sb strings.Builder
+	writeGeneric(&sb, "", x)
+	return sb.String()
 }
 
 // cmdTrust records the user's trust decision for a repository (SEC-01).
@@ -2387,6 +2422,10 @@ func cmdTrust(cmd string, args []string) int {
 }
 
 func cmdStatus(args []string) int {
+	args, format, rc := takeFormat("status", args)
+	if rc != 0 {
+		return rc
+	}
 	dir, _, rc := dirOnlyArgs("status", args)
 	if rc != 0 {
 		return rc
@@ -2406,11 +2445,15 @@ func cmdStatus(args []string) int {
 		fmt.Fprintln(os.Stderr, "status:", err)
 		return 1
 	}
-	printJSON(res)
+	printOutput(res, format)
 	return 0
 }
 
 func cmdDoctor(args []string) int {
+	args, format, rc := takeFormat("doctor", args)
+	if rc != 0 {
+		return rc
+	}
 	dir, _, rc := dirOnlyArgs("doctor", args)
 	if rc != 0 {
 		return rc
@@ -2418,7 +2461,7 @@ func cmdDoctor(args []string) int {
 	root := mustAbs(dir)
 	_, client, err := newClient(root)
 	if err != nil {
-		printJSON(map[string]any{
+		printDoctor(format, map[string]any{
 			"status":  "error",
 			"version": version.Version,
 			"root":    root,
@@ -2430,7 +2473,7 @@ func cmdDoctor(args []string) int {
 
 	graph, err := client.Status(context.Background())
 	if err != nil {
-		printJSON(map[string]any{
+		printDoctor(format, map[string]any{
 			"status":  "error",
 			"version": version.Version,
 			"root":    root,
@@ -2461,7 +2504,7 @@ func cmdDoctor(args []string) int {
 			warnings = append(warnings, "grove engine is "+g.String()+", not a released version; results may differ from a release build")
 		}
 	}
-	printJSON(map[string]any{
+	printDoctor(format, map[string]any{
 		"status":   state,
 		"version":  version.Version,
 		"grove":    groveLinked,
@@ -3132,7 +3175,7 @@ func lookupArgIsPath(a string) bool {
 // cmdNode is the one-shot orientation view — a symbol's source + neighbours,
 // or a file's source + defined symbols + dependents.
 func cmdNode(args []string) int {
-	args, rc := positionalsFirst("node", "a symbol or file", "prism node <symbol-or-file> [dir] [--file <path>] [--format text|lean|json]", 1, args, "--file", "--format")
+	args, rc := positionalsFirst("node", "a symbol or file", "prism node <symbol-or-file> [dir] [--file <path>] [--format text|json]", 1, args, "--file", "--format")
 	if rc != 0 {
 		return rc
 	}
@@ -3324,7 +3367,7 @@ func cmdChangeImpact(args []string) int {
 	}
 	queries := []string{args[0]}
 	dir, dirSet := ".", false
-	format := formatJSON
+	format := formatText
 	file := ""
 	repo := ""
 	for i := 1; i < len(args); i++ {
@@ -3477,7 +3520,7 @@ func cmdRenamePlan(args []string) int {
 	}
 	query, newName := args[0], args[1]
 	dir, dirSet := ".", false
-	format := formatJSON
+	format := formatText
 	file := ""
 	allowCollision := false
 	for i := 2; i < len(args); i++ {
@@ -3537,7 +3580,7 @@ func cmdMissingImplementations(args []string) int {
 	}
 	query := args[0]
 	dir, dirSet := ".", false
-	format := formatJSON
+	format := formatText
 	file := ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
@@ -3582,7 +3625,7 @@ func cmdMissingImplementations(args []string) int {
 
 func cmdDeadCode(args []string) int {
 	dir, dirSet := ".", false
-	format := formatJSON
+	format := formatText
 	var roots []any
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -3741,6 +3784,10 @@ func cmdDrift(args []string) int {
 }
 
 func cmdConfig(args []string) int {
+	args, format, rc := takeFormat("config", args)
+	if rc != 0 {
+		return rc
+	}
 	dir, _, rc := dirOnlyArgs("config", args)
 	if rc != 0 {
 		return rc
@@ -3750,7 +3797,7 @@ func cmdConfig(args []string) int {
 		fmt.Fprintln(os.Stderr, "config:", err)
 		return 1
 	}
-	printJSON(cfg)
+	printOutput(cfg, format)
 	return 0
 }
 

@@ -74,7 +74,35 @@ func choiceFlag(cmd string, args []string, i int, choices ...string) (string, er
 // formatFlag parses --format text|lean|json.
 func formatFlag(cmd string, args []string, i int) (outputFormat, error) {
 	v, err := choiceFlag(cmd, args, i, string(formatText), string(formatLean), string(formatJSON))
+	if outputFormat(v) == formatLean {
+		// lean was larger than text (change-impact 3.6 KB vs 2.1 KB); it is
+		// an alias of text now (CON-01).
+		return formatText, err
+	}
 	return outputFormat(v), err
+}
+
+// takeFormat removes --format X and --json from args and returns the
+// output format, text unless asked otherwise (CON-01).
+func takeFormat(cmd string, args []string) ([]string, outputFormat, int) {
+	format := formatText
+	rest := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			format = formatJSON
+		case "--format":
+			f, err := formatFlag(cmd, args, i)
+			if err != nil {
+				return nil, "", usageError(err)
+			}
+			format = f
+			i++
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	return rest, format, 0
 }
 
 // usageError prints a flag-value error and returns the usage exit code.

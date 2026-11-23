@@ -23,7 +23,7 @@ func TestCmdIndexForceRerunsSkippedAnalyzers(t *testing.T) {
 	if !strings.Contains(again, "skipped: no file changes since last index") || !strings.Contains(again, "index --force") {
 		t.Fatalf("no-change index should skip analyzers and name index --force:\n%s", again)
 	}
-	forced := captureStdout(func() { rc = cmdIndex([]string{dir, "--force"}) })
+	forced := captureStdout(func() { rc = cmdIndex([]string{dir, "--force", "--format", "json"}) })
 	if rc != 0 {
 		t.Fatalf("index --force = %d\n%s", rc, forced)
 	}
