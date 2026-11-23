@@ -180,6 +180,9 @@ func (h *Handler) impactOtherMentions(ctx context.Context, r *grove.ChangeImpact
 	if len(related) > 0 {
 		out[0] += fmt.Sprintf(" %d of them declare a super contract of the queried symbol, listed as related below.", len(related))
 	}
+	if line := unsupportedMentionLine(leaf, append(append([]mentionLine{}, code...), strs...)); line != "" {
+		out = append(out, line)
+	}
 	if len(otherDecls) > 0 {
 		shown := otherDecls
 		if len(shown) > 12 {
@@ -384,4 +387,52 @@ func wordPattern(leaf string) string {
 		p += `\b`
 	}
 	return p
+}
+
+// noGraphLanguages are code languages Grove has no graph for (GAP-09): a
+// line naming the symbol in one is a text match the graph never checked.
+var noGraphLanguages = map[string]string{
+	".rb": "Ruby", ".rake": "Ruby", ".gemspec": "Ruby",
+	".scala": "Scala", ".sc": "Scala",
+	".dart": "Dart", ".lua": "Lua",
+	".ex": "Elixir", ".exs": "Elixir",
+	".zig": "Zig", ".r": "R",
+	".pl": "Perl", ".pm": "Perl",
+	".vue": "Vue", ".svelte": "Svelte",
+}
+
+// NoGraphLanguage names the language of a code file extension Grove has
+// no graph for, or "".
+func NoGraphLanguage(ext string) string { return noGraphLanguages[strings.ToLower(ext)] }
+
+// unsupportedMentionPrefix starts the line that says the name appears in
+// files the graph does not cover; attachEditSites keys on it.
+const unsupportedMentionPrefix = "also named in "
+
+func unsupportedMentionLine(leaf string, lines []mentionLine) string {
+	files := map[string]map[string]bool{} // language -> files
+	for _, l := range lines {
+		lang := noGraphLanguages[strings.ToLower(filepath.Ext(l.file))]
+		if lang == "" {
+			continue
+		}
+		if files[lang] == nil {
+			files[lang] = map[string]bool{}
+		}
+		files[lang][l.file] = true
+	}
+	if len(files) == 0 {
+		return ""
+	}
+	langs := make([]string, 0, len(files))
+	for l := range files {
+		langs = append(langs, l)
+	}
+	sort.Strings(langs)
+	var parts []string
+	for _, l := range langs {
+		parts = append(parts, fmt.Sprintf("%d %s file(s)", len(files[l]), l))
+	}
+	return unsupportedMentionPrefix + strings.Join(parts, ", ") + ": Prism has no graph for " +
+		strings.Join(langs, ", ") + ", so those lines are text matches only and the sites above may be incomplete"
 }

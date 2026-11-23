@@ -279,6 +279,12 @@ func (h *Handler) attachEditSites(ctx context.Context, out map[string]any, r *gr
 		return
 	}
 	out["otherMentions"] = other
+	for _, line := range other {
+		if strings.HasPrefix(line, unsupportedMentionPrefix) {
+			// GAP-09: "I did not look" must not read as "not there".
+			out["safeToClaimComplete"] = false
+		}
+	}
 	if out["coverageNote"] == dynamicCallerNote && !strings.Contains(other[0], "not checked") {
 		// The partition is the text search this note asked for.
 		out["coverageNote"] = "dynamic-language callers are inferred from names and receiver types; the line count below editSites accounts for every line naming the symbol."

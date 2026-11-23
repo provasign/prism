@@ -2618,6 +2618,11 @@ func cmdStatus(args []string) int {
 		return 1
 	}
 	printOutput(res, format)
+	if format == formatText {
+		if ng := noGraphSummary(root); ng != "" {
+			fmt.Println(ng) // GAP-09
+		}
+	}
 	return 0
 }
 
@@ -2667,6 +2672,9 @@ func cmdDoctor(args []string) int {
 		warnings = append(warnings, r.Language+": compiler-backed analysis missing ("+r.Problem+"); results are name-based. Fix: "+r.Fix)
 	}
 	warnings = append(warnings, sharedConfigWarnings(root)...)
+	if ng := noGraphSummary(root); ng != "" {
+		warnings = append(warnings, ng)
+	}
 	if c, err := config.LoadFromDir(root); err == nil {
 		for _, p := range c.Problems {
 			warnings = append(warnings, "prism.yaml: "+p)

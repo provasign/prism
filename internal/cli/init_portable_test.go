@@ -79,3 +79,17 @@ func TestQueryRefusesNonProjectDir(t *testing.T) {
 		t.Fatal("explicit index did not build")
 	}
 }
+
+// GAP-09: status and doctor count files the graph does not cover.
+func TestNoGraphSummary(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "a.go"), "package a\n")
+	mustWriteFile(t, filepath.Join(dir, "lib", "x.rb"), "x\n")
+	mustWriteFile(t, filepath.Join(dir, "lib", "y.rb"), "y\n")
+	if got := noGraphSummary(dir); !strings.Contains(got, "2 Ruby file(s)") {
+		t.Fatalf("summary: %q", got)
+	}
+	if got := noGraphSummary(t.TempDir()); got != "" {
+		t.Fatalf("empty dir: %q", got)
+	}
+}
