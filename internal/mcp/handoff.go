@@ -34,6 +34,10 @@ func (s *Server) startHandoff() (*exec.Cmd, io.WriteCloser, *bufio.Reader, error
 	if path == "" {
 		return nil, nil, nil, errors.New("launch path unknown")
 	}
+	if err := handoffBinaryOK(path); err != nil {
+		return nil, nil, nil, err
+	}
+	fmt.Fprintf(os.Stderr, "mcp: binary changed on disk; handing off from prism %s to %s\n", version.Version, path)
 	cmd := exec.Command(path, handoffArgs()...)
 	cmd.Stderr = os.Stderr
 	stdin, err := cmd.StdinPipe()
