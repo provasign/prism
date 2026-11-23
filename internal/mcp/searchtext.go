@@ -521,32 +521,6 @@ func takeExactInventory(g map[string]any) ([]any, map[string]any) {
 	return nil, g
 }
 
-// takeInventory retains the legacy directory-count payload decoder for old
-// responses already in flight. New exhaustive searches use takeExactInventory.
-func takeInventory(g map[string]any) (map[string]int, map[string]any) {
-	hits := anySlice(g["textHits"])
-	for i, h := range hits {
-		hm, ok := h.(map[string]any)
-		if !ok {
-			continue
-		}
-		raw, ok := hm["rawFiles"].(map[string]int)
-		if !ok {
-			continue
-		}
-		rest := make([]any, 0, len(hits)-1)
-		rest = append(rest, hits[:i]...)
-		rest = append(rest, hits[i+1:]...)
-		out := make(map[string]any, len(g))
-		for k, v := range g {
-			out[k] = v
-		}
-		out["textHits"] = rest
-		return raw, out
-	}
-	return nil, g
-}
-
 func mergeExactInventory(dst map[string]map[string]map[string]any, inventory []any) {
 	for _, raw := range inventory {
 		entry, ok := raw.(map[string]any)

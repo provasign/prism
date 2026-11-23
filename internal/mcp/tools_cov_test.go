@@ -380,7 +380,7 @@ func TestNewHandlerWithReady(t *testing.T) {
 	readyCh := make(chan struct{})
 	h := NewHandlerWithReady(&config.Config{MaxCacheFiles: 100}, t.TempDir(), gc, readyCh)
 	if h == nil {
-		t.Error("nil handler")
+		t.Fatal("nil handler")
 	}
 	if h.readyCh == nil {
 		t.Error("readyCh not set")

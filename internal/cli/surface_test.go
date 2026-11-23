@@ -214,7 +214,7 @@ func TestPromptInterfaceListsCLIFirst(t *testing.T) {
 		if err != nil || got != tc.want {
 			t.Errorf("def=%q input=%q: got %q, %v", tc.def, tc.input, got, err)
 		}
-		if strings.Index(out, "[1] CLI") < 0 || strings.Index(out, "[1] CLI") > strings.Index(out, "[2] MCP") {
+		if !strings.Contains(out, "[1] CLI") || strings.Index(out, "[1] CLI") > strings.Index(out, "[2] MCP") {
 			t.Errorf("prompt does not list CLI first:\n%s", out)
 		}
 	}

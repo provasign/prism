@@ -26,7 +26,7 @@ const (
 	largeRepoSourceFiles = 500
 )
 
-var sourceCountLimit = errors.New("source file count reached recommendation threshold")
+var errSourceCountLimit = errors.New("source file count reached recommendation threshold")
 
 // interfaceRecommendation uses a bounded source-file count as a hint about
 // repeated CLI graph-load cost. It does not claim a model-token or dollar
@@ -53,12 +53,12 @@ func interfaceRecommendation(root string) string {
 		case ".go", ".py", ".java", ".js", ".jsx", ".ts", ".tsx", ".rs", ".c", ".cc", ".cpp", ".h", ".hpp", ".cs", ".php", ".rb", ".swift", ".kt", ".kts", ".scala":
 			count++
 			if count >= largeRepoSourceFiles {
-				return sourceCountLimit
+				return errSourceCountLimit
 			}
 		}
 		return nil
 	})
-	if err != nil && !errors.Is(err, sourceCountLimit) {
+	if err != nil && !errors.Is(err, errSourceCountLimit) {
 		return "Recommendation: MCP for repeated Prism calls; CLI for occasional one-off calls. Repository size could not be measured."
 	}
 	if count >= largeRepoSourceFiles {

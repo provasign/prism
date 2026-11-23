@@ -57,7 +57,7 @@ func TestNoticeOnceAndTempRootsNotRecorded(t *testing.T) {
 		t.Fatalf("second notice: %q", n)
 	}
 	tmp := t.TempDir()
-	if NoticeOnce(tmp) == "" || NoticeOnce(tmp) == "" {
+	if first, second := NoticeOnce(tmp), NoticeOnce(tmp); first == "" || second == "" {
 		t.Fatal("temp roots are not recorded, so the note repeats")
 	}
 	for _, r := range Roots() {

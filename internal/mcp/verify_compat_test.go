@@ -103,19 +103,6 @@ func variadicVerify(t *testing.T, base, edits map[string]string) map[string]any 
 	return out.(map[string]any)
 }
 
-func missedFiles(m map[string]any) map[string]bool {
-	files := map[string]bool{}
-	for _, s := range anySlice(m["missedSites"]) {
-		switch site := s.(type) {
-		case missedSite:
-			files[site.File] = true
-		case map[string]any:
-			files[stringArg(site, "file", "")] = true
-		}
-	}
-	return files
-}
-
 func TestVerifyGoVariadicStillFlagsInterfaceImplementation(t *testing.T) {
 	m := variadicVerify(t, map[string]string{
 		"core/core.go": "package core\n\ntype Doer interface {\n\tDo(x string) string\n}\n\ntype S struct{}\n\nfunc (S) Do(x string) string { return x }\n\nvar _ Doer = S{}\n",

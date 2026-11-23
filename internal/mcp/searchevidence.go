@@ -640,7 +640,7 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 			// turn), so a windowed hit the agent immediately re-Reads in
 			// full costs a whole extra turn (~50K tokens) to save nothing —
 			// the window was never going to be cheaper once re-read. Bound
-			// matches compactSearchBodiesLegacy's existing full-body
+			// matches the shared full-body
 			// threshold (maxBodyLines/maxBodyBytes) so this isn't a new,
 			// separately-tuned cap; a query with 20+ hits still windows
 			// every one of them (selected is already capped upstream), so

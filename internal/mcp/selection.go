@@ -226,10 +226,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 				}
 			}
 			nameHits = append(realHits, doubleHits...)
-			var termSeeds []grove.SymbolRecord
-			for _, m := range append(nameHits, contentHits...) {
-				termSeeds = append(termSeeds, m)
-			}
+			termSeeds := append(append([]grove.SymbolRecord(nil), nameHits...), contentHits...)
 			perTermSeeds = append(perTermSeeds, termSeeds)
 		}
 		seeds = interleaveUniqueTermSeeds(perTermSeeds)

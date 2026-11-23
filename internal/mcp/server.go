@@ -1155,18 +1155,6 @@ func (h *Handler) compactSearchBodiesEnclosing(ctx context.Context, out map[stri
 	return h.compactSearchBodiesEnclosingExcept(ctx, out, nil)
 }
 
-// compactSearchBodiesEnclosingExcept is compactSearchBodiesEnclosing with
-// symbols already delivered by another rule left out.
-//
-// Allocation: a batched query is several questions, so every term gets one
-// region before any term gets a second (a live click cell batched four terms
-// and only the first was ever served). A single term keeps its two regions.
-// Slots count delivered regions, not visited candidates: a symbol reached
-// through both its text hit and its symbols entry must not consume two slots.
-func (h *Handler) compactSearchBodiesLegacy(ctx context.Context, out map[string]any, skip []grove.SymbolRecord) string {
-	return h.compactSearchBodiesLegacyWith(ctx, out, skip, searchBodyOptions{})
-}
-
 func (h *Handler) compactSearchBodiesLegacyWith(ctx context.Context, out map[string]any, skip []grove.SymbolRecord, opts searchBodyOptions) string {
 	if h.Grove == nil {
 		return ""
@@ -1436,14 +1424,8 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 		strings.Join(sections, "")
 }
 
-func (h *Handler) renderCompactSearchBodies(picked []ranking.BudgetedSymbol, note ...string) string {
-	text, commit := h.renderCompactSearchBodiesDeferred(picked, note...)
-	commit()
-	return text
-}
-
-// renderCompactSearchBodiesDeferred renders like renderCompactSearchBodies
-// but records nothing as delivered until commit runs: a caller that may
+// renderCompactSearchBodiesDeferred renders compact search bodies but
+// records nothing as delivered until commit runs: a caller that may
 // still discard the rendering (a pick the budget rejects) commits only what
 // it sends. Recording a discarded pick made a later read answer
 // "[prism:cached] ... lines 1-71" for source the agent never saw.

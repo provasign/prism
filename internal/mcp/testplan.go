@@ -878,9 +878,3 @@ func planIDName(id string) string {
 	}
 	return id
 }
-
-func writePlanEvidence(b *strings.Builder, path []testPlanStep) {
-	for _, s := range path {
-		fmt.Fprintf(b, "    %s -> %s [%s; source=%s; confidence=%g]\n", s.From, s.To, s.Relation, s.Source, s.Confidence)
-	}
-}

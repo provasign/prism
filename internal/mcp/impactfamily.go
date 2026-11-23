@@ -102,21 +102,7 @@ type localFamily struct {
 	members int
 }
 
-// partitionLocalFamilies splits a wide bare member name in a nominal
-// language into the override families the graph already knows: query one
-// uncovered candidate, mark everything its change set declares, repeat.
-// jackson-databind (2026-10-12): serializeWithType names 57 methods in two
-// unrelated families, JsonSerializer's (~40) and JsonSerializable's (16).
-// The parameter-shape inference split JsonSerializer's overrides by their
-// first parameter type (QName, Path, Blob...) and answered with the 16 as
-// "one family", silently. ok is false when the name is not nominal-language
-// or any candidate stays uncovered (an external root: inference applies).
-func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]localFamily, bool) {
-	families, ok, _ := h.partitionLocalFamiliesCapped(ctx, query)
-	return families, ok
-}
-
-// partitionLocalFamiliesCapped is partitionLocalFamilies that also reports
+// partitionLocalFamiliesCapped partitions the local families and reports
 // whether it stopped at the query cap: an unfinished partition is not
 // evidence of an external root, so the caller must not infer one.
 func (h *Handler) partitionLocalFamiliesCapped(ctx context.Context, query string) ([]localFamily, bool, bool) {
