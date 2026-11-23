@@ -1,0 +1,93 @@
+[18:46:08] DISK gin-gonic__gin__pr4698: free 600 GiB; com.docker.docker 5.0->5.4G; 47s rc=0
+[18:46:08] PAIR 1 gin-gonic__gin__pr4698: base resolved=True task=$0.022 | cand resolved=True task=$0.022 | requests 4 -> 4
+[18:46:55] DISK gin-gonic__gin__pr4702: free 600 GiB; caches unchanged; 48s rc=0
+[18:46:55] PAIR 2 gin-gonic__gin__pr4702: base resolved=True task=$0.030 | cand resolved=True task=$0.030 | requests 5 -> 5
+[18:48:21] DISK go-chi__chi__pr1029: free 600 GiB; caches unchanged; 85s rc=0
+[18:48:21] PAIR 3 go-chi__chi__pr1029: base resolved=True task=$0.024 | cand resolved=True task=$0.031 | requests 4 -> 4
+[18:49:57] DISK go-chi__chi__pr1158: free 600 GiB; caches unchanged; 96s rc=0
+[18:49:57] PAIR 4 go-chi__chi__pr1158: base resolved=True task=$0.046 | cand resolved=True task=$0.040 | requests 7 -> 6
+[18:50:52] DISK labstack__echo__pr3006: free 600 GiB; com.docker.docker 5.1->5.2G; 55s rc=0
+[18:50:52] PAIR 5 labstack__echo__pr3006: base resolved=True task=$0.051 | cand resolved=True task=$0.038 | requests 6 -> 7
+[18:52:03] DISK urfave__cli__pr2355: free 600 GiB; caches unchanged; 71s rc=0
+[18:52:03] PAIR 6 urfave__cli__pr2355: base resolved=True task=$0.087 | cand resolved=True task=$0.074 | requests 8 -> 8
+[18:52:46] DISK urfave__cli__pr2419: free 600 GiB; caches unchanged; 44s rc=0
+[18:52:46] PAIR 7 urfave__cli__pr2419: base resolved=False task=$0.038 | cand resolved=False task=$0.027 | requests 5 -> 4
+[18:53:42] DISK urfave__cli__pr2440: free 599 GiB; caches unchanged; 55s rc=0
+[18:53:42] PAIR 8 urfave__cli__pr2440: base resolved=True task=$0.058 | cand resolved=True task=$0.060 | requests 6 -> 6
+[18:56:14] DISK colinhacks__zod__pr6129: free 597 GiB; .pnpm-eval-store 0.0->0.4G, com.docker.docker 5.2->6.9G; 153s rc=0
+[18:56:14] PAIR 9 colinhacks__zod__pr6129: base resolved=True task=$0.097 | cand resolved=True task=$0.054 | requests 9 -> 6
+[18:57:49] DISK colinhacks__zod__pr6144: free 597 GiB; caches unchanged; 94s rc=0
+[18:57:49] PAIR 10 colinhacks__zod__pr6144: base resolved=True task=$0.036 | cand resolved=True task=$0.038 | requests 5 -> 5
+[18:59:27] DISK colinhacks__zod__pr6439: free 597 GiB; caches unchanged; 99s rc=0
+[18:59:27] PAIR 11 colinhacks__zod__pr6439: base resolved=True task=$0.021 | cand resolved=True task=$0.021 | requests 3 -> 3
+[19:02:23] DISK colinhacks__zod__pr6500: free 597 GiB; caches unchanged; 176s rc=0
+[19:02:23] PAIR 12 colinhacks__zod__pr6500: base resolved=False task=$0.125 | cand resolved=True task=$0.118 | requests 13 -> 12
+[19:04:30] DISK honojs__hono__pr5164: free 596 GiB; com.docker.docker 6.9->7.3G; 126s rc=0
+[19:04:30] PAIR 13 honojs__hono__pr5164: base resolved=True task=$0.045 | cand resolved=True task=$0.054 | requests 7 -> 7
+[19:05:52] DISK honojs__hono__pr5199: free 596 GiB; caches unchanged; 82s rc=0
+[19:05:52] PAIR 14 honojs__hono__pr5199: base resolved=True task=$0.028 | cand resolved=True task=$0.025 | requests 4 -> 4
+[19:07:20] DISK honojs__hono__pr5366: free 596 GiB; caches unchanged; 88s rc=0
+[19:07:20] PAIR 15 honojs__hono__pr5366: base resolved=True task=$0.029 | cand resolved=True task=$0.029 | requests 4 -> 5
+[19:08:51] DISK honojs__hono__pr5373: free 596 GiB; caches unchanged; 90s rc=0
+[19:08:51] PAIR 16 honojs__hono__pr5373: base resolved=True task=$0.037 | cand resolved=True task=$0.027 | requests 6 -> 5
+[19:10:48] DISK pydantic__pydantic__pr13516: free 592 GiB; com.docker.docker 7.3->8.8G; 117s rc=0
+[19:10:48] PAIR 17 pydantic__pydantic__pr13516: base resolved=False task=$0.035 | cand resolved=False task=$0.038 | requests 3 -> 4
+[19:15:58] DISK urllib3__urllib3__pr3786: free 593 GiB; caches unchanged; 310s rc=0
+[19:15:58] PAIR 18 urllib3__urllib3__pr3786: base resolved=False task=$0.192 | cand resolved=False task=$0.095 | requests 17 -> 9
+[19:15:58] DISK urllib3__urllib3__pr5020: free 593 GiB; caches unchanged; 0s rc=0
+[19:15:58] STOP cell error urllib3__urllib3__pr5020: base=None cand=None rc=0
+guard rc=5
+[19:47:34] DISK urllib3__urllib3__pr5020: free 595 GiB; caches unchanged; 0s rc=0
+[19:47:34] SKIP urllib3__urllib3__pr5020: harness marks it invalid
+[19:53:05] DISK urllib3__urllib3__pr5093: free 595 GiB; com.docker.docker 8.0->8.2G; 331s rc=0
+[19:53:05] PAIR 19 urllib3__urllib3__pr5093: base resolved=False task=$0.154 | cand resolved=False task=$0.088 | requests 15 -> 10
+[20:02:57] DISK apache__dubbo__pr16325: free 593 GiB; .m2-eval 0.0->0.5G, com.docker.docker 8.2->8.8G; 592s rc=0
+[20:02:57] PAIR 20 apache__dubbo__pr16325: base resolved=False task=$0.222 | cand resolved=False task=$0.218 | requests 16 -> 15
+[20:08:51] DISK apache__dubbo__pr16350: free 593 GiB; caches unchanged; 354s rc=0
+[20:08:51] PAIR 21 apache__dubbo__pr16350: base resolved=True task=$0.026 | cand resolved=True task=$0.038 | requests 5 -> 7
+[20:15:20] DISK apache__dubbo__pr16391: free 593 GiB; caches unchanged; 388s rc=0
+[20:15:20] PAIR 22 apache__dubbo__pr16391: base resolved=True task=$0.061 | cand resolved=True task=$0.070 | requests 8 -> 10
+[20:23:33] DISK apache__dubbo__pr16395: free 593 GiB; caches unchanged; 493s rc=0
+[20:23:33] PAIR 23 apache__dubbo__pr16395: base resolved=False task=$0.143 | cand resolved=False task=$0.119 | requests 12 -> 11
+[20:25:01] DISK google__gson__pr3059: free 593 GiB; caches unchanged; 88s rc=0
+[20:25:01] PAIR 24 google__gson__pr3059: base resolved=False task=$0.054 | cand resolved=False task=$0.057 | requests 6 -> 7
+[20:25:54] DISK google__gson__pr3067: free 593 GiB; caches unchanged; 53s rc=0
+[20:25:54] PAIR 25 google__gson__pr3067: base resolved=True task=$0.026 | cand resolved=True task=$0.026 | requests 5 -> 5
+[20:28:26] DISK google__gson__pr3098: free 593 GiB; caches unchanged; 152s rc=0
+[20:28:26] PAIR 26 google__gson__pr3098: base resolved=False task=$0.180 | cand resolved=False task=$0.142 | requests 16 -> 12
+[20:29:35] DISK google__gson__pr3112: free 593 GiB; caches unchanged; 69s rc=0
+[20:29:35] PAIR 27 google__gson__pr3112: base resolved=False task=$0.047 | cand resolved=False task=$0.058 | requests 6 -> 7
+[20:31:45] DISK google__gson__pr3116: free 593 GiB; caches unchanged; 130s rc=0
+[20:31:45] PAIR 28 google__gson__pr3116: base resolved=False task=$0.130 | cand resolved=False task=$0.100 | requests 10 -> 9
+[20:34:08] DISK FasterXML__jackson-databind__pr6030: free 593 GiB; caches unchanged; 143s rc=0
+[20:34:08] PAIR 29 FasterXML__jackson-databind__pr6030: base resolved=False task=$0.060 | cand resolved=False task=$0.061 | requests 7 -> 8
+[20:36:02] DISK FasterXML__jackson-databind__pr6039: free 593 GiB; caches unchanged; 114s rc=0
+[20:36:02] PAIR 30 FasterXML__jackson-databind__pr6039: base resolved=True task=$0.056 | cand resolved=True task=$0.053 | requests 8 -> 7
+[20:40:22] DISK FasterXML__jackson-databind__pr6042: free 593 GiB; caches unchanged; 260s rc=0
+[20:40:22] PAIR 31 FasterXML__jackson-databind__pr6042: base resolved=True task=$0.167 | cand resolved=True task=$0.147 | requests 14 -> 14
+[20:44:34] DISK FasterXML__jackson-databind__pr6044: free 593 GiB; caches unchanged; 252s rc=0
+[20:44:34] PAIR 32 FasterXML__jackson-databind__pr6044: base resolved=False task=$0.001 | cand resolved=False task=$0.398 | requests 2 -> 22
+[20:51:32] DISK urllib3__urllib3__pr5020: free 594 GiB; caches unchanged; 0s rc=0
+[20:51:32] SKIP urllib3__urllib3__pr5020: harness marks it invalid
+[20:57:31] DISK FasterXML__jackson-databind__pr6044: free 594 GiB; caches unchanged; 359s rc=0
+[20:57:31] PAIR 32 FasterXML__jackson-databind__pr6044: base resolved=False task=$0.285 | cand resolved=False task=$0.307 | requests 19 -> 19
+[20:59:59] DISK FasterXML__jackson-databind__pr6056: free 594 GiB; caches unchanged; 148s rc=0
+[20:59:59] PAIR 33 FasterXML__jackson-databind__pr6056: base resolved=True task=$0.101 | cand resolved=True task=$0.083 | requests 11 -> 9
+[21:01:58] DISK FasterXML__jackson-databind__pr6061: free 593 GiB; caches unchanged; 119s rc=0
+[21:01:58] PAIR 34 FasterXML__jackson-databind__pr6061: base resolved=False task=$0.045 | cand resolved=False task=$0.038 | requests 6 -> 6
+[21:05:40] DISK FasterXML__jackson-databind__pr6076: free 593 GiB; caches unchanged; 222s rc=0
+[21:05:40] PAIR 35 FasterXML__jackson-databind__pr6076: base resolved=False task=$0.152 | cand resolved=False task=$0.123 | requests 13 -> 10
+[21:08:30] DISK FasterXML__jackson-databind__pr6102: free 593 GiB; caches unchanged; 170s rc=0
+[21:08:30] PAIR 36 FasterXML__jackson-databind__pr6102: base resolved=True task=$0.068 | cand resolved=True task=$0.071 | requests 7 -> 8
+[21:10:33] DISK FasterXML__jackson-databind__pr6138: free 593 GiB; caches unchanged; 122s rc=0
+[21:10:33] PAIR 37 FasterXML__jackson-databind__pr6138: base resolved=True task=$0.045 | cand resolved=True task=$0.063 | requests 6 -> 7
+[21:12:22] DISK FasterXML__jackson-databind__pr6155: free 593 GiB; caches unchanged; 110s rc=0
+[21:12:22] PAIR 38 FasterXML__jackson-databind__pr6155: base resolved=True task=$0.042 | cand resolved=True task=$0.049 | requests 6 -> 8
+[21:13:55] DISK FasterXML__jackson-databind__pr6186: free 593 GiB; caches unchanged; 92s rc=0
+[21:13:55] PAIR 39 FasterXML__jackson-databind__pr6186: base resolved=True task=$0.026 | cand resolved=True task=$0.027 | requests 4 -> 4
+[21:15:52] DISK FasterXML__jackson-databind__pr6215: free 593 GiB; caches unchanged; 117s rc=0
+[21:15:52] PAIR 40 FasterXML__jackson-databind__pr6215: base resolved=False task=$0.034 | cand resolved=False task=$0.028 | requests 6 -> 5
+[21:16:46] DISK FasterXML__jackson-dataformat-xml__pr885: free 593 GiB; caches unchanged; 53s rc=0
+[21:16:46] PAIR 41 FasterXML__jackson-dataformat-xml__pr885: base resolved=False task=$0.020 | cand resolved=False task=$0.037 | requests 3 -> 5
+[21:16:46] ALLDONE
+guard rc=0
