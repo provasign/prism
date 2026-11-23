@@ -14,10 +14,12 @@ func TestFormatTextNeverPrintsJSON(t *testing.T) {
 		t.Fatalf("index rc=%d", rc)
 	}
 	runs := map[string]func() int{
-		"search regex error":  func() int { return cmdSearch([]string{"[unclosed", "--regex", "--dir", dir, "--format", "text"}) },
-		"search rollup":       func() int { return cmdSearch([]string{"Main", "--rollup-only", "--dir", dir, "--format", "text"}) },
-		"search no match":     func() int { return cmdSearch([]string{"zzzNoSuch", "--dir", dir, "--format", "text"}) },
-		"query symbols":       func() int { return cmdQuery([]string{"--terms", "Main", "--delivery", "symbols", dir, "--format", "text"}) },
+		"search regex error": func() int { return cmdSearch([]string{"[unclosed", "--regex", "--dir", dir, "--format", "text"}) },
+		"search rollup":      func() int { return cmdSearch([]string{"Main", "--rollup-only", "--dir", dir, "--format", "text"}) },
+		"search no match":    func() int { return cmdSearch([]string{"zzzNoSuch", "--dir", dir, "--format", "text"}) },
+		"query symbols": func() int {
+			return cmdQuery([]string{"--terms", "Main", "--delivery", "symbols", dir, "--format", "text"})
+		},
 		"query no match":      func() int { return cmdQuery([]string{"--terms", "zzzNoSuch", dir, "--format", "text"}) },
 		"change-impact":       func() int { return cmdChangeImpact([]string{"Box.Main", dir, "--format", "text"}) },
 		"change-impact ambig": func() int { return cmdChangeImpact([]string{"Main", dir, "--format", "text"}) },
