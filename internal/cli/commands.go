@@ -786,7 +786,7 @@ mcp_surface: "compact"
 		fmt.Println("interface: cli — no MCP server registered; agents run `prism` in their shell")
 		return 0
 	}
-	registered := initRegisterMCPTools(abs, prismBin, harnesses, permissions, refresh, denyBuiltinSearch)
+	registered := initRegisterMCPTools(abs, portablePrismCommand(prismBin), harnesses, permissions, refresh, denyBuiltinSearch)
 	if len(registered) == 0 {
 		fmt.Println("tip: add prism to your AI tool's MCP config (see README)")
 	} else {
@@ -1322,6 +1322,113 @@ func stripPrismSections(content string) string {
 	return content
 }
 
+// sharedConfigWarnings flags committed MCP configs that run prism by a
+// machine-specific path, or by a path that does not exist (CON-06).
+func sharedConfigWarnings(root string) []string {
+	var out []string
+	for _, c := range []struct {
+		rel  string
+		maps [][]string
+	}{
+		{".mcp.json", [][]string{{"mcpServers"}}},
+		{".cursor/mcp.json", [][]string{{"mcpServers"}}},
+		{".vscode/mcp.json", [][]string{{"servers"}}},
+		{".gemini/settings.json", [][]string{{"mcpServers"}}},
+		{"opencode.json", [][]string{{"mcp"}, {"mcp", "servers"}}},
+	} {
+		cmd := existingPrismCommand(filepath.Join(root, c.rel), c.maps)
+		if cmd == "" || !filepath.IsAbs(cmd) {
+			continue
+		}
+		msg := fmt.Sprintf("%s runs prism as %s, a path on one machine; `prism init --refresh` writes plain `prism`", c.rel, cmd)
+		if _, err := os.Stat(cmd); err != nil {
+			msg = fmt.Sprintf("%s runs prism as %s, which does not exist here; `prism init --refresh` writes plain `prism`", c.rel, cmd)
+		}
+		out = append(out, msg)
+	}
+	if cmd := codexPrismCommand(filepath.Join(root, ".codex", "config.toml")); filepath.IsAbs(cmd) {
+		out = append(out, fmt.Sprintf(".codex/config.toml runs prism as %s, a path on one machine; `prism init --refresh` writes plain `prism`", cmd))
+	}
+	return out
+}
+
+// codexPrismCommand returns command = "..." from [mcp_servers.prism], or "".
+func codexPrismCommand(path string) string {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	in := false
+	for _, line := range strings.Split(string(raw), "\n") {
+		t := strings.TrimSpace(line)
+		if strings.HasPrefix(t, "[") {
+			in = t == "[mcp_servers.prism]"
+			continue
+		}
+		if in && strings.HasPrefix(t, "command") {
+			if _, v, ok := strings.Cut(t, "="); ok {
+				return strings.Trim(strings.TrimSpace(v), `"'`)
+			}
+		}
+	}
+	return ""
+}
+
+// workspaceFolderVar is the project root as Cursor and VS Code interpolate it.
+const workspaceFolderVar = "${workspaceFolder}"
+
+// portablePrismCommand is the command written into committed MCP configs:
+// plain "prism", resolved on each machine's PATH (CON-06). It warns when
+// that resolves to a different binary than the one running, or to none.
+func portablePrismCommand(self string) string {
+	onPath, err := exec.LookPath("prism")
+	switch {
+	case err != nil:
+		fmt.Fprintf(os.Stderr, "warning: prism is not on PATH; the shared config runs `prism`, so agents will not start it until %s is on PATH\n", filepath.Dir(self))
+	case !sameExecutable(onPath, self):
+		fmt.Fprintf(os.Stderr, "warning: prism on PATH is %s, not the running %s; the shared config uses the one on PATH\n", onPath, self)
+	}
+	return "prism"
+}
+
+func sameExecutable(a, b string) bool {
+	fa, errA := os.Stat(a)
+	fb, errB := os.Stat(b)
+	return errA == nil && errB == nil && os.SameFile(fa, fb)
+}
+
+// existingPrismCommand returns the command of the prism entry already in a
+// JSON MCP config, or "".
+func existingPrismCommand(path string, maps [][]string) string {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var doc map[string]any
+	if json.Unmarshal(raw, &doc) != nil {
+		return ""
+	}
+	for _, keys := range maps {
+		var cur any = doc
+		for _, k := range keys {
+			m, _ := cur.(map[string]any)
+			cur = m[k]
+		}
+		m, _ := cur.(map[string]any)
+		e, _ := m["prism"].(map[string]any)
+		switch c := e["command"].(type) {
+		case string:
+			return c
+		case []any:
+			if len(c) > 0 {
+				s, _ := c[0].(string)
+				return s
+			}
+		}
+	}
+	return ""
+}
+
 // detectSelfPath returns the absolute path to the running prism binary, or
 // falls back to "prism" (assumes it's on PATH).
 func detectSelfPath() string {
@@ -1366,7 +1473,10 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 		cleanupLegacyDenyEntries(claudeSettings)
 	}
 
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact", projectDir}}
+	// CON-06: these files are committed, so they name no machine path. The
+	// IDEs get ${workspaceFolder}, which both interpolate, instead of this
+	// checkout's absolute path.
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact", workspaceFolderVar}}
 	// Claude Code launches project-scope MCP servers with cwd at the project
 	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
 	// portable and correct after the repo moves. The IDE writers below keep
@@ -1406,7 +1516,7 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 			name:    "VS Code",
 			path:    filepath.Join(projectDir, ".vscode", "mcp.json"),
 			build: func(string) []byte {
-				return buildVSCodeConfig(prismBin, projectDir)
+				return buildVSCodeConfig(prismBin, workspaceFolderVar)
 			},
 			maps: [][]string{{"servers"}},
 		},
@@ -1458,6 +1568,9 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 			continue
 		}
 		isClaudeCode := w.name == "Claude Code"
+		if old := existingPrismCommand(p, w.maps); old != "" && old != prismBin && filepath.IsAbs(old) {
+			fmt.Printf("replaced the machine-specific command %s with %q in %s\n", old, prismBin, p)
+		}
 		content := w.build(p)
 		// Merge rather than overwrite existing configs.
 		merged, err := mergeOrCreate(p, content, w.maps...)
@@ -2514,6 +2627,7 @@ func cmdDoctor(args []string) int {
 		state = "warning"
 		warnings = append(warnings, r.Language+": compiler-backed analysis missing ("+r.Problem+"); results are name-based. Fix: "+r.Fix)
 	}
+	warnings = append(warnings, sharedConfigWarnings(root)...)
 	trustState := trust.For(root).String()
 	if strings.HasPrefix(trustState, "untrusted") {
 		warnings = append(warnings, "repository is "+trustState+": its build tools do not run, so Java (Maven/Gradle), TypeScript and Rust (rust-analyzer) analysis is name-based; `prism trust` enables it")

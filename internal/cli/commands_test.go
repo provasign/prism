@@ -86,8 +86,9 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	if err := json.Unmarshal(cursorRaw, &cursorCfg); err != nil {
 		t.Fatalf("unmarshal cursor config: %v", err)
 	}
-	if got := cursorCfg.MCPServers["prism"].Args; len(got) != 3 || got[1] != "--compact" || got[2] != projectDir {
-		t.Errorf("cursor args: got %v, want [\"mcp\", \"--compact\", %q]", got, projectDir)
+	// CON-06: committed config names no machine path.
+	if got := cursorCfg.MCPServers["prism"].Args; len(got) != 3 || got[1] != "--compact" || got[2] != workspaceFolderVar {
+		t.Errorf("cursor args: got %v, want [\"mcp\", \"--compact\", %q]", got, workspaceFolderVar)
 	}
 }
 
