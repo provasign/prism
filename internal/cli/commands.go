@@ -148,6 +148,12 @@ Usage:
                                   symbols it defines + the files depending on it
                                   [--file <path>]  disambiguate a symbol
                                   --format text|json  Output format (default: text)
+  prism callers <symbol> [dir]    Transitive callers as a tree, resolved incoming calls
+                                  and interface dispatch (marked "via"); [--depth N]
+                                  (default 3, max 6; 200 callers) [--file <path>]
+                                  [--format text|json]
+  prism path <from> <to> [dir]    Shortest resolved call path from one symbol to another;
+                                  exit 4 when there is none [--format text|json]
   prism references <name> [dir]   Find indexed syntactic uses of a name
                                   (comments/strings excluded) as path:line:col: text;
                                   Type.member or [--file <path> | --path <path>] resolves one symbol;
@@ -381,6 +387,10 @@ func Run(args []string) int {
 		return cmdResolve(rest)
 	case "edges":
 		return cmdEdges(rest)
+	case "callers":
+		return cmdCallers(rest)
+	case "path":
+		return cmdPath(rest)
 	case "change-impact":
 		return cmdChangeImpact(rest)
 	case "missing-implementations":
@@ -3491,6 +3501,100 @@ func cmdEdges(args []string) int {
 	}
 	printOutput(out, format)
 	return exitForAnswer("edges", out)
+}
+
+// cmdCallers prints the transitive callers of one symbol (GAP-03).
+func cmdCallers(args []string) int {
+	args, rc := positionalsFirst("callers", "a symbol", "prism callers <symbol> [dir] [--depth N]", 1, args, "--format", "--file", "--depth")
+	if rc != 0 {
+		return rc
+	}
+	callArgs := map[string]any{"name": args[0]}
+	dir, dirSet := ".", false
+	format := formatText
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--depth":
+			n, err := positiveIntFlag("callers", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			callArgs["depth"] = n
+			i++
+		case "--file":
+			v, err := flagValue("callers", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			callArgs["file"] = v
+			i++
+		case "--format":
+			f, err := formatFlag("callers", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			format = f
+			i++
+		default:
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("callers", a)
+			}
+			if err := positionalDir("callers", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
+		}
+	}
+	out, text, rendered, err := invokeToolText(dir, "prism_callers", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "callers:", err)
+		return exitForError(err)
+	}
+	printToolResult("callers", out, text, rendered, format)
+	return exitOK
+}
+
+// cmdPath prints the shortest resolved call path from one symbol to
+// another (GAP-03).
+func cmdPath(args []string) int {
+	args, rc := positionalsFirst("path", "two symbols", "prism path <from> <to> [dir]", 2, args, "--format")
+	if rc != 0 {
+		return rc
+	}
+	callArgs := map[string]any{"from": args[0], "to": args[1]}
+	dir, dirSet := ".", false
+	format := formatText
+	for i := 2; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--format":
+			f, err := formatFlag("path", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			format = f
+			i++
+		default:
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("path", a)
+			}
+			if err := positionalDir("path", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
+		}
+	}
+	out, text, rendered, err := invokeToolText(dir, "prism_call_path", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "path:", err)
+		return exitForError(err)
+	}
+	printToolResult("path", out, text, rendered, format)
+	if m, ok := out.(map[string]any); ok {
+		if p, _ := m["path"].([]map[string]any); len(p) == 0 {
+			return exitNotFound
+		}
+	}
+	return exitOK
 }
 
 func cmdReferences(args []string) int {

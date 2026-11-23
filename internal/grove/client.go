@@ -560,11 +560,12 @@ func testLabel(path, name string) string {
 
 // EdgeRecord is one typed graph edge from a resolved seed to a neighbor symbol.
 type EdgeRecord struct {
-	Name       string  `json:"name"`     // neighbor's qualified name
-	File       string  `json:"file"`     // neighbor's file path
-	Line       int     `json:"line"`     // neighbor's start line
-	Kind       string  `json:"kind"`     // symbol kind of the neighbor
-	EdgeType   string  `json:"edgeType"` // calls, uses-type, implements…
+	ID         string  `json:"id,omitempty"` // neighbor's symbol ID (a stable walk key)
+	Name       string  `json:"name"`         // neighbor's qualified name
+	File       string  `json:"file"`         // neighbor's file path
+	Line       int     `json:"line"`         // neighbor's start line
+	Kind       string  `json:"kind"`         // symbol kind of the neighbor
+	EdgeType   string  `json:"edgeType"`     // calls, uses-type, implements…
 	Direction  string  `json:"direction"`
 	Confidence float64 `json:"confidence"`
 	TestDouble bool    `json:"testDouble,omitempty"`
@@ -634,6 +635,7 @@ func (c *Client) Edges(ctx context.Context, name, direction string, kinds []stri
 			qn = n.Symbol.Name
 		}
 		out = append(out, EdgeRecord{
+			ID:         n.Symbol.ID,
 			Name:       qn,
 			File:       n.Symbol.FilePath,
 			Line:       n.Symbol.Span.Start,

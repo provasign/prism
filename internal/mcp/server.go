@@ -845,6 +845,10 @@ func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any,
 			m, stale = splitStaleWarning(m)
 		}
 		switch tool {
+		case "prism_callers":
+			text, rendered = renderCallersText(m), true
+		case "prism_call_path":
+			text, rendered = renderCallPathText(m), true
 		case "prism_search":
 			if compact {
 				text, rendered = h.RenderCompactSearchText(context.Background(), m, args)

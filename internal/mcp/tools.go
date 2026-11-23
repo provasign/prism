@@ -396,6 +396,11 @@ func (h *Handler) InvokeContext(parent context.Context, name string, args map[st
 	case "prism_change_impact_diff":
 		// CLI-only, like test-plan: not in any tool schema (GAP-05).
 		return h.toolChangeImpactDiff(ctx, args)
+	case "prism_callers":
+		// CLI-only (GAP-03): not in any tool schema.
+		return h.toolCallers(ctx, args)
+	case "prism_call_path":
+		return h.toolCallPath(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
