@@ -183,6 +183,9 @@ Usage:
                                   closure), super-declarations, and indexed callers.
                                   query format: Type.method or Type.method(ParamType, ...)
                                   Up to 10 query names may be batched; bare words are names
+                                  [--diff [--base REF]]  impact of the working-tree diff: per changed
+                                  symbol, the sites the diff touched and did not, direct callers of
+                                  body-only changes, other components reached, and the tests
                                   [./dir | --dir <path>]  select a repository
                                   [--repo <id>]  anchor in a linked repository
                                   [--file <path> | --path <path>]  disambiguate a symbol
@@ -3368,6 +3371,11 @@ func cmdReferences(args []string) int {
 }
 
 func cmdChangeImpact(args []string) int {
+	for _, a := range args {
+		if a == "--diff" {
+			return cmdChangeImpactDiff(args)
+		}
+	}
 	args, rc := positionalsFirst("change-impact", "a symbol", "prism change-impact Type.method [more names] [./dir | --dir <path>]", 1, args, "--dir", "--repo", "--format", "--file", "--path")
 	if rc != 0 {
 		return rc
@@ -3582,6 +3590,54 @@ func cmdRenamePlan(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// cmdChangeImpactDiff runs change-impact over the working-tree diff
+// (GAP-05): what the diff reaches, where verify says whether it is
+// complete.
+func cmdChangeImpactDiff(args []string) int {
+	dir, dirSet := ".", false
+	format := formatText
+	callArgs := map[string]any{}
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--diff":
+		case "--base":
+			v, err := flagValue("change-impact", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			callArgs["base"] = v
+			i++
+		case "--format":
+			f, err := formatFlag("change-impact", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			format = f
+			i++
+		case "--json":
+			format = formatJSON
+		default:
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("change-impact", a)
+			}
+			if err := positionalDir("change-impact", &dir, &dirSet, a); err != nil {
+				return usageError(err)
+			}
+		}
+	}
+	out, text, rendered, err := invokeToolText(dir, "prism_change_impact_diff", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
+		if strings.Contains(err.Error(), "not a git repository") || strings.Contains(err.Error(), "unknown revision") {
+			return exitUsage
+		}
+		return exitForError(err)
+	}
+	printToolResult("change-impact", out, text, rendered, format)
+	return exitOK
 }
 
 func cmdMissingImplementations(args []string) int {

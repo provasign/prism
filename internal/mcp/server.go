@@ -753,6 +753,8 @@ func (h *Handler) RenderToolText(compact bool, tool string, args map[string]any,
 					}
 				}
 			}
+		case "prism_change_impact_diff":
+			text, rendered = renderImpactDiffText(m), true
 		case "prism_read":
 			// +7-18% JSON escaping over whole source bodies, on the
 			// highest-call-count tool (56% of prism calls in full38).

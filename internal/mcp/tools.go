@@ -266,7 +266,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	}
 	timeout := 60 * time.Second
 	switch name {
-	case "prism_verify", "prism_test_plan", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
+	case "prism_verify", "prism_test_plan", "prism_change_impact_diff", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
 		timeout = 10 * time.Minute
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -383,6 +383,9 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		return h.toolVerify(ctx, args)
 	case "prism_test_plan":
 		return h.toolTestPlan(ctx, args)
+	case "prism_change_impact_diff":
+		// CLI-only, like test-plan: not in any tool schema (GAP-05).
+		return h.toolChangeImpactDiff(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
