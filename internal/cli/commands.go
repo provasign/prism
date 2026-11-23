@@ -4861,7 +4861,11 @@ func printTextOutput(m map[string]any) {
 				continue
 			}
 			tag := wireTestTag(cm)
-			fmt.Printf("  %v  %v  %v:%v%s\n", cm["name"], cm["kind"], cm["file"], jsonInt(cm["line"]), tag)
+			name := cm["name"]
+			if p, ok := cm["pasteable"].(string); ok && p != "" {
+				name = p // GAP-01: a name that resolves to this candidate alone
+			}
+			fmt.Printf("  %v  %v  %v:%v%s\n", name, cm["kind"], cm["file"], jsonInt(cm["line"]), tag)
 		}
 		return
 	}

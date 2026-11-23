@@ -2871,7 +2871,36 @@ func (h *Handler) toolResolve(ctx context.Context, args map[string]any) (any, er
 		}
 		out = append(out, entry)
 	}
+	if len(cands) > 1 {
+		h.addPasteableNames(ctx, out)
+	}
 	return map[string]any{"name": name, "count": len(out), "candidates": out}, nil
+}
+
+// addPasteableNames gives each of several candidates a name that resolves
+// to it alone (GAP-01): package/directory-qualified when lookup resolves
+// that form to exactly this file, else path:line, which every symbol
+// command accepts (CON-10).
+func (h *Handler) addPasteableNames(ctx context.Context, cands []map[string]any) {
+	for _, c := range cands {
+		name, _ := c["name"].(string)
+		file, _ := c["file"].(string)
+		line, _ := c["line"].(int)
+		paste := fmt.Sprintf("%s:%d", file, line)
+		if dir := filepath.Base(filepath.Dir(filepath.FromSlash(file))); dir != "." && dir != string(filepath.Separator) && name != "" {
+			q := dir + "." + name
+			if out, err := h.lookupSymbol(ctx, map[string]any{"name": q}, ""); err == nil {
+				if m, ok := out.(map[string]any); ok && m["ambiguous"] == nil && m["matched"] != false {
+					if sym, _ := m["symbol"].(grove.SymbolRecord); normalizePath(sym.FilePath) == normalizePath(file) {
+						paste = q
+					} else if sm, ok := m["symbol"].(map[string]any); ok && normalizePath(fmt.Sprint(sm["filePath"])) == normalizePath(file) {
+						paste = q
+					}
+				}
+			}
+		}
+		c["pasteable"] = paste
+	}
 }
 
 func (h *Handler) toolEdges(ctx context.Context, args map[string]any) (any, error) {
