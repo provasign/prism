@@ -854,9 +854,8 @@ func toolSchema(name string) map[string]any {
 			},
 		}
 	case "prism_missing_implementations":
-		// Own case, not change_impact's: no signature= (its handler does not
-		// read it, and the unknown-arg validator keys on this schema). file=
-		// is read since 2026-11-22 (BUG-05).
+		// Own case, not change_impact's. file= is read since 2026-11-22
+		// (BUG-05); signature= since GAP-04, for a member not declared yet.
 		return map[string]any{
 			"type":     "object",
 			"required": []string{"query"},
@@ -864,6 +863,10 @@ func toolSchema(name string) map[string]any {
 				"query": map[string]any{
 					"type":        "string",
 					"description": "Type.method or Type.method(ParamType, ...) — the interface/abstract member to check implementations of.",
+				},
+				"signature": map[string]any{
+					"type":        "string",
+					"description": "For a member the type does not declare yet: the planned signature; implementers with a matching method are marked.",
 				},
 				"file":         scopeFileProp,
 				"model":        modelProp,
@@ -4569,6 +4572,12 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	if err != nil {
 		if ferr := h.fileNotSymbolError(query); ferr != nil {
 			return nil, ferr
+		}
+		if strings.Contains(err.Error(), "declares no member") {
+			if planned, ok := h.plannedMemberImplementations(ctx, query, stringArg(args, "file", ""), stringArg(args, "signature", "")); ok {
+				h.Ledger.RecordCall("prism_missing_implementations")
+				return planned, nil
+			}
 		}
 	}
 	if err != nil {

@@ -209,7 +209,9 @@ Usage:
                                                 [--allow-collision] prints the plan anyway
   prism missing-implementations <query> [dir]  Types claiming the contract that do NOT
                                   implement Type.method (missing / abstract / unverifiable)
-                                  — the interface-evolution companion to change-impact
+                                  — the interface-evolution companion to change-impact;
+                                  a member not declared yet lists every implementer
+                                  [--signature '(ctx context.Context) error'] marks matches
                                   [--file <path> | --path <path>]  disambiguate a symbol
                                   --format text|json  Output format (default: text)
   prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
@@ -3933,17 +3935,24 @@ func cmdChangeImpactDiff(args []string) int {
 }
 
 func cmdMissingImplementations(args []string) int {
-	args, rc := positionalsFirst("missing-implementations", "a symbol", "prism missing-implementations Type.method [dir]", 1, args, "--format", "--file", "--path")
+	args, rc := positionalsFirst("missing-implementations", "a symbol", "prism missing-implementations Type.method [dir]", 1, args, "--format", "--file", "--path", "--signature")
 	if rc != 0 {
 		return rc
 	}
 	query := args[0]
 	dir, dirSet := ".", false
 	format := formatText
-	file := ""
+	file, signature := "", ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
+		case "--signature":
+			v, err := flagValue("missing-implementations", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			signature = v
+			i++
 		case "--format":
 			f, err := formatFlag("missing-implementations", args, i)
 			if err != nil {
@@ -3972,6 +3981,9 @@ func cmdMissingImplementations(args []string) int {
 	callArgs := map[string]any{"query": query}
 	if file != "" {
 		callArgs["file"] = file
+	}
+	if signature != "" {
+		callArgs["signature"] = signature
 	}
 	out, err := invokeTool(dir, "prism_missing_implementations", callArgs)
 	if err != nil {
@@ -5453,6 +5465,7 @@ func printMissingImplText(m map[string]any) {
 	printSiteGroup("missing", m["missing"])
 	printSiteGroup("abstractMissing", m["abstractMissing"])
 	printSiteGroup("unverifiable", m["unverifiable"])
+	printSiteGroup("alreadyHave", m["alreadyHave"])
 	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "unverifiableNote", "defaultProvided", "note")
 }
 

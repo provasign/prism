@@ -446,6 +446,21 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 					}
 					continue
 				}
+				// GAP-04: a one-line interface (`type I interface{ A() }`)
+				// that gains a member changes its signature line, not its
+				// body, so it skipped the added-member check below and
+				// stayed UNVERIFIED. Diff its members here too.
+				if c.After.Kind == "interface" && c.Before != nil && !isTestFilePath(c.After.FilePath) {
+					beforeBlock := splitInlineBody(blockText(h.Root, base, f, c.Before, true))
+					afterBlock := splitInlineBody(blockText(h.Root, "", f, c.After, false))
+					added, removed := memberAdditionsRemovals(beforeBlock, afterBlock)
+					if len(added) > 0 && len(removed) == 0 && len(memberContractChanges(beforeBlock, afterBlock)) == 0 {
+						for _, name := range added {
+							addedMembers = append(addedMembers, addedMember{iface: *c.After, name: name})
+						}
+						continue
+					}
+				}
 				// "signature of X changed" is wrong for a const whose VALUE
 				// changed; say what actually happened per kind.
 				word := "signature"
@@ -1098,6 +1113,13 @@ type memberChange struct {
 // memberAdditionsRemovals returns the member names a declaration block's
 // body gained and lost, sorted. It reads members the way
 // memberContractChanges does: one signature line per member name.
+// splitInlineBody puts each member of a one-line body on its own line, so
+// the line-based member diff sees `interface{ A(); B() }` as two members.
+func splitInlineBody(text string) string {
+	r := strings.NewReplacer("{", "{\n", "}", "\n}", ";", "\n")
+	return r.Replace(text)
+}
+
 func memberAdditionsRemovals(beforeText, afterText string) (added, removed []string) {
 	if beforeText == "" || afterText == "" {
 		return nil, nil

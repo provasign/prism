@@ -49,3 +49,21 @@ func TestVerifyGoAddedInterfaceMemberAllImplemented(t *testing.T) {
 		t.Fatalf("verdict = %v, want complete\n%v", m["verdict"], m)
 	}
 }
+
+// GAP-04: the same for a one-line interface, whose added member changes
+// the signature line rather than the body.
+func TestVerifyOneLineInterfaceAddedMember(t *testing.T) {
+	base := "package prov\n\ntype Shape interface{ Area() float64 }\n\n" +
+		"type sq struct{}\n\nfunc (sq) Area() float64 { return 1 }\n\n" +
+		"type circle struct{}\n\nfunc (circle) Area() float64 { return 3 }\n\n" +
+		"func New(k string) Shape {\n\tif k == \"c\" {\n\t\treturn circle{}\n\t}\n\treturn sq{}\n}\n"
+	edited := strings.Replace(base, "interface{ Area() float64 }", "interface{ Area() float64; Perimeter() float64 }", 1)
+	edited = strings.Replace(edited, "type circle struct{}", "func (sq) Perimeter() float64 { return 4 }\n\ntype circle struct{}", 1)
+	m := variadicVerify(t, map[string]string{"prov/prov.go": base}, map[string]string{"prov/prov.go": edited})
+	if m["verdict"] != "incomplete" {
+		t.Fatalf("verdict = %v, want incomplete (circle lacks Perimeter)\n%v", m["verdict"], m)
+	}
+	if u, _ := m["unverifiedSeeds"].([]string); len(u) > 0 {
+		t.Fatalf("one-line interface addition stayed unverified: %v", u)
+	}
+}
