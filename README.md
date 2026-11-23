@@ -76,10 +76,10 @@ to raw records in [provasign/research](https://github.com/provasign/research).
 brew install provasign/tap/prism
 
 # macOS or Linux installer, pinned to a release
-curl -fsSL https://raw.githubusercontent.com/provasign/prism/v1.2.0/install.sh | VERSION=v1.2.0 bash
+curl -fsSL https://raw.githubusercontent.com/provasign/prism/v1.3.0/install.sh | VERSION=v1.3.0 bash
 
 # Windows PowerShell
-$env:VERSION="v1.2.0"; irm https://raw.githubusercontent.com/provasign/prism/v1.2.0/install.ps1 | iex
+$env:VERSION="v1.3.0"; irm https://raw.githubusercontent.com/provasign/prism/v1.3.0/install.ps1 | iex
 ```
 
 The installer verifies the SHA-256 checksum, and the release's signature or
@@ -91,13 +91,14 @@ and `--dry-run` lists what it would write.
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
 Use either Homebrew or the standalone installer as the authoritative installation. If both
 are present with different versions, `prism init` and the MCP server report their paths.
-The standalone installer stops running Prism MCP servers before replacing the binary,
-verifies the installed version, and removes Prism registrations left by the old global
-configuration model. After changing installation methods or upgrading Homebrew, run
-`prism cleanup-global`, run `prism init` in each project, choose the harnesses to configure,
-and restart the coding agent so pinned MCP paths and long-running servers refresh.
+The standalone installer verifies the installed version and removes Prism registrations left
+by the old global configuration model. Running Prism MCP servers keep working through an
+upgrade: each switches to the new binary on its next request (`--stop-servers` stops them
+instead). After changing installation methods, run `prism cleanup-global` and `prism init` in
+each project.
 
-The current release is v1.2.0. It embeds Grove v0.63.27 (Astkit v0.16.10).
+The current release is v1.3.0. It embeds Grove v0.64.0 (Astkit v0.16.10).
+Upgrading from v1.2: see [Upgrading to v1.3](#upgrading-to-v13).
 
 Build from source with `make build`; run the full test suite with `make test`.
 
@@ -108,6 +109,10 @@ From the root of a repository:
 ```sh
 prism init .
 ```
+
+`prism init --dry-run .` prints a diff of every file it would write and writes nothing.
+`prism uninstall .` later removes exactly what init added (recorded in
+`.grove/install-manifest.json`) and leaves every other byte of those files alone.
 
 This detects installed and previously configured harnesses, recommends those as the
 default, and asks which to configure. It then asks how agents should reach Prism:
@@ -147,7 +152,7 @@ prism query --terms ValidateRequest \
 prism verify --base main --format text
 ```
 
-With the MCP interface, `prism init` exposes one compact `prism` gateway with six
+With the MCP interface, `prism init` exposes one compact `prism` gateway with seven
 operations:
 
 - `search` locates symbols and source text.
@@ -156,9 +161,26 @@ operations:
 - `lookup` returns known symbol bodies, marking any omitted content.
 - `change_impact` returns indexed declarations, implementation families, and caller candidates.
 - `verify` reviews a diff against indexed potential impact sites.
+- `missing_implementations` lists the types that do not yet implement an interface member,
+  including one you are about to add.
 
 Run `prism mcp --legacy` only for compatibility testing with the former six-tool
 surface; normal and init-generated MCP launches use the compact gateway.
+
+More graph commands on the CLI:
+
+```sh
+prism references Config.Model --kind write   # resolved sites, tagged decl/call/read/write/type-use
+prism callers Handler.toolVerify --depth 3   # transitive callers as a tree
+prism path cmdCI Handler.toolVerify          # shortest resolved call path
+prism lookup internal/config/config.go:16    # a path:line names the symbol declared there
+prism test-plan --format targets             # runner targets: Go -run patterns, pytest ids, Class#method
+prism change-impact --diff --base main       # what the working-tree diff reaches
+```
+
+Every command prints text by default; pass `--format json` for machine-readable output.
+Exit codes are the same everywhere: 0 answered, 1 finding, 2 usage error, 3 degraded,
+4 not found, 5 ambiguous, 70 internal failure (`prism help exit-codes`).
 
 CLI help is authoritative for the complete command and flag list:
 
@@ -224,9 +246,12 @@ Add boundary rules to `prism.yaml`:
 version: 2
 harnesses: "claude,codex"
 mcp_surface: "compact"
-arch_deny:
-  - "internal/cli -> internal/mcp"
+arch_deny: internal/cli -> internal/mcp    # one rule per line; repeat the key
+arch_deny: internal/config -> internal/*
 ```
+
+`prism config .` lists every key with its value and where it came from; `prism config --check .`
+exits 1 on an unknown key or an invalid value.
 
 Then run:
 
@@ -237,6 +262,22 @@ prism verify . --base main
 ```
 
 `prism arch` reports the concrete `file:line` evidence for each forbidden component edge. `prism verify` checks the current diff for missed impact sites, new component dependencies, and introduced architecture violations.
+
+As a pull-request gate, `prism ci . --base origin/main --format github` fails on a missed site or a new architecture violation and annotates the lines; the composite action in [`.github/actions/prism-ci`](.github/actions/prism-ci/action.yml) runs it in GitHub Actions and can post one sticky comment (`ci_fail_on:` and `ci_comment:` in `prism.yaml`).
+
+## Working across repositories
+
+Link the other repositories a change can reach, and the same commands answer for them:
+
+```sh
+cd library
+prism workspace add ../app             # a local checkout; or a git URL[@ref], fetched read-only
+prism change-impact Client.Send        # call sites in app first, then this repository
+prism lookup app.Handler --repo app    # answer from one linked repository
+prism workspace discover               # related checkouts found in go.mod, package.json, pom.xml, ...
+```
+
+Each repository keeps its own index; links are followed when a question is asked. `lookup`, `read`, `search`, `change-impact`, `verify` and `test-plan` cover linked repositories, and every answer says which repositories it covered and how (compiler-resolved, or name-matched only). A link written in a cloned `prism.yaml` takes effect only after you confirm it on your machine, and an untrusted repository links nothing. Consumers that are not checked out can be covered through a link server their CI uploads to. The guide: [docs/MULTI_REPO.md](docs/MULTI_REPO.md).
 
 ## Graph explorer
 
@@ -263,7 +304,23 @@ Grove is embedded in the Prism binary. Prism users do not need to install or run
 
 ## Security and privacy
 
-Prism analyzes the local working tree and stores its index locally. The default MCP transport is stdio. The optional HTTP server binds to loopback by default. See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md) for reporting and trust-boundary details.
+Prism analyzes the local working tree and stores its index locally. The default MCP transport is stdio. The optional HTTP server and `prism graph` bind to loopback and require a per-run token.
+
+Indexing Java (Maven/Gradle), TypeScript and Rust runs the repository's own build tools. Prism prints a one-time notice when it does; for a repository you do not trust, run `prism untrust .` (or set `PRISM_UNTRUSTED=1`): its build tools never run, analysis for those languages is name-based, and it links no other repository. `prism trust .` records the opposite and silences the notice. Text search and `read` withhold the contents of `.env`, key and credential files unless you pass `--include-sensitive`; `sensitive_paths:` in `prism.yaml` adds patterns. See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md) for reporting and trust-boundary details.
+
+## Upgrading to v1.3
+
+v1.3 keeps every answer a v1.2 index gives (verified on a v1.2-initialised repository: same change-impact sites, same lookups, the same MCP session from the v1.2 `.mcp.json`). What changes for scripts and setups:
+
+- **Text is the default output of every command.** A script that parsed JSON from a command whose default was JSON must pass `--format json`.
+- **Exit codes are one table.** A name that does not exist now exits 4 (it used to exit 0 on some commands), an ambiguous name 5, a failure 70.
+- **First index prints a trust notice** when the repository's build tools will run; `prism trust .` silences it.
+- **A query in a directory that is no project** (no `.git`, `prism.yaml`, `.grove` or build manifest) exits 2 instead of indexing it; `prism index <dir>` still builds there.
+- **Committed MCP configs name plain `prism`.** `prism doctor` flags a config that runs prism by an absolute path; `prism init --refresh` rewrites it.
+- **`prism.yaml` typos are reported** with the nearest known key.
+- **Secret files are withheld** from search and read (`--include-sensitive` shows them).
+
+The index is rebuilt once, automatically, on the first command after the upgrade.
 
 ## Contributing
 

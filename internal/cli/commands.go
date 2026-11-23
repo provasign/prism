@@ -191,11 +191,12 @@ Usage:
                                   prune                     Delete cache clones nothing links to
                                   export [-o <file>]        Write this repository's link bundle (no source bodies)
                                   push [--server <url>]     Upload it to the link server (workspace_server)
+                                  remove <id>               Unlink; the checkout is not touched
+                                  discover [--link]         Related checkouts found in manifests
+                                  Guide: docs/MULTI_REPO.md
   prism link-server --dir <store> [--port N]
                                   Serve uploaded link bundles: who references a symbol across
                                   repositories that are not checked out (PRISM_LINK_TOKEN required token)
-                                  remove <id>               Unlink; the checkout is not touched
-                                  discover [--link]         Related checkouts found in manifests
   prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
                                   declaration(s), override/implementation family (subtype
                                   closure), super-declarations, and indexed callers.

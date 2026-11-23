@@ -53,7 +53,8 @@ that declares it. Until then answers name the repository as "link not confirmed"
 repository you cloned cannot make Prism read other directories through a file it committed.
 
 Even confirmed, a target is refused if it contains this repository, is the home directory or
-above it, or has no sign of being a repository. Under `GROVE_UNTRUSTED` nothing is linked.
+above it, or has no sign of being a repository. In a repository you have not trusted
+(`prism untrust`, `PRISM_UNTRUSTED=1`, or `GROVE_UNTRUSTED=1`) nothing is linked at all.
 
 `prism init` lists related checkouts and links them only with `--workspace auto` or a yes.
 
