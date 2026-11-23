@@ -209,7 +209,7 @@ Usage:
   prism drift                     MCP only (prism_drift): it compares files with what the
                                   running server delivered this session; a CLI call has no session
   prism config [dir]              Show resolved configuration
-  prism version                   Print version
+  prism version                   Print version ([--verbose] also the linked Grove engine)
 
 prism init [dir] flags:
   --harness <ids>     harnesses to configure, comma-separated or repeated
@@ -287,6 +287,15 @@ func Run(args []string) int {
 		return 0
 	case "version", "--version", "-version":
 		fmt.Println("prism " + version.Version)
+		if len(rest) > 0 && (rest[0] == "--verbose" || rest[0] == "-v") {
+			// REL-02: say which Grove engine is linked, and whether a
+			// replace or go.work swapped it for a local checkout.
+			if g, ok := version.LinkedGrove(); ok {
+				fmt.Println("grove " + g.String())
+			} else {
+				fmt.Println("grove unknown (no build info)")
+			}
+		}
 		return 0
 	case "init", "install":
 		return cmdInit(rest)
@@ -2394,9 +2403,17 @@ func cmdDoctor(args []string) int {
 		state = "warning"
 		warnings = append(warnings, r.Language+": compiler-backed analysis missing ("+r.Problem+"); results are name-based. Fix: "+r.Fix)
 	}
+	groveLinked := "unknown"
+	if g, ok := version.LinkedGrove(); ok {
+		groveLinked = g.String()
+		if g.Replaced {
+			warnings = append(warnings, "grove engine is "+g.String()+", not a released version; results may differ from a release build")
+		}
+	}
 	printJSON(map[string]any{
 		"status":   state,
 		"version":  version.Version,
+		"grove":    groveLinked,
 		"root":     root,
 		"engine":   "grove",
 		"index":    graph,
