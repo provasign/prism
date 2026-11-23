@@ -4137,11 +4137,11 @@ func printToolResult(op string, out any, text string, rendered bool, format outp
 			if !strings.HasSuffix(text, "\n") {
 				fmt.Println()
 			}
-		} else if encoded, err := json.Marshal(out); err == nil {
-			fmt.Println(string(encoded))
-		} else {
-			printJSON(out)
+			return
 		}
+		// No compact text form: the CLI's own text renderers, ending in
+		// the generic key/value fallback, never JSON (CON-02).
+		printOutput(out, formatText)
 		return
 	}
 	printOutput(out, format)
@@ -4251,7 +4251,16 @@ func printOutput(v any, format outputFormat) {
 	}
 	var m map[string]any
 	if err := json.Unmarshal(b, &m); err != nil {
-		printJSON(v)
+		if format == formatJSON {
+			printJSON(v)
+			return
+		}
+		// Not an object (a bare list): still text, never JSON (CON-02).
+		var any0 any
+		_ = json.Unmarshal(b, &any0)
+		var sb strings.Builder
+		writeGeneric(&sb, "", any0)
+		fmt.Print(sb.String())
 		return
 	}
 	switch format {
@@ -4637,8 +4646,122 @@ func printTextOutput(m map[string]any) {
 		}
 		return
 	}
-	// Fallback: JSON
-	printJSON(m)
+	// Fallback: plain key/value text, never JSON. --format text used to
+	// print raw JSON for the ambiguity choice, a bad regex, a rollup and
+	// a symbols delivery (CON-02).
+	fmt.Print(genericText(m))
+}
+
+// genericText renders any answer as indented "key: value" lines: scalars
+// inline, lists one item per line, nested objects indented. Keys sort,
+// except that query/name/status/error/note lead.
+func genericText(m map[string]any) string {
+	var b strings.Builder
+	writeGeneric(&b, "", m)
+	return b.String()
+}
+
+var genericLead = map[string]int{"query": 0, "name": 1, "status": 2, "error": 3, "warning": 4, "note": 5}
+
+func writeGeneric(b *strings.Builder, indent string, v any) {
+	switch x := v.(type) {
+	case map[string]any:
+		keys := make([]string, 0, len(x))
+		for k := range x {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			li, iok := genericLead[keys[i]]
+			lj, jok := genericLead[keys[j]]
+			switch {
+			case iok && jok:
+				return li < lj
+			case iok != jok:
+				return iok
+			}
+			return keys[i] < keys[j]
+		})
+		for _, k := range keys {
+			val := x[k]
+			if genericScalar(val) {
+				fmt.Fprintf(b, "%s%s: %s\n", indent, k, genericValue(val))
+				continue
+			}
+			if list, ok := val.([]any); ok {
+				if len(list) == 0 {
+					continue
+				}
+				fmt.Fprintf(b, "%s%s (%d):\n", indent, k, len(list))
+			} else {
+				fmt.Fprintf(b, "%s%s:\n", indent, k)
+			}
+			writeGeneric(b, indent+"  ", val)
+		}
+	case []any:
+		for _, item := range x {
+			if genericScalar(item) {
+				fmt.Fprintf(b, "%s- %s\n", indent, genericValue(item))
+				continue
+			}
+			if im, ok := item.(map[string]any); ok && genericFlat(im) {
+				fmt.Fprintf(b, "%s- %s\n", indent, genericInline(im))
+				continue
+			}
+			fmt.Fprintf(b, "%s-\n", indent)
+			writeGeneric(b, indent+"  ", item)
+		}
+	default:
+		fmt.Fprintf(b, "%s%s\n", indent, genericValue(x))
+	}
+}
+
+func genericScalar(v any) bool {
+	switch v.(type) {
+	case map[string]any, []any:
+		return false
+	}
+	return true
+}
+
+// genericFlat: an object of at most six scalar fields prints on one line.
+func genericFlat(m map[string]any) bool {
+	if len(m) > 6 {
+		return false
+	}
+	for _, v := range m {
+		if !genericScalar(v) {
+			return false
+		}
+	}
+	return true
+}
+
+func genericInline(m map[string]any) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, k+"="+genericValue(m[k]))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func genericValue(v any) string {
+	switch x := v.(type) {
+	case nil:
+		return "null"
+	case string:
+		return x
+	case float64:
+		if x == float64(int64(x)) {
+			return strconv.FormatInt(int64(x), 10)
+		}
+		return strconv.FormatFloat(x, 'f', -1, 64)
+	}
+	return fmt.Sprint(v)
 }
 
 // ─── task-shaped renderers ───────────────────────────────────────────────────
