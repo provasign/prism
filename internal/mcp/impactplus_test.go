@@ -312,7 +312,7 @@ func TestChangeImpactObjectLiteralNotListedAsOtherDeclaration(t *testing.T) {
 	}, map[string]string{
 		"package.json":  `{"devDependencies":{"typescript":"^5"}}`,
 		"tsconfig.json": `{"compilerOptions":{"strict":true}}`,
-		"shape.ts": "export interface Shape {\n  area(): number;\n}\n\nexport class Square implements Shape {\n  constructor(private s: number) {}\n  area(): number { return this.s * this.s; }\n}\n\nexport const unit: Shape = {\n  area(): number { return 1; },\n};\n\nexport function total(shapes: Shape[]): number {\n  return shapes.reduce((n, s) => n + s.area(), 0);\n}\n",
+		"shape.ts":      "export interface Shape {\n  area(): number;\n}\n\nexport class Square implements Shape {\n  constructor(private s: number) {}\n  area(): number { return this.s * this.s; }\n}\n\nexport const unit: Shape = {\n  area(): number { return 1; },\n};\n\nexport function total(shapes: Shape[]): number {\n  return shapes.reduce((n, s) => n + s.area(), 0);\n}\n",
 	})
 	text := invokeCompactText(t, h, "change_impact", map[string]any{"name": "Shape.area"})
 	full := expandEditSites(text)
