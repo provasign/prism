@@ -28,6 +28,9 @@ HTTP surfaces, and may modify coding-tool configuration during `prism init`.
 | Stale or partial graph presented as complete | Operations expose completeness; `prism doctor` reports readiness |
 | Resource exhaustion | Bounded delivery, file limits, timeouts, and parser fallbacks |
 | Local HTTP exposure | `prism serve` binds to `127.0.0.1`, checks Host and Origin, accepts only JSON posts and requires a per-run bearer token (`.grove/serve.token`, 0600); a non-loopback `--listen` requires `--token-file` |
+| Graph explorer exposure | `prism graph` binds to loopback, checks Host, and requires a per-run random token (`X-Prism-Token`) on every `/api/*` request; the token travels in the printed address's fragment and the page moves it into sessionStorage |
+| Malformed or hostile MCP input | Frames over 16 MB or with a negative length are rejected (-32600), unparseable JSON gets -32700, a panic in one request answers -32603 instead of ending the session; `tools/call` runs concurrently (at most 4) and honours `notifications/cancelled` |
+| Binary handoff | When its binary changes on disk the MCP server re-executes the launch path only if that file is owned by the user (or root) and not group- or world-writable |
 | Repository code run during indexing | Compiler-backed analysis runs the repository's own build tools (Maven/Gradle, its typescript, rust-analyzer build scripts and proc macros, a pinned go toolchain). The user decides per repository: `prism untrust`, `--untrusted` or `PRISM_UNTRUSTED=1` turn all of it off. The decision lives in `~/.config/prism/trusted.json` and is never read from the repository. The default is trusted, with a one-time notice per repository naming `prism untrust`. The Python pass runs `python -I` so repository files cannot shadow the standard library. |
 | Installer substitution | Checksums are mandatory; releases publish provenance and SBOM artifacts |
 
