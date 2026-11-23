@@ -95,3 +95,17 @@ func TestNoGraphSummary(t *testing.T) {
 		t.Fatalf("empty dir: %q", got)
 	}
 }
+
+// BUG-08: arch, map and cycles do not offer --removed (verify does); the
+// flag is a usage error, not an internal failure.
+func TestRemovedFlagOnlyOnVerify(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "prism.yaml"), "version: 2\n")
+	for _, cmd := range []func([]string) int{cmdArch, cmdMap, cmdCycles} {
+		var rc int
+		captureStderr(func() { _ = captureStdout(func() { rc = cmd([]string{"--removed", "x", dir}) }) })
+		if rc != exitUsage {
+			t.Errorf("rc=%d, want %d", rc, exitUsage)
+		}
+	}
+}

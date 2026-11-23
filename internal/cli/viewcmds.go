@@ -51,15 +51,6 @@ func cmdMap(args []string) int {
 			callArgs["include_tests"] = true
 		case "--all-components":
 			callArgs["include_auxiliary"] = true
-		case "--removed":
-			// Mid-loop residual check: --removed a,b,c reports remaining
-			// references to each removed identifier instead of the full gate.
-			syms, err := listFlag("map", args, i)
-			if err != nil {
-				return usageError(err)
-			}
-			callArgs["removed_symbols"] = syms
-			i++
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -107,15 +98,6 @@ func cmdCycles(args []string) int {
 			i++
 		case "--tests":
 			callArgs["include_tests"] = true
-		case "--removed":
-			// Mid-loop residual check: --removed a,b,c reports remaining
-			// references to each removed identifier instead of the full gate.
-			syms, err := listFlag("cycles", args, i)
-			if err != nil {
-				return usageError(err)
-			}
-			callArgs["removed_symbols"] = syms
-			i++
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -176,15 +158,6 @@ func cmdArch(args []string) int {
 			callArgs["include_tests"] = true
 		case "--strict":
 			callArgs["strict"] = true
-		case "--removed":
-			// Mid-loop residual check: --removed a,b,c reports remaining
-			// references to each removed identifier instead of the full gate.
-			syms, err := listFlag("arch", args, i)
-			if err != nil {
-				return usageError(err)
-			}
-			callArgs["removed_symbols"] = syms
-			i++
 		case "--json":
 			jsonOut = true
 		case "--format":

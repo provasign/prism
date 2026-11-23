@@ -79,8 +79,6 @@ Usage:
                                   [--max-sites N]  cited sites per edge (default 5)
                                   [--all-components]  include docs/examples and isolated
                                   other-language script folders (hidden by default)
-                                  [--removed a,b,c]  only report what still
-                                  references each removed identifier
   prism graph [dir]               Open the interactive graph explorer in a browser:
                                   directories -> files -> symbols -> one symbol's
                                   callers and callees, with search and the evidence
@@ -88,16 +86,12 @@ Usage:
                                   ([--port N] [--no-open] [--tests])
   prism cycles [dir]              Dependency cycles with per-edge evidence
                                   ([--depth N] [--tests] [--json | --format text|json])
-                                  [--removed a,b,c]  only report what still
-                                  references each removed identifier
   prism arch [dir]                Validate declared architecture rules
                                   (arch_deny: "<from> -> <to>" in prism.yaml)
                                   against the component view; violations cite
                                   file:line sites; exit 1 on violation — a CI
                                   gate ([--deny 'A -> B'] [--depth N] [--tests] [--strict]
                                   [--json | --format text|json])
-                                  [--removed a,b,c]  only report what still
-                                  references each removed identifier
   prism verify [dir]              Optionally review a diff (working tree vs
                                   --base, default HEAD) for missed sites and
                                   architecture changes. Exit 1 if incomplete;
@@ -5391,6 +5385,9 @@ func printChangeImpactText(m map[string]any) {
 		return
 	}
 	fmt.Printf("// %v — change-impact: %d site(s)\n", m["query"], jsonInt(m["totalSites"]))
+	if note, _ := m["degradedAnalysis"].(string); note != "" {
+		fmt.Printf("// %s\n", note) // qualifies every site below
+	}
 	fmt.Print(mcp.FormatImpactHeaderNotesText(m))
 	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "familyCompleteness", "callerCoverage", "callerEvidence", "coverageNote", "evidenceNote", "hasHeuristicRefs")
 	fmt.Print(mcp.FormatImpactRelaySitesText(m))
@@ -5545,7 +5542,8 @@ func printMissingImplText(m map[string]any) {
 	printSiteGroup("abstractMissing", m["abstractMissing"])
 	printSiteGroup("unverifiable", m["unverifiable"])
 	printSiteGroup("alreadyHave", m["alreadyHave"])
-	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "unverifiableNote", "defaultProvided", "note")
+	printSiteGroup("formerlyImplementing", m["formerlyImplementing"])
+	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "unverifiableNote", "formerlyImplementingNote", "defaultProvided", "note")
 }
 
 func printDeadCodeText(m map[string]any) {
