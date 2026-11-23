@@ -142,8 +142,8 @@ func splitLines(s string) []string {
 }
 
 type arm struct {
-	name                       string
-	tp, fp, fn                 int // true positive / false positive / false negative, summed over trials
+	name       string
+	tp, fp, fn int // true positive / false positive / false negative, summed over trials
 }
 
 func (a *arm) score(flagged, real map[string]bool) {

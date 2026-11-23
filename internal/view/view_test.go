@@ -34,9 +34,9 @@ func fixture() ([]grove.SymbolRecord, []grove.Edge) {
 		edge("a2", "b1", "calls", "heuristic"),
 		edge("a1", "b2", "uses-type", "astkit"),
 		edge("b1", "c1", "calls", "native"),
-		edge("a1", "a2", "calls", "astkit"),  // intra-component
-		edge("a1", "b1", "tests", "astkit"),  // non-dependency kind
-		edge("a1", "zz", "calls", "astkit"),  // unresolved endpoint
+		edge("a1", "a2", "calls", "astkit"), // intra-component
+		edge("a1", "b1", "tests", "astkit"), // non-dependency kind
+		edge("a1", "zz", "calls", "astkit"), // unresolved endpoint
 	}
 	return symbols, edges
 }

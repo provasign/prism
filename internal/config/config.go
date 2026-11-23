@@ -60,7 +60,7 @@ func Default() *Config {
 		Profile:       envOr("PRISM_PROFILE", "default"),
 		MaxCacheFiles: 50000,
 		Port:          8888,
-		}
+	}
 	return c
 }
 

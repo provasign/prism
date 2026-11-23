@@ -188,8 +188,8 @@ func IsTestPath(filePath string) bool {
 	switch {
 	case strings.HasSuffix(stem, "_test"), // Go, Python, Ruby, C
 		strings.HasSuffix(stem, ".test"), strings.HasSuffix(stem, ".spec"), // JS/TS
-		strings.HasSuffix(stem, "_spec"),                                  // Ruby
-		strings.HasPrefix(stem, "test_"),                                  // Python
+		strings.HasSuffix(stem, "_spec"), // Ruby
+		strings.HasPrefix(stem, "test_"), // Python
 		base == "conftest.py":
 		return true
 	case (ext == ".java" || ext == ".cs" || ext == ".kt") &&

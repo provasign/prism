@@ -72,12 +72,12 @@ func TestNestedScopeFor_Degrades(t *testing.T) {
 // A Go method header ("func (r T) M(") is not a nested scope.
 func TestNestedFuncName(t *testing.T) {
 	cases := map[string]string{
-		"    def get_names(cursor):":  "get_names",
-		"\thandler := func() {":       "handler",
-		"  const cb = function () {":  "",
-		"func (r JSON) Render(w) {":   "",
-		"    return sorted(x)":        "",
-		"":                            "",
+		"    def get_names(cursor):": "get_names",
+		"\thandler := func() {":      "handler",
+		"  const cb = function () {": "",
+		"func (r JSON) Render(w) {":  "",
+		"    return sorted(x)":       "",
+		"":                           "",
 	}
 	for in, want := range cases {
 		if got := nestedFuncName(in); got != want {

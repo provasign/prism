@@ -26,7 +26,7 @@ func TestComputeSymbolSHAs_DropsCollidingKeys(t *testing.T) {
 	syms := []grove.SymbolRecord{
 		{Name: "Close", QualifiedName: "A.Close", Span: grove.SpanInfo{Start: 1, End: 1}},
 		{Name: "Close", QualifiedName: "B.Close", Span: grove.SpanInfo{Start: 2, End: 2}},
-		{Name: "Open", Span: grove.SpanInfo{Start: 3, End: 3}},  // no qualified name → bare key
+		{Name: "Open", Span: grove.SpanInfo{Start: 3, End: 3}}, // no qualified name → bare key
 		{Name: "Open", Span: grove.SpanInfo{Start: 4, End: 4}}, // collides on bare key
 	}
 	m := computeSymbolSHAs(syms, content)
