@@ -28,6 +28,7 @@ import (
 	"github.com/provasign/prism/internal/httpguard"
 	"github.com/provasign/prism/internal/mcp"
 	"github.com/provasign/prism/internal/textsearch"
+	"github.com/provasign/prism/internal/trust"
 	"github.com/provasign/prism/internal/version"
 	"github.com/provasign/prism/internal/workspace"
 )
@@ -57,7 +58,8 @@ Usage:
                                   [--force] re-extracts every file and re-runs
                                   every analyzer now, skipping retry waits;
                                   [--rebuild] deletes the index and builds it
-                                  from scratch (repair for a broken index)
+                                  from scratch (repair for a broken index);
+                                  [--untrusted|--trusted] for this run (see prism trust)
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
   prism status [dir]              Show graph stats from Grove
@@ -213,6 +215,11 @@ Usage:
   prism drift                     MCP only (prism_drift): it compares files with what the
                                   running server delivered this session; a CLI call has no session
   prism config [dir]              Show resolved configuration
+  prism trust [dir]               Let indexing run this repository's own build tools
+                                  (Maven/Gradle, its typescript, rust-analyzer, go toolchain)
+  prism untrust [dir]             Never run them for this repository; also --untrusted
+                                  on index or PRISM_UNTRUSTED=1. Recorded per user in
+                                  ~/.config/prism/trusted.json, never read from the repo
   prism version                   Print version ([--verbose] also the linked Grove engine)
 
 prism init [dir] flags:
@@ -371,6 +378,8 @@ func Run(args []string) int {
 		return cmdDrift(rest)
 	case "config":
 		return cmdConfig(rest)
+	case "trust", "untrust":
+		return cmdTrust(cmd, rest)
 	}
 	return unknownCommand(cmd)
 }
@@ -382,7 +391,7 @@ var commandNames = []string{
 	"verify", "test-plan", "workspace", "link-server", "query", "read",
 	"search", "node", "lookup", "references", "refs", "resolve", "edges",
 	"change-impact", "missing-implementations", "rename-plan", "dead-code",
-	"assist", "compact", "feedback", "serve", "mcp", "drift", "config",
+	"assist", "compact", "feedback", "serve", "mcp", "drift", "config", "trust", "untrust",
 }
 
 func knownCommand(cmd string) bool {
@@ -2252,9 +2261,17 @@ func containsString(list []any, s string) bool {
 }
 
 func cmdIndex(args []string) int {
-	dir, flags, rc := dirOnlyArgs("index", args, "--allow-heuristic", "--force", "--rebuild")
+	dir, flags, rc := dirOnlyArgs("index", args, "--allow-heuristic", "--force", "--rebuild", "--untrusted", "--trusted")
 	if rc != 0 {
 		return rc
+	}
+	switch {
+	case flags["--untrusted"] && flags["--trusted"]:
+		return usageError(fmt.Errorf("index: --untrusted and --trusted are exclusive"))
+	case flags["--untrusted"]:
+		trust.SetOverride(trust.Untrusted)
+	case flags["--trusted"]:
+		trust.SetOverride(trust.Trusted)
 	}
 	allowHeuristic := flags["--allow-heuristic"]
 	// An explicit index is the user trusting this repository's files, its
@@ -2343,6 +2360,32 @@ func cmdIndex(args []string) int {
 	return 3
 }
 
+// cmdTrust records the user's trust decision for a repository (SEC-01).
+func cmdTrust(cmd string, args []string) int {
+	dir, _, rc := dirOnlyArgs(cmd, args)
+	if rc != 0 {
+		return rc
+	}
+	root := mustAbs(dir)
+	if err := requireDir(root); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	state := trust.Trusted
+	if cmd == "untrust" {
+		state = trust.Untrusted
+	}
+	if err := trust.Set(root, state); err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %v\n", cmd, err)
+		return 1
+	}
+	fmt.Printf("%s: %s (recorded in %s)\n", root, trust.For(root), trust.Path())
+	if state == trust.Untrusted {
+		fmt.Println("Indexing will not run this repository's build tools; Java, TypeScript and Rust answers become name-based. Run `prism index --rebuild` to drop edges an earlier trusted index produced.")
+	}
+	return 0
+}
+
 func cmdStatus(args []string) int {
 	dir, _, rc := dirOnlyArgs("status", args)
 	if rc != 0 {
@@ -2407,6 +2450,10 @@ func cmdDoctor(args []string) int {
 		state = "warning"
 		warnings = append(warnings, r.Language+": compiler-backed analysis missing ("+r.Problem+"); results are name-based. Fix: "+r.Fix)
 	}
+	trustState := trust.For(root).String()
+	if strings.HasPrefix(trustState, "untrusted") {
+		warnings = append(warnings, "repository is "+trustState+": its build tools do not run, so Java (Maven/Gradle), TypeScript and Rust (rust-analyzer) analysis is name-based; `prism trust` enables it")
+	}
 	groveLinked := "unknown"
 	if g, ok := version.LinkedGrove(); ok {
 		groveLinked = g.String()
@@ -2418,6 +2465,7 @@ func cmdDoctor(args []string) int {
 		"status":   state,
 		"version":  version.Version,
 		"grove":    groveLinked,
+		"trust":    trustState,
 		"root":     root,
 		"engine":   "grove",
 		"index":    graph,

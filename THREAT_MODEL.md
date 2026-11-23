@@ -25,7 +25,8 @@ HTTP surfaces, and may modify coding-tool configuration during `prism init`.
 | Cross-conversation under-delivery | Direct CLI handlers do not load persistent conversation caches |
 | Stale or partial graph presented as complete | Operations expose completeness; `prism doctor` reports readiness |
 | Resource exhaustion | Bounded delivery, file limits, timeouts, and parser fallbacks |
-| Local HTTP exposure | Server binds to `127.0.0.1`; do not expose it through a proxy |
+| Local HTTP exposure | `prism serve` binds to `127.0.0.1`, checks Host and Origin, accepts only JSON posts and requires a per-run bearer token (`.grove/serve.token`, 0600); a non-loopback `--listen` requires `--token-file` |
+| Repository code run during indexing | Compiler-backed analysis runs the repository's own build tools (Maven/Gradle, its typescript, rust-analyzer build scripts and proc macros, a pinned go toolchain). The user decides per repository: `prism untrust`, `--untrusted` or `PRISM_UNTRUSTED=1` turn all of it off. The decision lives in `~/.config/prism/trusted.json` and is never read from the repository. The default is trusted, with a one-time notice per repository naming `prism untrust`. The Python pass runs `python -I` so repository files cannot shadow the standard library. |
 | Installer substitution | Checksums are mandatory; releases publish provenance and SBOM artifacts |
 
 ## Retention
