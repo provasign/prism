@@ -25,15 +25,15 @@ jobs:
       - run: go test ./... -count=1 -timeout 300s
       - run: go build ./...
 
-  verify-self:
-    # Dogfood: run prism verify on this push's own diff and REPORT what it
-    # finds — the real-world completeness signal on our own commits, pre-merge.
-    # Non-blocking (continue-on-error) so it accumulates evidence without
-    # gating; flip to a hard gate once the catch/false-positive record is
-    # established on real history.
-    name: verify (self, reporting)
+  gate:
+    # Dogfood the PR gate (MKT-01, REL-08): prism ci built from this PR's
+    # source fails the PR on a missed site or a new architecture violation
+    # (arch_deny rules in prism.yaml). It used to be a non-blocking report.
+    name: prism ci (gate)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    env:
+      GOWORK: "off"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,9 +43,5 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
       - run: go build -o /tmp/prism ./cmd/prism
-      - name: verify diff vs base
-        continue-on-error: true
-        run: |
-          /tmp/prism index . >/dev/null 2>&1 || true
-          echo "## prism verify — this PR's diff vs ${{ github.base_ref }}" >> "$GITHUB_STEP_SUMMARY"
-          /tmp/prism verify . --base "origin/${{ github.base_ref }}" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Gate this PR against its base
+        run: /tmp/prism ci . --base "origin/${{ github.base_ref }}" --format github

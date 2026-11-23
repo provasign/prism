@@ -32,6 +32,11 @@ type Config struct {
 	WorkspaceRepos []WorkspaceRepo
 	// WorkspaceServer is the shared link server, from `workspace_server:`.
 	WorkspaceServer string
+	// CIFailOn lists the finding kinds that fail `prism ci`, from
+	// `ci_fail_on: missed_sites, arch` (default both).
+	CIFailOn []string
+	// CIComment: the CI action posts one sticky PR comment, `ci_comment:`.
+	CIComment bool
 }
 
 // WorkspaceRepo is one `workspace_repo:` entry.
@@ -69,6 +74,19 @@ func LoadFromDir(dir string) (*Config, error) {
 		}
 		return c, err
 	}
+	parseInto(c, data)
+	return c, nil
+}
+
+// Parse reads prism.yaml content (for a revision other than the working
+// tree: prism ci reads its settings from the base commit).
+func Parse(data []byte) *Config {
+	c := Default()
+	parseInto(c, data)
+	return c
+}
+
+func parseInto(c *Config, data []byte) {
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -120,9 +138,21 @@ func LoadFromDir(dir string) (*Config, error) {
 			c.WorkspaceRepos = append(c.WorkspaceRepos, WorkspaceRepo{ID: id, Path: p})
 		case "workspace_server":
 			c.WorkspaceServer = v
+		case "ci_fail_on":
+			if j := strings.IndexByte(v, '#'); j >= 0 {
+				v = v[:j]
+			}
+			c.CIFailOn = nil
+			for _, k := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == ' ' || r == '[' || r == ']' }) {
+				c.CIFailOn = append(c.CIFailOn, strings.Trim(k, `"'`))
+			}
+			if c.CIFailOn == nil {
+				c.CIFailOn = []string{}
+			}
+		case "ci_comment":
+			c.CIComment = v == "true" || v == "yes" || v == "1"
 		}
 	}
-	return c, nil
 }
 
 // ContextWindow returns the total context window in tokens for the model.

@@ -220,6 +220,12 @@ Usage:
   prism drift                     MCP only (prism_drift): it compares files with what the
                                   running server delivered this session; a CLI call has no session
   prism config [dir]              Show resolved configuration ([--format text|json] [--json])
+  prism ci [dir]                  PR/CI gate: index, verify, change-impact --diff and test-plan
+                                  against --base REF; facts with site lists, no LLM.
+                                  [--format text|github|sarif|json] [--json] [--untrusted|--trusted]
+                                  Exits 1 on a finding in ci_fail_on (prism.yaml of the BASE
+                                  revision; default missed_sites, arch), 3 when compiler-backed
+                                  analysis did not run
   prism trust [dir]               Let indexing run this repository's own build tools
                                   (Maven/Gradle, its typescript, rust-analyzer, go toolchain)
   prism untrust [dir]             Never run them for this repository; also --untrusted
@@ -392,6 +398,8 @@ func Run(args []string) int {
 		return cmdConfig(rest)
 	case "trust", "untrust":
 		return cmdTrust(cmd, rest)
+	case "ci":
+		return cmdCI(rest)
 	}
 	return unknownCommand(cmd)
 }
@@ -403,7 +411,7 @@ var commandNames = []string{
 	"verify", "test-plan", "workspace", "link-server", "query", "read",
 	"search", "node", "lookup", "references", "refs", "resolve", "edges",
 	"change-impact", "missing-implementations", "rename-plan", "dead-code",
-	"assist", "compact", "feedback", "serve", "mcp", "drift", "config", "trust", "untrust",
+	"assist", "compact", "feedback", "serve", "mcp", "drift", "config", "trust", "untrust", "ci",
 }
 
 func knownCommand(cmd string) bool {

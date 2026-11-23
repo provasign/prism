@@ -1,0 +1,119 @@
+name: prism ci
+description: >
+  Change-completeness gate for pull requests: prism ci runs verify,
+  change-impact --diff and test-plan against the PR base and fails on a
+  missed site or a new architecture violation. Facts with site lists; no LLM.
+inputs:
+  version:
+    description: prism release tag to run (pinned, never "latest"), for example v1.3.0
+    required: true
+  base:
+    description: base revision (default the pull request base commit)
+    required: false
+    default: ""
+  comment:
+    description: post or update one sticky PR comment with the summary
+    required: false
+    default: "false"
+  trusted:
+    description: >
+      Run the repository's own build tools during indexing. Default: trusted
+      for same-repository PRs, untrusted for PRs from forks.
+    required: false
+    default: "auto"
+outputs:
+  verdict:
+    description: pass, fail or degraded
+    value: ${{ steps.gate.outputs.verdict }}
+runs:
+  using: composite
+  steps:
+    - name: Download and verify prism
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        case "${RUNNER_OS}-${RUNNER_ARCH}" in
+          Linux-X64) asset="prism-${VERSION}-linux-amd64" ;;
+          Linux-ARM64) asset="prism-${VERSION}-linux-arm64" ;;
+          macOS-X64) asset="prism-${VERSION}-darwin-amd64" ;;
+          macOS-ARM64) asset="prism-${VERSION}-darwin-arm64" ;;
+          *) echo "::error::prism ci: unsupported runner ${RUNNER_OS}-${RUNNER_ARCH}"; exit 2 ;;
+        esac
+        url="https://github.com/provasign/prism/releases/download/${VERSION}"
+        dest="${RUNNER_TEMP}/prism-bin"
+        mkdir -p "$dest"
+        curl -fsSL -o "$dest/$asset" "$url/$asset"
+        curl -fsSL -o "$dest/checksums.txt" "$url/checksums.txt"
+        # The binary must match the release's published checksum (REL-04).
+        line=$(grep -E "[ /]${asset}\$" "$dest/checksums.txt" | sed "s#\./##")
+        [ -n "$line" ] || { echo "::error::prism ci: ${asset} is not in checksums.txt"; exit 2; }
+        (cd "$dest" && echo "$line" | shasum -a 256 -c -)
+        mv "$dest/$asset" "$dest/prism"
+        chmod +x "$dest/prism"
+        echo "$dest" >> "$GITHUB_PATH"
+    - name: Restore index
+      uses: actions/cache@v4
+      with:
+        path: .grove
+        key: prism-grove-${{ inputs.version }}-${{ github.event.pull_request.base.sha || github.sha }}
+        restore-keys: prism-grove-${{ inputs.version }}-
+    - name: Gate
+      id: gate
+      shell: bash
+      env:
+        BASE: ${{ inputs.base || github.event.pull_request.base.sha }}
+        TRUSTED: ${{ inputs.trusted }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        THIS_REPO: ${{ github.repository }}
+      run: |
+        set -uo pipefail
+        trust="--trusted"
+        # A pull request from a fork is untrusted input: its build scripts
+        # must not run on this runner (SEC-01).
+        if [ "$TRUSTED" = "false" ] || { [ "$TRUSTED" = "auto" ] && [ -n "$HEAD_REPO" ] && [ "$HEAD_REPO" != "$THIS_REPO" ]; }; then
+          trust="--untrusted"
+        fi
+        base="${BASE:-HEAD~1}"
+        git fetch --no-tags --depth=1 origin "$base" 2>/dev/null || true
+        summary="${RUNNER_TEMP}/prism-ci-summary.md"
+        GITHUB_STEP_SUMMARY="$summary" prism ci . --base "$base" --format github $trust
+        rc=$?
+        cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+        case $rc in
+          0) verdict=pass ;;
+          1) verdict=fail ;;
+          3) verdict=degraded ;;
+          *) verdict=error ;;
+        esac
+        echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+        echo "rc=$rc" >> "$GITHUB_OUTPUT"
+    - name: Sticky comment
+      if: inputs.comment == 'true' && github.event.pull_request.number
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        set -euo pipefail
+        body="$(printf '<!-- prism-ci -->\n'; cat "${RUNNER_TEMP}/prism-ci-summary.md")"
+        id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
+          --jq '[.[] | select(.body | startswith("<!-- prism-ci -->"))][0].id // empty')
+        if [ -n "$id" ]; then
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" -f body="$body" >/dev/null
+        else
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" -f body="$body" >/dev/null
+        fi
+    - name: Result
+      shell: bash
+      env:
+        RC: ${{ steps.gate.outputs.rc }}
+      run: |
+        # Exit codes (prism help exit-codes): 1 finding, 3 degraded, 70 failure.
+        # 0 pass, 3 degraded (answered without compiler-backed analysis) pass;
+        # 1 finding, 2 usage, 70 failure fail the job.
+        case "$RC" in
+          0|3) ;;
+          *) exit 1 ;;
+        esac
