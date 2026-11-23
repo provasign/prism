@@ -80,7 +80,7 @@ func TestMalformedFlagValuesAreUsageErrors(t *testing.T) {
 		{"verify missing base", []string{"verify", "--base"}, "--base requires a value"},
 		{"verify bad format", []string{"verify", "--format", "yaml"}, "--format wants"},
 		{"test-plan missing base", []string{"test-plan", "--base"}, "--base requires a value"},
-		{"test-plan bad format", []string{"test-plan", "--format", "xml"}, "--format wants text|lean|json"},
+		{"test-plan bad format", []string{"test-plan", "--format", "xml"}, "--format must be text, json or targets"},
 		{"test-plan two dirs", []string{"test-plan", "a", "b"}, "takes one directory"},
 		{"map bad depth", []string{"map", "--depth", "deep"}, "--depth requires a positive integer"},
 		{"map bad expand", []string{"map", "--expand", "a->"}, "--expand wants 'from->to'"},

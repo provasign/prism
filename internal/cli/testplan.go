@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/provasign/prism/internal/mcp"
 )
 
 func cmdTestPlan(args []string) int {
 	dir, dirSet := ".", false
 	format := formatText
+	targets := false
 	callArgs := map[string]any{}
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
@@ -28,14 +31,19 @@ func cmdTestPlan(args []string) int {
 			callArgs["coverage"] = append(cov, v)
 			i++
 		case "--format":
-			f, err := formatFlag("test-plan", args, i)
+			v, err := flagValue("test-plan", args, i)
 			if err != nil {
 				return usageError(err)
 			}
-			if f != formatText && f != formatJSON {
-				return usageError(fmt.Errorf("test-plan: --format must be text or json"))
+			switch outputFormat(v) {
+			case "targets":
+				// GAP-06: one runner-addressed target per line.
+				targets = true
+			case formatText, formatJSON:
+				format = outputFormat(v)
+			default:
+				return usageError(fmt.Errorf("test-plan: --format must be text, json or targets"))
 			}
-			format = f
 			i++
 		default:
 			if strings.HasPrefix(a, "-") {
@@ -50,6 +58,12 @@ func cmdTestPlan(args []string) int {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "test-plan:", err)
 		return 2
+	}
+	if targets {
+		for _, t := range mcp.TestPlanTargets(out) {
+			fmt.Println(t)
+		}
+		return 0
 	}
 	printToolResult("test-plan", out, text, rendered, format)
 	return 0

@@ -167,6 +167,8 @@ Usage:
                                   --format text|json  Output format (default: text)
   prism test-plan [dir]          Impacted test symbols, file targets, evidence, and gaps
                                   --base <ref>  Compare working tree with ref (default: HEAD)
+                                  --format targets  one runner target per line (Go -run
+                                  pattern, pytest node id, Class#method, test file); no commands
                                   Two tiers: run first (resolved call paths, nearest first) and
                                   run for safety (every test in a package that depends on the change)
                                   --coverage <file>  read recorded coverage (Go profile, lcov,
