@@ -141,11 +141,9 @@ jobs:
           - goarch: amd64
             runner: windows-latest
             optional: false
-          # REL-10: new; not yet proven, so it cannot block a release.
-          # install.ps1 falls back to amd64 (emulated) when it is absent.
-          - goarch: arm64
-            runner: windows-11-arm
-            optional: true
+          # No windows/arm64: the windows-11-arm runner's gcc is an x86
+          # toolchain, so cgo cannot target arm64 there (v1.3.0 release run).
+          # install.ps1 falls back to amd64, which Windows on ARM emulates.
     continue-on-error: ${{ matrix.optional }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
