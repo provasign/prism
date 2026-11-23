@@ -445,8 +445,55 @@ func cliHintSpelling(text string) string {
 	text = symbolListHint.ReplaceAllString(text, "prism search --scope symbols --path $1")
 	text = ambiguousImpactCall.ReplaceAllString(text, "prism change-impact '$1' --file '$2' --format text")
 	text = strings.Replace(text, "pick one and call it by its full name:", "pick one and run it by its full name:", 1)
+	for _, r := range cliHintRules {
+		text = r.re.ReplaceAllString(text, r.to)
+	}
 	return cliHintReplacer.Replace(text)
 }
+
+// cliHintRules rewrite MCP call spellings in notes into CLI commands
+// (CON-03): "op=read file="x" from=1 to=9", "prism_lookup", "the prism tool
+// with op=search", "include_tests=true". Order matters: specific forms first.
+var cliHintRules = []struct {
+	re *regexp.Regexp
+	to string
+}{
+	{regexp.MustCompile(`prism op=search args=\{"terms":\["([^"]+)"\],"scope":"text","paths":\["([^"]+)"\]\}`), "prism search $1 --scope text --path $2"},
+	{regexp.MustCompile(`op=read file="([^"]+)" from=(\S+?) to=(\S+?)([,.;)]|\s|$)`), "prism read $1 --from $2 --to $3$4"},
+	{regexp.MustCompile(`op=read file="([^"]+)"`), "prism read $1"},
+	{regexp.MustCompile(`op=read ranges=\[\{file:"([^"]+)",from:(\d+),to:(\d+)\},\{file:"([^"]+)",from:(\d+),to:(\d+)\}\]`), "prism read $1 --from $2 --to $3; prism read $4 --from $5 --to $6"},
+	{regexp.MustCompile(`op=lookup name=(\S+)`), "prism lookup $1"},
+	{regexp.MustCompile(`op=search terms=\["([^"]+)"\] scope=text`), "prism search $1 --scope text"},
+	{regexp.MustCompile(`the prism tool with op=(lookup|read|search|query)`), "prism $1"},
+	{regexp.MustCompile(`, op=(lookup|read|search|query) `), ", prism $1 "},
+	{regexp.MustCompile(`\bop=change_impact\b`), "prism change-impact"},
+	{regexp.MustCompile(`\bop=missing_implementations\b`), "prism missing-implementations"},
+	{regexp.MustCompile(`\bop=(lookup|read|search|query|verify)\b`), "prism $1"},
+	{regexp.MustCompile(`\bprism_change_impact\b`), "prism change-impact"},
+	{regexp.MustCompile(`\bprism_missing_implementations\b`), "prism missing-implementations"},
+	{regexp.MustCompile(`\bprism_rename_plan\b`), "prism rename-plan"},
+	{regexp.MustCompile(`\bprism_dead_code\b`), "prism dead-code"},
+	{regexp.MustCompile(`\bprism_arch_check\b`), "prism arch"},
+	{regexp.MustCompile(`\bprism_read\(file, offset=(\S+?), limit=(\S+?)\)`), "prism read <file> --offset $1 --limit $2"},
+	{regexp.MustCompile(`\bprism_(read|lookup|search|query|index|verify|map|cycles|edges|resolve|references|node|drift|feedback)\b`), "prism $1"},
+	{regexp.MustCompile(`with file set\b`), "with --file"},
+	{regexp.MustCompile(`no_default_excludes=true / --no-default-excludes`), "--no-default-excludes"},
+	{regexp.MustCompile(`\bno_default_excludes=true\b`), "--no-default-excludes"},
+	{regexp.MustCompile(`\binclude_tests=true\b`), "--tests"},
+	{regexp.MustCompile(`\binclude_auxiliary=true\b`), "--all-components"},
+	{regexp.MustCompile(`\ballow_collision=true\b`), "--allow-collision"},
+	{regexp.MustCompile(`\brollup_only=true\b`), "--rollup-only"},
+	{regexp.MustCompile(`\binclude_bodies=false\b`), "--no-bodies"},
+	{regexp.MustCompile(`use regex=false\b`), "drop --regex"},
+	{regexp.MustCompile(`\bregex=true\b`), "--regex"},
+	{regexp.MustCompile(`\bscope=(text|symbols)\b`), "--scope $1"},
+	{regexp.MustCompile(`\bpaths=\[("?[^\]"]+"?)\]`), "--path $1"},
+}
+
+// sourceRow matches output lines that carry repository text (a lookup
+// body "12→", a search hit "  12: ", context "  12- ", a positioned row
+// "path:12:5: "); hint rewriting never touches them.
+var sourceRow = regexp.MustCompile(`^\s*\d+(→|: |- )|^\s*\S+:\d+(:\d+)?: `)
 
 var symbolListHint = regexp.MustCompile(`op=search with scope=symbols and paths=\["([^"]+)"\]`)
 

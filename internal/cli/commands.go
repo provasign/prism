@@ -281,6 +281,7 @@ func Run(args []string) int {
 		return 0
 	}
 	cmd, rest := args[0], args[1:]
+	defer cliSpelledOutput(cmd, rest)()
 	// `prism <cmd> --help` used to RUN <cmd>: no handler parsed -h/--help, so
 	// `prism init --help` performed a full init (writing prism.yaml, nine
 	// steering files and every project MCP registration) and `prism search
@@ -4179,7 +4180,7 @@ func invokeCompactReadText(dir string, args map[string]any) (out any, text strin
 func printToolResult(op string, out any, text string, rendered bool, format outputFormat) {
 	if format == formatText {
 		if rendered {
-			text = fitShellOutput(op, cliHintSpelling(text))
+			text = fitShellOutput(op, cliHintSpellingLines(text))
 			fmt.Print(text)
 			if !strings.HasSuffix(text, "\n") {
 				fmt.Println()
