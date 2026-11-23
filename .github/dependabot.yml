@@ -4,9 +4,14 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # REL-06: an engine bump (provasign/*) is its own PR, so the
+    # invariants job judges it alone.
     groups:
+      provasign:
+        patterns: ["github.com/provasign/*"]
       go-dependencies:
         patterns: ["*"]
+        exclude-patterns: ["github.com/provasign/*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

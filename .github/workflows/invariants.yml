@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  GO_VERSION: "1.26.3"
+  GO_VERSION: "1.26.11"
   GOWORK: "off"
   RESEARCH_SHA: "8dfe92928048ad3a45e1f55debd39c8b0245c2f2"
   ASTKIT_DECOY_VERSION: "v0.16.9"
@@ -20,22 +20,22 @@ jobs:
     name: Ceiling regression + compile invariant
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
       - run: go build -o /tmp/prism-candidate ./cmd/prism
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: provasign/research
           ref: ${{ env.RESEARCH_SHA }}
           path: research
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       - run: GOBIN=/usr/local/bin go install github.com/provasign/astkit/cmd/decoy@${{ env.ASTKIT_DECOY_VERSION }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: /tmp/ci-corpus
           key: ci-corpus-${{ hashFiles('research/harness/scoring/ci_invariants.py', 'research/harness/ci_baseline.json') }}

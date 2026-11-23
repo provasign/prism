@@ -4,9 +4,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+permissions:
+  contents: read
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  GO_VERSION: "1.26.3"
+  GO_VERSION: "1.26.11"
 jobs:
   test:
     name: Test (${{ matrix.os }})
@@ -14,16 +16,81 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # REL-10: linux/arm64 and darwin/amd64 ship, so they are tested.
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
+    env:
+      GOWORK: "off"
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-      - run: go vet ./...
-      - run: go test ./... -count=1 -timeout 300s
+      # REL-07: on linux every host tool the tests use is installed, and
+      # PRISM_CI=1 turns a missing one into a failure instead of a skip.
+      - name: Install test tools (linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Test (linux, race detector)
+        if: runner.os == 'Linux'
+        env:
+          PRISM_CI: "1"
+        run: go test ./... -count=1 -race -timeout 900s
+      - name: Test
+        if: runner.os != 'Linux'
+        run: go test ./... -count=1 -timeout 600s
       - run: go build ./...
+
+  lint:
+    # REL-07: formatting, vet, static analysis, known vulnerabilities and
+    # the workflows themselves. Tool versions are pinned.
+    name: Lint
+    runs-on: ubuntu-latest
+    env:
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: gofmt
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
+      - run: go vet ./...
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@2025.1.1 ./...
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+      - name: actionlint
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - name: Installers parse
+        run: |
+          bash -n install.sh uninstall.sh
+          shellcheck -S error install.sh uninstall.sh
+          bash install.sh --dry-run
+          pwsh -NoProfile -Command '$errs = $null; foreach ($f in "install.ps1","uninstall.ps1") { [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs) | Out-Null; if ($errs) { $errs; exit 1 } }'
+
+  reproducible:
+    # REL-09: the release flags must give the same bytes twice.
+    name: Reproducible build
+    runs-on: ubuntu-latest
+    env:
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Build twice and compare
+        run: |
+          flags='-s -w -X github.com/provasign/prism/internal/version.Version=v0.0.0-repro'
+          GOCACHE=/tmp/cache-a go build -trimpath -buildvcs=true -ldflags="$flags" -o /tmp/a/prism ./cmd/prism
+          GOCACHE=/tmp/cache-b go build -trimpath -buildvcs=true -ldflags="$flags" -o /tmp/b/prism ./cmd/prism
+          sha256sum /tmp/a/prism /tmp/b/prism
+          cmp /tmp/a/prism /tmp/b/prism
 
   gate:
     # Dogfood the PR gate (MKT-01, REL-08): prism ci built from this PR's
@@ -35,13 +102,17 @@ jobs:
     env:
       GOWORK: "off"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
       - run: go build -o /tmp/prism ./cmd/prism
+      # REL-08: the declared architecture rules (arch_deny in prism.yaml)
+      # are required, not advisory.
+      - name: Architecture rules
+        run: /tmp/prism arch .
       - name: Gate this PR against its base
         run: /tmp/prism ci . --base "origin/${{ github.base_ref }}" --format github
