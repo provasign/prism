@@ -44,7 +44,7 @@ func exitForError(err error) int {
 		return exitOK
 	}
 	msg := err.Error()
-	for _, p := range []string{"directory does not exist", "is not a directory", "requires a value", "unknown flag", "is a file, not a symbol"} {
+	for _, p := range []string{"directory does not exist", "is not a directory", "requires a value", "unknown flag", "is a file, not a symbol", "no project here"} {
 		if strings.Contains(msg, p) {
 			return exitUsage
 		}

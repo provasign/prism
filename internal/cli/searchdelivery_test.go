@@ -87,6 +87,9 @@ func TestSearchCLIInvalidContextFails(t *testing.T) {
 
 func TestSearchCLIDoesNotInheritCompactListCaps(t *testing.T) {
 	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "prism.yaml"), []byte("version: 2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	// Terms are capped at 10 (BUG-09); paths and globs are not.
 	terms := make([]string, 11)
 	args := make([]string, 0, 11+2+22+22)
@@ -114,6 +117,9 @@ func TestSearchCLIIncludeBodiesMatchesMCPOption(t *testing.T) {
 	dir := t.TempDir()
 	dir, err := filepath.EvalSymlinks(dir)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "prism.yaml"), []byte("version: 2\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "sample.go"),

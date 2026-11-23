@@ -56,3 +56,26 @@ func mustWriteFile(t *testing.T, path, body string) {
 		t.Fatal(err)
 	}
 }
+
+// CON-11: a query in a directory that is no project does not create .grove;
+// an explicit prism index still builds there.
+func TestQueryRefusesNonProjectDir(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "notes.txt"), "hello\n")
+	var rc int
+	stderr := captureStderr(func() { _ = captureStdout(func() { rc = cmdLookup([]string{"Hello", "--dir", dir}) }) })
+	if rc != exitUsage || !strings.Contains(stderr, "no project here") {
+		t.Fatalf("lookup rc=%d stderr=%q", rc, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".grove")); err == nil {
+		t.Fatal("a refused query created .grove")
+	}
+	captureStdout(func() {
+		if rc := cmdIndex([]string{dir}); rc != 0 {
+			t.Fatalf("explicit index rc=%d", rc)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(dir, ".grove")); err != nil {
+		t.Fatal("explicit index did not build")
+	}
+}

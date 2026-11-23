@@ -81,6 +81,17 @@ func notARepository(p, primary string) string {
 	return "refused: no sign of a repository there (no .git, manifest or index)"
 }
 
+// LooksLikeProject reports whether dir holds a repository marker: .git,
+// .grove, prism.yaml or a build manifest.
+func LooksLikeProject(dir string) bool {
+	for _, m := range repositoryMarkers {
+		if _, err := os.Stat(filepath.Join(dir, m)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 // Workspace is the primary root plus the roots linked to it.
 type Workspace struct {
 	Primary string

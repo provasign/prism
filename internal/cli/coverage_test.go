@@ -22,6 +22,9 @@ func writeCLIFile(t *testing.T, root, rel, content string) string {
 
 func setupCLIProject(t *testing.T) string {
 	dir := t.TempDir()
+	// A project marker, as prism init leaves: queries refuse to index a
+	// directory that is no project (CON-11).
+	_ = writeCLIFile(t, dir, "prism.yaml", "version: 2\n")
 	_ = writeCLIFile(t, dir, "main.go", "package main\n\n"+strings.Repeat("// fixture padding for cache pointer savings\n", 20)+"func Main() {}\n")
 	_ = writeCLIFile(t, dir, "main_test.go", "package main\n\nimport \"testing\"\n\nfunc TestMain(t *testing.T) { Main() }\n")
 	return dir

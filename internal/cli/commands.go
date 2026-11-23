@@ -2419,6 +2419,8 @@ func containsString(list []any, s string) bool {
 }
 
 func cmdIndex(args []string) int {
+	indexAnywhere = true // an explicit index may build anywhere (CON-11)
+	defer func() { indexAnywhere = false }()
 	args, format, rc := takeFormat("index", args)
 	if rc != 0 {
 		return rc
@@ -4344,6 +4346,10 @@ func newClientMode(dir string, oneShot bool) (*config.Config, *grove.Client, err
 
 // newClientOpts is newClientMode with force: every Index call on the
 // client re-extracts every file and re-runs every analyzer.
+// indexAnywhere lets this process open an index in a directory with no
+// project marker; prism index and prism watch set it.
+var indexAnywhere bool
+
 func newClientOpts(dir string, oneShot, force bool) (*config.Config, *grove.Client, error) {
 	root := mustAbs(dir)
 	if err := requireDir(root); err != nil {
@@ -4354,6 +4360,12 @@ func newClientOpts(dir string, oneShot, force bool) (*config.Config, *grove.Clie
 		return nil, nil, fmt.Errorf("config: %w", err)
 	}
 	cfg.WarnProblems() // CON-08: a typo in prism.yaml used to be ignored silently
+	// CON-11: a query in a directory that is no project (an empty folder,
+	// ~/Downloads) used to create .grove there and index whatever it held.
+	// Only prism index / watch build an index in such a directory.
+	if !indexAnywhere && !workspace.LooksLikeProject(root) {
+		return nil, nil, fmt.Errorf("no project here: %s has no .git, prism.yaml, .grove or build manifest; run `prism index %s` to index it anyway", root, root)
+	}
 	client := grove.NewClient().WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root))
 	if oneShot {
 		client.OneShot()

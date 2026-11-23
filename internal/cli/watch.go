@@ -38,6 +38,8 @@ func watchIgnoreDir(name string) bool {
 // never wait on a stale-index rebuild. Complements the pull model (each command
 // delta-indexes on demand) for long editor/agent sessions.
 func cmdWatch(args []string) int {
+	indexAnywhere = true
+	defer func() { indexAnywhere = false }()
 	dir, dirSet := ".", false
 	debounce := 2 * time.Second
 	for i := 0; i < len(args); i++ {

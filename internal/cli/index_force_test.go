@@ -30,7 +30,8 @@ func TestCmdIndexForceRerunsSkippedAnalyzers(t *testing.T) {
 	if strings.Contains(forced, "skipped: no file changes") {
 		t.Fatalf("index --force still skipped the analyzers:\n%s", forced)
 	}
-	if !strings.Contains(forced, `"filesUpdated": 2`) || !strings.Contains(forced, "go: full pass") {
+	// main.go, main_test.go and the fixture's prism.yaml.
+	if !strings.Contains(forced, `"filesUpdated": 3`) || !strings.Contains(forced, "go: full pass") {
 		t.Errorf("index --force should re-extract every file and re-run the Go pass:\n%s", forced)
 	}
 }
