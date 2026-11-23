@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/provasign/prism/internal/testtool"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,10 +26,8 @@ type hookEnv struct {
 
 func newHookEnv(t *testing.T) *hookEnv {
 	t.Helper()
-	python, err := exec.LookPath("python3")
-	if err != nil {
-		t.Skip("python3 not on PATH")
-	}
+	testtool.Require(t, "python3")
+	python, _ := exec.LookPath("python3")
 	project := t.TempDir()
 	if err := installReadGuard(project); err != nil {
 		t.Fatalf("installReadGuard: %v", err)

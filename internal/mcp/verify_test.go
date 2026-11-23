@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"github.com/provasign/prism/internal/testtool"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -289,7 +290,8 @@ func TestToolVerify_PythonMissedCallers(t *testing.T) {
 	// is forgotten. Every file still compiles.
 	write("svc/core.py", "class Store:\n    def put(self, key, ttl):\n        return key\n")
 	write("app/writer.py", "from svc.core import Store\n\ndef save(k):\n    s = Store()\n    return s.put(k, 60)\n")
-	if python, err := exec.LookPath("python3"); err == nil {
+	if testtool.Want(t, "python3") {
+		python, _ := exec.LookPath("python3")
 		cmd := exec.Command(python, "-m", "py_compile", "svc/core.py", "app/writer.py", "app/backup.py")
 		cmd.Dir = dir
 		cmd.Env = append(cmd.Environ(), "PYTHONPYCACHEPREFIX="+t.TempDir())

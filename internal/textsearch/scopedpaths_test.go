@@ -1,8 +1,8 @@
 package textsearch
 
 import (
+	"github.com/provasign/prism/internal/testtool"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -19,9 +19,7 @@ func TestScopedDotPathsMatchUnscopedPaths(t *testing.T) {
 	for _, backend := range []string{"rg", "grep", "native"} {
 		t.Run(backend, func(t *testing.T) {
 			if backend != "native" {
-				if _, err := exec.LookPath(bin(backend)); err != nil {
-					t.Skip(backend + " unavailable")
-				}
+				testtool.Require(t, bin(backend))
 			}
 			search := func(paths []string) Result {
 				opts := (Options{Paths: paths}).withDefaults()

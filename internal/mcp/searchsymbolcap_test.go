@@ -3,6 +3,7 @@ package mcp
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/provasign/prism/internal/testtool"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -264,9 +265,7 @@ func TestSearchSymbolsLabelsNameMatchTiers(t *testing.T) {
 }
 
 func TestQueryRankingIgnoresFreshUnrelatedCommit(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git unavailable")
-	}
+	testtool.Require(t, "git")
 	h := symbolScopeFixture(t, 30, 30)
 	root := h.Root
 	git := func(date string, args ...string) {

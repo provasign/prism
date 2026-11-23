@@ -2,6 +2,7 @@ package textsearch
 
 import (
 	"context"
+	"github.com/provasign/prism/internal/testtool"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +28,7 @@ func TestSearchDefinitionSurvivesCapAndFreshUnrelatedCommit(t *testing.T) {
 		t.Fatalf("definition must lead the capped sample: %+v", before.Hits)
 	}
 
-	if _, err := exec.LookPath("git"); err != nil {
+	if !testtool.Want(t, "git") {
 		return
 	}
 	git := func(args ...string) {

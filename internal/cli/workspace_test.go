@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/provasign/prism/internal/testtool"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -258,9 +259,7 @@ func TestWorkspaceDiscoverFromManifests(t *testing.T) {
 // The headline case: change a library function, see its callers in the
 // application repository that has its own index.
 func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("go toolchain not available")
-	}
+	testtool.Require(t, "go")
 	parent, _ := filepath.EvalSymlinks(t.TempDir())
 	lib, app, idle := filepath.Join(parent, "lib"), filepath.Join(parent, "app"), filepath.Join(parent, "idle")
 	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
@@ -335,9 +334,7 @@ func gitIn(t *testing.T, dir string, args ...string) {
 // it refreshes the consumer's index, or, when it may not, says it is stale.
 func TestWorkspaceChangeImpactFollowsBranchSwitch(t *testing.T) {
 	for _, tool := range []string{"go", "git"} {
-		if _, err := exec.LookPath(tool); err != nil {
-			t.Skip(tool + " not available")
-		}
+		testtool.Require(t, tool)
 	}
 	parent, _ := filepath.EvalSymlinks(t.TempDir())
 	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
@@ -402,9 +399,7 @@ func TestWorkspaceChangeImpactFollowsBranchSwitch(t *testing.T) {
 // repository calls is listed, and the verdict says it was not covered.
 func TestWorkspaceVerifyListsLinkedConsumersOfAChangedContract(t *testing.T) {
 	for _, tool := range []string{"go", "git"} {
-		if _, err := exec.LookPath(tool); err != nil {
-			t.Skip(tool + " not available")
-		}
+		testtool.Require(t, tool)
 	}
 	parent, _ := filepath.EvalSymlinks(t.TempDir())
 	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
@@ -442,9 +437,7 @@ func TestWorkspaceVerifyListsLinkedConsumersOfAChangedContract(t *testing.T) {
 
 func TestWorkspaceTestPlanListsLinkedTests(t *testing.T) {
 	for _, tool := range []string{"go", "git"} {
-		if _, err := exec.LookPath(tool); err != nil {
-			t.Skip(tool + " not available")
-		}
+		testtool.Require(t, tool)
 	}
 	parent, _ := filepath.EvalSymlinks(t.TempDir())
 	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
@@ -543,9 +536,7 @@ func TestDiscoverUsesTheRegistry(t *testing.T) {
 // A dependency that is not checked out: fetched into the cache at a commit,
 // indexed once, and answered from like a linked checkout.
 func TestWorkspaceCacheClone(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not available")
-	}
+	testtool.Require(t, "git")
 	base, _ := filepath.EvalSymlinks(t.TempDir())
 	t.Setenv("PRISM_CACHE_DIR", filepath.Join(base, "cache"))
 	t.Setenv("PRISM_STATE_DIR", filepath.Join(base, "state"))
@@ -606,9 +597,7 @@ func TestWorkspaceCacheClone(t *testing.T) {
 // uploaded commit.
 func TestWorkspaceServerAnswersForRepositoriesNotCheckedOut(t *testing.T) {
 	for _, tool := range []string{"go", "git"} {
-		if _, err := exec.LookPath(tool); err != nil {
-			t.Skip(tool + " not available")
-		}
+		testtool.Require(t, tool)
 	}
 	base, _ := filepath.EvalSymlinks(t.TempDir())
 	store, err := linkserver.Open(filepath.Join(base, "store"))
@@ -748,9 +737,7 @@ func TestWorkspaceParentFolderDeclaresChildren(t *testing.T) {
 // A repository that is linked but not on disk must be named in every
 // answer, never dropped from the count.
 func TestWorkspaceMissingCheckoutIsNamed(t *testing.T) {
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("go toolchain not available")
-	}
+	testtool.Require(t, "go")
 	parent, _ := filepath.EvalSymlinks(t.TempDir())
 	lib := filepath.Join(parent, "lib")
 	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n\nrequire (\n\tgithub.com/acme/core v1.4.0\n\texample.com/near v0.1.0\n)\n")
@@ -1019,9 +1006,7 @@ func TestWorkspaceVerifyRemovedLooksAtLinkedRepositories(t *testing.T) {
 // The classic cross-repository break: the library changes an interface and a
 // type in a consumer stops implementing it. No call names the method there.
 func TestWorkspaceChangeImpactListsImplementers(t *testing.T) {
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("go toolchain not available")
-	}
+	testtool.Require(t, "go")
 	parent, _ := filepath.EvalSymlinks(t.TempDir())
 	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
 	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
@@ -1047,9 +1032,7 @@ func TestWorkspaceChangeImpactListsImplementers(t *testing.T) {
 // surface: their uses in a linked repository are listed, or, where a kind is
 // not recorded, the answer still says what was and was not searched.
 func TestWorkspaceChangeImpactVariablesAndFields(t *testing.T) {
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("go toolchain not available")
-	}
+	testtool.Require(t, "go")
 	parent, _ := filepath.EvalSymlinks(t.TempDir())
 	t.Setenv("PRISM_STATE_DIR", filepath.Join(parent, "state"))
 	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
@@ -1243,9 +1226,7 @@ func TestLookupLinkedFileHintRequiresConfirmedRoot(t *testing.T) {
 // repository that does, instead of failing until the agent reruns --repo
 // (2 of 10 change-impact calls in the 11-16 cross-repo run).
 func TestChangeImpactFallsThroughToLinkedRepository(t *testing.T) {
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("go toolchain not available")
-	}
+	testtool.Require(t, "go")
 	parent, _ := filepath.EvalSymlinks(t.TempDir())
 	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
 	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")

@@ -3,8 +3,8 @@ package textsearch
 import (
 	"context"
 	"fmt"
+	"github.com/provasign/prism/internal/testtool"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -57,11 +57,11 @@ func TestCountBackendsReturnExactMatchingLineCounts(t *testing.T) {
 	opts := Options{Timeout: 5 * time.Second}.withDefaults()
 	native := nativeCount(context.Background(), dir, "Phase4Needle", opts)
 	assertExactAdaptiveCount(t, "native", native, true)
-	if _, err := exec.LookPath("rg"); err == nil {
+	if testtool.Want(t, "rg") {
 		r, ok := runRgCount(context.Background(), dir, "Phase4Needle", opts)
 		assertExactAdaptiveCount(t, "rg", r, ok)
 	}
-	if _, err := exec.LookPath("grep"); err == nil {
+	if testtool.Want(t, "grep") {
 		r, ok := runGrepCount(context.Background(), dir, "Phase4Needle", opts)
 		assertExactAdaptiveCount(t, "grep", r, ok)
 	}

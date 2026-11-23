@@ -3,8 +3,8 @@ package textsearch
 import (
 	"context"
 	"fmt"
+	"github.com/provasign/prism/internal/testtool"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -143,14 +143,14 @@ func TestNativeSearchFindsMatches(t *testing.T) {
 
 func TestRgAndGrepMatchNativeSemantics(t *testing.T) {
 	dir := fixture(t)
-	if _, err := exec.LookPath("rg"); err == nil {
+	if testtool.Want(t, "rg") {
 		r, ok := runRg(context.Background(), dir, "NeedleOne", Options{}.withDefaults())
 		if !ok {
 			t.Fatal("rg invocation failed")
 		}
 		assertFixtureResult(t, r)
 	}
-	if _, err := exec.LookPath("grep"); err == nil {
+	if testtool.Want(t, "grep") {
 		r, ok := runGrep(context.Background(), dir, "NeedleOne", Options{}.withDefaults())
 		if !ok {
 			t.Fatal("grep invocation failed")
@@ -251,14 +251,14 @@ func TestRegexModeAllBackends(t *testing.T) {
 	}
 	opts := Options{Regex: true}.withDefaults()
 	check("native", nativeSearch(context.Background(), dir, `alpha_\w+_v\d`, opts))
-	if _, err := exec.LookPath("rg"); err == nil {
+	if testtool.Want(t, "rg") {
 		r, ok := runRg(context.Background(), dir, `alpha_\w+_v\d`, opts)
 		if !ok {
 			t.Fatal("rg failed")
 		}
 		check("rg", r)
 	}
-	if _, err := exec.LookPath("grep"); err == nil {
+	if testtool.Want(t, "grep") {
 		r, ok := runGrep(context.Background(), dir, `alpha_[a-z]+_v[0-9]`, opts) // POSIX-safe classes
 		if !ok {
 			t.Fatal("grep failed")
