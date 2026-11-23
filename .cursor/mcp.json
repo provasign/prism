@@ -4,9 +4,9 @@
       "args": [
         "mcp",
         "--compact",
-        "/Users/tapabratapal/Projects/provasign/prism"
+        "${workspaceFolder}"
       ],
-      "command": "/Users/tapabratapal/Projects/provasign/prism/bin/prism"
+      "command": "prism"
     }
   }
 }
