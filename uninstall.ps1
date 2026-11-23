@@ -54,7 +54,7 @@ function Remove-JsonServerEntry {
       ok "removed $Name from $Path"
     }
   } catch {
-    Write-Verbose "could not clean $Path: $_"
+    Write-Verbose "could not clean ${Path}: $_"
   }
 }
 
@@ -78,7 +78,7 @@ function Remove-IfEmptyMcpConfig {
       }
     }
   } catch {
-    Write-Verbose "could not check $Path: $_"
+    Write-Verbose "could not check ${Path}: $_"
   }
 }
 
@@ -215,7 +215,7 @@ if (Test-Path $claudeSettings) {
       ok "removed prism from enabledMcpjsonServers"
     }
   } catch {
-    Write-Verbose "could not update $claudeSettings: $_"
+    Write-Verbose "could not update ${claudeSettings}: $_"
   }
 }
 

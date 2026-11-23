@@ -217,6 +217,12 @@ func TestSearchDeliversTheNamedDefinitionFirst(t *testing.T) {
 		"src/main/java/x/BReader.java": caller("BReader"),
 		"src/main/java/x/Ctx.java":     "package x;\n\npublic class Ctx {\n    /*\n     * Extended API\n     */\n\n    public Object readRootValue(Object p,\n            Object valueToUpdate)\n    {\n        return p;\n    }\n}\n",
 	})
+	// Build the index first: search waits 10 s for it and then answers from
+	// the files on disk without enclosing bodies, which is what this test
+	// asserts on. A slow runner (macos-15-intel, javac) passed that wait.
+	if _, err := srv.handler.Grove.Index(t.Context(), srv.handler.Root); err != nil {
+		t.Fatal(err)
+	}
 	for _, scope := range []string{"text", "both"} {
 		out := callCompact(t, srv, "search", map[string]any{"terms": []any{"readRootValue"}, "scope": scope})
 		// Numbered source lines are delivered bodies; grep lines are not.
