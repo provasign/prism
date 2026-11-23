@@ -2,11 +2,13 @@ package graphui
 
 import (
 	"context"
+	"crypto/subtle"
 	_ "embed"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,7 +39,14 @@ type Server struct {
 	model    atomic.Pointer[Model]
 	loadedAt atomic.Int64
 	reloadMu sync.Mutex
+
+	// token, when set, is required on /api/* (X-Prism-Token): another local
+	// user could otherwise read source through the loopback port (SEC-09).
+	token string
 }
+
+// SetToken requires tok on every /api/* request.
+func (s *Server) SetToken(tok string) { s.token = tok }
 
 // NewServer loads the first snapshot and returns a ready server.
 func NewServer(ctx context.Context, root, version string, snapshot Snapshot, reindex func(context.Context) error, impact ImpactFunc) (*Server, error) {
@@ -85,6 +94,11 @@ func (s *Server) Handler() http.Handler {
 		}
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Cache-Control", "no-store")
+		if s.token != "" && strings.HasPrefix(r.URL.Path, "/api/") &&
+			subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Prism-Token")), []byte(s.token)) != 1 {
+			http.Error(w, "missing or wrong token: open the address prism graph printed", http.StatusUnauthorized)
+			return
+		}
 		mux.ServeHTTP(w, r)
 	})
 }

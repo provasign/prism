@@ -401,7 +401,22 @@ function go(scope, mode) {
 const impactOf = id => go(id, "impact");
 window.addEventListener("hashchange", () => { readHash(); load(); });
 
+/* The access token arrives once in the address (k=) and is kept for this
+   tab only; it is removed from the address so it does not linger in
+   history or screenshots (SEC-09). */
+let TOKEN = "";
+(function takeToken() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  try { TOKEN = p.get("k") || sessionStorage.getItem("prismToken") || ""; } catch (e) { TOKEN = p.get("k") || ""; }
+  if (p.has("k")) {
+    try { sessionStorage.setItem("prismToken", TOKEN); } catch (e) {}
+    p.delete("k");
+    history.replaceState(null, "", "#" + p.toString());
+  }
+})();
 async function api(path, opts) {
+  opts = Object.assign({}, opts || {});
+  opts.headers = Object.assign({}, opts.headers || {}, {"X-Prism-Token": TOKEN});
   const r = await fetch(path, opts);
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || `${r.status} ${r.statusText}`);

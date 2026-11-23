@@ -51,7 +51,7 @@ func TestGraphURL(t *testing.T) {
 		{"internal/cli", false, "http://127.0.0.1:8787/#s=d%3Ainternal%2Fcli"},
 		{"", true, "http://127.0.0.1:8787/#t=1"},
 	} {
-		if got := graphURL(8787, tc.sub, tc.tests); got != tc.want {
+		if got := graphURL(8787, tc.sub, tc.tests, ""); got != tc.want {
 			t.Errorf("graphURL(%q, %v) = %q, want %q", tc.sub, tc.tests, got, tc.want)
 		}
 	}

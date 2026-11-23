@@ -17,6 +17,7 @@ import (
 
 	"github.com/provasign/prism/internal/graphui"
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/httpguard"
 	"github.com/provasign/prism/internal/mcp"
 	"github.com/provasign/prism/internal/version"
 )
@@ -122,7 +123,13 @@ func cmdGraph(args []string) int {
 		fmt.Fprintln(os.Stderr, "graph:", err)
 		return 1
 	}
-	page := graphURL(ln.Addr().(*net.TCPAddr).Port, sub, tests)
+	token, err := httpguard.NewToken()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "graph:", err)
+		return 1
+	}
+	srv.SetToken(token)
+	page := graphURL(ln.Addr().(*net.TCPAddr).Port, sub, tests, token)
 	fmt.Fprintf(os.Stderr, "prism graph: %d files, %d symbols, %d dependency edges in %s\n",
 		meta.Files, meta.Symbols, meta.Edges, root)
 	fmt.Fprintln(os.Stderr, "open", page, " (Ctrl+C to stop)")
@@ -155,8 +162,11 @@ func cmdGraph(args []string) int {
 
 // graphURL builds the page address. View state lives in the URL fragment,
 // which the page reads: s = scope, t = include tests.
-func graphURL(port int, sub string, tests bool) string {
+func graphURL(port int, sub string, tests bool, token string) string {
 	frag := url.Values{}
+	if token != "" {
+		frag.Set("k", token)
+	}
 	if sub != "" {
 		frag.Set("s", "d:"+sub)
 	}
