@@ -18,7 +18,6 @@ import (
 	"sync"
 
 	groveeng "github.com/provasign/grove/pkg/grove"
-	"github.com/provasign/prism/internal/trust"
 	"os"
 )
 
@@ -114,7 +113,7 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	}
 	// SEC-01: the user's trust decision for this root, never the repo's.
 	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root, OneShot: c.oneShot, ForceIndex: c.force, LinkedRoots: c.linked,
-		Untrusted: trust.For(c.root).Untrusted})
+		Untrusted: Trust.Untrusted(c.root)})
 	if err != nil {
 		return fmt.Errorf("grove open: %w", err)
 	}
@@ -148,7 +147,7 @@ func (c *Client) AutoIndexIfEmpty(ctx context.Context) error {
 		// Re-checked under the index lock: of several parallel first
 		// commands only one builds the index; the rest wait and read it.
 		res, err := e.IndexIfStale(ctx, c.root, func(st groveeng.Status) {
-			if note := trust.NoticeOnce(c.root); note != "" {
+			if note := Trust.Notice(c.root); note != "" {
 				fmt.Fprintln(os.Stderr, note)
 			}
 			if st.SymbolCount == 0 {
@@ -389,7 +388,7 @@ func (c *Client) Index(ctx context.Context, dir string) (*IndexResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if note := trust.NoticeOnce(c.root); note != "" {
+	if note := Trust.Notice(c.root); note != "" {
 		fmt.Fprintln(os.Stderr, note)
 	}
 	res, err := e.Index(ctx, dir)
