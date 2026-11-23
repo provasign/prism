@@ -29,4 +29,12 @@ func TestCacheSlugIsAValidPathEverywhere(t *testing.T) {
 	if got := filepath.ToSlash(cacheSlug("https://github.com/org/repo.git")); got != "github.com/org/repo" {
 		t.Errorf("https slug = %q", got)
 	}
+	// A local repository gets a short name, not its whole path.
+	long := `file:C:\Users\runneradmin\AppData\Local\Temp\TestWorkspaceCacheClone203184237\001\upstream\lib`
+	if got := filepath.ToSlash(cacheSlug(long)); !strings.HasPrefix(got, "local/lib-") || len(got) > 24 {
+		t.Errorf("local slug = %q", got)
+	}
+	if cacheSlug("file:/a/lib") == cacheSlug("file:/b/lib") {
+		t.Error("two local repositories with one name share a cache directory")
+	}
 }

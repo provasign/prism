@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -227,6 +229,37 @@ func IsGitURL(arg string) bool {
 	return strings.Contains(arg, "://") || strings.HasPrefix(arg, "git@") || strings.HasSuffix(strings.SplitN(arg, "@", 2)[0], ".git")
 }
 
+// localRepoSlug names the cache directory of a repository on this machine
+// (a file: URL or a bare path): local/<last component>-<hash of the path>.
+// The whole path used to be repeated under the cache, which put "file:C:"
+// in a directory name and, once that was fixed, exceeded Windows' path
+// length limit for git's worktree.
+func localRepoSlug(repo string) (string, bool) {
+	p, isFile := cutPrefixFold(repo, "file:")
+	if !isFile {
+		if strings.Contains(repo, "://") || strings.HasPrefix(repo, "git@") {
+			return "", false
+		}
+		if u, err := url.Parse(repo); err == nil && u.Host != "" {
+			return "", false
+		}
+		p = repo
+	}
+	p = strings.TrimRight(strings.ReplaceAll(p, `\`, "/"), "/") // a Windows path on any OS
+	base := strings.TrimSuffix(p[strings.LastIndexByte(p, '/')+1:], ".git")
+	base = strings.Map(func(r rune) rune {
+		if strings.ContainsRune(`:*?"<>|\`, r) || r < 32 {
+			return '_'
+		}
+		return r
+	}, base)
+	if base == "" || base == "." || base == ".." {
+		base = "repo"
+	}
+	sum := sha256.Sum256([]byte(p))
+	return filepath.Join("local", base+"-"+hex.EncodeToString(sum[:4])), true
+}
+
 // cutPrefixFold is strings.CutPrefix ignoring ASCII case.
 func cutPrefixFold(s, prefix string) (string, bool) {
 	if len(s) >= len(prefix) && strings.EqualFold(s[:len(prefix)], prefix) {
@@ -248,12 +281,10 @@ func SplitURLRef(arg string) (repo, ref string) {
 // cacheSlug is the directory a remote is cached under: host/org/repo.
 func cacheSlug(repo string) string {
 	s := repo
-	if rest, ok := cutPrefixFold(repo, "file:"); ok {
-		// file:C:\x or file:///x: url.Parse rejects a Windows path, and
-		// the raw string put "file:C:" into a directory name (invalid on
-		// Windows).
-		s = "local/" + strings.TrimLeft(filepath.ToSlash(rest), "/")
-	} else if u, err := url.Parse(repo); err == nil && u.Host != "" {
+	if local, ok := localRepoSlug(repo); ok {
+		return local
+	}
+	if u, err := url.Parse(repo); err == nil && u.Host != "" {
 		s = u.Host + "/" + strings.TrimPrefix(u.Path, "/")
 	} else if u != nil && u.Scheme == "file" {
 		s = "local/" + strings.TrimPrefix(u.Path, "/")

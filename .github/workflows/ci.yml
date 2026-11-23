@@ -65,13 +65,14 @@ jobs:
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
       - name: actionlint
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-      - name: Installers parse
+      - name: Installers parse (shell)
         run: |
           bash -n install.sh uninstall.sh
           shellcheck -S error install.sh uninstall.sh
-          bash install.sh --dry-run
-          # shellcheck disable=SC2016 # $errs is PowerShell's, not the shell's
-          pwsh -NoProfile -Command '$errs = $null; foreach ($f in "install.ps1","uninstall.ps1") { [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs) | Out-Null; if ($errs) { $errs; exit 1 } }'
+      - name: Installer dry run
+        run: bash install.sh --dry-run
+      - name: Installers parse (PowerShell)
+        run: pwsh -NoProfile -File .github/scripts/parse-ps1.ps1 install.ps1 uninstall.ps1
 
   reproducible:
     # REL-09: the release flags must give the same bytes twice.
