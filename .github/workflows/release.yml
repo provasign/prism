@@ -2,18 +2,16 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+# REL-05: least privilege by default; only the publish job can write the
+# release, mint an OIDC token, or attest.
 permissions:
-  contents: write
-  actions: read
-  id-token: write
-  attestations: write
+  contents: read
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  GO_VERSION: "1.26.3"
+  GO_VERSION: "1.26.11"
+  # REL-09: no local paths in the binary, VCS stamp on, fixed ldflags.
+  LDFLAGS_BASE: "-s -w -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}"
 jobs:
-  # REL-01: no binary is built or published unless the tests and the engine
-  # invariants pass on this exact commit. "No tag with either red" used to
-  # be enforced by memory only.
   gate:
     name: Gate (tests + engine invariants)
     runs-on: ubuntu-latest
@@ -24,8 +22,8 @@ jobs:
       RESEARCH_SHA: "8dfe92928048ad3a45e1f55debd39c8b0245c2f2"
       ASTKIT_DECOY_VERSION: "v0.16.9"
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -33,18 +31,18 @@ jobs:
         run: go test ./... -count=1 -race -timeout 900s
       - name: Build candidate
         run: go build -o /tmp/prism-candidate ./cmd/prism
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: provasign/research
           ref: ${{ env.RESEARCH_SHA }}
           path: research
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       - name: Install decoy injector
         run: GOBIN=/usr/local/bin go install github.com/provasign/astkit/cmd/decoy@${{ env.ASTKIT_DECOY_VERSION }}
       - name: Restore invariant corpus
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: /tmp/ci-corpus
           key: ci-corpus-${{ hashFiles('research/harness/scoring/ci_invariants.py', 'research/harness/ci_baseline.json') }}
@@ -73,8 +71,8 @@ jobs:
       matrix:
         goarch: [amd64, arm64]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Install arm64 cross-compiler
@@ -100,14 +98,11 @@ jobs:
           CC: ${{ matrix.goarch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }}
         run: |
           mkdir -p dist
-          go build -tags netgo -ldflags="-s -w -extldflags \"-static\" -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-linux-${{ matrix.goarch }}" ./cmd/prism
-      - uses: actions/upload-artifact@v7
+          go build -trimpath -buildvcs=true -tags netgo -ldflags="${LDFLAGS_BASE} -extldflags \"-static\"" -o "dist/prism-${{ github.ref_name }}-linux-${{ matrix.goarch }}" ./cmd/prism
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: prism-linux-${{ matrix.goarch }}
           path: dist/
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: dist/*
 
   build-darwin:
     needs: gate
@@ -117,8 +112,8 @@ jobs:
       matrix:
         goarch: [amd64, arm64]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Build
@@ -129,53 +124,69 @@ jobs:
           CC: ${{ matrix.goarch == 'amd64' && 'clang -arch x86_64' || 'clang -arch arm64' }}
         run: |
           mkdir -p dist
-          go build -ldflags="-s -w -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-darwin-${{ matrix.goarch }}" ./cmd/prism
-      - uses: actions/upload-artifact@v7
+          go build -trimpath -buildvcs=true -ldflags="${LDFLAGS_BASE}" -o "dist/prism-${{ github.ref_name }}-darwin-${{ matrix.goarch }}" ./cmd/prism
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: prism-darwin-${{ matrix.goarch }}
           path: dist/
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: dist/*
 
   build-windows:
     needs: gate
-    name: Build windows/amd64
-    runs-on: windows-latest
+    name: Build windows/${{ matrix.goarch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goarch: amd64
+            runner: windows-latest
+            optional: false
+          # REL-10: new; not yet proven, so it cannot block a release.
+          # install.ps1 falls back to amd64 (emulated) when it is absent.
+          - goarch: arm64
+            runner: windows-11-arm
+            optional: true
+    continue-on-error: ${{ matrix.optional }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Build
         env:
           GOOS: windows
-          GOARCH: amd64
+          GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "1"
         shell: bash
         run: |
           mkdir -p dist
-          go build -ldflags="-s -w -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-windows-amd64.exe" ./cmd/prism
-      - uses: actions/upload-artifact@v7
+          go build -trimpath -buildvcs=true -ldflags="${LDFLAGS_BASE}" -o "dist/prism-${{ github.ref_name }}-windows-${{ matrix.goarch }}.exe" ./cmd/prism
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: prism-windows-amd64
+          name: prism-windows-${{ matrix.goarch }}
           path: dist/
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: dist/*
 
-  release-meta:
-    name: Checksums + install scripts
+  # REL-03: nothing is public until every asset exists. Build jobs only
+  # upload workflow artifacts; this job writes checksums, SBOM, attestation
+  # and signature, creates the release as a draft, and publishes it last.
+  # install.sh used to abort in the window where binaries were public and
+  # checksums.txt was not.
+  publish:
+    name: Publish release
     needs: [build-linux, build-darwin, build-windows]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           merge-multiple: true
           path: dist/
       - name: Generate SPDX SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           path: dist/
           format: spdx-json
@@ -185,30 +196,39 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          find . -maxdepth 1 -type f ! -name checksums.txt -print0 | sort -z | xargs -0 sha256sum > checksums.txt
+          find . -maxdepth 1 -type f ! -name 'checksums.txt*' -print0 | sort -z | xargs -0 sha256sum > checksums.txt
+          cat checksums.txt
       - name: Attest release artifacts
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: dist/*
-      - uses: softprops/action-gh-release@v3
+      # REL-04: the checksums file is signed keyless, so an attacker who can
+      # replace a release asset cannot also forge checksums.txt. install.sh
+      # verifies this bundle when cosign is installed.
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+      - name: Sign checksums
+        run: cosign sign-blob --yes --bundle dist/checksums.txt.sigstore.json dist/checksums.txt
+      - name: Create draft release
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
+          draft: true
           files: |
             dist/*
             install.sh
             install.ps1
             uninstall.sh
             uninstall.ps1
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --draft=false --latest
 
       # The Homebrew formula is NOT published from here. provasign/homebrew-tap
-      # refreshes itself daily (.github/workflows/refresh-formulae.yml): a
-      # workflow in the tap writes to its own repository with the built-in
-      # GITHUB_TOKEN, so there is no cross-repo push token to provision here and
-      # forget. This job used to carry a publish step guarded on a
-      # HOMEBREW_TAP_TOKEN secret that was never set — it warned and no-opped on
-      # every single release, which read as "the tap is stale" when the tap was
-      # in fact updating itself.
+      # refreshes itself daily (.github/workflows/refresh-formulae.yml) from
+      # the latest published release; a draft is never "latest", so the tap
+      # cannot pick up a half-made release.
       #
-      # The tap therefore lags a tag by up to a day. To publish immediately:
+      # To publish immediately:
       #   gh workflow run refresh-formulae.yml -R provasign/homebrew-tap
       - name: Homebrew formula
         run: |
