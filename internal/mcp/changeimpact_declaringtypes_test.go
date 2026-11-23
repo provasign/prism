@@ -34,7 +34,7 @@ func use(c DataKeyCache) {
 }
 `)
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

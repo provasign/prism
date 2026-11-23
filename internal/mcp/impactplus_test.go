@@ -28,7 +28,7 @@ func newImpactPlusHandlerWith(t *testing.T, setup func(dir string), files map[st
 		}
 		mustWrite(t, dir, name, body)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

@@ -572,7 +572,7 @@ func Beta() {
 func shared() {}
 `)
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -639,7 +639,7 @@ func Beta() {
 
 func shared() {}
 `)
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

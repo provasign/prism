@@ -19,7 +19,7 @@ func TestToolReferences_E2E(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "util.go"), []byte("package p\n\ntype StringUtils struct{}\n\nfunc (StringUtils) IsEmpty() bool { return true }\n"), 0o644)
 	os.WriteFile(filepath.Join(dir, "app.go"), []byte("package p\n\n// StringUtils note\nfunc run(){\n\tvar u StringUtils\n\t_ = u.IsEmpty()\n\t_ = StringUtils{}\n}\n"), 0o644)
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

@@ -252,7 +252,7 @@ func TestVerify_VsGrepBaseline(t *testing.T) {
 			os.WriteFile(p, []byte(content), 0o644)
 		}
 
-		gc := grove.NewClient("", "").WithTokenFromDir(dir)
+		gc := grove.NewClient().WithTokenFromDir(dir)
 		if err := gc.EnsureRunning(t.Context()); err != nil {
 			t.Fatalf("grove ensure: %v", err)
 		}

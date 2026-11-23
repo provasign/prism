@@ -172,7 +172,7 @@ func TestQueryGraphDefaultDoesNotSeedHistoricalDocument(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ enum Mode { SKIP, KEEP }
 	if err := os.WriteFile(filepath.Join(root, "Policy.java"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}

@@ -25,7 +25,7 @@ func TestVerifyRemovedQualifiedNameFindsCallers(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

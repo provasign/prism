@@ -24,7 +24,7 @@ func planFixture(t *testing.T) (*Handler, string) {
 	planGit(t, dir, "init", "-q")
 	planGit(t, dir, "add", ".")
 	planGit(t, dir, "-c", "user.name=test", "-c", "user.email=t@t", "commit", "-qm", "base")
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}

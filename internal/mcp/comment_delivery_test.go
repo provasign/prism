@@ -28,7 +28,7 @@ func TestQueryPreservesDeepCommentOutsideNamedSeedWindow(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "large.py"), []byte(source.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}

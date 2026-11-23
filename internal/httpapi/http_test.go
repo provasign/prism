@@ -15,7 +15,7 @@ import (
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	gc := grove.NewClient("http://127.0.0.1:1", "")
+	gc := grove.NewClient()
 	h := mcp.NewHandler(&config.Config{}, t.TempDir(), gc)
 	return httptest.NewServer(New(h).Handler())
 }

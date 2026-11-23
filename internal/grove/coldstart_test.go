@@ -28,7 +28,7 @@ func TestParallelColdStartIndexesOnce(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			c := NewClient("", "").WithTokenFromDir(dir).OneShot()
+			c := NewClient().WithTokenFromDir(dir).OneShot()
 			if err := c.EnsureRunning(context.Background()); err != nil {
 				errs[i] = err
 				return

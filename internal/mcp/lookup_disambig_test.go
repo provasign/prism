@@ -23,7 +23,7 @@ func TestToolLookup_TypeMethodDisambiguation(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "store_mock.go"), []byte(
 		"package p\n\ntype MockStore struct{}\n\nfunc (m *MockStore) Get(k string) string { return \"mock\" }\n"), 0o644)
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestToolLookup_QualifierRejectsOtherOwner(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "errors.go"), []byte(
 		"package p\n\ntype errorMsgs []string\n\nfunc (a errorMsgs) Errors() []string { return a }\n"), 0o644)
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

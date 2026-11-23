@@ -50,7 +50,7 @@ func symbolScopeFixture(t *testing.T, n, m int) *Handler {
 			t.Fatal(err)
 		}
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -211,7 +211,7 @@ func symbolRankingFixture(t *testing.T) *Handler {
 	if err := os.WriteFile(filepath.Join(dir, "bench_test.go"), []byte(doubles.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}

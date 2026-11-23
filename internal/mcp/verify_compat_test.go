@@ -87,7 +87,7 @@ func variadicVerify(t *testing.T, base, edits map[string]string) map[string]any 
 			t.Fatalf("git %v: %v\n%s", args, err, out)
 		}
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

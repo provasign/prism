@@ -2,15 +2,23 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
 
-// Config holds the resolved Prism configuration.
+// Config holds the resolved Prism configuration. It is the one parser of
+// prism.yaml (CON-08): init's own keys (version, harnesses, mcp_surface,
+// interface) are read here too, not by ad hoc line scanners.
 type Config struct {
-	GroveURL    string
-	GroveBinary string
+	// Version, Harnesses, MCPSurface and Interface are written by prism init.
+	Version    string
+	Harnesses  string
+	MCPSurface string
+	Interface  string
 	// Model is the active AI model identifier. There is NO auto-detection —
 	// the MCP initialize handshake does not carry the model — so it is set
 	// only via prism.yaml, PRISM_MODEL, or a per-call model= argument. When
@@ -19,7 +27,8 @@ type Config struct {
 	Model         string
 	Profile       string
 	MaxCacheFiles int
-	Port          int
+	// Port is prism serve's default port, from `port:` (0 = 8888).
+	Port int
 	// ArchDeny holds declared architecture rules, one per `arch_deny:` line
 	// in prism.yaml: "<from> -> <to>" where each side is a component name
 	// (directory), a prefix (covers subdirectories), a glob, or "*".
@@ -40,6 +49,25 @@ type Config struct {
 	// SensitivePaths adds patterns to the files whose text is withheld from
 	// search and read, from `sensitive_paths: a, b` (additive only).
 	SensitivePaths []string
+
+	// Sources maps each key set by prism.yaml or the environment to where
+	// it came from ("prism.yaml:<line>" or "env PRISM_X").
+	Sources map[string]string
+	// Problems lists unknown keys and invalid values, one message each.
+	Problems []string
+}
+
+// knownKeys are the keys prism.yaml may hold.
+var knownKeys = []string{
+	"version", "harnesses", "mcp_surface", "interface", "model", "profile", "port",
+	"arch_deny", "workspace_repo", "workspace_server", "ci_fail_on", "ci_comment", "sensitive_paths",
+}
+
+// retiredKeys are accepted and ignored, so old files load without a warning.
+var retiredKeys = map[string]string{
+	"agent_mode":   "init stopped writing it in v0.38.0",
+	"grove_url":    "Grove is embedded",
+	"grove_binary": "Grove is embedded",
 }
 
 // WorkspaceRepo is one `workspace_repo:` entry.
@@ -52,14 +80,15 @@ type WorkspaceRepo struct {
 // Model intentionally defaults to "" (unset — 200k-window default applies).
 func Default() *Config {
 	c := &Config{
-		// Grove is embedded in-process; the URL is a legacy field kept for
-		// compatibility and shown in config output. No daemon, no port.
-		GroveURL:      envOr("PRISM_GROVE_URL", "embedded://grove"),
-		GroveBinary:   envOr("PRISM_GROVE_BINARY", "grove"),
 		Model:         envOr("PRISM_MODEL", ""), // "" = unset (no auto-detection)
 		Profile:       envOr("PRISM_PROFILE", "default"),
 		MaxCacheFiles: 50000,
-		Port:          8888,
+		Sources:       map[string]string{},
+	}
+	for key, env := range map[string]string{"model": "PRISM_MODEL", "profile": "PRISM_PROFILE"} {
+		if os.Getenv(env) != "" {
+			c.Sources[key] = "env " + env
+		}
 	}
 	return c
 }
@@ -81,6 +110,97 @@ func LoadFromDir(dir string) (*Config, error) {
 	return c, nil
 }
 
+// LoadFile parses one prism.yaml path; a missing file gives the defaults.
+func LoadFile(path string) *Config {
+	c := Default()
+	if data, err := os.ReadFile(path); err == nil {
+		parseInto(c, data)
+	}
+	return c
+}
+
+// QuietProblems stops WarnProblems; doctor and config report problems in
+// their own output.
+var QuietProblems bool
+
+// WarnProblems prints each problem once per process to stderr.
+func (c *Config) WarnProblems() {
+	if QuietProblems {
+		return
+	}
+	for _, p := range c.Problems {
+		if !warned[p] {
+			warned[p] = true
+			fmt.Fprintln(os.Stderr, "prism.yaml:", p)
+		}
+	}
+}
+
+var warned = map[string]bool{}
+
+// Keys lists every known key with its resolved value and source
+// ("default" when neither prism.yaml nor the environment set it).
+func (c *Config) Keys() [][3]string {
+	val := map[string]string{
+		"version": c.Version, "harnesses": c.Harnesses, "mcp_surface": c.MCPSurface,
+		"interface": c.Interface, "model": c.Model, "profile": c.Profile,
+		"port": "", "arch_deny": strings.Join(c.ArchDeny, "; "),
+		"workspace_server": c.WorkspaceServer, "ci_comment": strconv.FormatBool(c.CIComment),
+		"sensitive_paths": strings.Join(c.SensitivePaths, ", "),
+	}
+	if c.Port != 0 {
+		val["port"] = strconv.Itoa(c.Port)
+	}
+	if c.CIFailOn != nil {
+		val["ci_fail_on"] = strings.Join(c.CIFailOn, ", ")
+	}
+	var repos []string
+	for _, r := range c.WorkspaceRepos {
+		repos = append(repos, r.ID+"="+r.Path)
+	}
+	val["workspace_repo"] = strings.Join(repos, "; ")
+	out := make([][3]string, 0, len(knownKeys))
+	for _, k := range knownKeys {
+		src := c.Sources[k]
+		if src == "" {
+			src = "default"
+		}
+		out = append(out, [3]string{k, val[k], src})
+	}
+	return out
+}
+
+// nearestKey returns the known key closest to k by edit distance, or "".
+func nearestKey(k string) string {
+	best, bestD := "", 4
+	for _, cand := range knownKeys {
+		if d := editDistance(k, cand); d < bestD {
+			best, bestD = cand, d
+		}
+	}
+	return best
+}
+
+func editDistance(a, b string) int {
+	prev := make([]int, len(b)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		cur := make([]int, len(b)+1)
+		cur[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
+		}
+		prev = cur
+	}
+	return prev[len(b)]
+}
+
 // Parse reads prism.yaml content (for a revision other than the working
 // tree: prism ci reads its settings from the base commit).
 func Parse(data []byte) *Config {
@@ -90,22 +210,46 @@ func Parse(data []byte) *Config {
 }
 
 func parseInto(c *Config, data []byte) {
-	for _, line := range strings.Split(string(data), "\n") {
+	if c.Sources == nil {
+		c.Sources = map[string]string{}
+	}
+	fileSet := map[string]bool{}
+	for n, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		i := strings.IndexByte(line, ':')
 		if i < 0 {
+			c.Problems = append(c.Problems, fmt.Sprintf("line %d: not a key: value line: %q", n+1, line))
 			continue
 		}
 		k := strings.TrimSpace(line[:i])
 		v := strings.Trim(strings.TrimSpace(line[i+1:]), `"'`)
+		if _, retired := retiredKeys[k]; !retired && !fileSet[k] {
+			// A repeatable key (arch_deny, workspace_repo) names its first line.
+			c.Sources[k] = fmt.Sprintf("prism.yaml:%d", n+1)
+			fileSet[k] = true
+		}
 		switch k {
-		case "grove_url":
-			c.GroveURL = v
-		case "grove_binary":
-			c.GroveBinary = v
+		case "version":
+			c.Version = stripComment(v)
+		case "harnesses":
+			c.Harnesses = stripComment(v)
+		case "mcp_surface":
+			c.MCPSurface = stripComment(v)
+		case "interface":
+			c.Interface = stripComment(v)
+		case "port":
+			p, err := strconv.Atoi(stripComment(v))
+			if err != nil || p < 1 || p > 65535 {
+				c.Problems = append(c.Problems, fmt.Sprintf("line %d: port %q is not 1..65535", n+1, v))
+				delete(c.Sources, k)
+				continue
+			}
+			c.Port = p
+		case "grove_url", "grove_binary":
+			// Retired: Grove is embedded in-process.
 		case "model":
 			c.Model = v
 		case "profile":
@@ -160,9 +304,38 @@ func parseInto(c *Config, data []byte) {
 				c.SensitivePaths = append(c.SensitivePaths, strings.Trim(k, `"'`))
 			}
 		case "ci_comment":
-			c.CIComment = v == "true" || v == "yes" || v == "1"
+			switch stripComment(v) {
+			case "true", "yes", "1":
+				c.CIComment = true
+			case "false", "no", "0", "":
+				c.CIComment = false
+			default:
+				c.Problems = append(c.Problems, fmt.Sprintf("line %d: ci_comment %q is not true or false", n+1, v))
+				delete(c.Sources, k)
+			}
+		default:
+			delete(c.Sources, k)
+			msg := fmt.Sprintf("line %d: unknown key %q (ignored)", n+1, k)
+			if near := nearestKey(k); near != "" {
+				msg += fmt.Sprintf("; did you mean %q?", near)
+			}
+			c.Problems = append(c.Problems, msg)
 		}
 	}
+	for _, k := range c.CIFailOn {
+		if k != "missed_sites" && k != "arch" {
+			c.Problems = append(c.Problems, fmt.Sprintf("ci_fail_on: unknown kind %q (missed_sites, arch)", k))
+		}
+	}
+	sort.Strings(c.Problems)
+}
+
+// stripComment drops an inline " # comment" and surrounding quotes.
+func stripComment(v string) string {
+	if j := strings.Index(v, " #"); j >= 0 {
+		v = v[:j]
+	}
+	return strings.Trim(strings.TrimSpace(v), `"'`)
 }
 
 // ContextWindow returns the total context window in tokens for the model.

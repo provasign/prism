@@ -46,7 +46,7 @@ func TestToolVerify_StringContentAdvisoryDoesNotMaskContractChanges(t *testing.T
 			git("add", "-A")
 			git("commit", "-q", "-m", "base")
 			write(tc.after)
-			gc := grove.NewClient("", "").WithTokenFromDir(dir)
+			gc := grove.NewClient().WithTokenFromDir(dir)
 			if err := gc.EnsureRunning(t.Context()); err != nil {
 				t.Fatal(err)
 			}

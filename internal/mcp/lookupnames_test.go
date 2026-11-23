@@ -47,7 +47,7 @@ func namesRepo(t *testing.T, rootName, fixture string, files map[string]string) 
 			t.Fatal(err)
 		}
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}

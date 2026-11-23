@@ -45,7 +45,7 @@ func UniqueHelper() int {
 	if err := os.WriteFile(filepath.Join(root, "flags.go"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}

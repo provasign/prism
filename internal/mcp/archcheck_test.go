@@ -138,7 +138,7 @@ func TestArchCheck_InjectionBenchmark(t *testing.T) {
 		n++
 	}
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

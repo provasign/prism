@@ -38,7 +38,7 @@ type Client struct {
 
 // NewClient returns a Client. baseURL and groveBin are accepted for API
 // compatibility but unused — Grove is now embedded in-process.
-func NewClient(_, _ string) *Client {
+func NewClient() *Client {
 	return &Client{}
 }
 
@@ -1003,7 +1003,7 @@ func ReadIndexState(ctx context.Context, root string) (IndexState, error) {
 // RefreshIndex brings the existing index under root up to date with the
 // files on disk: the ordinary incremental run, bounded by ctx.
 func RefreshIndex(ctx context.Context, root string, linked ...string) error {
-	c := NewClient("", "").WithTokenFromDir(root).WithLinkedRoots(linked).OneShot()
+	c := NewClient().WithTokenFromDir(root).WithLinkedRoots(linked).OneShot()
 	if err := c.EnsureRunning(ctx); err != nil {
 		return err
 	}

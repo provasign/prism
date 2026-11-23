@@ -222,7 +222,9 @@ Usage:
                                   Start MCP server on stdio (compact gateway is default)
   prism drift                     MCP only (prism_drift): it compares files with what the
                                   running server delivered this session; a CLI call has no session
-  prism config [dir]              Show resolved configuration ([--format text|json] [--json])
+  prism config [dir]              Show every prism.yaml key, its value and its source;
+                                  --check exits 1 on an unknown key or invalid value
+                                  ([--check] [--format text|json] [--json])
   prism ci [dir]                  PR/CI gate: index, verify, change-impact --diff and test-plan
                                   against --base REF; facts with site lists, no LLM.
                                   [--format text|github|sarif|json] [--json] [--untrusted|--trusted]
@@ -852,25 +854,15 @@ func harnessYAMLLine(harnesses []string) string {
 }
 
 func readRecordedHarnesses(path string) []string {
-	raw, err := os.ReadFile(path)
+	value := config.LoadFile(path).Harnesses
+	if value == "" {
+		return nil
+	}
+	harnesses, err := parseHarnesses([]string{value})
 	if err != nil {
 		return nil
 	}
-	for _, line := range strings.Split(string(raw), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if line != trimmed || !strings.HasPrefix(trimmed, "harnesses:") {
-			continue
-		}
-		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "harnesses:"))
-		if unquoted, err := strconv.Unquote(value); err == nil {
-			value = unquoted
-		}
-		harnesses, err := parseHarnesses([]string{value})
-		if err == nil {
-			return harnesses
-		}
-	}
-	return nil
+	return harnesses
 }
 
 // steeringInstructions is injected into every agent instruction file.
@@ -2573,7 +2565,7 @@ func cmdStatus(args []string) int {
 	// engine (newClient -> EnsureRunning) rehydrates the whole graph first —
 	// ~1.3s of work on a 500k-edge index that status never reads. Same counts,
 	// same output shape, ~5ms.
-	client := grove.NewClient("", "").WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root)).OneShot()
+	client := grove.NewClient().WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root)).OneShot()
 	res, err := client.QuickStatus(context.Background())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "status:", err)
@@ -2584,6 +2576,7 @@ func cmdStatus(args []string) int {
 }
 
 func cmdDoctor(args []string) int {
+	config.QuietProblems = true // listed under warnings instead
 	args, format, rc := takeFormat("doctor", args)
 	if rc != 0 {
 		return rc
@@ -2628,6 +2621,11 @@ func cmdDoctor(args []string) int {
 		warnings = append(warnings, r.Language+": compiler-backed analysis missing ("+r.Problem+"); results are name-based. Fix: "+r.Fix)
 	}
 	warnings = append(warnings, sharedConfigWarnings(root)...)
+	if c, err := config.LoadFromDir(root); err == nil {
+		for _, p := range c.Problems {
+			warnings = append(warnings, "prism.yaml: "+p)
+		}
+	}
 	trustState := trust.For(root).String()
 	if strings.HasPrefix(trustState, "untrusted") {
 		warnings = append(warnings, "repository is "+trustState+": its build tools do not run, so Java (Maven/Gradle), TypeScript and Rust (rust-analyzer) analysis is name-based; `prism trust` enables it")
@@ -3989,12 +3987,23 @@ func cmdDrift(args []string) int {
 	return 2
 }
 
+// cmdConfig prints every prism.yaml key with its resolved value and source
+// (CON-08). --check exits 1 on an unknown key or an invalid value.
 func cmdConfig(args []string) int {
 	args, format, rc := takeFormat("config", args)
 	if rc != 0 {
 		return rc
 	}
-	dir, _, rc := dirOnlyArgs("config", args)
+	check := false
+	var rest []string
+	for _, a := range args {
+		if a == "--check" {
+			check = true
+			continue
+		}
+		rest = append(rest, a)
+	}
+	dir, _, rc := dirOnlyArgs("config", rest)
 	if rc != 0 {
 		return rc
 	}
@@ -4003,7 +4012,31 @@ func cmdConfig(args []string) int {
 		fmt.Fprintln(os.Stderr, "config:", err)
 		return 1
 	}
-	printOutput(cfg, format)
+	if format == formatJSON {
+		keys := []map[string]string{}
+		for _, k := range cfg.Keys() {
+			keys = append(keys, map[string]string{"key": k[0], "value": k[1], "source": k[2]})
+		}
+		problems := cfg.Problems
+		if problems == nil {
+			problems = []string{}
+		}
+		printOutput(map[string]any{"keys": keys, "problems": problems}, format)
+	} else {
+		for _, k := range cfg.Keys() {
+			v := k[1]
+			if v == "" {
+				v = "-"
+			}
+			fmt.Printf("%-17s %-30s %s\n", k[0], v, k[2])
+		}
+		for _, p := range cfg.Problems {
+			fmt.Println("problem:", p)
+		}
+	}
+	if check && len(cfg.Problems) > 0 {
+		return exitFinding
+	}
 	return 0
 }
 
@@ -4189,7 +4222,7 @@ func cmdMCP(args []string) int {
 		fmt.Fprintln(os.Stderr, "config:", err)
 		return 1
 	}
-	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root))
+	client := grove.NewClient().WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root))
 
 	// Open the embedded Grove engine and run the initial index in the
 	// background so the MCP handshake is serviced without waiting on I/O.
@@ -4290,7 +4323,8 @@ func newClientOpts(dir string, oneShot, force bool) (*config.Config, *grove.Clie
 	if err != nil {
 		return nil, nil, fmt.Errorf("config: %w", err)
 	}
-	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root))
+	cfg.WarnProblems() // CON-08: a typo in prism.yaml used to be ignored silently
+	client := grove.NewClient().WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root))
 	if oneShot {
 		client.OneShot()
 	}
@@ -4374,7 +4408,7 @@ func invokeCompactReadText(dir string, args map[string]any) (out any, text strin
 		return nil, "", false, fmt.Errorf("config: %w", err)
 	}
 	// Never started: the read path does not call it.
-	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root)).OneShot()
+	client := grove.NewClient().WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root)).OneShot()
 	h := mcp.NewHandler(cfg, root, client)
 	return h.InvokeCompactReadText(args)
 }

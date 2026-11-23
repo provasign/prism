@@ -52,7 +52,7 @@ func widerAnchorFixture(t *testing.T) *Handler {
 		"type Widget struct{}\n\nfunc (Widget) Handle(x string, n int) string { return x }\n\n"+
 		"func Spin(x string) string { var w Widget; return w.Handle(x, 1) }\n")
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

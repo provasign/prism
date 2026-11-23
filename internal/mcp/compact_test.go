@@ -395,7 +395,7 @@ func TestCompactSearchBodiesIncludesTightEnclosingMethod(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "sample.go"), []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -419,7 +419,7 @@ func TestCompactSymbolLocatorInlinesSmallBodies(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "sample.go"), []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +460,7 @@ func TestCompactBroadSearchDeliversOnlyTopTwoEnclosingBodies(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "outside.go"), []byte("package sample\nfunc TargetOutside() { println(\"outside body\") }\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -523,7 +523,7 @@ func TestSearchIncludeBodiesDeliversTwoWindowsForHitsInOversizedMethod(t *testin
 	if err := os.WriteFile(filepath.Join(root, "sample.py"), []byte(source.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -617,7 +617,7 @@ func TestCompactBatchedTermsKeepSecondSlotAfterDuplicateHit(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "sample.py"), []byte(source.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -641,7 +641,7 @@ func TestCompactEnclosingBodiesDoNotRepeatNestedMethod(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "sample.py"), []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -669,7 +669,7 @@ func TestCompactBatchedSearchInlinesUniqueExactFirstSymbol(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "sample.go"), []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -712,7 +712,7 @@ func TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope(t *testing.T) {
 	if err := os.WriteFile(testFile, []byte("def test_fileno():\n    assert True\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -820,7 +820,7 @@ func TestCompactQueryHonorsPathsAndGlob(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}

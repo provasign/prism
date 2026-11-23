@@ -53,7 +53,7 @@ func Open(dir string) (*Kit, error) {
 	if err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
-	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root)
+	client := grove.NewClient().WithTokenFromDir(root)
 	if err := client.EnsureRunning(context.Background()); err != nil {
 		return nil, fmt.Errorf("grove: %w", err)
 	}

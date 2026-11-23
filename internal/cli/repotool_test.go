@@ -24,7 +24,7 @@ func TestLinkedGraphQueriesRequireExplicitIndex(t *testing.T) {
 			lib := filepath.Join(parent, "lib")
 			workspace.LinkReverse(app, lib)
 			if emptyStore {
-				c := grove.NewClient("", "").WithTokenFromDir(lib).OneShot()
+				c := grove.NewClient().WithTokenFromDir(lib).OneShot()
 				if err := c.EnsureRunning(t.Context()); err != nil {
 					t.Fatal(err)
 				}
@@ -54,7 +54,7 @@ func TestLinkedGraphQueriesRequireExplicitIndex(t *testing.T) {
 					t.Fatalf("cold query created a store: %v", err)
 				}
 			} else {
-				c := grove.NewClient("", "").WithTokenFromDir(lib).OneShot()
+				c := grove.NewClient().WithTokenFromDir(lib).OneShot()
 				if err := c.EnsureRunning(t.Context()); err != nil {
 					t.Fatal(err)
 				}

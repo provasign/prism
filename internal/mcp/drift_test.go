@@ -31,7 +31,7 @@ func Logout() {
 	if err := os.WriteFile(filepath.Join(root, "auth.go"), []byte(authContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	client := grove.NewClient("", "").WithTokenFromDir(root)
+	client := grove.NewClient().WithTokenFromDir(root)
 	ctx := context.Background()
 	if err := client.EnsureRunning(ctx); err != nil {
 		t.Fatal(err)

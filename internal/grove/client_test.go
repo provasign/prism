@@ -28,7 +28,7 @@ func TestClient_AutoIndexRefreshesOldResolverVersion(t *testing.T) {
 	root := t.TempDir()
 	writePrismFile(t, root, "main.go", "package main\n\nfunc A() {}\nfunc B() { A() }\n")
 	ctx := context.Background()
-	first := NewClient("", "").WithTokenFromDir(root)
+	first := NewClient().WithTokenFromDir(root)
 	if err := first.EnsureRunning(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestClient_AutoIndexRefreshesOldResolverVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	second := NewClient("", "").WithTokenFromDir(root)
+	second := NewClient().WithTokenFromDir(root)
 	if err := second.EnsureRunning(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestClient_AutoIndexRefreshesOldResolverVersion(t *testing.T) {
 }
 
 func TestClient_RequiresEnsureRunning(t *testing.T) {
-	c := NewClient("", "")
+	c := NewClient()
 	ctx := context.Background()
 	if _, err := c.Status(ctx); err == nil {
 		t.Fatal("expected status error before EnsureRunning")
@@ -85,7 +85,7 @@ func TestClient_RequiresEnsureRunning(t *testing.T) {
 }
 
 func TestClient_EnsureRunningRequiresRoot(t *testing.T) {
-	err := NewClient("", "").EnsureRunning(context.Background())
+	err := NewClient().EnsureRunning(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "WithTokenFromDir") {
 		t.Fatalf("expected root error, got %v", err)
 	}
@@ -97,7 +97,7 @@ func TestClient_EndToEndEmbedded(t *testing.T) {
 	_ = writePrismFile(t, dir, "use.go", "package main\n\nfunc Use() { Main() }\n")
 	_ = writePrismFile(t, dir, "main_test.go", "package main\n\nimport \"testing\"\n\nfunc TestMain(t *testing.T) { Main() }\n")
 
-	c := NewClient("ignored", "ignored").WithTokenFromDir(dir)
+	c := NewClient().WithTokenFromDir(dir)
 	if got := c.BaseURL(); got != "embedded://grove" {
 		t.Fatalf("baseURL marker mismatch: %q", got)
 	}
@@ -151,7 +151,7 @@ func TestClient_EnsureRunningDoesNotIndex(t *testing.T) {
 	dir := t.TempDir()
 	_ = writePrismFile(t, dir, "main.go", "package main\n\nfunc Main() {}\n")
 
-	c := NewClient("", "").WithTokenFromDir(dir)
+	c := NewClient().WithTokenFromDir(dir)
 	ctx := context.Background()
 	if err := c.EnsureRunning(ctx); err != nil {
 		t.Fatalf("ensure running: %v", err)

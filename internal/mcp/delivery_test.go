@@ -361,7 +361,7 @@ func TestMissingRequiredOutput(t *testing.T) {
 }
 `), 0o644)
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -635,7 +635,7 @@ func (s *Service) Start() {}
 
 func (s *Service) Stop() {}
 `), 0o644)
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -693,7 +693,7 @@ func FrobnicateThing() string { return "x" }
 	big.WriteString("\treturn \"y\"\n}\n")
 	write("bystander.go", big.String())
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -755,7 +755,7 @@ type Engine struct{}
 func (e *Engine) Query(v int) int { return v }
 `)
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -825,7 +825,7 @@ func (User) Close() {}
         pass
 `)
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -922,7 +922,7 @@ func TestToolRead_HostCapDegradesNotErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "huge.go"), []byte(big.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

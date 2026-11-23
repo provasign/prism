@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/mcp"
 	"io/fs"
 	"os"
@@ -96,24 +97,15 @@ func parseInterface(v string) (string, error) {
 // readRecordedInterface returns the interface prism.yaml records, or "" when
 // none is recorded (files written before init asked).
 func readRecordedInterface(path string) string {
-	raw, err := os.ReadFile(path)
+	value := config.LoadFile(path).Interface
+	if value == "" {
+		return ""
+	}
+	v, err := parseInterface(value)
 	if err != nil {
 		return ""
 	}
-	for _, line := range strings.Split(string(raw), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if line != trimmed || !strings.HasPrefix(trimmed, "interface:") {
-			continue
-		}
-		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "interface:"))
-		if unquoted, err := strconv.Unquote(value); err == nil {
-			value = unquoted
-		}
-		if v, err := parseInterface(value); err == nil {
-			return v
-		}
-	}
-	return ""
+	return v
 }
 
 // setPrismYAMLInterface rewrites or appends the top-level interface key and

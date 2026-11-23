@@ -278,7 +278,7 @@ func TestReadIsNotHeldBehindTheFirstIndex(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("one\ntwo\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(context.Background()); err != nil { // open, as before the first index starts
 		t.Fatal(err)
 	}

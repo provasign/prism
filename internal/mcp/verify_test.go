@@ -53,7 +53,7 @@ func verifyFixture(t *testing.T) (*Handler, string, map[int]struct {
 	git("add", "-A")
 	git("commit", "-q", "-m", "base")
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestToolVerify_PythonMissedCallers(t *testing.T) {
 		}
 	}
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -378,7 +378,7 @@ func TestToolVerify_BareFunctionFallback(t *testing.T) {
 	write("lib/fmt.go", "package lib\n\nfunc Render(x string, w int) string { return x }\n")
 	write("app/a.go", "package app\n\nimport \"example.com/f/lib\"\n\nfunc Use() string { return lib.Render(\"a\", 3) }\n")
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -472,7 +472,7 @@ func D() {}
 	git("add", "-A")
 	git("commit", "-q", "-m", "base")
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -533,7 +533,7 @@ func TestToolVerify_RemovedSymbolsFastPath(t *testing.T) {
 	write("b.go", "package p\n\n// mentions stillHere in a comment too\n")
 	write("variants.go", "package p\n\nfunc Foo1() {}\nfunc Foo2() {}\nfunc FooImpl() {}\n")
 	write("README.md", "Foo1 and Foo2 remain supported.\n")
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -647,7 +647,7 @@ func TestToolVerify_TestCoverageForBodyOnlyChange(t *testing.T) {
 		"func Add(a, b int) int {\n\treturn a + b + 0\n}\n\n"+
 		"func Sub(a, b int) int {\n\treturn a - b - 0\n}\n")
 
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatal(err)
 	}

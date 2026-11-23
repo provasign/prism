@@ -24,7 +24,7 @@ func fakeGroveSrv(t *testing.T, payload map[string]any) *httptest.Server {
 func newHWithGrove(t *testing.T, _ *httptest.Server) *Handler {
 	t.Helper()
 	root := t.TempDir()
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
@@ -376,7 +376,7 @@ func TestToolQuery_TermsAndIncludeCombined(t *testing.T) {
 }
 
 func TestNewHandlerWithReady(t *testing.T) {
-	gc := grove.NewClient("", "").WithTokenFromDir(t.TempDir())
+	gc := grove.NewClient().WithTokenFromDir(t.TempDir())
 	readyCh := make(chan struct{})
 	h := NewHandlerWithReady(&config.Config{MaxCacheFiles: 100}, t.TempDir(), gc, readyCh)
 	if h == nil {
@@ -419,7 +419,7 @@ func TestToolDescription_Default(t *testing.T) {
 
 func TestInvoke_WithReadyCh(t *testing.T) {
 	// Test the readyCh code path in Invoke (waits until ready before dispatching).
-	gc := grove.NewClient("", "").WithTokenFromDir(t.TempDir())
+	gc := grove.NewClient().WithTokenFromDir(t.TempDir())
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

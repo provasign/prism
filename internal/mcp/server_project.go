@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"github.com/provasign/prism/internal/config"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,8 +46,8 @@ func legacyPrismYAML(root string) bool {
 	if !ok {
 		return false
 	}
-	settings := topLevelYAMLSettings(raw)
-	return settings["version"] != "2" || settings["mcp_surface"] != "compact"
+	c := config.Parse(raw)
+	return c.Version != "2" || c.MCPSurface != "compact"
 }
 
 func legacyProjectMCP(root string) bool {
@@ -84,26 +85,6 @@ func legacyProjectSteering(root string) bool {
 		}
 	}
 	return false
-}
-
-func topLevelYAMLSettings(raw []byte) map[string]string {
-	settings := make(map[string]string)
-	for _, line := range strings.Split(string(raw), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") || line != trimmed {
-			continue
-		}
-		key, value, ok := strings.Cut(trimmed, ":")
-		if !ok {
-			continue
-		}
-		value = strings.TrimSpace(value)
-		if comment := strings.IndexByte(value, '#'); comment >= 0 {
-			value = strings.TrimSpace(value[:comment])
-		}
-		settings[strings.TrimSpace(key)] = strings.Trim(value, `"'`)
-	}
-	return settings
 }
 
 // Project metadata should be tiny. Refuse oversized files rather than making

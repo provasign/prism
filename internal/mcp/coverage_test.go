@@ -15,7 +15,7 @@ import (
 func newH(t *testing.T) *Handler {
 	t.Helper()
 	root := t.TempDir()
-	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	gc := grove.NewClient().WithTokenFromDir(root)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}

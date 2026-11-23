@@ -83,7 +83,7 @@ func Noise() {}
 func setupGroveClient(t *testing.T, dir string) (*Client, context.Context) {
 	t.Helper()
 	ctx := context.Background()
-	c := NewClient("", "").WithTokenFromDir(dir)
+	c := NewClient().WithTokenFromDir(dir)
 	if err := c.EnsureRunning(ctx); err != nil {
 		t.Fatalf("EnsureRunning: %v", err)
 	}

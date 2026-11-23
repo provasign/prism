@@ -106,7 +106,7 @@ func TestSearchSampledTextInventoryInBatchedCompactResponse(t *testing.T) {
 func TestSearchSampledBothScopeAndExplicitLimitNameEveryFile(t *testing.T) {
 	dir := t.TempDir()
 	target := writeInventoryFixture(t, dir)
-	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	gc := grove.NewClient().WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
