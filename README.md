@@ -75,15 +75,18 @@ to raw records in [provasign/research](https://github.com/provasign/research).
 # Homebrew (macOS or Linux)
 brew install provasign/tap/prism
 
-# macOS or Linux installer
-curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+# macOS or Linux installer, pinned to a release
+curl -fsSL https://raw.githubusercontent.com/provasign/prism/v1.2.0/install.sh | VERSION=v1.2.0 bash
 
 # Windows PowerShell
-irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
-
-# Pin the current release
-VERSION=v1.2.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+$env:VERSION="v1.2.0"; irm https://raw.githubusercontent.com/provasign/prism/v1.2.0/install.ps1 | iex
 ```
+
+The installer verifies the SHA-256 checksum, and the release's signature or
+build attestation when `cosign` or a logged-in `gh` is installed
+(`PRISM_REQUIRE_PROVENANCE=1` makes that required). It does not edit your
+shell rc file unless you pass `--modify-path` (`… | bash -s -- --modify-path`),
+and `--dry-run` lists what it would write.
 
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
 Use either Homebrew or the standalone installer as the authoritative installation. If both
