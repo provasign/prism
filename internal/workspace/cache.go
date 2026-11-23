@@ -187,7 +187,7 @@ func reverseLinks(primary string) []CacheLink {
 // becomes visible from the repositories it links once the user has run one
 // of them there.
 func ConfirmLinks(root string, cfg *config.Config) {
-	if cfg == nil || untrusted() {
+	if cfg == nil || untrusted(root) {
 		return
 	}
 	confirm := func(base string, repos []config.WorkspaceRepo) {

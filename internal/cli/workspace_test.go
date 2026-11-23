@@ -901,6 +901,14 @@ func TestWorkspaceHostileLinksAreRefused(t *testing.T) {
 		t.Fatalf("confirmed repository not delivered:\n%s", out)
 	}
 
+	// The user's trust decision (prism untrust, PRISM_UNTRUSTED) stops
+	// linking too, not only build tools.
+	t.Setenv("PRISM_UNTRUSTED", "1")
+	if rc := cmdRead([]string{"../victim/secret.go"}); rc == 0 {
+		t.Fatal("a linked repository was readable with PRISM_UNTRUSTED=1")
+	}
+	t.Setenv("PRISM_UNTRUSTED", "")
+
 	// Untrusted mode: nothing is linked, confirmed or not.
 	t.Setenv("GROVE_UNTRUSTED", "1")
 	if rc := cmdRead([]string{"../victim/secret.go"}); rc == 0 {

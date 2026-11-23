@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/trust"
 )
 
 // Root is one linked repository.
@@ -49,11 +50,17 @@ func (r Root) Unusable() string {
 // force on this machine.
 const Unconfirmed = "link not confirmed on this machine (running `prism workspace` in the repository that declares it reviews and confirms its links)"
 
-// untrusted reports GROVE_UNTRUSTED: the repository's own files are not to
-// be believed about what else on the machine may be read.
-func untrusted() bool {
+// untrusted reports that root's own files are not to be believed about
+// what else on the machine may be read: GROVE_UNTRUSTED, or the user's
+// trust decision for root (prism untrust, PRISM_UNTRUSTED=1). The trust
+// decision used to stop only build tools, so an untrusted repository could
+// still link others through its prism.yaml.
+func untrusted(root string) bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("GROVE_UNTRUSTED")))
-	return v == "1" || v == "true" || v == "yes" || v == "on"
+	if v == "1" || v == "true" || v == "yes" || v == "on" {
+		return true
+	}
+	return root != "" && trust.For(root).Untrusted
 }
 
 // repositoryMarkers: files whose presence makes a directory look like a
@@ -109,9 +116,10 @@ type Workspace struct {
 // command in the repository that declares it (ConfirmLinks), and only for a
 // target that looks like a repository. Otherwise a cloned repository's
 // committed file could point Prism at any directory on the machine. Under
-// GROVE_UNTRUSTED nothing is linked at all.
+// an untrusted repository (GROVE_UNTRUSTED, prism untrust, PRISM_UNTRUSTED)
+// nothing is linked at all.
 func Load(primary string, cfg *config.Config) *Workspace {
-	if untrusted() {
+	if untrusted(primary) {
 		return nil
 	}
 	primary = resolve(primary)
@@ -389,7 +397,7 @@ func Stamp(primary string) string {
 			b.WriteString(f + ":-;")
 		}
 	}
-	if untrusted() {
+	if untrusted(primary) {
 		b.WriteString("untrusted")
 	}
 	return b.String()
