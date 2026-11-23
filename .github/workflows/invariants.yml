@@ -11,7 +11,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GO_VERSION: "1.26.11"
   GOWORK: "off"
-  RESEARCH_SHA: "8dfe92928048ad3a45e1f55debd39c8b0245c2f2"
+  RESEARCH_SHA: "eea84d5da31c9dc6c54e998d4d70a7974d966985"
   ASTKIT_DECOY_VERSION: "v0.16.9"
 permissions:
   contents: read
