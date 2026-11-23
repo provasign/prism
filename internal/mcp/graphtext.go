@@ -136,7 +136,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"reExports": true, "related": true, "degradedAnalysis": true,
 		"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
 		"workspaceConsumers": true, "workspaceScope": true, "linkedSites": true,
-		"resolvedNote": true,
+		"resolvedNote": true, "partialTypeCheck": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -160,6 +160,11 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "// %v — change-impact: %s%s\n", out["query"], sites, symbols)
 	}
 	b.WriteString(FormatImpactHeaderNotesText(out))
+	// A degraded analysis (a partial type-check, a compiler pass that did
+	// not run) qualifies every site below, so it leads (BUG-03).
+	if note, _ := out["degradedAnalysis"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
 	if note, _ := out["resolvedAmbiguity"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
@@ -337,7 +342,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if w, _ := out["warning"].(string); w != "" {
 		fmt.Fprintf(&b, "// %s\n", w)
 	}
-	for _, key := range []string{"degradedAnalysis", "staleWarning", "scopeNote", "ambiguityNote"} {
+	for _, key := range []string{"staleWarning", "scopeNote", "ambiguityNote"} {
 		if note, _ := out[key].(string); note != "" {
 			fmt.Fprintf(&b, "// %s\n", note)
 		}

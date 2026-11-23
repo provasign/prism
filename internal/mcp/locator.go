@@ -3,8 +3,10 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"github.com/provasign/prism/internal/grove"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // pathLineForm is "path:line" with a file extension, as an editor or a
@@ -67,4 +69,66 @@ func copyArgs(args map[string]any) map[string]any {
 		out[k] = v
 	}
 	return out
+}
+
+// scopePathLineQuery turns a path:line query into the symbol declared there
+// with its file as the scope (BUG-02). The engine resolved path:line to a
+// bare name and then reported that name's same-named twins in other
+// packages as ambiguous, though the line names one declaration.
+func (h *Handler) scopePathLineQuery(ctx context.Context, args map[string]any, query string) (map[string]any, string, error) {
+	if !pathLineForm.MatchString(query) || stringArg(args, "file", "") != "" {
+		return args, query, nil
+	}
+	probe := map[string]any{"name": query}
+	if _, err := h.resolvePathLine(ctx, probe, "name"); err != nil {
+		return args, query, err
+	}
+	args = copyArgs(args)
+	query = probe["name"].(string)
+	args["query"], args["file"] = query, probe["file"]
+	return args, query, nil
+}
+
+// qualifierMismatch rejects a package qualifier that names none of the
+// declarations the engine resolved (BUG-01): change-impact
+// fictitious.Client.Status answered for the real Client.Status, closed and
+// safe to claim complete, so a mistyped package silently selected another
+// symbol. The qualifier is what the query has in front of the
+// declaration's own qualified name; lookup's locator decides whether it
+// names the declaration's package, namespace or path.
+func (h *Handler) qualifierMismatch(query string, r *grove.ChangeImpactResult) error {
+	if r == nil || len(r.Declarations) == 0 || strings.ContainsAny(query, ":(") {
+		return nil
+	}
+	loc := newLookupLocator(h.Root)
+	var qualifier string
+	for _, d := range r.Declarations {
+		qn := d.QualifiedName
+		if qn == "" {
+			qn = d.Name
+		}
+		pre, ok := strings.CutSuffix(query, "."+qn)
+		if !ok {
+			if query == qn {
+				return nil // no qualifier
+			}
+			continue
+		}
+		qualifier = pre
+		file := normalizePath(d.FilePath)
+		if strings.Contains(pre, "/") {
+			// An import path or directory: github.com/org/repo/pkg, internal/grove.
+			if loc.pathMatches(pre, file, false) {
+				return nil
+			}
+		} else if loc.qualifierMatches(strings.Split(pre, "."), file, false) {
+			return nil
+		}
+	}
+	if qualifier == "" {
+		return nil // the engine resolved a form this check does not parse
+	}
+	d := r.Declarations[0]
+	return fmt.Errorf("no symbol named %q: %s exists in %s, but %q is not its package, namespace or path; use its qualified name or --file",
+		query, d.QualifiedName, normalizePath(d.FilePath), qualifier)
 }

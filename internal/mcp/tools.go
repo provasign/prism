@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -3843,7 +3844,16 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if query == "" {
 		return nil, errors.New("query is required")
 	}
+	args, query, err := h.scopePathLineQuery(ctx, args, query)
+	if err != nil {
+		return nil, err
+	}
 	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
+	if err == nil {
+		if qerr := h.qualifierMismatch(query, r); qerr != nil {
+			return nil, qerr
+		}
+	}
 	if err != nil {
 		// CON-10: a file path that did not resolve as a name gets a usage
 		// error naming the forms that work, not "no type named <stem>".
@@ -4376,6 +4386,16 @@ func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *gr
 			return
 		}
 	}
+	if lang == "go" {
+		if pkgs, first := h.partialGoPackages(st.Native, r); len(pkgs) > 0 {
+			// BUG-03: a package with type errors is analysed partially; its
+			// sites can be wrong (a Close() on another type) or missing.
+			out["partialTypeCheck"] = pkgs
+			out["degradedAnalysis"] = "go type-checked " + strings.Join(pkgs, ", ") +
+				" only partially (" + first + "); sites there may be wrong or missing. Fix the type errors, then prism index"
+			return
+		}
+	}
 	for _, issue := range st.Readiness {
 		if issue.Language == lang {
 			out["degradedAnalysis"] = lang + " compiler-backed analysis did not run on this index (" + issue.Problem +
@@ -4386,6 +4406,61 @@ func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *gr
 	if checked && !nativePassCompleted(lang, st.Native) {
 		out["degradedAnalysis"] = lang + " compiler-backed completion is not confirmed by this index; caller coverage may be incomplete. Re-index with native analysis enabled and check prism status"
 	}
+}
+
+// partialGoPackages returns the import paths of packages the last index
+// type-checked only partially ("go: project import P type-checked
+// partially: FILE:LINE:COL: error") that hold a declaration, family member
+// or caller of r, and the first such error.
+func (h *Handler) partialGoPackages(native []string, r *grove.ChangeImpactResult) ([]string, string) {
+	dirs := map[string]bool{}
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family, r.Callers} {
+		for _, s := range group {
+			dirs[path.Dir(normalizePath(s.FilePath))] = true
+		}
+	}
+	var pkgs []string
+	first := ""
+	seen := map[string]bool{}
+	for _, d := range native {
+		rest, ok := strings.CutPrefix(d, "go: project import ")
+		if !ok {
+			continue
+		}
+		pkg, detail, ok := strings.Cut(rest, " type-checked partially: ")
+		if !ok || seen[pkg] {
+			continue
+		}
+		file := detail
+		if i := strings.Index(file, ".go:"); i >= 0 {
+			file = file[:i+3]
+		}
+		written := file // as the diagnostic spells it, for cutting the error text
+		rel := file
+		root := h.Root
+		if real, err := filepath.EvalSymlinks(root); err == nil {
+			root = real // /var vs /private/var on macOS
+		}
+		if real, err := filepath.EvalSymlinks(file); err == nil {
+			file = real
+		}
+		if r, err := filepath.Rel(root, file); err == nil && !strings.HasPrefix(r, "..") {
+			rel = r
+		}
+		if !dirs[path.Dir(normalizePath(rel))] {
+			continue
+		}
+		seen[pkg] = true
+		pkgs = append(pkgs, pkg)
+		if first == "" {
+			first = strings.TrimSpace(strings.TrimPrefix(detail, written))
+			first = strings.TrimLeft(first, ":0123456789 ")
+			if len(first) > 160 {
+				first = first[:160] + "…"
+			}
+		}
+	}
+	return pkgs, first
 }
 
 var nativePassChecked = map[string]bool{"go": true, "java": true, "typescript": true, "rust": true}
@@ -4568,6 +4643,10 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	if query == "" {
 		return nil, errors.New("query is required")
 	}
+	args, query, err := h.scopePathLineQuery(ctx, args, query)
+	if err != nil {
+		return nil, err
+	}
 	r, err := h.Grove.MissingImplementationsScoped(ctx, query, stringArg(args, "file", ""))
 	if err != nil {
 		if ferr := h.fileNotSymbolError(query); ferr != nil {
@@ -4636,6 +4715,10 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	if len(r.OverridesExternal) > 0 {
 		out["overridesExternal"] = r.OverridesExternal
 	}
+	if former := h.formerImplementers(ctx, r); len(former) > 0 {
+		out["formerlyImplementing"] = former
+		out["formerlyImplementingNote"] = "these types have every other member of the interface, so they implemented it before this member was added; nothing uses them as the interface, so the compiler does not require them to change. Add the member if they are meant to implement it (matched by method names)"
+	}
 	return out, nil
 }
 
@@ -4648,6 +4731,10 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 	newName := stringArg(args, "newName", "")
 	if query == "" || newName == "" {
 		return nil, errors.New("query and newName are required")
+	}
+	args, query, err := h.scopePathLineQuery(ctx, args, query)
+	if err != nil {
+		return nil, err
 	}
 	if !identRe.MatchString(newName) {
 		return nil, fmt.Errorf("newName must be a bare identifier, got %q "+
