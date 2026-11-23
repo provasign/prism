@@ -3117,6 +3117,15 @@ func (h *Handler) toolNode(ctx context.Context, args map[string]any) (any, error
 	if h.fileExists(name) {
 		return h.nodeFile(ctx, name, nil)
 	}
+	// CON-10: path:line names the symbol declared there.
+	probe := map[string]any{"name": name}
+	if ok, err := h.resolvePathLine(ctx, probe, "name"); ok {
+		if err != nil {
+			return nil, err
+		}
+		name = probe["name"].(string)
+		args["file"] = probe["file"]
+	}
 	return h.nodeSymbol(ctx, name, args)
 }
 
@@ -3279,6 +3288,16 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 	if name == "" {
 		return nil, errors.New("name is required")
 	}
+	// CON-10: path:line names the symbol declared there.
+	if pathLineForm.MatchString(name) {
+		resolved := map[string]any{"name": name}
+		if _, err := h.resolvePathLine(ctx, resolved, "name"); err != nil {
+			return nil, err
+		}
+		args = copyArgs(args)
+		args["name"], args["file"] = resolved["name"], resolved["file"]
+		name = resolved["name"].(string)
+	}
 	if fileScope != "" {
 		var err error
 		fileScope, err = h.lookupFileScope(fileScope)
@@ -3308,7 +3327,18 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 	if repo := stringArg(args, "repo", ""); repo != "" {
 		return h.lookupInRepo(ctx, name, repo, fields)
 	}
-	return h.resolveLookup(ctx, name, fileScope, fileHint, fields)
+	out, err := h.resolveLookup(ctx, name, fileScope, fileHint, fields)
+	if err == nil {
+		// CON-10: a file path that matched no symbol is a usage error naming
+		// the forms that work. A Java/Kotlin file path still resolves to the
+		// class it declares, so this only replaces a miss.
+		if m, ok := out.(map[string]any); ok && m["matched"] == false {
+			if ferr := h.fileNotSymbolError(name); ferr != nil {
+				return nil, ferr
+			}
+		}
+	}
+	return out, err
 }
 
 func (h *Handler) toolIndex(_ context.Context, _ map[string]any) (any, error) {
@@ -3603,6 +3633,13 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return nil, errors.New("query is required")
 	}
 	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
+	if err != nil {
+		// CON-10: a file path that did not resolve as a name gets a usage
+		// error naming the forms that work, not "no type named <stem>".
+		if ferr := h.fileNotSymbolError(query); ferr != nil {
+			return nil, ferr
+		}
+	}
 	inferenceNote, inheritedNote, familyPickNote, modulePathNote := "", "", "", ""
 	if err != nil && strings.Contains(err.Error(), "declares no method") {
 		// The override being added does not exist yet: answer with the
@@ -4321,6 +4358,11 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 		return nil, errors.New("query is required")
 	}
 	r, err := h.Grove.MissingImplementationsScoped(ctx, query, stringArg(args, "file", ""))
+	if err != nil {
+		if ferr := h.fileNotSymbolError(query); ferr != nil {
+			return nil, ferr
+		}
+	}
 	if err != nil {
 		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
 			return nil, fmt.Errorf("%w\n%s", err, note)

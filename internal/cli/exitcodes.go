@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -34,6 +35,7 @@ search and query exit 0 with a "no matches" line when nothing matches.
 var notFoundPhrases = []string{
 	"no method or function named", "no symbol named", "no type named",
 	"not found", "no component ", "no indexed implementation", "no member named",
+	"is not indexed", "covering line", "no symbol named at that line",
 }
 
 // exitForError maps a tool error to its exit code.
@@ -42,7 +44,7 @@ func exitForError(err error) int {
 		return exitOK
 	}
 	msg := err.Error()
-	for _, p := range []string{"directory does not exist", "is not a directory", "requires a value", "unknown flag"} {
+	for _, p := range []string{"directory does not exist", "is not a directory", "requires a value", "unknown flag", "is a file, not a symbol"} {
 		if strings.Contains(msg, p) {
 			return exitUsage
 		}
@@ -72,12 +74,24 @@ func exitForAnswer(cmd string, out any) int {
 			return exitNotFound
 		}
 		if results, ok := m["results"].([]any); ok && len(results) > 0 {
+			firstErr := ""
 			for _, r := range results {
 				rm, _ := r.(map[string]any)
+				if e, _ := rm["error"].(string); e != "" {
+					// An item that failed answered nothing (CON-10: a file
+					// path given as a name is a usage error, not exit 0).
+					if firstErr == "" {
+						firstErr = e
+					}
+					continue
+				}
 				inner, _ := rm["result"].(map[string]any)
 				if matched, ok := inner["matched"].(bool); !ok || matched {
 					return exitOK
 				}
+			}
+			if firstErr != "" {
+				return exitForError(errors.New(firstErr))
 			}
 			return exitNotFound
 		}

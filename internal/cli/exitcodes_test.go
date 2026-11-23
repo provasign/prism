@@ -47,3 +47,21 @@ func TestExitCodes(t *testing.T) {
 		t.Error("exit-codes help lists 4")
 	}
 }
+
+// CON-10: a batch whose only item failed takes that error's code.
+func TestExitForAnswerBatchItemError(t *testing.T) {
+	usage := map[string]any{"results": []any{map[string]any{"name": "a.go", "error": "a.go is a file, not a symbol: ..."}}}
+	if rc := exitForAnswer("lookup", usage); rc != exitUsage {
+		t.Errorf("file as name: rc=%d", rc)
+	}
+	mixed := map[string]any{"results": []any{
+		map[string]any{"name": "a.go", "error": "a.go is a file, not a symbol"},
+		map[string]any{"name": "B", "result": map[string]any{"matched": true}},
+	}}
+	if rc := exitForAnswer("lookup", mixed); rc != exitOK {
+		t.Errorf("one answered: rc=%d", rc)
+	}
+	if rc := exitForError(errors.New(`missing-implementations: type "X" is not indexed`)); rc != exitNotFound {
+		t.Errorf("not indexed: rc=%d", rc)
+	}
+}
