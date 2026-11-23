@@ -337,7 +337,7 @@ func editSettings(path string, create bool, edit func(map[string]any) bool) bool
 	if !edit(doc) {
 		return false
 	}
-	out, err := json.MarshalIndent(doc, "", "  ")
+	out, err := encodeJSONFile(doc, raw)
 	if err != nil || os.MkdirAll(filepath.Dir(path), 0o755) != nil {
 		return false
 	}

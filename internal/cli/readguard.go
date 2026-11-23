@@ -305,7 +305,8 @@ func writeJSONObject(path string, doc map[string]any) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(doc, "", "  ")
+	original, _ := os.ReadFile(path)
+	data, err := encodeJSONFile(doc, original)
 	if err != nil {
 		return err
 	}

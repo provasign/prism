@@ -537,6 +537,16 @@ func commandHelp(cmd string) string {
 // --- per-command implementations ---------------------------------------
 
 func cmdInit(args []string) int {
+	initWriteFailures = 0
+	rc := runInit(args)
+	if rc == 0 && initWriteFailures > 0 {
+		fmt.Fprintf(os.Stderr, "init: %d file(s) were not written; see the warnings above\n", initWriteFailures)
+		return exitFinding
+	}
+	return rc
+}
+
+func runInit(args []string) int {
 	// --mode mcp|cli|both  (legacy no-op)
 	// --no-permissions     (skip the Claude Code tool auto-allow entry)
 	// --print-config <id>  (print one agent's snippet, write nothing, exit)
@@ -1366,6 +1376,16 @@ func codexPrismCommand(path string) string {
 	return ""
 }
 
+// initWriteFailures counts config files init meant to write and could not;
+// cmdInit exits 1 when it is non-zero (CON-07: these used to return
+// silently, so init reported success over a file it never wrote).
+var initWriteFailures int
+
+func initWriteFailed(path string, err error) {
+	initWriteFailures++
+	fmt.Fprintf(os.Stderr, "warning: could not update %s: %v\n", path, err)
+}
+
 // workspaceFolderVar is the project root as Cursor and VS Code interpolate it.
 const workspaceFolderVar = "${workspaceFolder}"
 
@@ -1567,11 +1587,11 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 		// Merge rather than overwrite existing configs.
 		merged, err := mergeOrCreate(p, content, w.maps...)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not migrate %s config (%s): %v\n", w.name, p, err)
+			initWriteFailed(p, err)
 			continue
 		}
 		if err := os.WriteFile(p, merged, 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not write %s config (%s): %v\n", w.name, p, err)
+			initWriteFailed(p, err)
 			continue
 		}
 		fmt.Printf("registered with %s: %s\n", w.name, p)
@@ -1585,7 +1605,7 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 		codexPath := filepath.Join(projectDir, ".codex", "config.toml")
 		if !(refresh && !fileExists(codexPath)) {
 			if err := writePrismCodexConfig(codexPath, prismBin, []string{"mcp", "--compact"}); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: could not write project Codex config: %v\n", err)
+				initWriteFailed(codexPath, err)
 			} else {
 				fmt.Printf("registered with Codex CLI: %s\n", codexPath)
 				written = append(written, codexPath)
@@ -1953,7 +1973,10 @@ func mergeOrCreate(path string, content []byte, prismMaps ...[]string) ([]byte, 
 		base = make(map[string]any)
 	}
 	deepMergeJSON(base, overlay)
-	out, _ := json.MarshalIndent(base, "", "  ")
+	out, err := encodeJSONFile(base, existing)
+	if err != nil {
+		return nil, err
+	}
 	return append(out, '\n'), nil
 }
 
@@ -2113,7 +2136,7 @@ func removeClaudeGlobalApproval(path string) (bool, error) {
 	if !changed {
 		return false, nil
 	}
-	out, err := json.MarshalIndent(doc, "", "  ")
+	out, err := encodeJSONFile(doc, raw)
 	if err != nil {
 		return false, err
 	}
@@ -2154,7 +2177,7 @@ func removeJSONMapEntry(path string, keys []string, entry string) (bool, error) 
 		return false, nil
 	}
 	delete(entries, entry)
-	out, err := json.MarshalIndent(doc, "", "  ")
+	out, err := encodeJSONFile(doc, raw)
 	if err != nil || os.WriteFile(path, append(out, '\n'), 0o644) != nil {
 		return false, fmt.Errorf("could not remove legacy Prism registration from %s", path)
 	}
@@ -2261,7 +2284,7 @@ func cleanupLegacyDenyEntries(path string) {
 		perms["deny"] = kept
 	}
 	doc["permissions"] = perms
-	out, err := json.MarshalIndent(doc, "", "  ")
+	out, err := encodeJSONFile(doc, data)
 	if err != nil {
 		return
 	}
@@ -2285,11 +2308,18 @@ func containsString2(list []string, s string) bool {
 
 func ensureClaudeCodeApproval(path, serverName string, allowTools, denyBuiltinSearch bool) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		initWriteFailed(path, err)
 		return
 	}
 	var doc map[string]any
-	if raw, err := os.ReadFile(path); err == nil {
-		json.Unmarshal(raw, &doc) //nolint:errcheck
+	raw, readErr := os.ReadFile(path)
+	if readErr == nil {
+		// CON-07: an unparseable file (JSONC comments, a merge conflict)
+		// used to become {} and be overwritten with Prism's keys only.
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			initWriteFailed(path, fmt.Errorf("not valid JSON, left unchanged: %w", err))
+			return
+		}
 	}
 	if doc == nil {
 		doc = map[string]any{}
@@ -2357,18 +2387,18 @@ func ensureClaudeCodeApproval(path, serverName string, allowTools, denyBuiltinSe
 	if p, _ := doc["permissions"].(map[string]any); p != nil && len(p) == 0 {
 		delete(doc, "permissions")
 	}
-	data, err := json.MarshalIndent(doc, "", "  ")
+	data, err := encodeJSONFile(doc, raw)
 	if err != nil {
-		return
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		initWriteFailed(path, err)
 		return
 	}
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
+		initWriteFailed(path, err)
 		return
 	}
 	if err := os.Rename(tmp, path); err != nil {
+		initWriteFailed(path, err)
 		return
 	}
 	if allowTools {
