@@ -46,7 +46,12 @@ const helpText = `prism - semantic change intelligence for coding agents (embedd
 
 Usage:
   prism init [--harness <ids>] [dir]
-                                  Write prism.yaml + project-local MCP config
+                                  Write prism.yaml + project-local MCP config;
+                                  --dry-run prints the diff of every file it would write
+                                  and writes nothing; what it writes is recorded in
+                                  .grove/install-manifest.json
+  prism uninstall [dir]           Remove exactly what init recorded (Prism's keys,
+                                  steering blocks, files it created); [--dry-run]
   prism install [--harness <ids>] [dir]
                                   Alias for 'prism init'
   prism cleanup-global            Remove Prism entries written by old global setup
@@ -391,6 +396,8 @@ func Run(args []string) int {
 		return cmdResolve(rest)
 	case "edges":
 		return cmdEdges(rest)
+	case "uninstall":
+		return cmdUninstall(rest)
 	case "callers":
 		return cmdCallers(rest)
 	case "path":
@@ -552,9 +559,51 @@ func commandHelp(cmd string) string {
 
 // --- per-command implementations ---------------------------------------
 
+// init state shared with the cmdInit wrapper (MKT-05).
+var (
+	initDryRun   bool
+	initRealRoot string            // the project root
+	initRoot     string            // where init wrote: the root, or the dry-run mirror
+	initBefore   map[string][]byte // snapshot before init wrote
+)
+
 func cmdInit(args []string) int {
 	initWriteFailures = 0
-	rc := runInit(args)
+	initDryRun, initRoot, initRealRoot, initBefore = false, "", "", nil
+	var rest []string
+	for _, a := range args {
+		if a == "--dry-run" {
+			initDryRun = true
+			continue
+		}
+		rest = append(rest, a)
+	}
+	var rc int
+	if initDryRun {
+		// init's progress lines name the mirror; show them as the project.
+		out := captureInitStdout(func() { rc = runInit(rest) })
+		if initRoot != "" && initRoot != initRealRoot {
+			out = strings.ReplaceAll(out, initRoot, initRealRoot)
+		}
+		fmt.Print(out)
+	} else {
+		rc = runInit(rest)
+	}
+	if initDryRun {
+		defer func() { initDryRun = false }()
+		if initRoot != "" && initRoot != initRealRoot {
+			defer os.RemoveAll(initRoot)
+			if rc == 0 {
+				return printDryRunDiff(initRealRoot, initRoot, initBefore, snapshotInstallFiles(initRoot))
+			}
+		}
+		return rc
+	}
+	if rc == 0 && initRoot != "" && initBefore != nil {
+		if err := recordManifest(initRoot, manifestFromDiff(initBefore, snapshotInstallFiles(initRoot))); err != nil {
+			initWriteFailed(filepath.Join(initRoot, manifestPath), err)
+		}
+	}
 	if rc == 0 && initWriteFailures > 0 {
 		fmt.Fprintf(os.Stderr, "init: %d file(s) were not written; see the warnings above\n", initWriteFailures)
 		return exitFinding
@@ -654,6 +703,21 @@ func runInit(args []string) int {
 
 	dir := dirArg(args, 0, ".")
 	abs, _ := filepath.Abs(dir)
+	if printConfig == "" {
+		initRealRoot = abs
+		initBefore = snapshotInstallFiles(abs)
+		if initDryRun {
+			// MKT-05: run against a copy and show the diff; write nothing
+			// in the project and nothing user-global.
+			mirror, err := makeInitMirror(abs, initBefore)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "init --dry-run:", err)
+				return exitInternal
+			}
+			abs, dir = mirror, mirror
+		}
+		initRoot = abs
+	}
 	cfg := config.Default()
 	prismYAML := filepath.Join(abs, "prism.yaml")
 	recordedHarnesses := readRecordedHarnesses(prismYAML)
@@ -784,7 +848,9 @@ mcp_surface: "compact"
 	}
 
 	// Related checkouts: recorded, reported, linked only on a yes.
-	offerWorkspaceLinks(abs, workspaceMode)
+	if !initDryRun {
+		offerWorkspaceLinks(abs, workspaceMode)
+	}
 
 	// 3. Write steering instructions matching the chosen mode.
 	writeSteeringBlock(abs, harnesses, refresh, steeringFor(abs, iface))
@@ -803,7 +869,9 @@ mcp_surface: "compact"
 	// available to those who ask for it: --deny-builtin-search.
 
 	// 4. Register with every detected AI coding tool.
-	if _, err := removeLegacyGlobalMCPRegistrations(); err != nil {
+	if initDryRun {
+		// user-global cleanup is skipped in a dry run
+	} else if _, err := removeLegacyGlobalMCPRegistrations(); err != nil {
 		fmt.Fprintln(os.Stderr, "warning: legacy global Prism registration cleanup was incomplete:", err)
 	}
 	if iface == interfaceCLI {
