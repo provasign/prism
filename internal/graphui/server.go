@@ -89,7 +89,6 @@ func (s *Server) Handler() http.Handler {
 	})
 }
 
-
 func (s *Server) page(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Security-Policy",
