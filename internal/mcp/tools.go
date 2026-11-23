@@ -794,6 +794,10 @@ func toolSchema(name string) map[string]any {
 					"description": "Symbol name to find usages of (a class/type/function/constant). Type.member, or a file, resolves one symbol and returns its sites; a bare name returns every use of the name.",
 				},
 				"file": scopeFileProp,
+				"kind": map[string]any{
+					"type":        "string",
+					"description": "Keep only these resolved site kinds, comma-separated: call, read, write, decl, type.",
+				},
 			},
 		}
 	case "prism_resolve":
@@ -2773,11 +2777,35 @@ func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any,
 		}
 		if m, ok := ci.(map[string]any); ok {
 			if rows := anySlice(m["editSites"]); len(rows) > 0 {
+				rows = append(rows, h.typeUseRows(ctx, m)...)
+				kinds := referenceKinds(m, rows)
+				count := impactEditSiteCount(m)
+				if extra := len(rows) - len(anySlice(m["editSites"])); extra > 0 {
+					count += extra
+				}
+				if want := referenceKindFilter(args); len(want) > 0 {
+					var kept []any
+					for _, r := range rows {
+						if want[kinds[siteKey(fmt.Sprint(r))]] {
+							kept = append(kept, r)
+						}
+					}
+					rows, count = kept, len(kept)
+				}
+				tagged := make([]any, 0, len(rows))
+				for _, r := range rows {
+					row := fmt.Sprint(r)
+					if k := kinds[siteKey(row)]; k != "" {
+						row += "  [" + k + "]"
+					}
+					tagged = append(tagged, row)
+				}
+				rows = tagged
 				out := map[string]any{
 					"name":     name,
 					"resolved": true,
 					"sites":    rows,
-					"count":    impactEditSiteCount(m),
+					"count":    count,
 					"note": "sites resolved to " + name + ": its declaration(s), the implementations in its family, and every call or reference position tied to it; " +
 						"otherMentions sorts the remaining lines naming " + leafName(name),
 				}
@@ -2875,6 +2903,152 @@ func (h *Handler) toolResolve(ctx context.Context, args map[string]any) (any, er
 		h.addPasteableNames(ctx, out)
 	}
 	return map[string]any{"name": name, "count": len(out), "candidates": out}, nil
+}
+
+// siteKey is "path:line" of a "path:line:col: text" row.
+func siteKey(row string) string {
+	f, l := splitSiteRow(row)
+	return fmt.Sprintf("%s:%d", f, l)
+}
+
+// referenceKinds labels each resolved site (GAP-02): decl for a
+// declaration line, read/write/init for a member access, type-use for a
+// line naming a type, call otherwise.
+func referenceKinds(impact map[string]any, rows []any) map[string]string {
+	kinds := map[string]string{}
+	for _, r := range anySlice(impact["relaySites"]) {
+		// "path:line:Owner [read]"
+		row := fmt.Sprint(r)
+		i, j := strings.LastIndex(row, "["), strings.LastIndex(row, "]")
+		if i < 0 || j < i {
+			continue
+		}
+		tag := row[i+1 : j]
+		switch tag {
+		case "decl", "read", "write", "init":
+			parts := strings.SplitN(row, ":", 3)
+			if len(parts) >= 2 {
+				kinds[normalizePath(parts[0])+":"+parts[1]] = tag
+			}
+		}
+	}
+	isType := false
+	for _, d := range anyMaps(impact["declarations"]) {
+		kinds[fmt.Sprintf("%s:%v", normalizePath(fmt.Sprint(d["filePath"])), d["line"])] = "decl"
+		switch d["kind"] {
+		case "struct", "class", "interface", "type", "enum", "trait", "record":
+			isType = true
+		}
+	}
+	for _, r := range rows {
+		k := siteKey(fmt.Sprint(r))
+		if kinds[k] == "" {
+			if isType {
+				kinds[k] = "type-use"
+			} else {
+				kinds[k] = "call"
+			}
+		}
+	}
+	return kinds
+}
+
+// referenceKindFilter reads kind= (a string or list; "type" means
+// type-use, "write" includes init).
+func referenceKindFilter(args map[string]any) map[string]bool {
+	var raw []string
+	switch v := args["kind"].(type) {
+	case string:
+		raw = strings.Split(v, ",")
+	case []any:
+		for _, x := range v {
+			raw = append(raw, fmt.Sprint(x))
+		}
+	}
+	want := map[string]bool{}
+	for _, k := range raw {
+		switch k = strings.TrimSpace(k); k {
+		case "":
+		case "type":
+			want["type-use"] = true
+		case "write":
+			want["write"], want["init"] = true, true
+		default:
+			want[k] = true
+		}
+	}
+	return want
+}
+
+// typeUseRows lists, for a type, each line in a resolved user's body that
+// names it (GAP-02 step 3). change-impact gives a type only its
+// declaration as an edit site and its users as callers without a line, so
+// references reported one site for a type used everywhere.
+func (h *Handler) typeUseRows(ctx context.Context, impact map[string]any) []any {
+	var typeName string
+	for _, d := range anyMaps(impact["declarations"]) {
+		switch d["kind"] {
+		case "struct", "class", "interface", "type", "enum", "trait", "record":
+			typeName = fmt.Sprint(d["name"])
+		}
+	}
+	if typeName == "" {
+		return nil
+	}
+	word := regexp.MustCompile(`\b` + regexp.QuoteMeta(typeName) + `\b`)
+	seen := map[string]bool{}
+	for _, r := range anySlice(impact["editSites"]) {
+		seen[siteKey(fmt.Sprint(r))] = true
+	}
+	var rows []any
+	for _, c := range anyMaps(impact["callers"]) {
+		file := normalizePath(fmt.Sprint(c["filePath"]))
+		start, _ := c["line"].(int)
+		if start == 0 {
+			if f, ok := c["line"].(float64); ok {
+				start = int(f)
+			}
+		}
+		end := start
+		if syms, err := h.Grove.FileSymbols(ctx, file); err == nil {
+			for _, s := range syms {
+				if s.Span.Start == start && s.Name == fmt.Sprint(c["name"]) {
+					end = s.Span.End
+				}
+			}
+		}
+		abs, _, err := safePathWithinRoot(h.Root, file)
+		if err != nil {
+			continue
+		}
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			continue
+		}
+		lines := strings.Split(string(data), "\n")
+		for n := start; n <= end && n <= len(lines); n++ {
+			text := lines[n-1]
+			loc := word.FindStringIndex(text)
+			if loc == nil {
+				continue
+			}
+			key := fmt.Sprintf("%s:%d", file, n)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			rows = append(rows, fmt.Sprintf("%s:%d:%d: %s", file, n, loc[0]+1, strings.TrimSpace(text)))
+		}
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		fi, li := splitSiteRow(fmt.Sprint(rows[i]))
+		fj, lj := splitSiteRow(fmt.Sprint(rows[j]))
+		if fi != fj {
+			return fi < fj
+		}
+		return li < lj
+	})
+	return rows
 }
 
 // addPasteableNames gives each of several candidates a name that resolves

@@ -150,7 +150,9 @@ Usage:
                                   --format text|json  Output format (default: text)
   prism references <name> [dir]   Find indexed syntactic uses of a name
                                   (comments/strings excluded) as path:line:col: text;
-                                  Type.member or [--file <path> | --path <path>] resolves one symbol
+                                  Type.member or [--file <path> | --path <path>] resolves one symbol;
+                                  each resolved site is tagged decl, call, read, write or type-use,
+                                  and --kind call,read,write,decl,type keeps only those
                                   --format text|json  Output format (default: text)
   prism resolve <name> [dir]      Resolve a name to its definition(s): file:line + kind
                                   --format text|json  Output format (default: text)
@@ -3492,17 +3494,31 @@ func cmdEdges(args []string) int {
 }
 
 func cmdReferences(args []string) int {
-	args, rc := positionalsFirst("references", "a name", "prism references <name> [dir]", 1, args, "--format", "--file", "--path")
+	args, rc := positionalsFirst("references", "a name", "prism references <name> [dir]", 1, args, "--format", "--file", "--path", "--kind")
 	if rc != 0 {
 		return rc
 	}
 	name := args[0]
 	dir, dirSet := ".", false
 	format := formatText
-	file := ""
+	file, kind := "", ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
+		case "--kind":
+			v, err := flagValue("references", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			for _, k := range strings.Split(v, ",") {
+				switch strings.TrimSpace(k) {
+				case "call", "read", "write", "init", "decl", "type", "type-use":
+				default:
+					return usageError(fmt.Errorf("references: --kind %q: use call, read, write, decl or type", k))
+				}
+			}
+			kind = v
+			i++
 		case "--format":
 			f, err := formatFlag("references", args, i)
 			if err != nil {
@@ -3529,6 +3545,9 @@ func cmdReferences(args []string) int {
 	callArgs := map[string]any{"name": name}
 	if file != "" {
 		callArgs["file"] = file
+	}
+	if kind != "" {
+		callArgs["kind"] = kind
 	}
 	out, err := invokeTool(dir, "prism_references", callArgs)
 	if err != nil {
