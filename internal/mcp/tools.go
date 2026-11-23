@@ -19,6 +19,7 @@ import (
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
+	"github.com/provasign/prism/internal/sensitive"
 	"github.com/provasign/prism/internal/session"
 	"github.com/provasign/prism/internal/textsearch"
 	"github.com/provasign/prism/internal/workspace"
@@ -82,6 +83,9 @@ type Handler struct {
 
 // NewHandler constructs a handler with sensible defaults.
 func NewHandler(cfg *config.Config, root string, client *grove.Client) *Handler {
+	if cfg != nil {
+		sensitive.Add(cfg.SensitivePaths...)
+	}
 	return NewHandlerWithLedger(cfg, root, client, nil)
 }
 
@@ -665,10 +669,11 @@ func toolSchema(name string) map[string]any {
 					"type":        "integer",
 					"description": "Lines from offset. Omit both for the whole file.",
 				},
-				"force":        map[string]any{"type": "boolean", "description": "Return source again even if it was delivered earlier."},
-				"model":        modelProp,
-				"context_used": contextUsedProp,
-				"task":         map[string]any{"type": "string", "description": "Log label only."},
+				"force":             map[string]any{"type": "boolean", "description": "Return source again even if it was delivered earlier."},
+				"include_sensitive": map[string]any{"type": "boolean", "description": "Read a .env, key or credential file (withheld by default)."},
+				"model":             modelProp,
+				"context_used":      contextUsedProp,
+				"task":              map[string]any{"type": "string", "description": "Log label only."},
 			},
 		}
 	case "prism_search":
@@ -723,6 +728,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"word":                map[string]any{"type": "boolean", "description": "Whole-word text matches only."},
 				"no_default_excludes": map[string]any{"type": "boolean", "description": "Also search agent-state directories (.shale, .claude, .cursor, ...) skipped by default."},
+				"include_sensitive":   map[string]any{"type": "boolean", "description": "Show the text of matches in .env, key and credential files (withheld by default; the match still counts)."},
 				"limit":               map[string]any{"type": "integer", "description": "Max results (default 25, maximum 2000; non-positive uses default)."},
 				"context": map[string]any{
 					"type":        "integer",
@@ -1499,13 +1505,28 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(abs)
+	offset, limit := intArg(args, "offset", 0), intArg(args, "limit", 0)
+	from, to := 0, 0
+	if offset > 0 || limit > 0 {
+		from = offset
+		if from < 1 {
+			from = 1
+		}
+		if limit > 0 {
+			to = from + limit - 1
+		}
+	}
+	g, err := readGuarded(abs, normalizePath(sessionPath), boolArg(args, "include_sensitive"), from, to)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return missingReadResult(sessionPath), nil
 		}
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
+	if g.refused != "" {
+		return refusedReadResult(sessionPath, g), nil
+	}
+	data := g.data
 	// Line-ranged reads. Measured over 374 real file reads by unaided and
 	// prism-armed agents: 50.6% are line-ranged (sed -n A,Bp 25.7%, native
 	// Read offset+limit 23.8%) and prism_read could express NONE of it. That
@@ -1517,9 +1538,15 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	// Whole-file reads keep the compression path unchanged; a ranged read is
 	// delivered verbatim and line-numbered, because slicing lines and THEN
 	// compressing them would be two lossy steps on the same content.
-	offset, limit := intArg(args, "offset", 0), intArg(args, "limit", 0)
 	if offset > 0 || limit > 0 {
-		return h.readRange(sessionPath, string(data), compression.Hash(string(data)), offset, limit, boolArg(args, "force"))
+		out, err := h.readRange(sessionPath, string(data), compression.Hash(string(data)), offset, limit, boolArg(args, "force"))
+		if m, ok := out.(map[string]any); ok && g.note != "" {
+			m["note"] = g.note
+			if g.totalLines > 0 {
+				m["totalLines"] = g.totalLines
+			}
+		}
+		return out, err
 	}
 	// The file's currently indexed symbols, by exact path (Grove v0.6.1).
 	fileSyms, err := h.Grove.FileSymbols(ctx, normalizePath(sessionPath))
@@ -1639,6 +1666,7 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 	windows := make([]window, 0, len(raw))
 	var notes []string
 	var continuations []map[string]any
+	largeTotals := map[string]int{} // a large file read in part: its real line count
 	remainingLines, remainingBytes := compactReadTotalLines, 20*1024
 	for i, entry := range raw {
 		if err := ctx.Err(); err != nil {
@@ -1650,7 +1678,15 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 		if err != nil {
 			return nil, err
 		}
-		data, err := os.ReadFile(abs)
+		from, _ := r["from"].(int)
+		if f, ok := r["from"].(float64); ok {
+			from = int(f)
+		}
+		to, _ := r["to"].(int)
+		if t, ok := r["to"].(float64); ok {
+			to = int(t)
+		}
+		g, err := readGuarded(abs, normalizePath(sessionPath), boolArg(args, "include_sensitive"), from, to)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				windows = append(windows, window{file: sessionPath, missing: true})
@@ -1658,6 +1694,18 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 			}
 			return nil, fmt.Errorf("read %s: %w", path, err)
 		}
+		if g.refused != "" {
+			// Not a regular file, binary, or sensitive (SEC-03/04).
+			windows = append(windows, window{file: sessionPath, warning: sessionPath + ": " + g.refused})
+			continue
+		}
+		if g.note != "" {
+			notes = append(notes, sessionPath+": "+g.note)
+		}
+		if g.totalLines > 0 {
+			largeTotals[sessionPath] = g.totalLines
+		}
+		data := g.data
 		content := string(data)
 		lines := strings.Split(content, "\n")
 		if len(lines) > 0 && lines[len(lines)-1] == "" {
@@ -1760,7 +1808,11 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 		if err != nil {
 			return nil, err
 		}
-		results = append(results, result.(map[string]any))
+		rm := result.(map[string]any)
+		if n, ok := largeTotals[w.file]; ok {
+			rm["totalLines"] = n
+		}
+		results = append(results, rm)
 	}
 	out := map[string]any{"delivery": "ranges", "ranges": results}
 	if len(notes) > 0 {
@@ -2269,6 +2321,23 @@ type searchScope struct {
 	noDefaultExcludes bool
 	// notSearched: default-excluded directories present at the root.
 	notSearched []textsearch.ExcludedDir
+	// includeSensitive: show the text of matches in sensitive files.
+	includeSensitive bool
+}
+
+// withholdSensitive replaces the text of hits in sensitive files (.env,
+// keys, credentials) unless asked: the match still counts and shows its
+// path and line, as ripgrep would, but not the secret (SEC-03).
+func withholdSensitive(r *textsearch.Result, include bool) {
+	if include {
+		return
+	}
+	for i := range r.Hits {
+		if sensitive.Match(r.Hits[i].File) {
+			r.Hits[i].Text = sensitive.Withheld
+			r.Hits[i].Before, r.Hits[i].After = nil, nil
+		}
+	}
 }
 
 // caseSensitive applies the case mode to one term.
@@ -2335,6 +2404,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			CaseSensitive: sc.caseSensitive(q, regex), Word: sc.word, NoDefaultExcludes: sc.noDefaultExcludes,
 		}
 		r := textsearch.Search(ctx, h.Root, q, opts)
+		withholdSensitive(&r, sc.includeSensitive)
 		out := map[string]any{
 			"textHits":      h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked),
 			"textBackend":   r.Backend,
@@ -2566,6 +2636,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			CaseSensitive: sc.caseSensitive(q, regex), Word: sc.word, NoDefaultExcludes: sc.noDefaultExcludes,
 		}
 		r := textsearch.Search(ctx, h.Root, q, opts)
+		withholdSensitive(&r, sc.includeSensitive)
 		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked)
 		out["textBackend"] = r.Backend
 		out["caseSensitive"] = opts.CaseSensitive

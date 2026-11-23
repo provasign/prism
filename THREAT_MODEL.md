@@ -21,7 +21,9 @@ HTTP surfaces, and may modify coding-tool configuration during `prism init`.
 | Threat | Current control |
 |---|---|
 | Path traversal or symlink escape | Canonical roots and path-within-root checks |
-| Credential/key indexing | Security-sensitive extensions and bare `.env` are excluded by Grove |
+| Credential/key indexing | Security-sensitive extensions and bare `.env` are excluded from Grove's index |
+| Credentials returned by read or text search | A text search keeps ripgrep semantics but withholds the line text of matches in `.env*`, key, keystore and credential files (`internal/sensitive`); `read` refuses them. `--include-sensitive` (MCP `include_sensitive`) shows them; `sensitive_paths:` in prism.yaml adds patterns and cannot remove the defaults |
+| Hostile files in the tree | Indexing and `read` skip FIFOs, sockets and devices (opening a FIFO blocked forever); `read` reports binary files by size and never loads a file over 2 MB whole |
 | Cross-conversation under-delivery | Direct CLI handlers do not load persistent conversation caches |
 | Stale or partial graph presented as complete | Operations expose completeness; `prism doctor` reports readiness |
 | Resource exhaustion | Bounded delivery, file limits, timeouts, and parser fallbacks |

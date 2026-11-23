@@ -198,6 +198,7 @@ func (s searchShape) scope(args map[string]any) searchScope {
 		caseMode:          stringArg(args, "case", "insensitive"),
 		word:              boolArg(args, "word"),
 		noDefaultExcludes: boolArg(args, "no_default_excludes"),
+		includeSensitive:  boolArg(args, "include_sensitive"),
 	}
 }
 

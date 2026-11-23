@@ -115,6 +115,7 @@ Usage:
                                   [--repo <id>]  read paths inside a linked repository
                                   --from N --to M  Line range (inclusive);
                                   --offset N --limit N also work; --dir <path>
+                                  [--include-sensitive]  read a .env, key or credential file
                                   --format text|json  Output format (default: text)
   prism search <term>... [dir]    Search symbol names AND raw source text (a real
                                   rg/grep pass). Pass SEVERAL terms to search them
@@ -124,6 +125,8 @@ Usage:
                                   matches exact case, [--ignore-case|-i] states the default
                                   [--word|-w]  whole words only
                                   [--no-default-excludes]  also search .shale, .claude, .cursor, ...
+                                  [--include-sensitive]  show the text of matches in .env, key and
+                                  credential files (withheld by default; the match still counts)
                                   --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
                                   [--path|--paths <file-or-dir>]  scope the search (repeatable)
@@ -2655,6 +2658,7 @@ func cmdRead(args []string) int {
 	}
 	file := args[0]
 	dir := "."
+	includeSensitive := false
 	repo := ""
 	dirSet := false
 	var extra []string
@@ -2703,6 +2707,8 @@ func cmdRead(args []string) int {
 		case "--format":
 			format, err = formatFlag("read", args, i)
 			i++
+		case "--include-sensitive":
+			includeSensitive = true
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("read", a)
@@ -2747,6 +2753,9 @@ func cmdRead(args []string) int {
 		offset, limit = 1, to
 	}
 	readArgs := map[string]any{"file": file}
+	if includeSensitive {
+		readArgs["include_sensitive"] = true
+	}
 	if offset > 0 {
 		readArgs["offset"] = offset
 	}
@@ -2757,8 +2766,11 @@ func cmdRead(args []string) int {
 	var text string
 	var rendered bool
 	var err error
-	if format == formatText {
+	if format == formatText && !includeSensitive {
 		compactArgs := map[string]any{"file": file}
+		if includeSensitive {
+			compactArgs["include_sensitive"] = true
+		}
 		start := 1
 		if offset > 0 {
 			start = offset
@@ -2821,7 +2833,7 @@ func cmdSearch(args []string) int {
 	format := formatText
 	scope := ""
 	regex := false
-	caseMode, word, noDefaultExcludes := "", false, false
+	caseMode, word, noDefaultExcludes, includeSensitive := "", false, false, false
 	var paths, globs []string
 	filesOnly := false
 	includeBodies := true
@@ -2869,6 +2881,8 @@ args:
 			word = true
 		case "--no-default-excludes":
 			noDefaultExcludes = true
+		case "--include-sensitive":
+			includeSensitive = true
 		case "--path", "--paths":
 			// The grep operand, restored. `prism search alias --path
 			// octodns/manager.py` is what an agent that already knows the
@@ -2981,6 +2995,9 @@ args:
 	}
 	if noDefaultExcludes {
 		searchArgs["no_default_excludes"] = true
+	}
+	if includeSensitive {
+		searchArgs["include_sensitive"] = true
 	}
 	if len(paths) > 0 {
 		searchArgs["path"] = paths

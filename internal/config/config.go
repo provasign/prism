@@ -37,6 +37,9 @@ type Config struct {
 	CIFailOn []string
 	// CIComment: the CI action posts one sticky PR comment, `ci_comment:`.
 	CIComment bool
+	// SensitivePaths adds patterns to the files whose text is withheld from
+	// search and read, from `sensitive_paths: a, b` (additive only).
+	SensitivePaths []string
 }
 
 // WorkspaceRepo is one `workspace_repo:` entry.
@@ -148,6 +151,13 @@ func parseInto(c *Config, data []byte) {
 			}
 			if c.CIFailOn == nil {
 				c.CIFailOn = []string{}
+			}
+		case "sensitive_paths":
+			if j := strings.IndexByte(v, '#'); j >= 0 {
+				v = v[:j]
+			}
+			for _, k := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == ' ' || r == '[' || r == ']' }) {
+				c.SensitivePaths = append(c.SensitivePaths, strings.Trim(k, `"'`))
 			}
 		case "ci_comment":
 			c.CIComment = v == "true" || v == "yes" || v == "1"
