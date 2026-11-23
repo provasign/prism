@@ -222,6 +222,8 @@ Usage:
   prism untrust [dir]             Never run them for this repository; also --untrusted
                                   on index or PRISM_UNTRUSTED=1. Recorded per user in
                                   ~/.config/prism/trusted.json, never read from the repo
+  prism help exit-codes           What each exit code means (0 answered, 1 finding, 2 usage,
+                                  3 degraded, 4 not found, 5 ambiguous, 70 internal)
   prism version                   Print version ([--verbose] also the linked Grove engine)
 
 prism init [dir] flags:
@@ -297,6 +299,10 @@ func Run(args []string) int {
 	}
 	switch cmd {
 	case "-h", "--help", "help":
+		if len(rest) > 0 && rest[0] == "exit-codes" {
+			fmt.Print(exitCodesHelp)
+			return 0
+		}
 		fmt.Print(helpText)
 		return 0
 	case "version", "--version", "-version":
@@ -2756,10 +2762,10 @@ func cmdRead(args []string) int {
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
-		return 1
+		return exitForError(err)
 	}
 	printToolResult("read", out, text, rendered, format)
-	return 0
+	return exitForAnswer("read", out)
 }
 
 // maxBatchTerms is the compact MCP gateway's limit for terms and names in one
@@ -2788,10 +2794,10 @@ func cmdReadFiles(dir string, files []string, from, to, offset, limit int, forma
 	out, text, rendered, err := invokeCompactReadText(dir, map[string]any{"ranges": ranges})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
-		return 1
+		return exitForError(err)
 	}
 	printToolResult("read", out, text, rendered, format)
-	return 0
+	return exitForAnswer("read", out)
 }
 
 func cmdSearch(args []string) int {
@@ -3151,12 +3157,12 @@ func cmdLookup(args []string) int {
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
-		return 1
+		return exitForError(err)
 	}
 	// A batch answer is {results:[{name,result}]}, which the generic text
 	// printer does not know; render it the way MCP does.
 	printToolResult("lookup", out, text, rendered, format)
-	return 0
+	return exitForAnswer("lookup", out)
 }
 
 // lookupArgIsPath reports whether a positional lookup argument can only be a
@@ -3217,10 +3223,10 @@ func cmdNode(args []string) int {
 	out, err := invokeTool(dir, "prism_node", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "node:", err)
-		return 1
+		return exitForError(err)
 	}
 	printOutput(out, format)
-	return 0
+	return exitForAnswer("node", out)
 }
 
 func cmdResolve(args []string) int {
@@ -3249,10 +3255,10 @@ func cmdResolve(args []string) int {
 	out, err := invokeTool(dir, "prism_resolve", map[string]any{"name": name})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "resolve:", err)
-		return 1
+		return exitForError(err)
 	}
 	printOutput(out, format)
-	return 0
+	return exitForAnswer("resolve", out)
 }
 
 func cmdEdges(args []string) int {
@@ -3307,10 +3313,10 @@ func cmdEdges(args []string) int {
 	out, err := invokeTool(dir, "prism_edges", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "edges:", err)
-		return 1
+		return exitForError(err)
 	}
 	printOutput(out, format)
-	return 0
+	return exitForAnswer("edges", out)
 }
 
 func cmdReferences(args []string) int {
@@ -3355,10 +3361,10 @@ func cmdReferences(args []string) int {
 	out, err := invokeTool(dir, "prism_references", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "references:", err)
-		return 1
+		return exitForError(err)
 	}
 	printOutput(out, format)
-	return 0
+	return exitForAnswer("references", out)
 }
 
 func cmdChangeImpact(args []string) int {
@@ -3429,6 +3435,7 @@ func cmdChangeImpact(args []string) int {
 	var results []map[string]any
 	var texts strings.Builder
 	allRendered, failed := true, false
+	var firstErr error
 	for _, query := range queries {
 		warnShellExpandedName("change-impact", query)
 		callArgs := map[string]any{"query": query}
@@ -3446,13 +3453,16 @@ func cmdChangeImpact(args []string) int {
 		if len(queries) == 1 {
 			if err != nil {
 				fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
-				return 1
+				return exitForError(err)
 			}
 			printToolResult("change-impact", out, text, rendered, format)
 			return 0
 		}
 		entry := map[string]any{"query": query}
 		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
 			entry["error"] = err.Error()
 			fmt.Fprintf(&texts, "// %s: ERROR: %v\n", query, err)
 			failed = true
@@ -3468,7 +3478,7 @@ func cmdChangeImpact(args []string) int {
 	}
 	printToolResult("change-impact", map[string]any{"results": results}, texts.String(), allRendered, format)
 	if failed {
-		return 1
+		return exitForError(firstErr)
 	}
 	return 0
 }
@@ -3564,7 +3574,7 @@ func cmdRenamePlan(args []string) int {
 	out, err := invokeTool(dir, "prism_rename_plan", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("rename-plan", err))
-		return 1
+		return exitForError(err)
 	}
 	printOutput(out, format)
 	// A collision without --allow-collision returns no plan: exit 1.
@@ -3618,7 +3628,7 @@ func cmdMissingImplementations(args []string) int {
 	out, err := invokeTool(dir, "prism_missing_implementations", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("missing-implementations", err))
-		return 1
+		return exitForError(err)
 	}
 	printOutput(out, format)
 	return 0
@@ -3663,7 +3673,7 @@ func cmdDeadCode(args []string) int {
 	out, err := invokeTool(dir, "prism_dead_code", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "dead-code:", err)
-		return 1
+		return exitInternal
 	}
 	printOutput(out, format)
 	return 0

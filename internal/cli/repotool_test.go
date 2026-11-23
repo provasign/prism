@@ -161,7 +161,7 @@ func TestImpactBatchOpensOneClientAndKeepsPerNameErrors(t *testing.T) {
 		}
 		var rc int
 		out := captureStdout(func() { rc = cmdChangeImpact(args) })
-		if rc != 1 || opens != 1 {
+		if rc != exitNotFound || opens != 1 {
 			t.Fatalf("selected=%v: rc=%d graph opens=%d, want 1/1\n%s", selected, rc, opens, out)
 		}
 		var decoded struct {
@@ -252,7 +252,7 @@ func TestLinkedImpactBatchReusesSelectedClient(t *testing.T) {
 		}
 		var rc int
 		out := captureStdout(func() { rc = cmdChangeImpact([]string{"First", "MissingBatchName", "Second", "--format", format}) })
-		if rc != 1 || !strings.Contains(out, "First") || !strings.Contains(out, "Second") || !strings.Contains(out, "MissingBatchName") {
+		if rc != exitNotFound || !strings.Contains(out, "First") || !strings.Contains(out, "Second") || !strings.Contains(out, "MissingBatchName") {
 			t.Fatalf("format=%s: batch lost per-name results: rc=%d %s", format, rc, out)
 		}
 		if opens[lib] != 1 || opens[app] != 1 {

@@ -82,7 +82,7 @@ func cmdMap(args []string) int {
 	out, err := invokeTool(dir, "prism_map", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "map:", err)
-		return 1
+		return exitForError(err)
 	}
 	if jsonOut {
 		printJSON(out)
@@ -210,7 +210,7 @@ func cmdArch(args []string) int {
 	out, err := invokeTool(dir, "prism_arch_check", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "arch:", err)
-		return 2
+		return exitInternal
 	}
 	m := toMap(out)
 	if jsonOut {

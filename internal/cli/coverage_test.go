@@ -177,7 +177,7 @@ func TestCmdUsageErrors(t *testing.T) {
 	if got := cmdLookup([]string{}); got != 2 {
 		t.Fatalf("cmdLookup usage=%d", got)
 	}
-	if got := cmdLookup([]string{"Main", "./no-such-dir"}); got != 1 {
+	if got := cmdLookup([]string{"Main", "./no-such-dir"}); got != exitUsage {
 		t.Fatalf("cmdLookup mistyped directory path=%d, want the directory error", got)
 	}
 	if got := cmdLookup([]string{"Main", "--dir"}); got != 2 {

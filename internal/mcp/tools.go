@@ -2846,7 +2846,16 @@ func (h *Handler) toolEdges(ctx context.Context, args map[string]any) (any, erro
 		m := map[string]any{"shown": len(g.shown), "total": g.total, "symbols": g.shown}
 		rel[key] = m
 	}
-	return map[string]any{"name": name, "direction": direction, "edges": rel}, nil
+	out := map[string]any{"name": name, "direction": direction, "edges": rel}
+	if len(rel) == 0 {
+		// An unknown name and a symbol with no neighbours both had empty
+		// edges; say which (CON-04: the CLI exits 4 on an unknown name).
+		if cands, err := h.Grove.Resolve(ctx, name); err == nil && len(cands) == 0 {
+			out["matched"] = false
+			out["note"] = fmt.Sprintf("no symbol named %q in the index", name)
+		}
+	}
+	return out, nil
 }
 
 // dedupeSymbolsByID drops duplicate symbols (same ID) while preserving order,
