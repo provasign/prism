@@ -1,0 +1,47 @@
+
+=== Ceiling regression ===
+[fetch] jackson-databind @ 0b422144d178 <- https://github.com/FasterXML/jackson-databind/archive/0b422144d1785200e44a0b00c973f6ac95adcf5a.tar.gz
+  jackson-jsonnode-get         GT=8    recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=23  [OK]
+  jackson-settable-set         GT=22   recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=24  [OK]
+  jackson-writetypeprefix      GT=38   recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=42  [OK]
+  jackson-serializewithtype    GT=58   recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=61  [OK]
+  jackson-deserialize          GT=104  recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=223  [OK]
+  jackson-serialize            GT=108  recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=197  [OK]
+[fetch] typeorm @ 3d55188c0dd1 <- https://github.com/typeorm/typeorm/archive/3d55188c0dd1256f520143379ecf97f45e71acba.tar.gz
+  typeorm-driver-escape        GT=37   recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=37  [OK]
+[fetch] django @ 318a316a4c86 <- https://github.com/django/django/archive/318a316a4c86a65bede68144f9546a6056d91379.tar.gz
+  django-quotename             GT=35   recall=0.9429 (base 0.9429) precision=1.0000 (base 1.0000) sites=38  [OK]
+[fetch] guava @ f06690fa3e87 <- https://github.com/google/guava/archive/f06690fa3e874f65515e8fd338a74d636e2c792f.tar.gz
+  guava-forwarding-delegate    GT=325  recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=374  [OK]
+[fetch] commons-collections @ 4db4327796f9 <- https://github.com/apache/commons-collections/archive/4db4327796f9679b9e57f6788d1d7bb2e8459360.tar.gz
+  commons-collections-transformer-transform GT=17   recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=49  [OK]
+[fetch] grafana-122750 @ b6fdc12f22de <- https://github.com/grafana/grafana/archive/b6fdc12f22de961e1cb5c233512df675d2d4e32b.tar.gz
+  grafana-122750               GT=16   recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=28  [OK]
+[fetch] grafana-120119 @ cea7eb61f432 <- https://github.com/grafana/grafana/archive/cea7eb61f4321738a895095942d600bd770b51a8.tar.gz
+  grafana-120119               GT=15   recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=16  [OK]
+  grafana-bigblast-txsession   GT=94   recall=1.0000 (base 1.0000) precision=1.0000 (base 1.0000) sites=103  [OK]
+
+=== Family-size invariant (declaration + overrides == oracle count) ===
+[fetch] gson @ dae37cf0fe12 <- https://github.com/google/gson/archive/dae37cf0fe12235b76fb09f01118a0a8c8823f42.tar.gz
+  gson                 TypeAdapter.write            src/main/ declarations+family=55 (oracle 55)  [OK]
+
+=== Compile invariant (missing-implementations == 0, modulo documented exceptions) ===
+  jackson-databind     JsonSerializer.serialize         missing=0 (documented=0)  [OK]
+[fetch] gin @ d75fcd4c9ab2 <- https://github.com/gin-gonic/gin/archive/d75fcd4c9ab260e5225de590f1f0f8c0e0e12d11.tar.gz
+  gin                  ResponseWriter.Status            missing=0 (documented=0)  [OK]
+  typeorm              Driver.escape                    missing=0 (documented=0)  [OK]
+  django               BaseDatabaseOperations.quote_name missing=1 (documented=1)  [OK]
+
+=== Rename-plan completeness (contract declaration never Unresolved) ===
+  grafana-122750       DataKeyCache.GetById         unresolved=0  [OK]
+  typeorm              Driver.escape                unresolved=0  [OK]
+
+=== Determinism (double cold index, byte-identical counts) ===
+  gin: pass1=(2161, 11590) pass2=(2161, 11590)  [OK]
+
+=== Decoy invariant (comments must not change the graph) ===
+  skipped: no --decoy-injector (go install github.com/provasign/astkit/cmd/decoy@<tag>)
+
+============================================================
+All invariants held.
+GATE_EXIT=0
