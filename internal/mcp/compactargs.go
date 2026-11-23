@@ -15,6 +15,8 @@ var compactFields = map[string][]string{
 	"query":         {"terms", "paths", "glob"},
 	"change_impact": {"name", "symbol_file", "signature"},
 	"verify":        {"base", "removed_symbols", "strict"},
+
+	"missing_implementations": {"name", "symbol_file"},
 }
 
 var compactFieldReplacement = map[string]map[string]string{
@@ -23,6 +25,8 @@ var compactFieldReplacement = map[string]map[string]string{
 	"search":        {"query": "terms", "path": "paths", "limit": "max_results"},
 	"query":         {"query": "terms", "path": "paths", "limit": "terms"},
 	"change_impact": {"query": "name", "file": "symbol_file"},
+
+	"missing_implementations": {"query": "name", "file": "symbol_file"},
 }
 
 // compactFieldError names the unsupported field and hands back the request

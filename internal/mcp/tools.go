@@ -500,8 +500,8 @@ func CompactToolSchemas() []map[string]any {
 		}},
 	}}
 	args := map[string]any{
-		"name":        prop("lookup,change_impact", "Symbol(s); impact takes one.", name),
-		"symbol_file": prop("lookup,change_impact", "Disambiguating file.", map[string]any{"type": "string"}),
+		"name":        prop("lookup,change_impact,missing_implementations", "Symbol(s); impact takes one.", name),
+		"symbol_file": prop("lookup,change_impact,missing_implementations", "Disambiguating file.", map[string]any{"type": "string"}),
 		"fields": prop("lookup", "Projection.", map[string]any{"type": "array",
 			"items": map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}}}),
 		"signature": prop("lookup,change_impact", "Method signature: selects one overload.", map[string]any{"type": "string"}),
@@ -537,7 +537,8 @@ func CompactToolSchemas() []map[string]any {
 	const opMap = "lookup: name[,symbol_file,fields,signature] | read: file,from,to or ranges | " +
 		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies,context,rollup_only] | " +
 		"query: terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
-		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
+		"verify: base,removed_symbols,strict | missing_implementations: name[,symbol_file]. " +
+		"Known symbol → lookup; search only when location is unknown."
 	return []map[string]any{{
 		"name":        "prism",
 		"description": "Use the op map for each discovery step; do not use shell tools to find code.",
@@ -545,7 +546,7 @@ func CompactToolSchemas() []map[string]any {
 			"type": "object", "additionalProperties": false, "required": []string{"op", "args"},
 			"properties": map[string]any{
 				"op": map[string]any{"type": "string",
-					"enum":        []string{"lookup", "read", "search", "query", "change_impact", "verify"},
+					"enum":        []string{"lookup", "read", "search", "query", "change_impact", "verify", "missing_implementations"},
 					"description": opMap},
 				"args": map[string]any{"type": "object", "additionalProperties": false,
 					"properties": args, "description": "Use only fields owned by the selected op."},

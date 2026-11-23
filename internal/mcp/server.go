@@ -282,6 +282,11 @@ var compactOperations = map[string]string{
 	"lookup":        "prism_lookup",
 	"change_impact": "prism_change_impact",
 	"verify":        "prism_verify",
+	// CON-05: the implementation check completes the change workflow, as
+	// an op value only (one enum entry, not a tool). test_plan stays off:
+	// paired runs (2026-10-27) found agents never called it unsteered and
+	// the steered version did not pay for itself.
+	"missing_implementations": "prism_missing_implementations",
 }
 
 // Compact argument validation runs against the selected op before expansion;
@@ -437,7 +442,7 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 	}
 	name, ok := compactOperations[op]
 	if !ok {
-		return "", nil, fmt.Errorf("prism: unknown op %q — use search, query, read, lookup, change_impact, or verify", op)
+		return "", nil, fmt.Errorf("prism: unknown op %q — use search, query, read, lookup, change_impact, verify, or missing_implementations", op)
 	}
 	args := map[string]any{}
 	if raw, present := envelope["args"]; present {
@@ -534,6 +539,15 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 			if v, ok := args[field]; ok {
 				legacy[field] = v
 			}
+		}
+	case "missing_implementations":
+		symbol := args["name"]
+		if items, ok := symbol.([]any); ok && len(items) > 0 {
+			symbol = items[0]
+		}
+		legacy["query"] = symbol
+		if v, ok := args["symbol_file"]; ok {
+			legacy["file"] = v
 		}
 	}
 	return name, legacy, nil

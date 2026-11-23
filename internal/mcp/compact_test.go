@@ -27,7 +27,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	}
 	properties := schema["properties"].(map[string]any)
 	ops := properties["op"].(map[string]any)["enum"].([]string)
-	if want := []string{"lookup", "read", "search", "query", "change_impact", "verify"}; !reflect.DeepEqual(ops, want) {
+	if want := []string{"lookup", "read", "search", "query", "change_impact", "verify", "missing_implementations"}; !reflect.DeepEqual(ops, want) {
 		t.Fatalf("compact operations = %v, want %v", ops, want)
 	}
 	opMap := properties["op"].(map[string]any)["description"].(string)
@@ -44,7 +44,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	}
 	argProperties := argsSchema["properties"].(map[string]any)
 	owners := map[string]string{
-		"name": "lookup,change_impact", "symbol_file": "lookup,change_impact",
+		"name": "lookup,change_impact,missing_implementations", "symbol_file": "lookup,change_impact,missing_implementations",
 		"fields": "lookup", "signature": "lookup,change_impact",
 		"file": "read", "from": "read", "to": "read", "ranges": "read", "force": "read",
 		"terms": "search,query", "scope": "search",
