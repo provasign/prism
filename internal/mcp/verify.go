@@ -1067,9 +1067,12 @@ func blockText(root, base, relPath string, sym *grove.SymbolRecord, fromBase boo
 	if fromBase {
 		content = gitShow(root, base, relPath)
 	} else {
-		out, err := exec.Command("cat", root+"/"+relPath).Output()
-		if err == nil {
-			content = out
+		// os.ReadFile through the root check, not `cat` (unix-only, and
+		// empty on Windows; SEC-07).
+		if abs, _, err := safePathWithinRoot(root, relPath); err == nil {
+			if out, err := os.ReadFile(abs); err == nil {
+				content = out
+			}
 		}
 	}
 	if content == nil {

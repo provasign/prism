@@ -305,7 +305,7 @@ func FetchClone(repo, ref string) (dir, sha string, err error) {
 	if target == "" {
 		target = "HEAD"
 	}
-	sha, err = gitRun(bare, "rev-parse", "--verify", "--quiet", target+"^{commit}")
+	sha, err = gitRun(bare, "rev-parse", "--verify", "--quiet", "--end-of-options", target+"^{commit}")
 	if err != nil || sha == "" {
 		return "", "", fmt.Errorf("%s has no commit named %q", repo, target)
 	}
