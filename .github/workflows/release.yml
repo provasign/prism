@@ -11,7 +11,62 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GO_VERSION: "1.26.3"
 jobs:
+  # REL-01: no binary is built or published unless the tests and the engine
+  # invariants pass on this exact commit. "No tag with either red" used to
+  # be enforced by memory only.
+  gate:
+    name: Gate (tests + engine invariants)
+    runs-on: ubuntu-latest
+    env:
+      GOWORK: "off"
+      # The research repository's commit holding the invariant suite and its
+      # ground truth. Bump deliberately, like a dependency.
+      RESEARCH_SHA: "8dfe92928048ad3a45e1f55debd39c8b0245c2f2"
+      ASTKIT_DECOY_VERSION: "v0.16.9"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Test (race detector, pinned Grove)
+        run: go test ./... -count=1 -race -timeout 900s
+      - name: Build candidate
+        run: go build -o /tmp/prism-candidate ./cmd/prism
+      - uses: actions/checkout@v7
+        with:
+          repository: provasign/research
+          ref: ${{ env.RESEARCH_SHA }}
+          path: research
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install decoy injector
+        run: GOBIN=/usr/local/bin go install github.com/provasign/astkit/cmd/decoy@${{ env.ASTKIT_DECOY_VERSION }}
+      - name: Restore invariant corpus
+        uses: actions/cache@v4
+        with:
+          path: /tmp/ci-corpus
+          key: ci-corpus-${{ hashFiles('research/harness/scoring/ci_invariants.py', 'research/harness/ci_baseline.json') }}
+      - name: Drop empty corpus directories
+        # The harness treats any existing directory as already fetched; a
+        # cache entry holding an empty or partial checkout would pass a run
+        # that never indexed the code.
+        run: |
+          if [ -d /tmp/ci-corpus ]; then
+            for d in /tmp/ci-corpus/*/; do
+              [ -d "$d" ] || continue
+              if [ -z "$(find "$d" -type f -not -path '*/.git/*' -print -quit)" ]; then
+                echo "removing empty corpus dir $d"; rm -rf "$d"
+              fi
+            done
+          fi
+      - name: Engine invariants
+        working-directory: research
+        run: python3 harness/scoring/ci_invariants.py --corpus-root /tmp/ci-corpus --prism /tmp/prism-candidate --decoy-injector /usr/local/bin/decoy
+
   build-linux:
+    needs: gate
     name: Build linux/${{ matrix.goarch }}
     runs-on: ubuntu-latest
     strategy:
@@ -55,6 +110,7 @@ jobs:
           files: dist/*
 
   build-darwin:
+    needs: gate
     name: Build darwin/${{ matrix.goarch }}
     runs-on: macos-latest
     strategy:
@@ -83,6 +139,7 @@ jobs:
           files: dist/*
 
   build-windows:
+    needs: gate
     name: Build windows/amd64
     runs-on: windows-latest
     steps:
