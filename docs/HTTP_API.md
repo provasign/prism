@@ -13,10 +13,28 @@ runs take the first automatically). The server indexes the project on startup.
 
 ## Security
 
-The listener binds to `127.0.0.1` only and has **no authentication, no TLS,
-and no rate limiting**. It is a local-machine convenience surface. Do not
-port-forward or reverse-proxy it to anything you wouldn't hand a shell on the
-repository — tools read arbitrary files under the project root.
+The listener binds to `127.0.0.1` and every request is checked (SEC-02):
+
+- `Host` must be a loopback name. This defeats DNS rebinding.
+- `Origin`, when sent, must be the server's own origin.
+- `POST` bodies must be `Content-Type: application/json`, so a cross-site
+  form or `text/plain` post is refused.
+- `Authorization: Bearer <token>` is required on every route except
+  `GET /health`. The token is generated per run, printed once on stderr,
+  and written to `.grove/serve.token` (mode 0600).
+- Bodies are capped at 1 MB; the server has read and idle timeouts.
+
+```sh
+prism serve &
+curl -s -H "Authorization: Bearer $(cat .grove/serve.token)" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Client.Status"}' http://127.0.0.1:8888/prism_lookup
+```
+
+To listen on another address, pass `--listen <addr>` with
+`--token-file <file>`; the server refuses a non-loopback address without
+one. There is still no TLS: put a TLS proxy in front of anything that
+leaves the machine. Tools read arbitrary files under the project root.
 
 ## Routes
 

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -38,5 +40,34 @@ func TestMapUnknownComponentFails(t *testing.T) {
 	stderr := captureStderr(func() { _ = captureStdout(func() { rc = cmdMap([]string{dir, "--component", "nope"}) }) })
 	if rc == 0 || !strings.Contains(stderr, `no component "nope"`) {
 		t.Fatalf("rc=%d stderr=%q", rc, stderr)
+	}
+}
+
+// SEC-02: serve writes a fresh token 0600 under .grove, or reads the
+// operator's token file; a short token is refused.
+func TestServeToken(t *testing.T) {
+	root := t.TempDir()
+	tok, path, err := serveToken(root, "")
+	if err != nil || len(tok) != 64 || path != filepath.Join(root, ".grove", "serve.token") {
+		t.Fatalf("tok=%q path=%q err=%v", tok, path, err)
+	}
+	if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o600 {
+		t.Fatalf("token file mode: %v %v", fi, err)
+	}
+	own := filepath.Join(root, "mine")
+	if err := os.WriteFile(own, []byte("0123456789abcdef-operator\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got, _, err := serveToken(root, own); err != nil || got != "0123456789abcdef-operator" {
+		t.Fatalf("token file: %q %v", got, err)
+	}
+	if err := os.WriteFile(own, []byte("short"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := serveToken(root, own); err == nil {
+		t.Fatal("short token accepted")
+	}
+	if rc := cmdServe([]string{"--listen", "0.0.0.0", root}); rc != 2 {
+		t.Fatalf("non-loopback listen without --token-file: rc=%d", rc)
 	}
 }

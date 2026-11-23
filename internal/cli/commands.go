@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -24,6 +25,7 @@ import (
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/httpapi"
+	"github.com/provasign/prism/internal/httpguard"
 	"github.com/provasign/prism/internal/mcp"
 	"github.com/provasign/prism/internal/textsearch"
 	"github.com/provasign/prism/internal/version"
@@ -204,6 +206,8 @@ Usage:
                                   Record quality feedback for a Prism result in
                                   .grove/feedback.jsonl; [--list] prints the records
   prism serve [--port 8888] [dir] Start the HTTP API server (stdio MCP is 'prism mcp')
+                                  Loopback only, bearer token printed and written to
+                                  .grove/serve.token; [--listen <addr> --token-file <f>]
   prism mcp [--compact|--legacy] [dir]
                                   Start MCP server on stdio (compact gateway is default)
   prism drift                     MCP only (prism_drift): it compares files with what the
@@ -3705,9 +3709,24 @@ func cmdConfig(args []string) int {
 func cmdServe(args []string) int {
 	port := 0 // resolved after config load: flag > prism.yaml port > 8888
 	dir, dirSet := ".", false
+	listen, tokenFile := "127.0.0.1", ""
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch {
+		case a == "--listen":
+			v, err := flagValue("serve", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			listen = v
+			i++
+		case a == "--token-file":
+			v, err := flagValue("serve", args, i)
+			if err != nil {
+				return usageError(err)
+			}
+			tokenFile = v
+			i++
 		case a == "--port":
 			p, err := positiveIntFlag("serve", args, i)
 			if err == nil && p > 65535 {
@@ -3725,6 +3744,11 @@ func cmdServe(args []string) int {
 				return usageError(err)
 			}
 		}
+	}
+	// SEC-02: a non-loopback listener needs a token the operator chose and
+	// can hand to its clients; the loopback default gets a fresh one.
+	if !httpguard.LoopbackHost(listen) && tokenFile == "" {
+		return usageError(fmt.Errorf("serve: --listen %s is not a loopback address; it requires --token-file", listen))
 	}
 	cfg, client, err := newClient(dir)
 	if err != nil {
@@ -3752,8 +3776,29 @@ func cmdServe(args []string) int {
 	}
 	port = chosen
 
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	srv := &http.Server{Addr: addr, Handler: httpapi.New(h).Handler()}
+	token, tokenPath, err := serveToken(mustAbs(dir), tokenFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "serve:", err)
+		return 1
+	}
+	addr := net.JoinHostPort(listen, strconv.Itoa(port))
+	guard := httpguard.Options{Token: token, Open: map[string]bool{"/health": true}}
+	if !httpguard.LoopbackHost(listen) {
+		guard.AllowHost = func(host string) bool {
+			h, _, err := net.SplitHostPort(host)
+			if err != nil {
+				h = host
+			}
+			return strings.EqualFold(strings.Trim(h, "[]"), strings.Trim(listen, "[]"))
+		}
+	}
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           httpguard.Wrap(httpapi.New(h).Handler(), guard),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	// A shell starts a background job with SIGINT ignored; Notify installs
 	// a handler, so Ctrl+C / kill -INT stop the server either way (BUG-21).
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -3765,11 +3810,41 @@ func cmdServe(args []string) int {
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 	fmt.Fprintln(os.Stderr, "prism HTTP listening on", addr)
+	if tokenFile == "" {
+		fmt.Fprintf(os.Stderr, "token (send as \"Authorization: Bearer <token>\"): %s\n  also in %s\n", token, tokenPath)
+	}
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Fprintln(os.Stderr, "serve:", err)
 		return 1
 	}
 	return 0
+}
+
+// serveToken reads the token from tokenFile, or generates one and writes it
+// to <root>/.grove/serve.token (0600) so a local client can read it.
+func serveToken(root, tokenFile string) (token, path string, err error) {
+	if tokenFile != "" {
+		b, err := os.ReadFile(tokenFile)
+		if err != nil {
+			return "", "", fmt.Errorf("--token-file: %w", err)
+		}
+		token = strings.TrimSpace(string(b))
+		if len(token) < 16 {
+			return "", "", fmt.Errorf("--token-file %s: token shorter than 16 characters", tokenFile)
+		}
+		return token, tokenFile, nil
+	}
+	if token, err = httpguard.NewToken(); err != nil {
+		return "", "", err
+	}
+	path = filepath.Join(root, ".grove", "serve.token")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return "", "", err
+	}
+	if err := os.WriteFile(path, []byte(token+"\n"), 0o600); err != nil {
+		return "", "", err
+	}
+	return token, path, nil
 }
 
 func cmdMCP(args []string) int {

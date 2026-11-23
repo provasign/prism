@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/httpguard"
 )
 
 func sym(file, name, kind string, line int) grove.SymbolRecord {
@@ -381,8 +382,8 @@ func TestServerRefusesNonLoopbackHost(t *testing.T) {
 	}
 	for host, want := range map[string]bool{"127.0.0.1:8787": true, "localhost:1": true, "[::1]:9": true, "localhost": true,
 		"example.com": false, "127.0.0.1.evil.com:80": false, "": false} {
-		if got := loopbackHost(host); got != want {
-			t.Errorf("loopbackHost(%q) = %v, want %v", host, got, want)
+		if got := httpguard.LoopbackHost(host); got != want {
+			t.Errorf("LoopbackHost(%q) = %v, want %v", host, got, want)
 		}
 	}
 }

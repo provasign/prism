@@ -5,15 +5,14 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/httpguard"
 )
 
 //go:embed index.html
@@ -80,7 +79,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/impact", s.impactView)
 	mux.HandleFunc("POST /api/reload", s.reload)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !loopbackHost(r.Host) {
+		if !httpguard.LoopbackHost(r.Host) {
 			http.Error(w, "prism graph answers on localhost only", http.StatusForbidden)
 			return
 		}
@@ -90,18 +89,6 @@ func (s *Server) Handler() http.Handler {
 	})
 }
 
-func loopbackHost(hostport string) bool {
-	host := hostport
-	if h, _, err := net.SplitHostPort(hostport); err == nil {
-		host = h
-	}
-	host = strings.Trim(host, "[]")
-	if strings.EqualFold(host, "localhost") {
-		return true
-	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
-}
 
 func (s *Server) page(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
