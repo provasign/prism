@@ -358,7 +358,7 @@ func TestCompactReadRejectsMalformedBatchesWithoutCaching(t *testing.T) {
 		`{"ranges":[{"file":"../outside.txt","from":1,"to":1}]}`,
 	} {
 		params := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":` + args + `}}`)
-		if _, rpcErr := srv.dispatch("tools/call", params); rpcErr == nil {
+		if res, rpcErr := srv.dispatch("tools/call", params); rpcErr == nil && !isToolError(res) {
 			t.Errorf("accepted invalid batch: %s", args)
 		}
 	}
@@ -835,4 +835,11 @@ func TestCompactQueryHonorsPathsAndGlob(t *testing.T) {
 	if !strings.Contains(content, "ScopedRelevant") || strings.Contains(content, "OtherRelevant") {
 		t.Fatalf("scoped compact query ignored paths/glob:\n%s", content)
 	}
+}
+
+// isToolError reports an MCP tool result with isError set: a tool failure
+// is a result, not a protocol error (SEC-05).
+func isToolError(res any) bool {
+	m, ok := res.(map[string]any)
+	return ok && m["isError"] == true
 }

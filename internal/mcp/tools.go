@@ -248,6 +248,12 @@ func DispatchableTools() []string {
 
 // Invoke routes a tools/call to the right handler.
 func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) {
+	return h.InvokeContext(context.Background(), name, args)
+}
+
+// InvokeContext is Invoke under a caller's context: the MCP server cancels
+// it when the client sends notifications/cancelled (SEC-06).
+func (h *Handler) InvokeContext(parent context.Context, name string, args map[string]any) (out any, err error) {
 	h.reloadWorkspace()
 	// A panicking tool must fail THAT CALL, not the process: the stdio MCP
 	// server is the agent's whole session, and one nil-pointer in one tool
@@ -273,7 +279,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	case "prism_verify", "prism_test_plan", "prism_change_impact_diff", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
 		timeout = 10 * time.Minute
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	// In MCP mode, Grove connection and initial index run in the background so
 	// the MCP handshake (initialize / tools/list) can complete immediately.

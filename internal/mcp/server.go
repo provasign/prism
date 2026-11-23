@@ -13,6 +13,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -23,6 +24,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/grove"
@@ -66,26 +69,62 @@ type rpcError struct {
 // because MCP does not provide a stable conversation identifier.
 func (s *Server) Serve(r io.Reader, w io.Writer) error {
 	reader := bufio.NewReader(r)
+	var wmu sync.Mutex
+	write := func(id any, result any, rpcErr *rpcError) error {
+		wmu.Lock()
+		defer wmu.Unlock()
+		return writeMessage(w, id, result, rpcErr)
+	}
+	// tools/call runs on its own goroutine so ping and cancellation are
+	// serviced while a minutes-long verify or index runs (SEC-06). At most
+	// mcpConcurrency calls run at once; the engine serializes index writes.
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	sem := make(chan struct{}, mcpConcurrency)
+	var cmu sync.Mutex
+	cancels := map[string]context.CancelFunc{}
 	for {
 		msg, err := readMessage(reader)
 		if err == io.EOF {
 			return nil
+		}
+		if errors.Is(err, errFrame) {
+			if werr := write(nil, nil, &rpcError{Code: -32600, Message: err.Error()}); werr != nil {
+				return werr
+			}
+			continue
 		}
 		if err != nil {
 			return err
 		}
 		var req request
 		if err := json.Unmarshal(msg, &req); err != nil {
+			// A client waiting for a reply hung forever (SEC-05).
+			if werr := write(nil, nil, &rpcError{Code: -32700, Message: "parse error: " + err.Error()}); werr != nil {
+				return werr
+			}
 			continue
 		}
 		if req.ID == nil {
 			// Notification — no response.
+			if req.Method == "notifications/cancelled" {
+				var p struct {
+					RequestID any `json:"requestId"`
+				}
+				_ = json.Unmarshal(req.Params, &p)
+				cmu.Lock()
+				if cancel := cancels[fmt.Sprint(p.RequestID)]; cancel != nil {
+					cancel()
+				}
+				cmu.Unlock()
+			}
 			continue
 		}
 		// Never dispatch a request through superseded code. This check precedes
 		// JSON-RPC method handling because the new client may send a parameter or
 		// method the old server cannot understand well enough to warn about.
 		if note := staleBinaryNote(); note != "" {
+			wg.Wait() // in-flight calls finish before the replacement takes the stream
 			if req.Method == "initialize" {
 				s.initParams = req.Params
 			}
@@ -97,7 +136,7 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 				return relayToReplacement(cmd, childIn, childOut, msg, reader, w)
 			}
 			fmt.Fprintln(os.Stderr, "mcp: handoff to upgraded binary failed:", err)
-			if err := writeMessage(w, req.ID, nil, &rpcError{Code: -32001, Message: note}); err != nil {
+			if err := write(req.ID, nil, &rpcError{Code: -32001, Message: note}); err != nil {
 				return err
 			}
 			return nil
@@ -105,11 +144,54 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 		if req.Method == "initialize" {
 			s.initParams = req.Params
 		}
-		result, rpcErr := s.dispatch(req.Method, req.Params)
-		if err := writeMessage(w, req.ID, result, rpcErr); err != nil {
-			return err
+		if req.Method != "tools/call" {
+			result, rpcErr := s.safeDispatch(context.Background(), req.Method, req.Params)
+			if err := write(req.ID, result, rpcErr); err != nil {
+				return err
+			}
+			continue
 		}
+		ctx, cancel := context.WithCancel(context.Background())
+		key := fmt.Sprint(req.ID)
+		cmu.Lock()
+		cancels[key] = cancel
+		cmu.Unlock()
+		wg.Add(1)
+		go func(req request) {
+			defer wg.Done()
+			defer func() {
+				cmu.Lock()
+				delete(cancels, key)
+				cmu.Unlock()
+				cancel()
+			}()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			result, rpcErr := s.safeDispatch(ctx, req.Method, req.Params)
+			if errors.Is(ctx.Err(), context.Canceled) {
+				result, rpcErr = nil, &rpcError{Code: -32800, Message: "request cancelled"}
+			}
+			_ = write(req.ID, result, rpcErr)
+		}(req)
 	}
+}
+
+// testToolCallDelay slows every tools/call in tests of the request loop.
+var testToolCallDelay time.Duration
+
+// mcpConcurrency bounds concurrent tools/call requests.
+const mcpConcurrency = 4
+
+// safeDispatch turns a panic anywhere in a request into a -32603 reply; one
+// bad request used to end the whole session (SEC-05).
+func (s *Server) safeDispatch(ctx context.Context, method string, params json.RawMessage) (result any, rpcErr *rpcError) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "mcp: %s panicked: %v\n", method, r)
+			result, rpcErr = nil, &rpcError{Code: -32603, Message: fmt.Sprintf("internal error: %v", r)}
+		}
+	}()
+	return s.dispatchCtx(ctx, method, params)
 }
 
 // defaultProtocolVersion is the latest MCP revision these servers target.
@@ -601,6 +683,10 @@ func negotiateProtocolVersion(params json.RawMessage) string {
 }
 
 func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError) {
+	return s.dispatchCtx(context.Background(), method, params)
+}
+
+func (s *Server) dispatchCtx(ctx context.Context, method string, params json.RawMessage) (any, *rpcError) {
 	switch method {
 	case "initialize":
 		instructions := serverInstructions
@@ -629,6 +715,13 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		}
 		return map[string]any{"tools": ToolSchemas()}, nil
 	case "tools/call":
+		if d := testToolCallDelay; d > 0 {
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+				return nil, &rpcError{Code: -32800, Message: "request cancelled"}
+			}
+		}
 		var call struct {
 			Name      string         `json:"name"`
 			Arguments map[string]any `json:"arguments"`
@@ -661,9 +754,11 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			invokeName = "prism_query_compact"
 		}
 		pathNotes := resolveMissingArgPaths(s.handler.Root, invokeName, actualArgs)
-		out, err := s.handler.Invoke(invokeName, actualArgs)
+		out, err := s.handler.InvokeContext(ctx, invokeName, actualArgs)
 		if err != nil {
-			return nil, &rpcError{Code: -32000, Message: err.Error()}
+			// A tool failure is a result the model reads, not a protocol
+			// error (MCP spec; SEC-05). -32xxx stays for protocol errors.
+			return map[string]any{"content": []map[string]string{{"type": "text", "text": err.Error()}}, "isError": true}, nil
 		}
 		if s.compact && actualName == "prism_read" && invokeName == actualName {
 			compactSingleReadNote(out, call.Arguments)
@@ -1405,6 +1500,12 @@ func contextBearingTool(name string) bool {
 // readMessage parses a Content-Length framed JSON-RPC message. For convenience
 // it also accepts a single line of JSON (line-delimited fallback used by
 // many test harnesses).
+// errFrame marks a malformed frame the server answers and skips.
+var errFrame = errors.New("invalid frame")
+
+// maxFrame bounds a Content-Length frame.
+const maxFrame = 16 << 20
+
 func readMessage(r *bufio.Reader) ([]byte, error) {
 	line, err := r.ReadString('\n')
 	if err != nil {
@@ -1425,6 +1526,14 @@ func readMessage(r *bufio.Reader) ([]byte, error) {
 		if strings.TrimSpace(line) == "" {
 			break
 		}
+	}
+	if n < 0 || n > maxFrame {
+		// make([]byte, n) panicked on a negative length and allocated
+		// without bound on a large one (SEC-05).
+		if n > 0 {
+			_, _ = io.CopyN(io.Discard, r, int64(n))
+		}
+		return nil, fmt.Errorf("%w: Content-Length %d outside 0..%d", errFrame, n, maxFrame)
 	}
 	buf := make([]byte, n)
 	_, err = io.ReadFull(r, buf)
