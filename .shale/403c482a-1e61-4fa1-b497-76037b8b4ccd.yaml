@@ -1,0 +1,991 @@
+shale_version: "0"
+id: 403c482a-1e61-4fa1-b497-76037b8b4ccd
+created_at: 2026-11-22T15:51:07.700661Z
+finalized_at: 2026-11-24T22:09:51.664352Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: research_notes/Prism code context market scan/user_demand_and_adoption.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T15:59:47.148448Z
+    - path: research_notes/Prism code context market scan/commercial_context_engines.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T16:00:47.77041Z
+    - path: research_notes/Prism code context market scan/evidence_and_harness_trends.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T16:00:54.543058Z
+    - path: research_notes/Prism code context market scan/code_intelligence_infrastructure.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T16:01:05.192859Z
+    - path: research_notes/Prism code context market scan/oss_agent_context_tools.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T16:02:07.574556Z
+    - path: reports/Prism code context market scan.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T16:05:10.556173Z
+    - path: docs/backlog/README.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T20:06:42.560086Z
+    - path: docs/backlog/bug-11-22-2026.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T20:06:42.614276Z
+    - path: docs/backlog/security-11-22-2026.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T20:06:42.665356Z
+    - path: docs/backlog/release-ci-11-22-2026.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T20:06:42.709956Z
+    - path: docs/backlog/consistency-11-22-2026.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T20:06:42.747783Z
+    - path: docs/backlog/feature-gaps-11-22-2026.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T20:09:34.736106Z
+    - path: docs/backlog/market-features-11-22-2026.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T20:09:34.784977Z
+    - path: docs/backlog/engineering-11-22-2026.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-11-22T20:09:34.824057Z
+commands:
+    - cmd: ls && echo --- && cat go.mod | head -40 && echo --- && find . -name '*.go' -not -path './outputs/*' -not -path './docs/*' | sed 's|/[^/]*$||' | sort | uniq -c | sort -rn | head -60 && echo --- && find . -name '*.go' -no…
+      at: 2026-11-22T15:53:11.266665Z
+      classified: other
+    - cmd: prism --help 2>&1 | head -80; echo ---; prism version 2>&1 | head; echo ---; git log --oneline | head -40; echo; git log --oneline | wc -l; git tag --sort=-creatordate | head -8
+      at: 2026-11-22T15:53:12.003121Z
+      classified: other
+    - cmd: ls research_notes reports 2>&1 | head; mkdir -p "research_notes/Prism code context market scan" reports && prism --help 2>&1 | sed -n '80,200p'
+      at: 2026-11-22T15:55:29.520359Z
+      classified: other
+    - cmd: ls cmd cmd/* internal pkg scripts .github/workflows 2>/dev/null | head -80; echo ---; ls internal/mcp | grep -v _test | head -150
+      at: 2026-11-22T15:55:34.11017Z
+      classified: other
+    - cmd: ls -la && echo ---- && git ls-files | wc -l && git ls-files | awk -F/ '{print $1}' | sort | uniq -c | sort -rn | head -40 && echo ---- && cat go.mod && echo ---- && ls .github/workflows && go version
+      at: 2026-11-22T15:55:36.424173Z
+      classified: other
+    - cmd: echo "== largest tracked files"; git ls-files -z | xargs -0 ls -l 2>/dev/null | awk '{print $5, $9}' | sort -rn | head -25; echo "== tracked size by top dir"; git ls-files -z | xargs -0 ls -l 2>/dev/null | awk '{split($…
+      at: 2026-11-22T15:55:37.534219Z
+      classified: other
+    - cmd: wc -l internal/mcp/server.go internal/mcp/tools.go internal/cli/*.go 2>/dev/null | sort -rn | head -25; echo ---; prism search "semantic change intelligence" "Relay change-impact sites" --scope text --format text 2>&1 |…
+      at: 2026-11-22T15:55:38.075102Z
+      classified: other
+    - cmd: (go build -o <path> ./... > $S/build.txt 2>&1
+      at: 2026-11-22T15:55:45.140579Z
+      classified: build
+    - cmd: S=<path>; cd .; $S/prism --help > $S/help.txt 2>&1; sed -n 55,85p $S/help.txt; ls -a | head -50; du -sh . .git .grove .prism 2>/dev/null; cat .gitignore | head -40; cat prism.yaml; ls cmd/prism internal | head -80
+      at: 2026-11-22T15:55:45.156718Z
+      classified: other
+    - cmd: echo "== largest go files"; git ls-files '*.go' | xargs wc -l | sort -rn | head -32; echo "== non-internal dirs"; ls -la bin text results prism reports research_notes pkg/* scripts cmd/prism "Code,registerTool,prism-vsc…
+      at: 2026-11-22T15:55:45.544335Z
+      classified: other
+    - cmd: for f in .github/workflows/*.yml; do echo "=== $f"; cat $f; done; ls -R .github | head -40; echo "=== install.sh"; cat install.sh
+      at: 2026-11-22T15:55:50.563483Z
+      classified: other
+    - cmd: cat install.ps1; echo "=== scripts"; cat scripts/*.sh; echo "=== prism.yaml"; cat prism.yaml; git diff prism.yaml | head -40; echo "=== config"; cat internal/config/*.go | grep -v _test | head -200
+      at: 2026-11-22T15:55:50.744442Z
+      classified: other
+    - cmd: S=<path>; cd $S && git clone -q --no-hardlinks . repo 2>&1 | tail -2; cd repo && cat go.mod | head -20; git log --oneline | head -2; find . -name '*.go' -not -path './.git/*' | wc -l; ls; ls ~/.prism 2>/dev/null | head
+      at: 2026-11-22T15:55:50.946698Z
+      classified: other
+    - cmd: chmod +x $S/t.sh; T=$S/t.sh $T 40 index; $T 40 status; $T 60 doctor; $T 30 config; $T 5 version; du -sh $S/repo/.grove; cd $S/repo; git status --short | head
+      at: 2026-11-22T15:56:01.10589Z
+      classified: other
+    - cmd: cat .github/dependabot.yml; echo "== funcs in cli"; ls internal/cli/*.go | grep -v _test; echo "== Run dispatch"; grep -n 'case "' internal/cli/commands.go | head -150
+      at: 2026-11-22T15:56:04.178202Z
+      classified: other
+    - cmd: cd $S && go run funclen.go ./internal
+      at: 2026-11-22T15:56:04.544691Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo; wc -l internal/cli/*.go | sort -n | tail -15; wc -l internal/mcp/*.go | sort -n | tail -12; grep -rn "interface {" --include=*.go internal pkg | grep -v _test | head -40
+      at: 2026-11-22T15:56:05.445744Z
+      classified: other
+    - cmd: sed -n 1,346p internal/cli/commands.go
+      at: 2026-11-22T15:56:07.377169Z
+      classified: other
+    - cmd: sed -n 1,300p internal/mcp/tools.go
+      at: 2026-11-22T15:56:07.37728Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo; grep -rn "interface {" --include='*.go' internal pkg | head -40; grep -n "^func " internal/cli/commands.go | head -70
+      at: 2026-11-22T15:56:07.453861Z
+      classified: other
+    - cmd: cd <path> 2>/dev/null || mkdir -p <path> for r in oraios/serena Aider-AI/aider zilliztech/claude-context CodeGraphContext/CodeGraphContext abhigyanpatwari/GitNexus vitali87/code-graph-rag DeusData/codebase-memory-mcp jo…
+      at: 2026-11-22T15:56:10.74735Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; sed -n 40,60p internal/assist/provider.go; grep -rn ") Complete(\|\.Complete(" --include='*.go' . | head -30 $T 60 change-impact Provider.Complete --format text $T 30 change-impact Provi…
+      at: 2026-11-22T15:56:11.343225Z
+      classified: other
+    - cmd: prism search "filepath.Join(h.Root" "os.ReadFile(" "EvalSymlinks" "exec.Command" "http.ListenAndServe" "net.Listen" --scope text --format text --no-bodies --exhaustive 2>&1 | grep -v _test.go | head -150
+      at: 2026-11-22T15:56:11.978909Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; echo "--- grep impls/callers"; grep -rn ") Chat(\|\.Chat(" --include='*.go' . $T 80 change-impact Provider.Chat --format text $T 40 change-impact Provider.Chat --format lean $T 5 change-…
+      at: 2026-11-22T15:56:15.379448Z
+      classified: other
+    - cmd: grep -n "exec.Command\|exec.LookPath\|http\.\(Listen\|Server\|Get\|Post\|NewRequest\|Client\)\|net.Listen\|os.Chmod\|0o6[0-9][0-9]\|0o7[0-9][0-9]\|0644\|0755\|0600\|os.Getenv(\|envOr(" internal/*/*.go pkg/*/*.go | grep…
+      at: 2026-11-22T15:56:17.31544Z
+      classified: other
+    - cmd: grep -n "outside\|escapes\|EvalSymlinks\|filepath.Rel(\|IsAbs(" internal/mcp/*.go internal/textsearch/*.go internal/httpapi/*.go internal/graphui/*.go internal/cli/*.go internal/grove/*.go | grep -v _test.go | head -70
+      at: 2026-11-22T15:56:17.314234Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; grep -rhn "^func (" --include='*.go' internal | grep -v _test | sed -E 's/^[0-9]+:func \([a-zA-Z_]+ \*?([A-Za-z]+)\).*/\1/' | sort | uniq -c | sort -rn | head -12; grep -n "^func (c \*Cl…
+      at: 2026-11-22T15:56:20.820183Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; $T 60 change-impact Client.Status --format text echo "--- grep .Status("; grep -rn "\.Status(" --include='*.go' . | wc -l; grep -rn "\.Status(" --include='*.go' . | cut -c1-150 $T 40 cha…
+      at: 2026-11-22T15:56:25.011605Z
+      classified: other
+    - cmd: sed -n 3255,3345p internal/cli/commands.go; echo ======; cat internal/httpapi/server.go 2>/dev/null || ls internal/httpapi; echo ======; sed -n 60,200p internal/cli/graphcmd.go
+      at: 2026-11-22T15:56:25.079387Z
+      classified: other
+    - cmd: sed -n 4262,4312p internal/mcp/tools.go; echo =====; sed -n 55,80p internal/mcp/verify.go; sed -n 150,180p internal/mcp/verify.go; sed -n 955,975p internal/mcp/verify.go; echo =====; sed -n 60,85p internal/mcp/testplan.…
+      at: 2026-11-22T15:56:25.087221Z
+      classified: other
+    - cmd: cat internal/httpapi/http.go; echo =====; ls -la internal/graphui; grep -n "func \|Header()\|Origin\|Host\|http.Method\|r.Method\|MaxBytes" internal/graphui/server.go
+      at: 2026-11-22T15:56:30.767233Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; $T 60 change-impact Client.Status --format text; cat $S/out.txt; echo $T 40 change-impact --help $T 30 change-impact Client.Status --file internal/grove/client.go --format text $T 30 cha…
+      at: 2026-11-22T15:56:32.339807Z
+      classified: other
+    - cmd: sed -n 68,232p internal/graphui/server.go; grep -n "func (m \*Model) Source" -A40 internal/graphui/model.go | head -70
+      at: 2026-11-22T15:56:36.19475Z
+      classified: other
+    - cmd: grep -n "^func \|bufio\.\|Buffer(\|recover()\|compactOps\|\"op\"" internal/mcp/server.go | head -120
+      at: 2026-11-22T15:56:40.01253Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; grep -rn "multiple language families" --include='*.go' . | grep -v _test | cut -c1-200; grep -rn "type Client " --include='*.go' . | head; grep -rn "needs_file_scope" --include='*.go' .…
+      at: 2026-11-22T15:56:41.657826Z
+      classified: other
+    - cmd: sed -n 60,146p internal/mcp/server.go; sed -n 1355,1402p internal/mcp/server.go; grep -n "compactOpTools\|var compact.*= map\|\"change_impact\":\|\"test_plan\"\|\"missing_implementations\"" internal/mcp/*.go | grep -v _…
+      at: 2026-11-22T15:56:42.662825Z
+      classified: other
+    - cmd: F=~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/403c482a-1e61-4fa1-b497-76037b8b4ccd/tool-results/toolu_01525VqVGgZC5RSX6rhJsxB7.txt; grep -n -i -E "lsp|language server|diagnostic|semantic|index|ToolSe…
+      at: 2026-11-22T15:56:44.57395Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo; sed -n 3120,3200p internal/mcp/tools.go
+      at: 2026-11-22T15:56:45.413514Z
+      classified: other
+    - cmd: sed -n 190,207p internal/mcp/server.go; sed -n 598,712p internal/mcp/server.go; sed -n 3346,3420p internal/cli/commands.go; grep -n "func ToolList\|func toolNames\|legacyMCPTool" -A12 internal/mcp/server.go | sed -n 1,4…
+      at: 2026-11-22T15:56:47.145417Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; git ls-files | sed -E 's/.*\.//' | sort | uniq -c | sort -rn | head -12; grep -rn "class Client\|Client.Status\|def Status\|Status(" --include='*.py' --include='*.ts' --include='*.js' --…
+      at: 2026-11-22T15:56:52.802394Z
+      classified: other
+    - cmd: grep -n "^func " internal/cli/commands.go | sed -n 1,400p | awk -F'(' '{print $1}' | tr '\n' ';' ; echo; grep -n "format := format\|format = format\|outputFormat = format\|formatJSON$\|:= formatJSON\|:= formatText" inte…
+      at: 2026-11-22T15:56:53.115272Z
+      classified: other
+    - cmd: S=<path>; cat $S/build.txt; cat $S/vet.txt; grep -v "^=== \|^--- PASS\|^PASS" $S/test.txt | tail -60; cd . && go tool cover -func=$S/cover.out | tail -1; gofmt -l internal cmd pkg | head -20
+      at: 2026-11-22T15:56:57.301401Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; git ls-files | grep -E '\.(py|rs|sh|ps1)$'; grep -rnw "Client" $(git ls-files | grep -E '\.(py|rs|sh|ps1|yaml|yml|toml)$') | head -8; for q in Handler.toolTestPlan Server.Run Tracker.Rec…
+      at: 2026-11-22T15:57:00.505979Z
+      classified: other
+    - cmd: F=~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/403c482a-1e61-4fa1-b497-76037b8b4ccd/tool-results/toolu_01525VqVGgZC5RSX6rhJsxB7.txt; sed -n '366,382p' "$F" | cut -c1-900; grep -n -i -E "tool search|de…
+      at: 2026-11-22T15:57:02.821377Z
+      classified: other
+    - cmd: go test -count=1 -run 'TestRefreshReportsFileLevelIndexErrors' ./internal/mcp/ 2>&1
+      at: 2026-11-22T15:57:04.004955Z
+      classified: test
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; cat internal/mcp/testdata/lookupnames/rustfx/src/net/client.rs | head -20 $T 20 change-impact Server.Run --format text $T 30 change-impact Server.Handler --format text $T 30 change-impac…
+      at: 2026-11-22T15:57:09.969656Z
+      classified: other
+    - cmd: go env GOWORK GOFLAGS GOPROXY GOPRIVATE GONOSUMDB; go list -m -f '{{.Path}} {{.Version}} {{.Dir}} {{.Replace}}' github.com/provasign/grove github.com/provasign/astkit; sed -n 95,135p internal/mcp/indexerrors.go; S=<path…
+      at: 2026-11-22T15:57:10.340679Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; $T 12 change-impact graphui.Server.Handler --format text $T 12 change-impact Server.Handler --file internal/graphui/server.go --format text $T 6 change-impact 'Server.Handler()' --format…
+      at: 2026-11-22T15:57:20.273734Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; $T 30 rename-plan Provider.Chat Converse --format text $T 8 rename-plan Provider.Chat $T 8 rename-plan Provider.Chat 'bad name!' --format text $T 8 rename-plan Provider.Chat Name --forma…
+      at: 2026-11-22T15:57:28.579513Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; $T 4 rename-plan Client.Status Stat --file internal/grove/client.go --format text $T 12 lookup cmdIndex --format text $T 6 lookup Client.Status mustAbs --format text $T 8 lookup Handler…
+      at: 2026-11-22T15:57:40.176484Z
+      classified: other
+    - cmd: 'S=<path>; T=$S/t.sh; cd $S/repo; $T 14 search mustAbs --scope text --format text echo "grep count: $(grep -rnw mustAbs . --include=''*'' --exclude-dir=.git --exclude-dir=.grove | wc -l)" $T 10 search mustAbs requireDir --…'
+      at: 2026-11-22T15:57:53.215187Z
+      classified: other
+    - cmd: 'S=<path>; T=$S/t.sh; cd $S/repo; echo "go-only: $(grep -rnw mustAbs --include=''*.go'' . | wc -l)"; grep -rlw mustAbs . --exclude-dir=.git --exclude-dir=.grove | head -20; sed -n 2499,2560p internal/cli/commands.go | grep…'
+      at: 2026-11-22T15:58:05.366454Z
+      classified: other
+    - cmd: f=~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/403c482a-1e61-4fa1-b497-76037b8b4ccd/tool-results/toolu_01F8mHGgP4TvBDZJYpTXS3Nt.txt; grep -n -i -A22 '^#\+ LSP tool behavior' "$f" | cut -c1-900; echo -…
+      at: 2026-11-22T15:58:11.258071Z
+      classified: other
+    - cmd: $S/prism search 'go test' 'govulncheck' --scope text --format text
+      at: 2026-11-22T15:58:13.326058Z
+      classified: scan
+    - cmd: GOWORK=off go test -count=1 -timeout 9m -coverprofile=$S/cover_pinned.out ./... > $S/test_pinned.txt 2>&1
+      at: 2026-11-22T15:58:18.81663Z
+      classified: test
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; grep -rn '\.shale' --include='*.go' internal | grep -v _test | head -5; $S/prism search mustAbs requireDir cmdIndex cmdStatus cmdDoctor cmdQuery cmdRead cmdSearch cmdLookup cmdNode cmdRe…
+      at: 2026-11-22T15:58:20.855343Z
+      classified: other
+    - cmd: 'echo "tests: $(cat internal/*/*_test.go pkg/*/*_test.go | grep -c ''^func Test'') fuzz: $(cat internal/*/*_test.go | grep -c ''^func Fuzz'') bench: $(cat internal/*/*_test.go | grep -c ''^func Benchmark'') parallel: $(cat int…'
+      at: 2026-11-22T15:58:25.768412Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; $S/prism search a b c d e f g h i j k --scope text --format text | tail -4 | cut -c1-600 $T 25 query --terms cmdStatus,mustAbs --format text $T 6 query --terms Provider.Chat --delivery s…
+      at: 2026-11-22T15:58:30.331312Z
+      classified: other
+    - cmd: S=<path>; echo "== per-cmd function coverage (pinned run)"; go tool cover -func=$S/cover_pinned.out | grep -E "internal/cli/.*\scmd[A-Z]" | awk '{print $2, $3}' | column -t; echo "== lowest-coverage funcs >0 lines in mc…
+      at: 2026-11-22T15:58:31.842015Z
+      classified: other
+    - cmd: 'for n in blockText memberContractChanges prefixOnce takeInventory renderExactInventory compactSearchBodiesLegacy partitionLocalFamilies SHAPointer MaxCacheFiles GroveBinary WithTokenFromDir; do echo "## $n: $(grep -rn -…'
+      at: 2026-11-22T15:58:39.628836Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; $T 45 map $T 12 map --depth 1 $T 12 map --component internal/mcp $T 8 map --expand 'internal/cli->internal/mcp' $T 5 map --json $T 5 map --tests --depth 3 $T 4 map --depth 0 $T 4 map --d…
+      at: 2026-11-22T15:58:40.817639Z
+      classified: other
+    - cmd: which prism && prism version && (time prism dead-code --format text 2>&1 | head -70)
+      at: 2026-11-22T15:58:42.626485Z
+      classified: other
+    - cmd: for n in blockText memberContractChanges prefixOnce takeInventory compactSearchBodiesLegacy partitionLocalFamilies renderCompactSearchBodies MaxCacheFiles GroveBinary printLeanOutput; do echo "## $n"; grep -rn "\b$n\b"…
+      at: 2026-11-22T15:58:46.234603Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; echo "graphui imports:"; grep -rn "provasign/prism/internal" internal/graphui/*.go | grep -v _test; echo "kit:"; grep -rhn "provasign/prism/internal" pkg/kit/*.go | sort -u | head; echo…
+      at: 2026-11-22T15:58:51.803451Z
+      classified: other
+    - cmd: sed -n 1,160p internal/grove/client.go; ls internal/grove; sed -n 3453,3520p internal/cli/commands.go
+      at: 2026-11-22T15:58:52.177617Z
+      classified: other
+    - cmd: sed -n 270,300p internal/textsearch/textsearch.go; sed -n 420,500p internal/textsearch/textsearch.go; sed -n 850,880p internal/textsearch/textsearch.go; grep -n "Timeout\|max-filesize\|max-columns\|MaxFileSize\|maxFile"…
+      at: 2026-11-22T15:58:52.186493Z
+      classified: other
+    - cmd: grep -n "locked\|SQLITE_BUSY\|busy\|flock\|file_lock\|acquireLock\|\.lock" internal/*/*.go | grep -v _test.go | head -20; echo ==; cat internal/session/file_lock.go | head -60; grep -n "func \|UserHomeDir\|\.prism" inte…
+      at: 2026-11-22T15:58:57.456822Z
+      classified: other
+    - cmd: 'S=<path>; T=$S/t.sh; cd $S/repo; go list -f ''{{.ImportPath}}: {{join .Imports " "}}'' ./... 2>/dev/null | sed ''s#github.com/provasign/prism/##g'' | python3 -c " import sys real=set() for l in sys.stdin: p,_,imps=l.partiti…'
+      at: 2026-11-22T15:59:00.172155Z
+      classified: other
+    - cmd: ls -la .grove | head -20; G=$(GOWORK=off go list -m -f '{{.Dir}}' github.com/provasign/grove); echo $G; grep -rn "busy_timeout\|journal_mode\|synchronous\|_pragma\|flock\|Flock" $G --include='*.go' | grep -v _test | hea…
+      at: 2026-11-22T15:59:01.907097Z
+      classified: other
+    - cmd: sed -n 2091,2254p internal/cli/commands.go
+      at: 2026-11-22T15:59:07.478614Z
+      classified: other
+    - cmd: sed -n 1,200p internal/cli/watch.go | grep -v "^\s*//" | head -150; echo ====; cat internal/grove/capabilities.go; sed -n 1,135p internal/grove/readiness.go | grep -v "^\s*//"
+      at: 2026-11-22T15:59:07.494367Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo; grep -n "version\.\w*" internal/cli/commands.go | head -3 $T 4 arch --deny 'internal/cli -> internal/version' $T 30 dead-code --format text $T 6 dead-code $T 10 drift $T 6 test-plan $T 6…
+      at: 2026-11-22T15:59:09.07668Z
+      classified: other
+    - cmd: G=~/go/pkg/mod/github.com/provasign/grove@v0.63.27; cd $G && grep -rn "exec.Command" --include='*.go' . | grep -v _test | sed 's/^\.\///' | cut -c1-190 | head -50; echo; grep -rn "GROVE_[A-Z_]*" -oh --include='*.go' . |…
+      at: 2026-11-22T15:59:12.234335Z
+      classified: other
+    - cmd: G=~/go/pkg/mod/github.com/provasign/grove@v0.63.27; cd $G && grep -rn "GROVE_UNTRUSTED" --include='*.go' . | grep -v _test | cut -c1-220 | head; sed -n 215,235p internal/native/javac.go; cd . && echo "== prism mentions"…
+      at: 2026-11-22T15:59:16.686761Z
+      classified: other
+    - cmd: G=~/go/pkg/mod/github.com/provasign/grove@v0.63.27; cd $G && sed -n 185,212p internal/native/javac.go; sed -n 70,84p internal/native/js_ts.go; sed -n 28,40p internal/native/python.go; grep -n "untrusted\|Untrusted" inte…
+      at: 2026-11-22T15:59:22.230684Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S && cp -R repo repo2 && cd repo2 && export R=$S/repo2 git diff --stat echo "== stale lookup before reindex"; $T 4 lookup mustAbs --format text $T 40 verify $T 30 verify --format json $T 14 miss…
+      at: 2026-11-22T15:59:23.410589Z
+      classified: other
+    - cmd: git ls-files .kiro .devin .windsurf .cursor .codex .claude .clinerules GEMINI.md .github/copilot-instructions.md .github/hooks .mcp.json; head -12 .clinerules; grep -n "clinerules\|\.kiro\|\.devin\|zed\|aider\|jetbrains…
+      at: 2026-11-22T15:59:28.534981Z
+      classified: other
+    - cmd: sed -n 1132,1157p internal/cli/commands.go; sed -n 1311,1322p internal/cli/commands.go; git show HEAD:.mcp.json; git show HEAD:.cursor/mcp.json; cat .windsurf/mcp.json; sed -n 2055,2075p internal/cli/commands.go; grep -…
+      at: 2026-11-22T15:59:33.679387Z
+      classified: other
+    - cmd: go vet ./internal/assist/ 2>&1
+      at: 2026-11-22T15:59:37.496953Z
+      classified: lint
+    - cmd: for l in '"go"' '"python"' '"java"' '"typescript"' '"javascript"' '"rust"' '"csharp"' '"cpp"' '"c"' '"kotlin"' '"swift"' '"php"' '"ruby"' '"scala"' '"cobol"' '"dart"' '"lua"' '"elixir"'; do printf "%s %s\n" "$l" "$(cat…
+      at: 2026-11-22T15:59:43.003092Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo2; export R=$S/repo2; $T 30 index | grep -n "go:" ; grep "go:" $S/out.txt; echo "exit above"; $S/prism doctor | python3 -c " import json,sys;d=json.load(sys.stdin);print([k for k in d]); p…
+      at: 2026-11-22T15:59:44.840557Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo2; $S/prism index; echo "exit=$?"; $S/prism doctor | python3 -c " import json,sys;d=json.load(sys.stdin);print(d['status'],d['warnings'])"
+      at: 2026-11-22T15:59:48.230057Z
+      classified: other
+    - cmd: G=~/go/pkg/mod/github.com/provasign/grove@v0.63.27; cd $G && grep -rn '"\.[a-z0-9]*":' internal/parser/*.go | grep -v _test | grep -o '"\.[a-z0-9+]*"' | sort -u | tr '\n' ' ' | head -c 1500; echo; cd .; grep -n "max\(Fi…
+      at: 2026-11-22T15:59:50.825247Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo2; $S/prism index --force 2>&1 | tail -22; echo "exit=$?"; $S/prism change-impact Provider.Close --format text | sed -n 2,4p
+      at: 2026-11-22T15:59:53.007984Z
+      classified: other
+    - cmd: grep -n "return [0-9]$" internal/cli/viewcmds.go | awk '{print $NF}' | sort | uniq -c; grep -n "func cmdVerify" -A75 internal/cli/viewcmds.go | grep -n "return\|Fprintln(os.Stderr" | head -30; grep -n "func usageError"…
+      at: 2026-11-22T15:59:57.771293Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo2; rm -rf .grove; $S/prism index 2>/dev/null | grep '"go'; echo "exit=$?"; $S/prism change-impact Provider.Close --format text | sed -n 1,10p | cut -c1-200; $S/prism change-impact mustAbs --format te…
+      at: 2026-11-22T15:59:59.946256Z
+      classified: other
+    - cmd: prism lookup toolFeedback toolSavings --format text 2>&1 | grep -v "^\s*//" | head -70; grep -n "Save(\|LoadLedger(" internal/*/*.go pkg/*/*.go | grep -v _test
+      at: 2026-11-22T16:00:03.53559Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo2; $S/prism change-impact mustAbs --format text | sed -n 6,22p | cut -c1-150; echo; grep -rn "mustAbs(" --include='*.go' . | wc -l; cd $S/repo; $S/prism change-impact mustAbs --format text | sed -n 1…
+      at: 2026-11-22T16:00:07.274253Z
+      classified: other
+    - cmd: grep -n "mcp_surface\|\"profile\"\|cfg.Profile\|Cfg.Profile\|\.Profile\b" internal/*/*.go | grep -v _test | head -12; echo "== arch"; prism arch 2>&1 | head -20; echo "exit=$?"; echo "== imports of internal pkgs"; for p…
+      at: 2026-11-22T16:00:15.341753Z
+      classified: other
+    - cmd: S=<path>; java -version 2>&1 | head -2; cargo --version; python3 --version; node --version; npm ls -g 2>/dev/null | grep -i typescript mkdir -p $S/py/shapes $S/py/tests $S/ts/src $S/ts/test $S/rs/src $S/java/src/main/ja…
+      at: 2026-11-22T16:00:19.989457Z
+      classified: other
+    - cmd: grep -n "func validGitBase" -A22 internal/mcp/verify.go | grep -v "^\S*\s*//" | head -30; grep -n "sensitive\|\.env\|secret\|\.pem" internal/mcp/*.go internal/textsearch/*.go | grep -v _test | head -12; grep -n "func (h…
+      at: 2026-11-22T16:00:21.534061Z
+      classified: other
+    - cmd: sed -n 1362,1384p internal/mcp/tools.go; sed -n 1501,1512p internal/mcp/tools.go; grep -n "os.ReadFile\|Size()" internal/mcp/tools.go | sed -n 1,12p; grep -n "excludeDirs = \|var excludeDirs" -A8 internal/textsearch/tex…
+      at: 2026-11-22T16:00:27.619576Z
+      classified: other
+    - cmd: S=<path>; export R=$S/py; T=$S/t.sh; cd $S/py $S/prism rename-plan Shape.area surface --format text | sed -n 6,40p $T 40 verify $T 30 test-plan
+      at: 2026-11-22T16:00:29.219311Z
+      classified: other
+    - cmd: sed -n 1,40p internal/mcp/graphcache.go | cut -c1-200; grep -n "func (h \*Handler) freshened" -B12 -A30 internal/mcp/*.go | grep -v _test | cut -c1-200 | head -90
+      at: 2026-11-22T16:00:32.758606Z
+      classified: other
+    - cmd: for c in "status" "lookup safePathWithinRoot --format text" "search safePathWithinRoot --scope text --format text" "change-impact Handler.Invoke --format text"; do <path> -l prism $c 2>&1 >/dev/null | grep -E "real|maxi…
+      at: 2026-11-22T16:00:37.484621Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh git init -q . && git add -A && git -c user.email=a@b -c user.name=x commit -qm init export R=$S/ts $T 30 index $T 6 index --allow-heuristic $T 30 change-impact Shape.area --format text $T 8 missing-i…
+      at: 2026-11-22T16:00:39.530951Z
+      classified: other
+    - cmd: for c in "status" "lookup safePathWithinRoot --format text" "search safePathWithinRoot --scope text --format text" "change-impact Handler.Invoke --format text" "query --terms safePathWithinRoot --format text"; do eval "…
+      at: 2026-11-22T16:00:42.075431Z
+      classified: other
+    - cmd: for c in "status" "lookup safePathWithinRoot --format text" "search safePathWithinRoot --scope text --format text" "change-impact Handler.Invoke --format text" "query --terms safePathWithinRoot --format text"; do eval "…
+      at: 2026-11-22T16:00:45.717829Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh cd $S/ts && (npm install --no-audit --no-fund --save-dev typescript 2>&1 | tail -2); echo node_modules > .gitignore export R=$S/ts $T 14 index $S/prism change-impact Shape.area --format text | sed -n…
+      at: 2026-11-22T16:00:47.720981Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/ts; node -e "console.log(require('./node_modules/typescript/package.json').version)"; git checkout -q src/shape.ts; (npm install --no-audit --no-fund --save-dev typescript@5.9 2>&1 | tail -1);…
+      at: 2026-11-22T16:00:55.037062Z
+      classified: other
+    - cmd: grep -n "prism_[a-z_]*\|--mode\|agent_mode\|8888\|cline\|kiro\|devin\|zed\|windsurf\|tools\b.*[0-9][0-9]* \|languages" README.md | cut -c1-170 | head -30; ls docs | head -20; grep -rn "prism_task\|prism_prepare\|prism_a…
+      at: 2026-11-22T16:00:55.652834Z
+      classified: other
+    - cmd: 'ls ~/go/pkg/mod/github.com/provasign/grove@v0.63.27/internal/index/ | grep -i lock; echo "shale files with home paths: $(grep -l ''<path>'' .shale/*.yaml 2>/dev/null | wc -l) / $(ls .shale/*.yaml | wc -l)"; grep -lE "(sk-…'
+      at: 2026-11-22T16:01:05.949756Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh git init -q . && echo target > .gitignore && git add -A && git -c user.email=a@b -c user.name=x commit -qm init export R=$S/rs $T 16 index | cut -c1-300 $S/prism change-impact Shape.area --format tex…
+      at: 2026-11-22T16:01:08.476233Z
+      classified: other
+    - cmd: 'for p in ''sk-ant-[A-Za-z0-9_-]{20,}'' ''ghp_[A-Za-z0-9]{30,}'' ''AKIA[0-9A-Z]{16}'' ''BEGIN [A-Z ]*PRIVATE KEY''; do echo "$p: files=$(grep -lE "$p" .shale/*.yaml | wc -l | tr -d '' '') hits=$(grep -ohE "$p" .shale/*.yaml | wc -…'
+      at: 2026-11-22T16:01:10.493714Z
+      classified: other
+    - cmd: grep -lE 'ghp_[A-Za-z0-9]{30,}' .shale/*.yaml; grep -ohE '.{60}ghp_[A-Za-z0-9]{20,}' .shale/*.yaml | sed -E 's/ghp_([A-Za-z0-9]{3})[A-Za-z0-9]+/ghp_\1<masked>/' | cut -c1-140 | head -5; grep -ohE 'ghp_[A-Za-z0-9]{20,}'…
+      at: 2026-11-22T16:01:15.255933Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh git init -q . && git add -A && git -c user.email=a@b -c user.name=x commit -qm init export R=$S/java $T 14 index | cut -c1-300 $S/prism change-impact Shape.area --format text | sed -n 1,12p | cut -c1…
+      at: 2026-11-22T16:01:23.778805Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh printf 'module x\n\ngo 1.26\n' > $S/nogit/go.mod export R=$S/empty $T 12 index $T 5 status $T 5 search foo --format text $T 5 change-impact Foo.bar --format text $T 5 map $T 4 verify $T 4 test-plan l…
+      at: 2026-11-22T16:01:33.815221Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; cd $S/repo2; git checkout -q . ; printf '\nfunc zzDeadHelper() int { return 1 }\n\nfunc ZzDeadExported() int { return zzDeadHelper2() }\n\nfunc zzDeadHelper2() int { return 2 }\n' >> internal/cli/ro…
+      at: 2026-11-22T16:01:46.78254Z
+      classified: other
+    - cmd: sed -n '<path> --format/,/AAAA/p' ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/403c482a-1e61-4fa1-b497-76037b8b4ccd/tool-results/b6yyecc93.txt | cut -c1-300 | head -50
+      at: 2026-11-22T16:01:51.004862Z
+      classified: other
+    - cmd: 'S=<path>; cd $S/repo # concurrent reads st=$(date +%s); for i in 1 2 3 4 5 6 7 8; do ($S/prism change-impact Provider.Chat --format text > $S/c$i.txt 2> $S/c$i.err; echo "rc$i=$?" >> $S/crc.txt) & done; wait; cat $S/crc…'
+      at: 2026-11-22T16:02:04.445167Z
+      classified: other
+    - cmd: ls -la "./research_notes/Prism code context market scan/" && wc -c "./research_notes/Prism code context market scan/"* && ls ./reports 2>&1 | head
+      at: 2026-11-22T16:02:20.50994Z
+      classified: other
+    - cmd: cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/ && cat project_tried_and_rejected.md feedback_prism_product_rules.md feedback_writing_style.md | head -150; ls ./reports 2>&1 | head
+      at: 2026-11-22T16:02:31.431634Z
+      classified: other
+    - cmd: mkdir -p ./reports && ls -la ./reports
+      at: 2026-11-22T16:03:11.872766Z
+      classified: other
+    - cmd: git grep -n -o -E '.{60}ghp_[A-Za-z0-9]{36}.{40}' -- .shale | sed -E 's/ghp_([A-Za-z0-9]{4})[A-Za-z0-9]{32}/ghp_\1…REDACTED/g' | cut -c1-400 | head -5; echo; git grep -c -E 'ghp_[A-Za-z0-9]{36}' | head; git remote -v…
+      at: 2026-11-22T16:03:19.266031Z
+      classified: other
+    - cmd: git grep -c -E 'ghp_[A-Za-z0-9_]{20,}' | head; git grep -h -o -E '.{0,80}ghp_[A-Za-z0-9_]{20,}.{0,60}' | sed -E 's/ghp_([A-Za-z0-9_]{4})[A-Za-z0-9_]+/ghp_\1…[masked]/g' | head -4
+      at: 2026-11-22T16:03:23.749917Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo3 echo "<path> touch" >> internal/cli/root.go; echo "<path> touch" >> internal/mcp/tools.go for i in 1 2 3 4 5 6; do ($S/prism change-impact mustAbs --format text > $S/d$i.txt 2> $S/d$i.err; echo "rc…
+      at: 2026-11-22T16:04:20.133451Z
+      classified: other
+    - cmd: pkill -f "dogfood/prism mcp"; sleep 1; cat <path> | cut -c1-900 | head -60
+      at: 2026-11-22T16:04:24.543149Z
+      classified: other
+    - cmd: cd $S/repo && python3 $S/mcp.py 2>&1 | cut -c1-900
+      at: 2026-11-22T16:04:42.030259Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo && python3 $S/mcp.py --legacy 2>&1 | grep -A1 "tools/list\|TOOLS\|exit" | cut -c1-1500 | grep -v '^{"id":2'
+      at: 2026-11-22T16:04:53.45121Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo $S/prism graph --no-open --port 18787 > $S/graph.out 2>&1 & GP=$!; sleep 2; cat $S/graph.out | head -5 for u in / <path> <path> '<path>' '<path>' '<path>' ; do printf "%s -> " "$u"; curl -s -o $S/g.…
+      at: 2026-11-22T16:05:03.343571Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo $S/prism graph --no-open --port 18788 > $S/graph.out 2>&1 & GP=$!; sleep 2 id=$(curl -s 'http:<path>' | python3 -c "import json,sys;h=json.load(sys.stdin)['hits'];print(h[0]['id'] if h else '')"); e…
+      at: 2026-11-22T16:05:33.92999Z
+      classified: other
+    - cmd: go build ./... 2>&1
+      at: 2026-11-22T16:05:51.076432Z
+      classified: build
+    - cmd: S=<path>; cd $S/repo3; $S/prism test-plan > $S/tp.txt; echo "exit=$?"; sed -n 2p $S/tp.txt; grep -n "^gap" $S/tp.txt | cut -c1-160; sed -n '<path>' $S/tp.txt | cut -c1-200 | head -30; wc -c $S/tp.txt; echo "--- independ…
+      at: 2026-11-22T16:05:57.631679Z
+      classified: other
+    - cmd: S=<path>; T=$S/t.sh; export R=$S/repo3 $T 3 status <path> $T 3 index <path> $T 3 index $S/repo3/go.mod $T 4 lookup Server --file internal/mcp/server.go --format text $T 4 feedback --tool search --rating 9 $T 4 feedback…
+      at: 2026-11-22T16:06:09.821025Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo3; $S/prism feedback --tool search --rating 4 --notes probe2 | tail -4; find $S/repo3/.grove ~/.prism ~/.config/prism -newermt '-3 minutes' -type f 2>/dev/null | head; grep -n "feedback" internal/cli…
+      at: 2026-11-22T16:06:14.192624Z
+      classified: other
+    - cmd: pgrep -fl "dogfood/prism" | head; echo done
+      at: 2026-11-22T16:06:19.020184Z
+      classified: other
+    - cmd: ps -o pid,ppid,etime,command -p 38114,38365 | cut -c1-120; kill -INT 38365; sleep 2; kill -0 38365 2>/dev/null && echo "serve survives SIGINT" || echo "serve stopped on INT"; kill -TERM 38365 2>/dev/null; sleep 1; kill…
+      at: 2026-11-22T16:06:29.289855Z
+      classified: other
+    - cmd: prism change-impact Server.Handler --format text 2>&1 | head -30
+      at: 2026-11-22T16:07:32.803937Z
+      classified: other
+    - cmd: cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat project_tried_and_rejected.md feedback_prism_product_rules.md project_handoff_fix_go_multirepo_2026_11_14.md | cut -c1-600 | head -150; ec…
+      at: 2026-11-22T20:02:41.812548Z
+      classified: other
+    - cmd: prism search needs_file_scope "language families" maxSearchTerms "use --force" commandHelp --scope text --format text --path internal 2>&1 | grep -v _test | head -60
+      at: 2026-11-22T20:02:42.316446Z
+      classified: other
+    - cmd: S=<path>; ls $S 2>/dev/null; ls ~/Projects/provasign-mr/bin 2>/dev/null; cd ~/Projects/provasign-mr/prism 2>/dev/null && git log --oneline -3 && git status --short | head -5; MR=~/Projects/provasign-mr/bin/prism-mr-fina…
+      at: 2026-11-22T20:02:57.678981Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --from 3213 --to 3300 --format text 2>&1 | head -110
+      at: 2026-11-22T20:02:57.79602Z
+      classified: other
+    - cmd: go build -o $S/prism-mr ./cmd/prism 2>&1
+      at: 2026-11-22T20:03:16.961509Z
+      classified: build
+    - cmd: grep -rn --include='*.go' -e "ambiguous across language families" -e "func (.*) ChangeImpactScoped" -e "func (.*) MissingImplementations" -e "func (.*) ComponentMap" -e "GROVE_UNTRUSTED" -e '"--force' -e "use --force" .
+      at: 2026-11-22T20:03:21.009506Z
+      classified: build
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n '243,300p' internal/graph/changeimpact.go; echo ......; sed -n '1300,1362p' internal/graph/changeimpact.go; echo ......; sed -n '63,125p' internal/graph/missingimpl.go
+      at: 2026-11-22T20:03:24.092943Z
+      classified: other
+    - cmd: 'do printf "%s: " $f; grep -c ''^## [A-Z]*-[0-9]\|^### ENG-'' $f; done'
+      at: 2026-11-22T20:09:39.69921Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && git branch --show-current && git status --short | head && git log --oneline -3; echo ---; cd ~/Projects/provasign-mr/prism && git branch --show-current && git status --short | head; g…
+      at: 2026-11-22T20:11:11.029265Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 300,420p internal/graph/changeimpact.go
+      at: 2026-11-22T20:11:14.281144Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -n "ambiguousCandidateCount\s*=\|wideMemberAmbiguityThreshold\s*=" ../prism/internal/mcp/*.go; grep -n "func formatCandidates" -A30 internal/graph/changeimpact.go | head -45; gre…
+      at: 2026-11-22T20:11:33.302378Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db ".tables" 2>&1 | head; sqlite3 -header .grove/grove.db "select * from symbols where name in ('Server','Client') limit 8" 2>&1 | cut -c1-400
+      at: 2026-11-22T20:11:33.422342Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign-mr/grove && awk ''NR>=420 && NR<=1240 && <path>|seenTypeID|^func |file != ""|file\)/ {print NR": "$0}'' internal/graph/changeimpact.go | cut -c1-170 | head -60'
+      at: 2026-11-22T20:11:49.400693Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "func (h \*Handler) partitionLocalFamiliesCapped\|func (h \*Handler) pickAmbiguousByFamily\|func familiesAmbiguityError\|type localFamily" internal/mcp/*.go
+      at: 2026-11-22T20:11:49.451212Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 95,200p internal/mcp/impactfamily.go; sed -n 310,345p internal/mcp/impactfamily.go
+      at: 2026-11-22T20:11:52.197097Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 420,500p internal/graph/changeimpact.go; echo .....; sed -n 600,682p internal/graph/changeimpact.go
+      at: 2026-11-22T20:11:52.197278Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 1,98p internal/mcp/impactfamily.go
+      at: 2026-11-22T20:12:12.457165Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -n "^func parseChangeImpactQuery" -A45 internal/graph/*.go | head -60
+      at: 2026-11-22T20:12:12.465183Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db "select language, kind, name, qualified_name, file_path from symbols where kind in ('class','struct','interface','trait','type','enum') and language != 'go' limit 40" |…
+      at: 2026-11-22T20:12:31.336426Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -rn "idsNamed(typeName)\|rejectCrossLanguageSeedsLocked(" internal --include=*.go | grep -v _test; echo ---; grep -rln "same-named\|sameNamed\|SameNamed" internal/graph/*_test.go…
+      at: 2026-11-22T20:13:04.497438Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -rn -e 'idsNamed(typeName)' -e 'rejectCrossLanguageSeedsLocked(' internal | grep -v _test.go; echo ---; sed -n 60,140p internal/graph/javapackagescope_test.go; echo ---; sed -n 1…
+      at: 2026-11-22T20:13:07.059448Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 500,530p internal/graph/changeimpact.go; grep -n "^func javaPackageSuffix\|^func (g \*CodeGraph) idsNamed" -A6 internal/graph/*.go | head -20; grep -n 'ambiguousCandidateLine\s…
+      at: 2026-11-22T20:13:55.621354Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && head -12 internal/graph/javapackagescope_test.go
+      at: 2026-11-22T20:14:43.73956Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -n "^func (g \*CodeGraph) \(Replace\|AddEdges\|SetEdges\|ReplaceEdges\)" internal/graph/*.go; grep -n "EdgeExtends" internal/graph/generic_extends_test.go | head -3; grep -n "Spa…
+      at: 2026-11-22T20:15:21.57253Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/graph/ -run 'SeedScope
+      at: 2026-11-22T20:15:28.479735Z
+      classified: test
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n '<path> (g \*CodeGraph) containedMethods/,/^}/p' internal/graph/changeimpact.go
+      at: 2026-11-22T20:15:33.98228Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/graph/ -run 'SeedScope
+      at: 2026-11-22T20:15:43.454105Z
+      classified: test
+    - cmd: GOWORK=off go test ./... -count=1 2>&1
+      at: 2026-11-22T20:16:22.91696Z
+      classified: test
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n '<path> TestRenamePlanSameNamedJavaOwnersAcrossPackagesAreAmbiguous/,/^}/p' internal/graph/renameplan_test.go; grep -n "func (g \*CodeGraph) RenamePlan" -A40 internal/graph/ren…
+      at: 2026-11-22T20:16:26.454785Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && head -12 internal/graph/renameplan_test.go | grep -n strings; grep -n "type RenameEdit struct" -A8 internal/graph/*.go | head -10
+      at: 2026-11-22T20:16:37.639746Z
+      classified: other
+    - cmd: GOWORK=off go test ./... -count=1 2>&1
+      at: 2026-11-22T20:17:13.619675Z
+      classified: test
+    - cmd: go build ./...
+      at: 2026-11-22T20:18:19.446998Z
+      classified: build
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n '<path> TestToolChangeImpact_AmbiguityNoteOnMultiFileDeclarations/,/^}/p' internal/mcp/delivery_test.go; grep -n "ambiguityNote\|multiFileAmbiguity\|declarations span" internal…
+      at: 2026-11-22T20:18:24.517884Z
+      classified: other
+    - cmd: go test ./internal/mcp/ -run 'AmbiguityNoteOnMultiFileDeclarations
+      at: 2026-11-22T20:18:38.058629Z
+      classified: test
+    - cmd: go build -o $S/prism-fix ./cmd/prism
+      at: 2026-11-22T20:18:46.053544Z
+      classified: build
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db "pragma table_info(graph_edges)" | cut -d'|' -f2 | tr '\n' ' '; echo; sqlite3 -header .grove/grove.db "select * from graph_edges where to_id like '%Server.Handler%' and…
+      at: 2026-11-22T20:18:58.869377Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 -header .grove/grove.db "select from_node, to_node, edge_type, confidence, source, reason, lines from graph_edges where to_node like '%::Server.Handler@%' order by to_node" | sed -E 's…
+      at: 2026-11-22T20:19:02.2549Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && $S/prism-fix status 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(x) for x in (d.get('native') or d.get('nativeAnalysis') or [])]; print([k for k in d])" 2>&1 | head -20;…
+      at: 2026-11-22T20:19:15.671628Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && ls internal/native/ | grep -i go; grep -n "CallExpr" internal/native/go*.go | grep -v _test | head -30
+      at: 2026-11-22T20:19:23.092945Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 790,960p internal/native/go.go
+      at: 2026-11-22T20:19:24.716306Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db "select substr(to_node,1,instr(to_node,'/')+instr(substr(to_node,instr(to_node,'/')+1),'/')) pkg, source, count(*) from graph_edges where edge_type='calls' and from_nod…
+      at: 2026-11-22T20:19:36.238659Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -n "^func goResolveCall\|^func goSymbolForFunc\|^func goMethodSymbol\|^func (d \*goDispatch) targets\|^func goDeclDir\|^func goObjDir" internal/native/go*.go; sed -n "$(grep -n '…
+      at: 2026-11-22T20:19:45.454244Z
+      classified: other
+    - cmd: go build ./...
+      at: 2026-11-22T20:19:56.619353Z
+      classified: build
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -ln "func Test" internal/native/go*_test.go | head; grep -n "func runGo\|func analyzeGo\|goAnalyzer{}\|NewGoAnalyzer\|\.Analyze(" internal/native/go_interfaces_test.go | head -8
+      at: 2026-11-22T20:20:06.215921Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 1,80p internal/native/go_interfaces_test.go
+      at: 2026-11-22T20:20:08.051129Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -n "^func (.*Go[A-Za-z]*) \(Analyze\|Run\|Enrich\)\|^type Go[A-Za-z]*Analyzer\|^func NewGo" internal/native/go.go | head; grep -rn "GoAnalyzer{}\|NewGoAnalyzer(" internal --inclu…
+      at: 2026-11-22T20:20:11.473411Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -n "^func " internal/native/go.go | head -40; grep -rn "func Test.*Go.*\(CrossPackage\|Package\)" internal/native/*_test.go internal/index/*_test.go 2>/dev/null | head
+      at: 2026-11-22T20:20:13.628599Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 1224,1290p internal/native/native_test.go; sed -n 1385,1407p internal/native/go.go
+      at: 2026-11-22T20:20:15.777323Z
+      classified: other
+    - cmd: S=<path>; cd $S/gox && $S/prism-fix status 2>&1 | python3 -c "import json,sys; [print(x) for x in json.load(sys.stdin)['native'] if x.startswith('go')]"; sqlite3 .grove/grove.db "select from_node,to_node,source,lines fr…
+      at: 2026-11-22T20:20:25.215618Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 514,664p internal/native/go.go
+      at: 2026-11-22T20:20:29.312175Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n '<path> TestGoPartialPackageKeepsCompilerEdges/,/^}/p' internal/index/native_compiler_test.go; sed -n 1,30p internal/index/native_compiler_test.go | grep -n "import" -A15
+      at: 2026-11-22T20:20:35.001886Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 17,120p internal/index/native_compiler_test.go
+      at: 2026-11-22T20:20:36.651121Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/index/ -run TestGoCrossPackageMethodCallsResolveToTheirOwnPackage -count=1 2>&1
+      at: 2026-11-22T20:20:52.101155Z
+      classified: test
+    - cmd: GROVE_DEBUG_TYPES=1 GOWORK=off go test ./internal/index/ -run TestGoCrossPackageMethodCallsResolveToTheirOwnPackage -count=1 -v 2>&1
+      at: 2026-11-22T20:21:00.079876Z
+      classified: test
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -n "not selected for interface loading" -B40 internal/native/go_importer.go | head -120; grep -n "func (i \*goProjectImporter) preloadInterfaceImports" -A60 internal/native/go_im…
+      at: 2026-11-22T20:21:04.773997Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 1,61p internal/native/go_importer.go; sed -n 93,200p internal/native/go_importer.go; git log --format='%h %ad %s' --date=short -S'interfacePackages' -- internal/native/go.go in…
+      at: 2026-11-22T20:21:07.280067Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && cp <path> internal/native/go.go && git diff --stat internal/native/go.go; grep -n "interfacePackages" internal/native/*.go
+      at: 2026-11-22T20:21:25.505752Z
+      classified: other
+    - cmd: S=<path>; mkdir -p $S/perf && rsync -a --exclude .grove --exclude node_modules --exclude .yarn --exclude public ~/.cache/prism-research/ci-corpus-mr/grafana-120119/ $S/perf/grafana/ && du -sh $S/perf/grafana && grep -m1…
+      at: 2026-11-22T20:21:42.131053Z
+      classified: other
+    - cmd: S=<path>; cd $S/perf/grafana && <path> -l $S/dogfood/prism-fix index > $S/perf/base-index.json 2> $S/perf/base-time.txt; echo rc=$?; grep -E "real|maximum resident" $S/perf/base-time.txt; python3 -c " import json; d=jso…
+      at: 2026-11-22T20:23:32.049667Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 536,562p internal/native/go.go
+      at: 2026-11-22T20:23:36.97233Z
+      classified: other
+    - cmd: go vet ./internal/native/
+      at: 2026-11-22T20:23:50.461387Z
+      classified: lint
+    - cmd: GOWORK=off go test ./internal/index/ -run TestGoCrossPackageMethodCallsResolveToTheirOwnPackage -count=1 2>&1
+      at: 2026-11-22T20:24:32.515412Z
+      classified: test
+    - cmd: go build -o $S/dogfood/prism-fix2 ./cmd/prism
+      at: 2026-11-22T20:25:28.270498Z
+      classified: build
+    - cmd: 'S=<path>; cd $S/perf/grafana && for b in prism-fix prism-fix2; do rm -rf .grove; <path> -l $S/dogfood/$b index > <path> 2> $S/perf/$b-warm.txt; printf "%s: " $b; grep -E "real" $S/perf/$b-warm.txt | awk ''{print $1"s wal…'
+      at: 2026-11-22T20:27:15.356106Z
+      classified: other
+    - cmd: go test ./... -count=1 2>&1
+      at: 2026-11-22T20:28:22.839585Z
+      classified: test
+    - cmd: S=<path>; cd $S/repo-mr && rm -rf .grove && P=$S/prism-fix2; $P index >/dev/null 2>&1; for q in graphui.Server.Handler httpapi.Server.Handler; do echo "===== change-impact $q"; $P change-impact $q --format text 2>&1 | s…
+      at: 2026-11-22T20:28:30.283651Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db "select from_node, to_node, edge_type, source, reason, lines from graph_edges where to_node like '%::Server.Handler@%' and edge_type='calls' order by from_node" | sed -…
+      at: 2026-11-22T20:28:36.38556Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -rn "EdgeResolvedCalls" --include='*.go' internal | grep -v _test | cut -c1-180 | head -20
+      at: 2026-11-22T20:28:48.901451Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 88,100p internal/core/types.go; sed -n 480,640p internal/graph/graph.go
+      at: 2026-11-22T20:28:51.397627Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign-mr/grove && grep -n "compilerResolvedNode(" internal/graph/*.go | grep -v _test; n=$(grep -n "compilerResolvedNode(" internal/graph/graph.go | grep -v "^.*func " | head -1 | cut -d: -f1); sed -n…'
+      at: 2026-11-22T20:28:55.568733Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign-mr/grove && n=$(grep -n " superseded := func(e core.Edge) bool {" internal/graph/graph.go | cut -d: -f1); sed -n "$n,$((n+45))p" internal/graph/graph.go; head -20 internal/graph/graph.go | grep -…'
+      at: 2026-11-22T20:29:03.332203Z
+      classified: other
+    - cmd: go vet ./internal/graph/
+      at: 2026-11-22T20:29:23.618372Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -ln "mergeEdges(" internal/graph/*_test.go | head -3; grep -n "func Test.*BuildTag\|func Test.*Twin" internal/graph/*_test.go | head
+      at: 2026-11-22T20:29:27.536173Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n '<path> TestMergeEdgesNativeCallKeepsBuildTagTwin/,/^}/p' internal/graph/edges_test.go
+      at: 2026-11-22T20:29:29.617622Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/graph/ -run 'TestMergeEdgesNativeCall' -count=1 2>&1
+      at: 2026-11-22T20:30:11.883668Z
+      classified: test
+    - cmd: go build -o $S/prism-fix3 ./cmd/prism
+      at: 2026-11-22T20:30:23.738658Z
+      classified: build
+    - cmd: go test ./... -count=1 2>&1
+      at: 2026-11-22T20:31:24.53165Z
+      classified: test
+    - cmd: ls -d ~/Projects/provasign/research ~/Projects/provasign-mr/research 2>/dev/null; R=~/Projects/provasign/research; ls $R/harness/scoring/ci_invariants.py && python3 $R/harness/scoring/ci_invariants.py --help 2>&1 | head…
+      at: 2026-11-22T20:31:31.897544Z
+      classified: other
+    - cmd: for d in commons-collections gson; do printf "%s %s\n" $d "$(find ~/.cache/prism-research/ci-corpus-mr/$d -name '*.java' 2>/dev/null | wc -l)"; done
+      at: 2026-11-22T20:31:34.610301Z
+      classified: other
+    - cmd: S=<path>; cd ~/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus-mr --prism $S/dogfood/prism-fix3 > $S/gate-bugs-01.log 2>&1; echo GATE_EXIT=$?; tail…
+      at: 2026-11-22T20:38:28.922204Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && git status --short && git diff --stat | tail -1; cd ../prism && git status --short | grep -v docs/research
+      at: 2026-11-22T20:38:36.40015Z
+      classified: other
+    - cmd: head -6 MEMORY.md
+      at: 2026-11-22T20:38:47.217917Z
+      classified: other
+    - cmd: git log --format='%h %ad %s' --date=short -S'Go build-tag' -- internal/graph/graph.go
+      at: 2026-11-22T20:41:42.298026Z
+      classified: build
+    - cmd: cd ~/Projects/provasign-mr/grove && git show 8dad4547 -- internal/native/go.go | grep -n "^[-+].*Importer" | head; git show 19e3b9dd --format='%h %ad %s%n%b' --date=short -- internal/graph/graph.go | grep -n "twin\|qual…
+      at: 2026-11-22T20:41:46.197213Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db "select from_node, to_node, source, reason, confidence, lines from graph_edges where edge_type='uses-type' and from_node like 'internal/graphui/server.go::%' and to_nod…
+      at: 2026-11-22T20:42:28.027525Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && awk '<path> calleeNameOf/,/^}/' internal/graph/*.go; grep -rn "ReasonTypeRef" internal --include='*.go' | grep -v _test | cut -c1-150 | head -5
+      at: 2026-11-22T20:42:40.707414Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/graph/ -run TestMergeEdgesNative -count=1 2>&1
+      at: 2026-11-22T20:43:01.28273Z
+      classified: test
+    - cmd: go build -o $S/prism-fix4 ./cmd/prism
+      at: 2026-11-22T20:43:13.28739Z
+      classified: build
+    - cmd: GOWORK=off go test ./... -count=1 2>&1
+      at: 2026-11-22T20:44:49.430541Z
+      classified: test
+    - cmd: S=<path>; cd ~/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus-mr --prism $S/dogfood/prism-fix4 > $S/gate-bugs-02.log 2>&1; echo GATE_EXIT=$?; grep…
+      at: 2026-11-22T20:46:14.899307Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git status --short | head -5; grep -n "def \|CEILING\|ground_truth\|json\b" harness/scoring/ci_invariants.py | head -50; wc -l harness/scoring/ci_invariants.py
+      at: 2026-11-22T20:46:22.048787Z
+      classified: other
+    - cmd: git log --oneline -1; git status --short
+      at: 2026-11-22T20:47:42.711883Z
+      classified: other
+    - cmd: go vet ./... 2>&1
+      at: 2026-11-22T20:47:53.098836Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 1,62p internal/graph/missingimpl.go; sed -n 140,330p internal/graph/missingimpl.go
+      at: 2026-11-22T20:48:13.291176Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && awk '<path> goResolveType/,/^}/' internal/native/go.go; grep -n "func (d \*goInterfaceDispatch) contractEdges" -A40 internal/native/go_interfaces.go | head -60; grep -n "Reason[A-Z][A…
+      at: 2026-11-22T20:48:40.32005Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign-mr/grove && sed -n 312,365p internal/core/types.go; grep -rn "ReasonMethodSet\b" internal --include=''*.go'' | grep -v _test | grep -v "Reason: core.ReasonMethodSet\|Reason: core.ReasonMethodSet" |…'
+      at: 2026-11-22T20:48:43.263053Z
+      classified: other
+    - cmd: go vet ./internal/native/
+      at: 2026-11-22T20:49:13.94876Z
+      classified: lint
+    - cmd: GOWORK=off go test ./internal/index/ -run TestGoMissingImplementationsAfterInterfaceGainsMethod -count=1 2>&1
+      at: 2026-11-22T20:49:28.901878Z
+      classified: test
+    - cmd: GOWORK=off go test ./... -count=1 2>&1
+      at: 2026-11-22T20:50:06.678493Z
+      classified: test
+    - cmd: S=<path>; rm -rf $S/repo-b3 && rsync -a --exclude .grove $S/repo-mr/ $S/repo-b3/ && cd $S/repo-b3 && grep -n "type Provider interface" -A6 internal/assist/*.go | head -10; grep -n "^type ollamaProvider\|^type anthropicP…
+      at: 2026-11-22T20:50:12.239612Z
+      classified: other
+    - cmd: go vet ./internal/assist/ 2>&1
+      at: 2026-11-22T20:50:23.867876Z
+      classified: lint
+    - cmd: S=<path>; cd $S/repo-b3 && sqlite3 .grove/grove.db "select from_node, to_node, edge_type, source, reason, lines from graph_edges where (lines like '%74:%' or lines like '%449:%' or lines like '%Close@%') and from_node l…
+      at: 2026-11-22T20:50:30.612863Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -n "EdgeExternalIfaceCall *EdgeType\|EdgeExternalIfaceCall EdgeType" -B6 internal/core/types.go | head -12
+      at: 2026-11-22T20:50:38.805432Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/graph/ -run 'TestMergeEdges' -count=1 2>&1
+      at: 2026-11-22T20:50:53.053205Z
+      classified: test
+    - cmd: go build -o $S/prism-fix6 ./cmd/prism
+      at: 2026-11-22T20:51:03.388608Z
+      classified: build
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "automated verification not implemented\|member contracts live in its body" internal/mcp/*.go | grep -v _test
+      at: 2026-11-22T20:51:08.534751Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 300,470p internal/mcp/verify.go
+      at: 2026-11-22T20:51:10.1987Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "^func memberContractChanges" internal/mcp/*.go; awk '<path> memberContractChanges/,/^}/' internal/mcp/verify*.go | head -80; grep -n "missedSites\|\"incomplete\"\|missed :=\|…
+      at: 2026-11-22T20:51:15.753424Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "type missedSite struct" -A14 internal/mcp/*.go; sed -n 740,770p internal/mcp/verify.go; sed -n 830,850p internal/mcp/verify.go; grep -n "MissingImplementations(" internal/gro…
+      at: 2026-11-22T20:51:18.426501Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -ln "prism_verify" internal/mcp/*_test.go | head; grep -n "^func gitInit\|^func initGitRepo\|^func newVerifyRepo\|^func setupGitRepo\|^func verifyFixture\|^func mustGit\|^func ru…
+      at: 2026-11-22T20:51:29.744186Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "interface" internal/mcp/verify_test.go | head -20; grep -n "^func Test.*Interface\|^func Test.*Block\|^func Test.*Member" internal/mcp/verify*_test.go | head
+      at: 2026-11-22T20:51:31.761842Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n '<path> TestVerifyGoVariadicStillFlagsInterfaceImplementation/,/^}/p' internal/mcp/verify_compat_test.go; grep -n "^func " internal/mcp/verify_compat_test.go
+      at: 2026-11-22T20:51:34.061999Z
+      classified: other
+    - cmd: grep -n "^func anySliceMaps\|^func missedFiles" -A10 internal/mcp/*_test.go internal/mcp/*.go | head -24; grep -n '"unverified' internal/mcp/verify.go | head -3
+      at: 2026-11-22T20:51:45.231169Z
+      classified: other
+    - cmd: go test ./internal/mcp/ -run 'TestVerifyGoAddedInterfaceMember' -count=1 2>&1
+      at: 2026-11-22T20:51:51.589328Z
+      classified: test
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "var missed \[\]missedSite\|missed := \[\]missedSite\|var missed" internal/mcp/verify.go; grep -n "^type memberChange" -A6 internal/mcp/verify.go
+      at: 2026-11-22T20:51:56.607978Z
+      classified: other
+    - cmd: go vet ./internal/mcp/ 2>&1
+      at: 2026-11-22T20:52:13.341427Z
+      classified: lint
+    - cmd: go vet ./internal/mcp/
+      at: 2026-11-22T20:52:18.810987Z
+      classified: lint
+    - cmd: go test ./... -count=1 2>&1
+      at: 2026-11-22T20:53:20.877519Z
+      classified: test
+    - cmd: go build -o $S/prism-fix7 ./cmd/prism
+      at: 2026-11-22T20:53:28.103189Z
+      classified: build
+    - cmd: GOWORK=off go test ./... -count=1 2>&1
+      at: 2026-11-22T20:55:45.486467Z
+      classified: test
+    - cmd: S=<path>; cd ~/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus-mr --prism $S/dogfood/prism-fix7 > $S/gate-bugs-03.log 2>&1; echo GATE_EXIT=$?; grep…
+      at: 2026-11-22T20:57:11.992932Z
+      classified: other
+    - cmd: git log --oneline -2
+      at: 2026-11-22T20:57:23.654178Z
+      classified: other
+    - cmd: cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' 's/BUG-01\/02 + Go cross-package importer fixed in provasign-mr, gated, uncommitted/BUG-01\/02\/03 + Go importer fixed and committed…
+      at: 2026-11-22T20:57:29.764614Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && rm -rf .grove && P=$S/prism-fix7; $P index >/dev/null 2>&1; $P arch --deny 'internal/cli -> internal/version' 2>&1 | head -5; echo "== map edges into internal/version"; $P map --json 2>/dev/nu…
+      at: 2026-11-22T21:00:23.669284Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign-mr/grove && grep -n "EdgeReads\|EdgeWrites" internal/native/go*.go | head; sed -n "$(grep -n '' case \*ast.Ident:'' internal/native/go.go | head -1 | cut -d: -f1),+40p" internal/native/go.go'
+      at: 2026-11-22T21:00:28.750933Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && awk '<path> goSymbolIndex struct/,/^}/' internal/native/*.go; awk '<path> newGoSymbolIndex/,/^}/' internal/native/go.go; awk '<path> goExternalValueKey/,/^}/' internal/native/go.go
+      at: 2026-11-22T21:00:34.373207Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr && grep -rln "induced" grove/internal grove/pkg prism/internal --include='*.go' | grep -v _test | head; grep -n "KindVariable\|KindConst\b\|KindConstant" grove/internal/core/types.go | head
+      at: 2026-11-22T21:00:40.303556Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "EdgeType\|\"calls\"\|\"uses-type\"\|\"reads\"\|\"extends\"\|\"implements\"\|kinds\|dependencyKinds\|depKinds" internal/view/view.go | head -30
+      at: 2026-11-22T21:00:42.909508Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 28,45p internal/view/view.go; sed -n 240,330p internal/view/view.go
+      at: 2026-11-22T21:00:44.757422Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db "select edge_type, source, count(*) from graph_edges where edge_type in ('imports','reads','writes') group by 1,2"; sqlite3 .grove/grove.db "select from_node, to_node f…
+      at: 2026-11-22T21:00:56.212689Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db "select from_node, to_node, source from graph_edges where edge_type='imports' and to_node like 'file:internal/version/%'"; cd ~/Projects/provasign-mr/prism && sed -n 19…
+      at: 2026-11-22T21:01:02.847914Z
+      classified: other
+    - cmd: S=<path>; cd $S/repo-mr && sqlite3 .grove/grove.db "select from_node,to_node,source,lines from graph_edges where edge_type='imports' and from_node='file:internal/cli/commands.go' limit 3; select count(*) from symbols wh…
+      at: 2026-11-22T21:01:17.816765Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "FromLine" internal/view/*.go internal/mcp/viewtools.go internal/cli/viewcmds.go | grep -v _test | head -20
+      at: 2026-11-22T21:01:27.570673Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -rn "fromLine\|\.Sites\b\|sites\[" internal --include='*.go' | grep -v _test | grep -v "internal/view/view.go" | head -12; sed -n 100,125p internal/view/view.go
+      at: 2026-11-22T21:01:29.883906Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -rn "FromFile\|fromFile" internal/mcp internal/cli --include='*.go' | grep -v _test | head
+      at: 2026-11-22T21:01:32.121159Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && grep -rn "EdgeImports" internal/native/*.go internal/graph/*.go internal/index/*.go | grep -v _test | cut -c1-170 | head
+      at: 2026-11-22T21:01:36.697831Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 225,262p internal/native/go.go; grep -n "type goListPackage struct" -A20 internal/native/*.go | grep -n "Imports\|ImportPos\|TestImports"
+      at: 2026-11-22T21:01:38.82568Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && awk '<path> packageFiles/,/^}/' internal/native/go.go; sed -n 55,75p internal/native/go.go
+      at: 2026-11-22T21:01:50.748982Z
+      classified: other
+    - cmd: go vet ./internal/native/ 2>&1
+      at: 2026-11-22T21:02:06.057152Z
+      classified: lint
+    - cmd: go vet ./internal/view/ ./internal/grove/ 2>&1
+      at: 2026-11-22T21:02:25.802055Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 1,30p internal/view/view.go | grep -n "import\|\""
+      at: 2026-11-22T21:02:28.080981Z
+      classified: other
+    - cmd: go vet ./internal/view/ ./internal/grove/
+      at: 2026-11-22T21:02:32.491099Z
+      classified: lint
+    - cmd: 'cd ~/Projects/provasign-mr/prism && grep -n "^func Test" internal/view/view_test.go | head -5; sed -n "$(grep -n ''^func Test'' internal/view/view_test.go | head -1 | cut -d: -f1),+25p" internal/view/view_test.go'
+      at: 2026-11-22T21:02:36.377069Z
+      classified: other
+    - cmd: go test ./internal/view/ -run 'ImportOnly
+      at: 2026-11-22T21:02:49.484898Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/index/ -run TestGoImportEdgesArePerFileWithPosition -count=1 2>&1
+      at: 2026-11-22T21:03:01.9182Z
+      classified: test
+    - cmd: GOWORK=off go test ./... -count=1 2>&1
+      at: 2026-11-22T21:04:36.975148Z
+      classified: test
+    - cmd: go build -o $S/prism-fix8 ./cmd/prism
+      at: 2026-11-22T21:04:49.314362Z
+      classified: build
+    - cmd: S=<path>; cd $S/dogfood/repo-mr && $S/dogfood/prism-fix8 arch --deny 'internal/cli -> internal/version' >/dev/null 2>&1; echo "arch exit=$?"; cd $S/perf/grafana && for b in prism-fix7 prism-fix8; do rm -rf .grove; <path…
+      at: 2026-11-22T21:06:30.274814Z
+      classified: other
+    - cmd: S=<path>; cd ~/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus-mr --prism $S/dogfood/prism-fix8 > $S/gate-bugs-04.log 2>&1; echo GATE_EXIT=$?; grep…
+      at: 2026-11-22T21:07:54.640918Z
+      classified: other
+    - cmd: git log --oneline -1
+      at: 2026-11-22T21:08:05.016437Z
+      classified: other
+    - cmd: cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' 's#BUG-01/02/03 + Go importer fixed and committed in provasign-mr (not pushed); next BUG-04#BUG-01..04 + Go importer fixed and commi…
+      at: 2026-11-22T21:08:10.382333Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr && grep -n "^func (g \*CodeGraph) RenamePlan\|^func (g \*CodeGraph) MissingImplementations\|^func (g \*CodeGraph) ChangeImpact(" grove/internal/graph/*.go; grep -n "^func (e \*Engine) \(Rename…
+      at: 2026-11-22T21:10:57.766444Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr && sed -n 40,75p grove/internal/graph/renameplan.go; sed -n 620,640p grove/pkg/grove/grove.go; sed -n 690,760p grove/pkg/grove/grove.go
+      at: 2026-11-22T21:10:59.742602Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 725,775p internal/grove/client.go; sed -n 4018,4030p internal/mcp/tools.go; sed -n 4087,4100p internal/mcp/tools.go; sed -n 3243,3320p internal/cli/commands.go
+      at: 2026-11-22T21:11:05.434345Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 3089,3175p internal/cli/commands.go
+      at: 2026-11-22T21:11:09.029427Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 3089,3160p internal/cli/commands.go | grep -n '"--file"\|file\b\|args\["file"\]\|"file":' ; grep -n '"--file"' internal/cli/commands.go | head
+      at: 2026-11-22T21:11:09.04086Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/grove && sed -n 63,100p internal/graph/missingimpl.go
+      at: 2026-11-22T21:11:11.697601Z
+      classified: other
+    - cmd: go vet ./internal/graph/ ./pkg/grove/
+      at: 2026-11-22T21:11:33.964071Z
+      classified: lint
+    - cmd: GOWORK=off go test ./internal/graph/ -run 'SeedScope' -count=1 2>&1
+      at: 2026-11-22T21:11:43.530585Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/graph/ -run 'SeedScope' -count=1 2>&1
+      at: 2026-11-22T21:11:52.349628Z
+      classified: test
+    - cmd: go vet ./internal/cli/ ./internal/mcp/ ./internal/grove/
+      at: 2026-11-22T21:12:11.628756Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign-mr/prism && grep -n "prism change-impact <query> \[dir\]\|prism rename-plan <query>\|prism missing-implementations <query>" internal/cli/commands.go; n=$(grep -n "prism change-impact <query> \[di…
+      at: 2026-11-22T21:12:15.290266Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 140,156p internal/cli/commands.go | sed 's/\t/<TAB>/g'
+      at: 2026-11-22T21:12:17.285491Z
+      classified: other
+    - cmd: go build ./...
+      at: 2026-11-22T21:12:25.776822Z
+      classified: build
+    - cmd: GOWORK=off go test ./... -count=1 2>&1
+      at: 2026-11-22T21:14:05.877712Z
+      classified: test
+    - cmd: go build -o $S/prism-fix9 ./cmd/prism
+      at: 2026-11-22T21:14:08.620156Z
+      classified: build
+    - cmd: 'cd ~/Projects/provasign-mr/prism && grep -n ''"prism_rename_plan"\|"prism_missing_implementations"'' internal/mcp/tools.go | head; n=$(grep -n ''Name: *"prism_change_impact"\|"prism_change_impact":'' internal/mcp/tools.go |…'
+      at: 2026-11-22T21:14:12.840603Z
+      classified: other
+    - cmd: cd ~/Projects/provasign-mr/prism && sed -n 300,320p internal/mcp/tools.go; sed -n 590,606p internal/mcp/tools.go; sed -n 760,815p internal/mcp/tools.go
+      at: 2026-11-22T21:14:14.949998Z
+      classified: other
+    - cmd: grep -n "modelProp *:\?=" internal/mcp/tools.go | head -3
+      at: 2026-11-22T21:14:25.962745Z
+      classified: other
+    - cmd: go vet ./internal/mcp/
+      at: 2026-11-22T21:14:30.445815Z
+      classified: lint
+    - cmd: go vet ./internal/mcp/
+      at: 2026-11-22T21:14:39.27414Z
+      classified: lint
+    - cmd: go test ./... -count=1 2>&1
+      at: 2026-11-22T21:17:03.753384Z
+      classified: test
+    - cmd: git log --oneline -1
+      at: 2026-11-22T21:17:13.445544Z
+      classified: other
+    - cmd: grep -n "Backlog bugs" MEMORY.md
+      at: 2026-11-22T21:17:17.202062Z
+      classified: other
+notes: []
+redactions: 0
