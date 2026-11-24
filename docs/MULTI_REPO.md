@@ -10,12 +10,16 @@ Each repository keeps its own index. Nothing is merged; links are followed when 
 
 ```
 cd library
+prism init                          # once per repository; skip if it already has prism.yaml
 prism workspace add ../app          # or any path: /somewhere/else/app
 prism change-impact Client.Send     # now lists the call sites in app
 ```
 
-One command, from either side. It writes the link into this repository's `prism.yaml`, records
-the other end on this machine so `app` also sees `library`, and builds `app`'s index if it has none.
+`workspace add` needs a `prism.yaml`, so run `prism init` first in a repository that has none;
+`prism init --workspace auto` does both, linking the related checkouts it finds.
+The other repository does not need `prism init`. Link from either side. `workspace add` writes
+the link into this repository's `prism.yaml`, records the other end on this machine so `app` also
+sees `library`, and builds `app`'s index if it has none.
 
 To find related checkouts instead of naming them: `prism workspace discover`, then
 `prism workspace discover --link`.

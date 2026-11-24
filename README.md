@@ -271,6 +271,7 @@ Link the other repositories a change can reach, and the same commands answer for
 
 ```sh
 cd library
+prism init                             # once; workspace add needs prism.yaml
 prism workspace add ../app             # a local checkout; or a git URL[@ref], fetched read-only
 prism change-impact Client.Send        # call sites in app first, then this repository
 prism lookup app.Handler --repo app    # answer from one linked repository
