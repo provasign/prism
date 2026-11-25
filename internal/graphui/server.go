@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"github.com/provasign/prism/internal/lru"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ type Server struct {
 	impact   ImpactFunc
 
 	impactMu    sync.Mutex
-	impactCache map[string]map[string]any // symbol id -> change-impact answer; cleared on reload
+	impactCache *lru.Cache[string, map[string]any] // symbol id -> change-impact answer; cleared on reload
 
 	model    atomic.Pointer[Model]
 	loadedAt atomic.Int64
@@ -48,10 +49,15 @@ type Server struct {
 // SetToken requires tok on every /api/* request.
 func (s *Server) SetToken(tok string) { s.token = tok }
 
+// impactCacheLimit caps the cached change-impact answers. One answer for a
+// widely used symbol can list thousands of sites, and a long explorer session
+// otherwise keeps every symbol ever clicked.
+const impactCacheLimit = 256
+
 // NewServer loads the first snapshot and returns a ready server.
 func NewServer(ctx context.Context, root, version string, snapshot Snapshot, reindex func(context.Context) error, impact ImpactFunc) (*Server, error) {
 	s := &Server{root: root, version: version, snapshot: snapshot, reindex: reindex, impact: impact,
-		impactCache: map[string]map[string]any{}}
+		impactCache: lru.New[string, map[string]any](impactCacheLimit)}
 	if err := s.load(ctx); err != nil {
 		return nil, err
 	}
@@ -65,7 +71,7 @@ func (s *Server) load(ctx context.Context) error {
 	}
 	s.model.Store(BuildModel(s.root, syms, edges))
 	s.impactMu.Lock()
-	s.impactCache = map[string]map[string]any{}
+	s.impactCache = lru.New[string, map[string]any](impactCacheLimit)
 	s.impactMu.Unlock()
 	s.loadedAt.Store(time.Now().Unix())
 	return nil
@@ -196,7 +202,7 @@ func (s *Server) impactView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.impactMu.Lock()
-	raw, ok := s.impactCache[id]
+	raw, ok := s.impactCache.Get(id)
 	s.impactMu.Unlock()
 	if !ok {
 		raw, err = s.impact(r.Context(), query, file)
@@ -218,7 +224,7 @@ func (s *Server) impactView(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.impactMu.Lock()
-		s.impactCache[id] = raw
+		s.impactCache.Put(id, raw)
 		s.impactMu.Unlock()
 	}
 	depth, _ := strconv.Atoi(r.URL.Query().Get("depth"))

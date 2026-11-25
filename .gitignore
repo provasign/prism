@@ -40,3 +40,14 @@ vscode-extension/*.vsix
 /coverage.out
 /.cache/
 __pycache__/
+
+# Benchmark harness output under docs/research: keep the REPORT and scripts,
+# not the run output (it belongs in the research repo, and it floods search).
+docs/research/*/results/
+docs/research/*/transcripts/
+docs/research/*/cells/
+docs/research/*/raw-cells/
+docs/research/*/plan-outputs/
+docs/research/*/prism-candidate
+docs/research/*/*.gz
+docs/research/*/*.snapshot

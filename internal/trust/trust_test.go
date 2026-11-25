@@ -59,8 +59,10 @@ func TestNoticeOnceAndTempRootsNotRecorded(t *testing.T) {
 		t.Fatalf("second notice: %q", n)
 	}
 	tmp := t.TempDir()
-	if first, second := NoticeOnce(tmp), NoticeOnce(tmp); first == "" || second == "" {
-		t.Fatal("temp roots are not recorded, so the note repeats")
+	// Not recorded in the file, but said once per process: a long watch or
+	// MCP session reindexes the same scratch root many times.
+	if first, second := NoticeOnce(tmp), NoticeOnce(tmp); first == "" || second != "" {
+		t.Fatalf("temp root notice: first %q, second %q", first, second)
 	}
 	for _, r := range Roots() {
 		if strings.HasPrefix(r[0], filepath.Clean(os.TempDir())) {

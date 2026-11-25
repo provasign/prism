@@ -147,6 +147,10 @@ func Set(root, state string) error {
 // NoticeOnce returns the one-time notice for a root indexed with default
 // trust, and records that it was shown. "" when the user decided already,
 // or the root is untrusted.
+// shownTemp records the temp-directory roots whose notice this process
+// printed; guarded by mu.
+var shownTemp = map[string]bool{}
+
 func NoticeOnce(root string) string {
 	d := For(root)
 	if d.Untrusted || d.Source != "default" {
@@ -160,8 +164,14 @@ func NoticeOnce(root string) string {
 		return ""
 	}
 	// Scratch checkouts under the temp directory (benchmark cells, CI) are
-	// not recorded, so they cannot grow the file; they get the note each time.
-	if !underTemp(k) {
+	// not recorded, so they cannot grow the file; they get the note once per
+	// process (a long prism watch or MCP session reindexes many times).
+	if underTemp(k) {
+		if shownTemp[k] {
+			return ""
+		}
+		shownTemp[k] = true
+	} else {
 		f.Roots[k] = TrustedDefault
 		_ = save(f)
 	}

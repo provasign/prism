@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -12,25 +13,79 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/provasign/grove/pkg/grove"
 )
 
-// watchIgnoreDirs are never watched or reindexed — build output, vendored
-// trees, and caches. Matched by base name at any depth. Hidden directories
-// are excluded separately by watchIgnoreDir: they hold tool state (VCS
-// metadata, index caches, editor config), and a watcher that follows them
-// spins on another tool's own writes.
-var watchIgnoreDirs = map[string]bool{
-	"node_modules": true, "vendor": true, "dist": true, "build": true,
-	"target": true, "__pycache__": true,
+// watchTree decides what prism watch watches: the directories and files the
+// index reads (grove.WalkFilter: .gitignore, .groveignore, the engine's skip
+// list) minus hidden directories. Those hold tool state (VCS metadata, index
+// caches, editor config), and a watcher that follows them spins on another
+// tool's own writes; source kept in one is still indexed by `prism index`.
+type watchTree struct {
+	root   string
+	filter *grove.WalkFilter
+	add    func(string) error // fsnotify.Watcher.Add
+
+	watched, failed int
+	lastErr         error
+	warned          bool
 }
 
-// watchIgnoreDir reports whether a directory should never be watched. Any
-// dot-directory qualifies: watching exists to catch SOURCE edits, and every
-// dev tool — ours included — keeps its index and metadata in a hidden dir,
-// whose write traffic would otherwise trigger endless reindex churn. Source
-// kept in a hidden directory is still indexed by an explicit `prism index`.
-func watchIgnoreDir(name string) bool {
-	return strings.HasPrefix(name, ".") || watchIgnoreDirs[name]
+func newWatchTree(root string, add func(string) error) *watchTree {
+	return &watchTree{root: root, filter: grove.NewWalkFilter(root), add: add}
+}
+
+// addTree watches base and every directory below it that the index reads,
+// and reports whether base itself is one. Parents must be added before their
+// children. A failed watch is counted, not dropped: on a large tree the usual
+// cause is the open-file limit, and a silent gap means saves there never
+// reindex.
+func (t *watchTree) addTree(base string) bool {
+	entered := false
+	_ = filepath.WalkDir(base, func(p string, d os.DirEntry, err error) error {
+		if err != nil || !d.IsDir() {
+			return nil
+		}
+		if p != t.root && (strings.HasPrefix(d.Name(), ".") || !t.filter.Enter(p)) {
+			return filepath.SkipDir
+		}
+		if p == base {
+			entered = true
+		}
+		if err := t.add(p); err != nil {
+			t.failed++
+			t.lastErr = err
+		} else {
+			t.watched++
+		}
+		return nil
+	})
+	return entered
+}
+
+// warnFailures prints the failed-watch count once per session.
+func (t *watchTree) warnFailures(w io.Writer) {
+	if t.failed == 0 || t.warned {
+		return
+	}
+	t.warned = true
+	fmt.Fprintf(w, "prism watch: watching %d of %d directories (%v); saves in the rest do not reindex. Raise the open-file limit (ulimit -n) and restart\n",
+		t.watched, t.watched+t.failed, t.lastErr)
+}
+
+// relevant reports whether a change at path can affect the index: it is
+// under the root, outside hidden directories and not ignored.
+func (t *watchTree) relevant(path string) bool {
+	rel, err := filepath.Rel(t.root, path)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return false
+	}
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		if strings.HasPrefix(part, ".") {
+			return false
+		}
+	}
+	return !t.filter.FileIgnored(path)
 }
 
 // cmdWatch keeps the Grove index warm by PUSH: it watches the working tree and
@@ -90,21 +145,9 @@ func cmdWatch(args []string) int {
 	}
 	defer w.Close()
 
-	addTree := func(base string) {
-		filepath.WalkDir(base, func(p string, d os.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			if d.IsDir() {
-				if p != base && watchIgnoreDir(d.Name()) {
-					return filepath.SkipDir
-				}
-				_ = w.Add(p)
-			}
-			return nil
-		})
-	}
-	addTree(root)
+	tree := newWatchTree(root, w.Add)
+	_ = tree.addTree(root)
+	tree.warnFailures(os.Stderr)
 
 	var (
 		mu    sync.Mutex
@@ -138,23 +181,16 @@ func cmdWatch(args []string) int {
 			// new package) — fsnotify does not recurse on its own.
 			if ev.Op&fsnotify.Create != 0 {
 				if fi, err := os.Stat(ev.Name); err == nil && fi.IsDir() {
-					// Full-path check, not basename: a dir created UNDER
-					// node_modules/vendor has an innocent basename and was
-					// getting its whole tree watched — an npm install wired
-					// the watcher into thousands of dependency dirs.
-					if !watchIgnorePath(root, ev.Name) && !watchIgnoreDir(filepath.Base(ev.Name)) {
-						addTree(ev.Name)
+					if tree.relevant(ev.Name) && tree.addTree(ev.Name) {
+						tree.warnFailures(os.Stderr)
 						// The files inside arrived before their watch existed,
-						// so they will never produce events of their own. The
-						// old `continue` skipped scheduling here, which left a
-						// checked-out or generated package unindexed until
-						// some unrelated edit happened.
+						// so they will never produce events of their own.
 						scheduleReindex()
 					}
 					continue
 				}
 			}
-			if watchIgnorePath(root, ev.Name) {
+			if !tree.relevant(ev.Name) {
 				continue
 			}
 			scheduleReindex()
@@ -167,19 +203,4 @@ func cmdWatch(args []string) int {
 			return 0
 		}
 	}
-}
-
-// watchIgnorePath filters events under ignored directories (a change deep in
-// node_modules/vendor should never trigger a reindex).
-func watchIgnorePath(root, path string) bool {
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return false
-	}
-	for _, part := range strings.Split(rel, string(filepath.Separator)) {
-		if watchIgnoreDir(part) {
-			return true
-		}
-	}
-	return false
 }

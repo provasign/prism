@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/provasign/prism/internal/lru"
 	"os"
 	"path"
 	"path/filepath"
@@ -54,7 +55,7 @@ type Handler struct {
 	// session, so prism_drift can diff structurally (renames, breaking
 	// changes) via Grove's GraphDiff instead of comparing hashes.
 	driftMu   sync.Mutex
-	driftBase map[string][]grove.SymbolRecord
+	driftBase *lru.Cache[string, []grove.SymbolRecord]
 
 	// readyCh is closed when the background Grove connection + initial index
 	// completes. Nil means no deferred init (Grove is already ready).
@@ -75,12 +76,18 @@ type Handler struct {
 	// context by prism_query/prism_read. Whole-file session caching alone cannot
 	// recognize a later ranged read of a query window.
 	rangeMu         sync.Mutex
-	deliveredRanges map[string]deliveredFileRanges
+	deliveredRanges *lru.Cache[string, deliveredFileRanges]
 
 	// indexErrs: per-file index failures the previous refresh reported
 	// (indexerrors.go).
 	indexErrs indexErrorTracker
 }
+
+// sessionFileCacheLimit caps the per-file session maps (drift baselines and
+// delivered ranges). A long session on a large repository otherwise keeps
+// every file it ever read; past the cap the oldest file falls back to the
+// paths a fresh file takes (hash drift, a full read).
+const sessionFileCacheLimit = 4000
 
 // NewHandler constructs a handler with sensible defaults.
 func NewHandler(cfg *config.Config, root string, client *grove.Client) *Handler {
@@ -107,14 +114,15 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
 	}
 	h := &Handler{
-		Cfg:       cfg,
-		Root:      root,
-		Grove:     client,
-		Session:   tr,
-		Ledger:    ledger,
-		driftBase: map[string][]grove.SymbolRecord{},
-		Workspace: workspace.Load(root, cfg),
-		wsStamp:   workspace.Stamp(root),
+		Cfg:             cfg,
+		Root:            root,
+		Grove:           client,
+		Session:         tr,
+		Ledger:          ledger,
+		driftBase:       lru.New[string, []grove.SymbolRecord](sessionFileCacheLimit),
+		deliveredRanges: lru.New[string, deliveredFileRanges](sessionFileCacheLimit),
+		Workspace:       workspace.Load(root, cfg),
+		wsStamp:         workspace.Stamp(root),
 	}
 	return h
 }
@@ -163,7 +171,7 @@ func (h *Handler) confidenceFor(entry *session.Entry, contextUsed int64, window 
 // structural baseline prism_drift diffs against.
 func (h *Handler) setDriftBase(file string, syms []grove.SymbolRecord) {
 	h.driftMu.Lock()
-	h.driftBase[file] = syms
+	h.driftBase.Put(file, syms)
 	h.driftMu.Unlock()
 }
 
@@ -171,7 +179,8 @@ func (h *Handler) setDriftBase(file string, syms []grove.SymbolRecord) {
 func (h *Handler) driftBaseFor(file string) []grove.SymbolRecord {
 	h.driftMu.Lock()
 	defer h.driftMu.Unlock()
-	return h.driftBase[file]
+	syms, _ := h.driftBase.Get(file)
+	return syms
 }
 
 // FeedbackEntry is one user rating of a tool response.

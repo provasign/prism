@@ -70,6 +70,8 @@ Usage:
                                   (push model; [--debounce 2s], Ctrl+C to stop)
   prism status [dir]              Show graph stats from Grove ([--format text|json] [--json])
   prism doctor [dir]              Diagnose engine, index, and capabilities
+                                  ([--integrity] also checks the index file
+                                  for corruption and engine-version drift)
                                   ([--format text|json] [--json]; the per-language manifest is JSON only)
   prism map [dir]                 Component-level architecture map: directories,
                                   induced dependency edges (weights + evidence
@@ -2697,19 +2699,32 @@ func cmdDoctor(args []string) int {
 	if rc != 0 {
 		return rc
 	}
+	args, checkIntegrity := takeBoolFlag(args, "integrity")
 	dir, _, rc := dirOnlyArgs("doctor", args)
 	if rc != 0 {
 		return rc
 	}
 	root := mustAbs(dir)
+	// The integrity check runs before the engine opens the index, so a
+	// corrupt file is reported rather than failing the open.
+	var integrity map[string]any
+	var integrityWarnings []string
+	if checkIntegrity {
+		integrity, integrityWarnings = integrityResult(root)
+	}
 	_, client, err := newClient(root)
 	if err != nil {
-		printDoctor(format, map[string]any{
+		m := map[string]any{
 			"status":  "error",
 			"version": version.Version,
 			"root":    root,
 			"error":   err.Error(),
-		})
+		}
+		if integrity != nil {
+			m["integrity"] = integrity
+			m["warnings"] = integrityWarnings
+		}
+		printDoctor(format, m)
 		return 1
 	}
 	defer client.Shutdown()
@@ -2736,7 +2751,13 @@ func cmdDoctor(args []string) int {
 		state = "warning"
 		warnings = append(warnings, r.Language+": compiler-backed analysis missing ("+r.Problem+"); results are name-based. Fix: "+r.Fix)
 	}
+	untracked := largeUntrackedWarnings(root)
+	if len(integrityWarnings)+len(untracked) > 0 {
+		state = "warning"
+	}
+	warnings = append(warnings, integrityWarnings...)
 	warnings = append(warnings, sharedConfigWarnings(root)...)
+	warnings = append(warnings, untracked...)
 	if ng := noGraphSummary(root); ng != "" {
 		warnings = append(warnings, ng)
 	}
@@ -2756,7 +2777,7 @@ func cmdDoctor(args []string) int {
 			warnings = append(warnings, "grove engine is "+g.String()+", not a released version; results may differ from a release build")
 		}
 	}
-	printDoctor(format, map[string]any{
+	report := map[string]any{
 		"status":   state,
 		"version":  version.Version,
 		"grove":    groveLinked,
@@ -2783,7 +2804,11 @@ func cmdDoctor(args []string) int {
 		// asking "does prism support X" had no answer from `prism doctor`
 		// before this, only from a separate `grove doctor` run.
 		"languages": grove.Capabilities(),
-	})
+	}
+	if integrity != nil {
+		report["integrity"] = integrity
+	}
+	printDoctor(format, report)
 	return 0
 }
 

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/lru"
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/session"
 )
@@ -90,7 +91,7 @@ func TestDrift_FallbackWithoutBaseline(t *testing.T) {
 	}
 	// Simulate a fresh session that warm-loaded the cache: no drift baseline.
 	h.driftMu.Lock()
-	h.driftBase = map[string][]grove.SymbolRecord{}
+	h.driftBase = lru.New[string, []grove.SymbolRecord](sessionFileCacheLimit)
 	h.driftMu.Unlock()
 
 	if err := os.WriteFile(h.Root+"/f.go", []byte("package x\n\nfunc F() { println(1) }\n"), 0o644); err != nil {

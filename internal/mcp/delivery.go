@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"github.com/provasign/prism/internal/lru"
 	"os"
 	"path/filepath"
 	"sort"
@@ -490,9 +491,9 @@ func (h *Handler) recordDeliveredRanges(path, hash string, windows []lineWindow)
 	h.rangeMu.Lock()
 	defer h.rangeMu.Unlock()
 	if h.deliveredRanges == nil {
-		h.deliveredRanges = map[string]deliveredFileRanges{}
+		h.deliveredRanges = lru.New[string, deliveredFileRanges](sessionFileCacheLimit)
 	}
-	entry := h.deliveredRanges[path]
+	entry, _ := h.deliveredRanges.Get(path)
 	if entry.hash != hash {
 		entry = deliveredFileRanges{hash: hash}
 	}
@@ -511,13 +512,16 @@ func (h *Handler) recordDeliveredRanges(path, hash string, windows []lineWindow)
 		merged = append(merged, w)
 	}
 	entry.windows = merged
-	h.deliveredRanges[path] = entry
+	h.deliveredRanges.Put(path, entry)
 }
 
 func (h *Handler) deliveredRangeCovered(path, hash string, start, end int) bool {
 	h.rangeMu.Lock()
 	defer h.rangeMu.Unlock()
-	entry, ok := h.deliveredRanges[path]
+	if h.deliveredRanges == nil {
+		return false
+	}
+	entry, ok := h.deliveredRanges.Get(path)
 	if !ok || entry.hash != hash {
 		return false
 	}
