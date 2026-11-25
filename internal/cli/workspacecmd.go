@@ -174,9 +174,21 @@ func workspaceAddOne(target, id string, index bool) int {
 	}
 	yaml := filepath.Join(root, "prism.yaml")
 	data, err := os.ReadFile(yaml)
+	created := false
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "workspace add: no prism.yaml in %s; run prism init there first\n", root)
-		return 1
+		// A link needs only prism.yaml, not the agent setup prism init
+		// writes, so the file is started here. Never in the home directory
+		// or above: a prism.yaml there is an ancestor config for every
+		// repository below it.
+		if !os.IsNotExist(err) {
+			fmt.Fprintln(os.Stderr, "workspace add:", err)
+			return 1
+		}
+		if home, herr := os.UserHomeDir(); herr == nil && isWithin(root, mustAbs(home)) {
+			fmt.Fprintf(os.Stderr, "workspace add: %s is your home directory or above it; run this inside a repository\n", root)
+			return 1
+		}
+		data, created = []byte("# Prism project configuration. `prism init` adds the agent setup.\n"), true
 	}
 	cfg, _ := config.LoadFromDir(root)
 	for _, r := range cfg.WorkspaceRepos {
@@ -205,6 +217,9 @@ func workspaceAddOne(target, id string, index bool) int {
 	if err := os.WriteFile(yaml, []byte(text), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "workspace add:", err)
 		return 1
+	}
+	if created {
+		fmt.Printf("wrote %s\n", yaml)
 	}
 	fmt.Printf("linked %s -> %s\n", id, filepath.ToSlash(rel))
 	// The other end, on this machine: abs now sees this repository too.

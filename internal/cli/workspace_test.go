@@ -147,6 +147,46 @@ func TestWorkspaceAddRemove(t *testing.T) {
 	}
 }
 
+// A repository without prism.yaml can be linked without prism init first:
+// add starts the file with the link only. It never writes one in the home
+// directory, where it would configure every repository below.
+func TestWorkspaceAddWithoutConfig(t *testing.T) {
+	parent, _ := workspaceFixture(t)
+	lib := filepath.Join(parent, "lib")
+	t.Chdir(lib)
+	var rc int
+	out := captureStdout(func() { rc = workspaceAdd([]string{"../other", "--no-index"}) })
+	if rc != 0 {
+		t.Fatalf("add rc=%d", rc)
+	}
+	if !strings.Contains(out, "wrote "+filepath.Join(lib, "prism.yaml")) {
+		t.Fatalf("does not say it wrote prism.yaml:\n%s", out)
+	}
+	data, _ := os.ReadFile(filepath.Join(lib, "prism.yaml"))
+	if !strings.Contains(string(data), "workspace_repo: other=../other\n") {
+		t.Fatalf("link not written:\n%s", data)
+	}
+	for _, f := range []string{"CLAUDE.md", "AGENTS.md", ".mcp.json"} {
+		if _, err := os.Stat(filepath.Join(lib, f)); err == nil {
+			t.Fatalf("add wrote agent setup %s", f)
+		}
+	}
+	status := captureStdout(func() { cmdWorkspace(nil) })
+	if !strings.Contains(status, "../other") {
+		t.Fatalf("link not in effect:\n%s", status)
+	}
+
+	t.Setenv("HOME", parent)
+	t.Setenv("USERPROFILE", parent) // os.UserHomeDir on Windows
+	t.Chdir(parent)
+	if rc := workspaceAdd([]string{"other", "--no-index"}); rc == 0 {
+		t.Fatal("wrote prism.yaml in the home directory")
+	}
+	if _, err := os.Stat(filepath.Join(parent, "prism.yaml")); err == nil {
+		t.Fatal("prism.yaml created in the home directory")
+	}
+}
+
 func TestWorkspaceLookupFallsBackToLinkedRepository(t *testing.T) {
 	parent, app := workspaceFixture(t)
 	writeCLIFile(t, parent, "lib/box.go", "package lib\n\ntype Box struct{}\n\n// Unwrap is only defined in lib.\nfunc (b *Box) Unwrap() int { return 42 }\n")
