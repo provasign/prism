@@ -15,5 +15,5 @@ jobs:
       # pull requests — whatever v1 happens to point at that day executes with
       # permission to write to this repo. v1 is ours, but "ours" is not the
       # property that matters when a tag can be moved.
-      # v1 = 86a2f0785a25163250bba6df8e3c1f3f4255cbac (shale-action default v0.2.8)
-      - uses: provasign/shale-action@86a2f0785a25163250bba6df8e3c1f3f4255cbac   # no actions/checkout — everything via API
+      # v1 = 3d4cb44c188a50518f716f176ecaf29fbbea73dd (shale-action default v0.2.9)
+      - uses: provasign/shale-action@3d4cb44c188a50518f716f176ecaf29fbbea73dd   # no actions/checkout — everything via API
