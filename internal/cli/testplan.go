@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 )
 
 func cmdTestPlan(args []string) int {
@@ -60,7 +60,7 @@ func cmdTestPlan(args []string) int {
 		return 2
 	}
 	if targets {
-		for _, t := range mcp.TestPlanTargets(out) {
+		for _, t := range core.TestPlanTargets(out) {
 			fmt.Println(t)
 		}
 		return 0

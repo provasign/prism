@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/grove"
-	"github.com/provasign/prism/internal/mcp"
 	"github.com/provasign/prism/internal/session"
 )
 
@@ -27,7 +27,7 @@ import (
 type Kit struct {
 	root       string
 	client     *grove.Client
-	handler    *mcp.Handler
+	handler    *core.Handler
 	ledgerFile string
 }
 
@@ -69,7 +69,7 @@ func Open(dir string) (*Kit, error) {
 	return &Kit{
 		root:       root,
 		client:     client,
-		handler:    mcp.NewHandlerWithLedger(cfg, root, client, ledger),
+		handler:    core.NewHandlerWithLedger(cfg, root, client, ledger),
 		ledgerFile: ledgerFile,
 	}, nil
 }

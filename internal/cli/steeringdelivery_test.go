@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 )
 
 func TestSteeringRoutesDiscoveryAndBatchesKnownInputs(t *testing.T) {
@@ -55,9 +55,9 @@ func TestSteeringKeepsImpactMandatoryAndVerificationOptional(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
 		"start with change_impact on the named symbol, before deciding",
-		mcp.ImpactRequiredFor,
+		core.ImpactRequiredFor,
 		"Relay change_impact sites as-is",
-		mcp.ImpactOptionalFor + " can",
+		core.ImpactOptionalFor + " can",
 		"proceed from the source you have read",
 		"Report gaps; never narrow scope to fit what was found",
 		"verify is optional",
@@ -78,7 +78,7 @@ func TestSteeringKeepsImpactMandatoryAndVerificationOptional(t *testing.T) {
 		t.Error("steering made impact unconditional")
 	}
 	// The blanket obligation contradicted the MCP instructions (2026-10-17):
-	// impact is required for the triggers in mcp.ImpactRequiredFor and
+	// impact is required for the triggers in core.ImpactRequiredFor and
 	// optional for a local body-only edit, in every surface.
 	for _, blanket := range []string{"any other symbol whose callers", "whose callers you have not enumerated"} {
 		if strings.Contains(got, blanket) {
@@ -104,7 +104,7 @@ func TestSteeringRefreshReplacesTheBlanketImpactObligationAndKeepsUserText(t *te
 	if strings.Contains(got, "any other symbol whose callers") {
 		t.Errorf("stale blanket obligation survived the refresh:\n%s", got)
 	}
-	for _, want := range []string{"# My rules", "Always run the linter.", "## Mine", "Keep PRs small.", mcp.ImpactRequiredFor, "Relay change_impact sites as-is"} {
+	for _, want := range []string{"# My rules", "Always run the linter.", "## Mine", "Keep PRs small.", core.ImpactRequiredFor, "Relay change_impact sites as-is"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("refreshed file lost %q:\n%s", want, got)
 		}

@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/grove"
-	"github.com/provasign/prism/internal/mcp"
 	"github.com/provasign/prism/internal/workspace"
 )
 
@@ -22,7 +22,7 @@ var openRepoGraphClient = newClient
 type repoToolSession struct {
 	root, selected, sub, repo string
 	client                    *grove.Client
-	handler                   *mcp.Handler
+	handler                   *core.Handler
 	linked                    map[string]*repoToolSession
 }
 
@@ -79,7 +79,7 @@ func newRepoToolSession(dir, repo string) (*repoToolSession, error) {
 	}
 	noteRoot(root, sub)
 	return &repoToolSession{root: root, selected: selected, sub: sub, repo: repo,
-		client: client, handler: mcp.NewHandler(cfg, selected, client)}, nil
+		client: client, handler: core.NewHandler(cfg, selected, client)}, nil
 }
 
 func repoIndexRequired(repo, root string) error {

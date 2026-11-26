@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 )
 
 // capture runs f with stdout redirected and returns what it printed. Drains
@@ -86,7 +86,7 @@ func TestFormatTextRendersTaskShapedOps(t *testing.T) {
 			}
 			out := capture(t, func() { printOutput(m, formatText) })
 			if tc.name == "change-impact" {
-				out = mcp.RenderFallbackText("prism_change_impact", m)
+				out = core.RenderFallbackText("prism_change_impact", m)
 			}
 			if strings.HasPrefix(strings.TrimSpace(out), "{") {
 				t.Fatalf("--format text fell through to JSON:\n%s", out)
@@ -107,7 +107,7 @@ func TestFormatTextSkipsEmptyGroups(t *testing.T) {
 	_ = json.Unmarshal([]byte(`{"query":"T.m","totalSites":1,
 		"declarations":[{"qualifiedName":"T.m","filePath":"a.go","line":1}],
 		"family":[],"supers":[],"callers":[]}`), &m)
-	out := mcp.RenderFallbackText("prism_change_impact", m)
+	out := core.RenderFallbackText("prism_change_impact", m)
 	for _, absent := range []string{"family", "supers", "callers"} {
 		if strings.Contains(out, absent) {
 			t.Errorf("empty group %q was printed:\n%s", absent, out)
@@ -122,7 +122,7 @@ func TestFormatTextRendersUnmatchedLookup(t *testing.T) {
 	_ = json.Unmarshal([]byte(`{"symbol":null,"name":"Neighbours","matched":false,
 		"note":"no symbol named \"Neighbours\" in the index — did you mean one of the candidates?",
 		"candidates":["CodeGraph.Neighbors (graph.go:393)"]}`), &m)
-	out := mcp.RenderFallbackText("prism_lookup", m)
+	out := core.RenderFallbackText("prism_lookup", m)
 	if strings.HasPrefix(strings.TrimSpace(out), "{") {
 		t.Fatalf("unmatched lookup rendered as JSON:\n%s", out)
 	}
@@ -138,7 +138,7 @@ func TestFormatTextNumbersLookupBodyLines(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"symbol":{"name":"Thing","filePath":"a.go","span":{"start":12,"end":13}},"content":"func Thing() {\n}\n"}`), &m); err != nil {
 		t.Fatal(err)
 	}
-	out := mcp.RenderFallbackText("prism_lookup", m)
+	out := core.RenderFallbackText("prism_lookup", m)
 	for _, want := range []string{"12→func Thing() {", "13→}"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in lookup text:\n%s", want, out)
@@ -157,7 +157,7 @@ func TestFormatTextFlagsNoExactLookupBeforeBody(t *testing.T) {
 		"candidates":["Context.SetAccepted (context.go:5)"]}`), &m); err != nil {
 		t.Fatal(err)
 	}
-	out := mcp.RenderFallbackText("prism_lookup", m)
+	out := core.RenderFallbackText("prism_lookup", m)
 	flag := strings.Index(out, "NO EXACT MATCH")
 	body := strings.Index(out, "func (c *Context) SetAccepted")
 	if flag < 0 || body < 0 || flag > body || !strings.Contains(out, "Context.SetAccepted (context.go:5)") {
@@ -172,7 +172,7 @@ func TestFormatTextShowsLookupResolutionNoteFirst(t *testing.T) {
 		"note":"inherited: Flask declares no route; delivered Scaffold.route from its supertype chain Flask -> App -> Scaffold"}`), &m); err != nil {
 		t.Fatal(err)
 	}
-	out := mcp.RenderFallbackText("prism_lookup", m)
+	out := core.RenderFallbackText("prism_lookup", m)
 	if !strings.HasPrefix(out, "// inherited: Flask declares no route") || !strings.Contains(out, "3→def route(self):") {
 		t.Fatalf("resolution note must lead:\n%s", out)
 	}

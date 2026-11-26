@@ -1,0 +1,787 @@
+package core
+
+import (
+	"context"
+	"fmt"
+	"github.com/provasign/prism/internal/lru"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/provasign/prism/internal/compression"
+	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/ranking"
+)
+
+// Source delivery for prism_query: the same budgeted selection, delivered the
+// way an agent about to EDIT needs it — verbatim, line-numbered source windows
+// grouped by file (identical framing to a Read the agent already performed),
+// headed by a per-anchor summary (callers + covering tests). Files whose full
+// content was already delivered this session return a one-line sha pointer
+// instead of a resend.
+
+const (
+	// windowPad is the context padding (lines) around each symbol span.
+	windowPad = 2
+	// windowMergeGap: windows separated by at most this many lines are merged.
+	windowMergeGap = 4
+	// wholeFileLines: files at or under this line count are always delivered
+	// whole — windowing tiny files saves nothing and costs anchors.
+	wholeFileLines = 80
+	// wholeFileFraction: when windows would cover at least this fraction of a
+	// file AND the file is small enough (wholeFileMaxLines), deliver the
+	// whole file instead (and record it in the session tracker, making later
+	// reads sha-pointer-eligible).
+	wholeFileFraction = 0.8
+	// wholeFileMaxLines bounds the coverage-triggered whole-file escape.
+	// Unbounded, 0.8 coverage on a 951-line file delivered all 951 lines
+	// verbatim (measured 2026-08-31: werkzeug routing/map.py, 5 identical
+	// deliveries, ~40k chars each — the majority of prism_query's entire
+	// 76%-of-all-tokens footprint came through this path). The windows the
+	// ranking had ALREADY computed for those calls held every named anchor
+	// and its graph-selected neighbors; collapsing them to the whole file
+	// added ~700 incidental lines per call. Above this bound the windowed
+	// rendering (with its omitted-ranges markers) always wins; the agent
+	// reaches omitted lines via prism_read(file, offset, limit) — the same
+	// follow-up shape a sed-based baseline uses, minus the guessing.
+	wholeFileMaxLines = 300
+	// signatureWindowLines: span cap for dependency symbols selected at
+	// signature-level disclosure — enough for the signature and doc head.
+	signatureWindowLines = 8
+	// anchorSummaryMax is how many top anchor symbols get a summary line.
+	anchorSummaryMax = 5
+	// sourceDeliveryMaxFiles is the default minimum number of source files.
+	// Every named-anchor file and one related file can be kept beyond it.
+	sourceDeliveryMaxFiles = 2
+	// searchFullBodyMaxLines/searchFullBodyMaxBytes bound when a search hit's
+	// enclosing symbol is delivered in full instead of windowed. The
+	// evidence-ranked path (searchevidence.go) uses them, so there is one
+	// full-body threshold, not independently tuned ones.
+	searchFullBodyMaxLines = 160
+	searchFullBodyMaxBytes = 10000
+)
+
+type lineWindow struct{ start, end int }
+
+// deliverSource renders a selection as the source-window delivery and returns
+// the full tool response map.
+// truncateSection clips a single file's rendering to a token ceiling, saying
+// so in-band. Silently returning a too-large payload is worse than a short
+// one: the host rejects the entire tool result, so the agent gets NOTHING and
+// is told to fall back to grep.
+func truncateSection(section string, maxTokens int, path string) string {
+	maxBytes := maxTokens * 4
+	if maxBytes <= 0 {
+		return ""
+	}
+	if len(section) <= maxBytes {
+		return section
+	}
+	marker := fmt.Sprintf("\n… [prism truncated %s here — Read the file directly for the remainder]\n", path)
+	if len(marker) >= maxBytes {
+		return ""
+	}
+	cut := strings.LastIndexByte(section[:maxBytes-len(marker)], '\n')
+	if cut < 0 {
+		cut = maxBytes - len(marker)
+	}
+	return section[:cut] + marker
+}
+
+func (h *Handler) deliverSource(ctx context.Context, label string, sel *selection, maxFiles, budget int) (map[string]any, map[string]string) {
+	automaticFileLimit := maxFiles < 1
+	if maxFiles < 1 {
+		maxFiles = sourceDeliveryMaxFiles
+	}
+
+	var b strings.Builder
+	compact := budget < 256
+	if compact {
+		b.WriteString("**Context** — budget-limited; use prism_read for source.\n")
+	} else {
+		fmt.Fprintf(&b, "**Context for: %s**\n\n", summarize(label, 120))
+
+		// ── Anchor summary ────────────────────────────────────────────────────
+		anchors := h.renderAnchorSummary(ctx, sel.seedSyms, sel.testCallers, sel.anchorMatchKinds)
+		if anchors != "" {
+			b.WriteString("**Anchors — callers (verify before editing)**\n\n")
+			b.WriteString(anchors)
+			b.WriteString("\n")
+		}
+		if hints := renderRelatedTestHints(sel.relatedTests); hints != "" {
+			b.WriteString(hints)
+		}
+		if ranking.EstimateTokens(b.String()) > budget {
+			b.Reset()
+			fmt.Fprintf(&b, "budget=%d is too small for anchor summaries; use prism_lookup.\n", budget)
+		}
+	}
+
+	// ── Source windows, grouped by file, ranked ──────────────────────────
+	// Drop test symbols from the source windows: without an edge tying a test
+	// to an anchor, a lexically task-matched test dilutes an edit-ready
+	// delivery with noise (measured on the pr3493 probe: unrelated help-
+	// rendering tests earned whole windows).
+	picked := make([]ranking.BudgetedSymbol, 0, len(sel.picked))
+	pickedIDs := make(map[string]bool, len(sel.picked)+len(sel.lexicalOwners))
+	for _, p := range sel.picked {
+		if p.Category == ranking.CategoryTest {
+			continue
+		}
+		// Content-only seeds (term matched the BODY, never the name — a
+		// license header, a doc comment) get signature disclosure, not a
+		// full window: measured (BACKLOG addendum #7) a full-body dump of
+		// a content-matched file spent most of a 22.5kB delivery on code
+		// that was never used. The signature line keeps the pointer; the
+		// body is one prism_lookup away if the mention actually matters.
+		if p.Disclosure == ranking.DisclosureFull && sel.contentOnlySeeds[p.Symbol.ID] {
+			p.Disclosure = ranking.DisclosureSignature
+		}
+		picked = append(picked, p)
+		pickedIDs[p.Symbol.ID] = true
+	}
+	ownerFiles := map[string]bool{}
+	for _, owner := range sel.lexicalOwners {
+		if pickedIDs[owner.ID] {
+			continue
+		}
+		picked = append(picked, ranking.BudgetedSymbol{
+			Symbol: owner, Relation: ranking.RelationDirectCall, Score: 1,
+			Category: ranking.CategoryDependency, Disclosure: ranking.DisclosureFull,
+		})
+		pickedIDs[owner.ID] = true
+		ownerFiles[normalizePath(owner.FilePath)] = true
+	}
+	files := groupPickedByFile(picked)
+	seedFiles := 0
+	for _, fg := range files {
+		if fg.relation == ranking.RelationSeed {
+			seedFiles++
+		}
+	}
+	if automaticFileLimit {
+		if seedFiles+1+len(ownerFiles) > maxFiles {
+			maxFiles = seedFiles + 1 + len(ownerFiles)
+		}
+	}
+
+	if !compact {
+		b.WriteString("**Source** — current on-disk, line-numbered like the Read tool " +
+			"(re-read from disk on this call; NOT a summary or stale cache). Every line " +
+			"under 1200 chars is byte-for-byte verbatim; longer lines (generated/minified) " +
+			"are cut with an in-band `[line truncated by prism: N chars]` marker — Read the " +
+			"file before editing THOSE lines. Treat everything else as a Read you have " +
+			"already performed: do not re-read, go straight to the edit. A `[prism:cached]` " +
+			"line means the full file was already delivered this session — use the copy in " +
+			"context. Files are ordered by their best structural match and score; " +
+			"windows within each file follow source-line order.\n\n")
+	}
+	fits := func(extra string) bool {
+		return ranking.EstimateTokens(b.String()+extra) <= budget
+	}
+	shown := make([]string, 0, maxFiles)
+	sourceSections := make(map[string]string, maxFiles)
+	var skipped []fileGroup
+	for i, fg := range files {
+		if len(shown) >= maxFiles {
+			skipped = append(skipped, files[i:]...)
+			break
+		}
+		section, commit, ok := h.renderFileSection(fg)
+		if !ok {
+			skipped = append(skipped, fg)
+			continue
+		}
+		// Selector costs do not include expanded source windows. Apply the
+		// file share to the rendered section; related files get half the
+		// share so they cannot displace a named target with a broad class.
+		sectionCap := int(float64(budget) * ranking.FileBudgetFraction)
+		// When every named anchor is in this one file, the global budget
+		// already bounds it. A fractional file cap would collapse several
+		// explicitly named functions to signatures while leaving most of
+		// the global budget unused.
+		if fg.relation == ranking.RelationSeed && seedFiles == 1 {
+			sectionCap = budget - ranking.EstimateTokens(b.String())
+		}
+		if fg.relation != ranking.RelationSeed && !ownerFiles[fg.path] {
+			sectionCap /= 2
+		}
+		if sectionCap < 1 {
+			sectionCap = 1
+		}
+		fitsSection := func(s string) bool {
+			return fits(s) && ranking.EstimateTokens(s) <= sectionCap
+		}
+		// A section is measured BEFORE it is committed. The old code checked
+		// the running total on entry only, so one oversized file could
+		// overshoot the budget by its entire length — and the first file was
+		// exempt outright, which is how a single 89KB section got emitted and
+		// the host rejected the whole response.
+		truncated := false
+		if !fitsSection(section) {
+			// A whole-file shortcut can exceed the section cap even when the
+			// selected symbol windows would fit. Try those exact windows
+			// before degrading named anchors to signatures.
+			fg.noWholeFile = true
+			if sec2, commit2, ok2 := h.renderFileSection(fg); ok2 {
+				section, commit = sec2, commit2
+			}
+		}
+		if !fitsSection(section) {
+			// Over budget: shed the LOWEST-scored symbols and re-render,
+			// never byte-truncate first. Byte truncation cuts the tail, and
+			// windows render in line order — so the windows that died were
+			// whichever sat at high line numbers, including the caller's own
+			// SEED (measured 2026-08-26: a 2,012-line file's section ended
+			// at line 1369 while the anchor the terms named sat at 1482,
+			// picked, full-disclosure, score 1.0 — sacrificed for thirty
+			// low-score text-hit windows above it). Seeds are named by the
+			// caller; they are the last thing to shed, not the first.
+			trimmed := fg
+			for len(trimmed.symbols) > 1 && !fitsSection(section) {
+				worst, wi := trimmed.symbols[0], 0
+				for j, ps := range trimmed.symbols {
+					if ps.Relation < worst.Relation ||
+						(ps.Relation == worst.Relation && ps.Score < worst.Score) {
+						worst, wi = ps, j
+					}
+				}
+				if worst.Relation == ranking.RelationSeed {
+					break // only seeds left — take the truncation below
+				}
+				trimmed.symbols = append(append([]ranking.BudgetedSymbol{},
+					trimmed.symbols[:wi]...), trimmed.symbols[wi+1:]...)
+				if sec2, commit2, ok2 := h.renderFileSection(trimmed); ok2 {
+					section, commit = sec2, commit2
+				} else {
+					break
+				}
+			}
+			if !fitsSection(section) {
+				for j := range trimmed.symbols {
+					trimmed.symbols[j].Disclosure = ranking.DisclosureSignature
+				}
+				if sec2, commit2, ok2 := h.renderFileSection(trimmed); ok2 {
+					section, commit = sec2, commit2
+				}
+			}
+			if !fitsSection(section) {
+				remaining := budget - ranking.EstimateTokens(b.String())
+				if remaining > sectionCap {
+					remaining = sectionCap
+				}
+				cut := truncateSection(section, remaining, fg.path)
+				truncated = cut != section
+				section = cut
+				if section == "" || !fitsSection(section) {
+					skipped = append(skipped, fg)
+					continue
+				}
+			}
+		}
+		b.WriteString(section)
+		sourceSections[fg.path] = section
+		// A whole-file render may have been byte-clamped above. Its commit
+		// closure would otherwise mark the unseen tail as fully delivered,
+		// turning the next query into a false cached pointer.
+		if !truncated {
+			commit()
+		}
+		shown = append(shown, fg.path)
+	}
+	if len(skipped) > 0 {
+		var omitted strings.Builder
+		omitted.WriteString("**Also relevant (not shown):**\n")
+		for _, fg := range skipped {
+			names := make([]string, 0, len(fg.symbols))
+			for _, s := range fg.symbols {
+				names = append(names, s.Symbol.Name)
+			}
+			line := fmt.Sprintf("- `%s` — %s\n", fg.path, strings.Join(dedupeStrings(names), ", "))
+			if !fits(omitted.String() + line) {
+				break
+			}
+			omitted.WriteString(line)
+		}
+		if omitted.Len() > len("**Also relevant (not shown):**\n") {
+			b.WriteString(omitted.String())
+		}
+	}
+
+	// ── Family section ───────────────────────────────────────────────────
+	// Overrides/overloads of the anchors, APPENDED after the main windows so
+	// they can only add coverage, never displace it. When family competed in
+	// the candidate pool it evicted gold-covering files from the maxFiles
+	// slots and mean oracle-bed recall fell 0.65 -> 0.55 (2026-08-26); as an
+	// appendix the same symbols are pure upside. Tight bodies only, few of
+	// them, deduped against files already shown in full.
+	if fam := sel.familySyms; len(fam) > 0 {
+		wrote := 0
+		var fb strings.Builder
+		delivered := make(map[string]bool)
+		for _, pk := range sel.picked {
+			delivered[pk.Symbol.ID] = true
+		}
+		for _, fs := range fam {
+			if wrote >= 6 {
+				break
+			}
+			// ID-level dedupe only. Skipping by FILE over-blocked: a file
+			// shown for OTHER symbols' windows still lacks this member's
+			// body, and the autopsied gold misses (sibling-class overrides)
+			// live in exactly such files — measured 2026-08-26: the appendix
+			// never fired and family-vs-none scored identical on all 12
+			// oracle tasks.
+			if delivered[fs.ID] || fs.RawText == "" {
+				continue
+			}
+			body := fs.RawText
+			if lines := strings.Count(body, "\n"); lines > 60 {
+				cut := body
+				for i, n := 0, 0; i < len(cut); i++ {
+					if cut[i] == '\n' {
+						n++
+						if n == 60 {
+							body = cut[:i] + "\n… [family member truncated — prism_lookup for the rest]"
+							break
+						}
+					}
+				}
+			}
+			name := fs.QualifiedName
+			if name == "" {
+				name = fs.Name
+			}
+			entry := fmt.Sprintf("\n`%s` — %s:%d\n```\n%s\n```\n", name, fs.FilePath, fs.Span.Start, strings.TrimRight(body, "\n"))
+			if !fits("\n**Family — overrides/overloads of the anchors (fixes often touch these too):**\n" + fb.String() + entry) {
+				continue
+			}
+			fb.WriteString(entry)
+			wrote++
+		}
+		if wrote > 0 {
+			b.WriteString("\n**Family — overrides/overloads of the anchors (fixes often touch these too):**\n")
+			b.WriteString(fb.String())
+		}
+	}
+
+	content := b.String()
+	deliveredTokens := ranking.EstimateTokens(content)
+	return map[string]any{
+		"content":         content,
+		"delivery":        "source",
+		"files":           shown,
+		"symbolCount":     len(sel.picked),
+		"deliveredTokens": deliveredTokens,
+	}, sourceSections
+}
+
+func renderRelatedTestHints(hints []relatedTestHint) string {
+	if len(hints) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("**Related test files — lexical candidates, not verified callers**\n\n")
+	for _, hint := range hints {
+		fmt.Fprintf(&b, "- `%s:%d`", hint.file, hint.line)
+		if len(hint.names) > 0 {
+			fmt.Fprintf(&b, " (%s)", joinCapped(hint.names, 3))
+		}
+		if len(hint.probes) > 0 {
+			fmt.Fprintf(&b, " — matched %s", joinCapped(hint.probes, 3))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("  Validation guidance: run the containing test file/module or the affected package suite; a single name-filtered test can miss neighboring regressions.\n\n")
+	return b.String()
+}
+
+// renderAnchorSummary emits one line per anchor symbol: caller count + caller
+// files (from the typed calls graph, incoming edges only) and covering tests,
+// with an explicit warning when none exist.
+func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.SymbolRecord, testCallers map[string][]grove.SymbolRecord, matchKinds map[string]string) string {
+	var b strings.Builder
+	seen := map[string]bool{}
+	count := 0
+	for _, a := range anchors {
+		if count >= anchorSummaryMax {
+			break
+		}
+		q := a.QualifiedName
+		if q == "" {
+			q = a.Name
+		}
+		// One line per identity, not per name: namesakes in different files
+		// are different anchors with different callers.
+		if q == "" || seen[a.FilePath+"|"+q] {
+			continue
+		}
+		seen[a.FilePath+"|"+q] = true
+		// Doc/config symbols have no meaningful call graph.
+		if categorize(a) == ranking.CategoryDoc {
+			continue
+		}
+		count++
+
+		callerFiles := []string{}
+		callerN := 0
+		if edges, err := h.identityEdges(ctx, a, "in", []string{"calls"}); err == nil {
+			seenFile := map[string]bool{}
+			for _, e := range edges {
+				callerN++
+				if !seenFile[e.File] {
+					seenFile[e.File] = true
+					callerFiles = append(callerFiles, e.File)
+				}
+			}
+		}
+		fmt.Fprintf(&b, "- `%s` (%s:%d)", a.Name, a.FilePath, a.Span.Start)
+		if kind := matchKinds[a.ID]; kind != "" {
+			fmt.Fprintf(&b, " [match: %s]", kind)
+		}
+		if callerN > 0 {
+			fmt.Fprintf(&b, " — %d caller%s in %s", callerN, plural(callerN), joinCapped(callerFiles, 3))
+		} else if dataSymbolKind(a.Kind) {
+			// A field/variable/const has readers and writers, not callers;
+			// the call graph does not track accesses. "no resolved callers"
+			// read as "unused" (gin Context.Errors has 27 uses).
+			fmt.Fprintf(&b, " — %s: accesses are not tracked as callers; op=search terms=[%q] scope=text lists its uses", a.Kind, a.Name)
+		} else {
+			b.WriteString(" — no resolved callers")
+		}
+		b.WriteString("\n")
+		// Pointer only: locations, never bodies -- prism_read/prism_lookup
+		// on the file:line for the actual assertion/mocking pattern. See
+		// selectContext's testCallers declaration for why this is safe
+		// against the pr3493 failure (unrelated test wins a whole window)
+		// that removed test delivery in the first place.
+		if tc := testCallers[a.ID]; len(tc) > 0 {
+			names := make([]string, 0, len(tc))
+			for _, c := range tc {
+				n := c.Name
+				if n == "" {
+					n = "test"
+				}
+				names = append(names, fmt.Sprintf("%s:%d (%s)", c.FilePath, c.Span.Start, n))
+			}
+			fmt.Fprintf(&b, "  tested by %d: %s\n", len(tc), joinCapped(names, 3))
+		}
+	}
+	return b.String()
+}
+
+type fileGroup struct {
+	path        string // normalized, root-relative
+	relation    ranking.RelationTier
+	best        float64
+	symbols     []ranking.BudgetedSymbol
+	noWholeFile bool
+}
+
+type deliveredFileRanges struct {
+	hash    string
+	windows []lineWindow
+}
+
+func (h *Handler) recordDeliveredRanges(path, hash string, windows []lineWindow) {
+	if len(windows) == 0 {
+		return
+	}
+	h.rangeMu.Lock()
+	defer h.rangeMu.Unlock()
+	if h.deliveredRanges == nil {
+		h.deliveredRanges = lru.New[string, deliveredFileRanges](sessionFileCacheLimit)
+	}
+	entry, _ := h.deliveredRanges.Get(path)
+	if entry.hash != hash {
+		entry = deliveredFileRanges{hash: hash}
+	}
+	entry.windows = append(entry.windows, windows...)
+	sort.Slice(entry.windows, func(i, j int) bool {
+		return entry.windows[i].start < entry.windows[j].start
+	})
+	merged := entry.windows[:0]
+	for _, w := range entry.windows {
+		if n := len(merged); n > 0 && w.start <= merged[n-1].end+1 {
+			if w.end > merged[n-1].end {
+				merged[n-1].end = w.end
+			}
+			continue
+		}
+		merged = append(merged, w)
+	}
+	entry.windows = merged
+	h.deliveredRanges.Put(path, entry)
+}
+
+func (h *Handler) deliveredRangeCovered(path, hash string, start, end int) bool {
+	h.rangeMu.Lock()
+	defer h.rangeMu.Unlock()
+	if h.deliveredRanges == nil {
+		return false
+	}
+	entry, ok := h.deliveredRanges.Get(path)
+	if !ok || entry.hash != hash {
+		return false
+	}
+	for _, w := range entry.windows {
+		if start >= w.start && end <= w.end {
+			return true
+		}
+	}
+	return false
+}
+
+// groupPickedByFile buckets budget-selected symbols by containing file and
+// orders files by their best symbol score, so the most relevant file renders
+// first and file caps cut from the tail.
+func groupPickedByFile(picked []ranking.BudgetedSymbol) []fileGroup {
+	byPath := map[string]*fileGroup{}
+	order := []string{}
+	for _, p := range picked {
+		rel := normalizePath(p.Symbol.FilePath)
+		if rel == "" || p.Symbol.Span.Start <= 0 {
+			continue
+		}
+		g, ok := byPath[rel]
+		if !ok {
+			g = &fileGroup{path: rel}
+			byPath[rel] = g
+			order = append(order, rel)
+		}
+		if p.Relation > g.relation {
+			g.relation = p.Relation
+			g.best = p.Score
+		} else if p.Relation == g.relation && p.Score > g.best {
+			g.best = p.Score
+		}
+		g.symbols = append(g.symbols, p)
+	}
+	out := make([]fileGroup, 0, len(order))
+	for _, rel := range order {
+		out = append(out, *byPath[rel])
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].relation != out[j].relation {
+			return out[i].relation > out[j].relation
+		}
+		if out[i].best != out[j].best {
+			return out[i].best > out[j].best
+		}
+		return out[i].path < out[j].path // total order — ties must not follow map layout
+	})
+	return out
+}
+
+// renderFileSection renders one file's contribution: a sha pointer when the
+// full file is already in the agent's context, the whole file when windows
+// would cover most of it, or merged line-numbered windows otherwise.
+// Both delivery paths clamp through the same helper: the symbols path renders
+// via ranking.Render, the source path here. Fixing only one left the other
+// able to emit an 85KB line and have the host reject the whole response.
+
+func clampSourceLine(l string) string { return ranking.ClampLines(l) }
+
+func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
+	abs := filepath.Join(h.Root, filepath.FromSlash(fg.path))
+	data, err := os.ReadFile(abs)
+	if err != nil {
+		return "", nil, false
+	}
+	content := string(data)
+	hash := compression.Hash(content)
+	lines := strings.Split(content, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+
+	// Already delivered in full this session, unchanged → pointer, not resend.
+	if entry, seen, same := h.Session.Lookup(fg.path, hash); seen && same && entry.DisclosureLevel == "full" {
+		h.Session.Record(fg.path, hash, int64(ranking.EstimateTokens(content)), "full")
+		return compression.SHAPointer(fg.path, hash, entry.AccessCount) + "\n", func() {}, true
+	}
+
+	if os.Getenv("PRISM_DEBUG_PICK") != "" {
+		for _, ps := range fg.symbols {
+			fmt.Fprintf(os.Stderr, "[pick] %s %s span=%d-%d disc=%s score=%.2f\n",
+				fg.path, ps.Symbol.Name, ps.Symbol.Span.Start, ps.Symbol.Span.End, ps.Disclosure, ps.Score)
+		}
+	}
+	wins := symbolWindows(fg.symbols, len(lines))
+	covered := 0
+	for _, w := range wins {
+		covered += w.end - w.start + 1
+	}
+	// The whole-file escape never applies to a file whose every pick is
+	// signature-level: those are demoted content-only seeds (see
+	// deliverSource), and collapsing to the whole file would undo the
+	// demotion for exactly the small files where the license-header-dump
+	// waste was measured (BACKLOG addendum #7).
+	allSignature := len(fg.symbols) > 0
+	for _, ps := range fg.symbols {
+		if ps.Disclosure == ranking.DisclosureFull {
+			allSignature = false
+			break
+		}
+	}
+	wholeFile := !fg.noWholeFile && !allSignature && (len(lines) <= wholeFileLines ||
+		(len(lines) <= wholeFileMaxLines &&
+			float64(covered) >= wholeFileFraction*float64(len(lines))))
+	if wholeFile {
+		wins = []lineWindow{{1, len(lines)}}
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "**`%s`**", fg.path)
+	fmt.Fprintf(&b, "\n\n```%s\n", langTag(fg.path))
+	prevEnd := 0
+	for _, w := range wins {
+		if prevEnd > 0 && w.start > prevEnd+1 {
+			// Actionable omission: name the exact prism_read call that
+			// fetches the gap, so reaching omitted code is one precise
+			// call, not a guessed sed range (measured 2026-08-31: baseline
+			// agents needed 1-5 guess-and-retry reads to land the same
+			// windows this ranking picks directly).
+			fmt.Fprintf(&b, "… [lines %d–%d omitted — prism_read(file, offset=%d, limit=%d) if needed] …\n",
+				prevEnd+1, w.start-1, prevEnd+1, w.start-1-prevEnd)
+		}
+		for n := w.start; n <= w.end && n <= len(lines); n++ {
+			fmt.Fprintf(&b, "%d"+SourceLineSep+"%s\n", n, clampSourceLine(lines[n-1]))
+		}
+		prevEnd = w.end
+	}
+	b.WriteString("```\n\n")
+
+	// Record ONLY full-file deliveries — and only when the caller COMMITS the
+	// section. Recording inside the render made a discarded render poison the
+	// session: the over-budget shed loop re-rendered a trimmed section and
+	// got back a [prism:cached] pointer to content the agent never received
+	// (measured 2026-08-26 — a 64KB delivery collapsed to 6KB of pointer).
+	commit := func() {
+		h.recordDeliveredRanges(fg.path, hash, wins)
+	}
+	if wholeFile {
+		commit = func() {
+			h.recordDeliveredRanges(fg.path, hash, wins)
+			h.Session.Record(fg.path, hash, int64(ranking.EstimateTokens(content)), "full")
+		}
+	}
+	return b.String(), commit, true
+}
+
+// symbolWindows converts the selected symbols of one file into ordered,
+// merged, padded line windows. Dependency symbols selected at signature-level
+// disclosure contribute only their span head — the contract, not the body.
+func symbolWindows(symbols []ranking.BudgetedSymbol, maxLine int) []lineWindow {
+	raw := make([]lineWindow, 0, len(symbols))
+	for _, s := range symbols {
+		start, end := s.Symbol.Span.Start, s.Symbol.Span.End
+		if start <= 0 {
+			continue
+		}
+		if end < start {
+			end = start
+		}
+		// A synthetic module-level symbol can span an entire file. Its name
+		// is a locator, not a request to inline every unrelated definition.
+		if (s.Disclosure != ranking.DisclosureFull || s.Symbol.Name == "<top-level>") && end-start+1 > signatureWindowLines {
+			end = start + signatureWindowLines - 1
+		}
+		start -= windowPad
+		end += windowPad
+		if start < 1 {
+			start = 1
+		}
+		if end > maxLine {
+			end = maxLine
+		}
+		raw = append(raw, lineWindow{start, end})
+	}
+	// Stable + total: sort.Slice is UNSTABLE, so two windows with the same
+	// start swapped at random between runs (the last nondeterminism site
+	// after the ranking sorts got total orders, 2026-08-26).
+	sort.SliceStable(raw, func(i, j int) bool {
+		if raw[i].start != raw[j].start {
+			return raw[i].start < raw[j].start
+		}
+		return raw[i].end < raw[j].end
+	})
+	merged := make([]lineWindow, 0, len(raw))
+	for _, w := range raw {
+		if n := len(merged); n > 0 && w.start <= merged[n-1].end+windowMergeGap+1 {
+			if w.end > merged[n-1].end {
+				merged[n-1].end = w.end
+			}
+			continue
+		}
+		merged = append(merged, w)
+	}
+	return merged
+}
+
+func langTag(path string) string {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".go":
+		return "go"
+	case ".py":
+		return "python"
+	case ".ts", ".tsx":
+		return "typescript"
+	case ".js", ".jsx", ".mjs", ".cjs":
+		return "javascript"
+	case ".java":
+		return "java"
+	case ".rb":
+		return "ruby"
+	case ".rs":
+		return "rust"
+	case ".c", ".h":
+		return "c"
+	case ".cc", ".cpp", ".hpp":
+		return "cpp"
+	case ".cs":
+		return "csharp"
+	case ".php":
+		return "php"
+	case ".sh":
+		return "bash"
+	default:
+		return ""
+	}
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
+func joinCapped(items []string, cap int) string {
+	if len(items) <= cap {
+		return "`" + strings.Join(items, "`, `") + "`"
+	}
+	return "`" + strings.Join(items[:cap], "`, `") + fmt.Sprintf("` +%d more", len(items)-cap)
+}
+
+func dedupeStrings(in []string) []string {
+	seen := map[string]bool{}
+	out := in[:0]
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// dataSymbolKind reports kinds whose uses are reads/writes, not calls.
+func dataSymbolKind(kind string) bool {
+	switch kind {
+	case "field", "variable", "const", "property", "constant", "enum_member", "attribute":
+		return true
+	}
+	return false
+}

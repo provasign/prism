@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 )
 
 // setHome points both HOME (unix) and USERPROFILE (what os.UserHomeDir reads
@@ -192,7 +192,7 @@ func TestPrintOutput_Text_Query(t *testing.T) {
 			},
 		},
 	}
-	got := mcp.RenderFallbackText("prism_query", input)
+	got := core.RenderFallbackText("prism_query", input)
 	if !strings.Contains(got, "pkg/a.go") {
 		t.Errorf("missing filePath: %q", got)
 	}

@@ -13,5 +13,7 @@ mcp_surface: "compact"
 arch_deny: internal/grove -> internal/*    # engine wrapper is a leaf
 arch_deny: internal/session -> internal/*  # session tracking is a leaf
 arch_deny: internal/config -> internal/*   # config is a leaf
-arch_deny: internal/ranking -> internal/mcp  # ranking must not know the server
+arch_deny: internal/ranking -> internal/core  # ranking must not know the engine
+arch_deny: internal/ranking -> internal/mcp  # or the server
+arch_deny: internal/core -> internal/mcp    # the engine does not know its transport
 arch_deny: internal/* -> internal/cli      # nothing imports the CLI

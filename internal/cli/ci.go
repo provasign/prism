@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/provasign/prism/internal/config"
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/trust"
 )
 
@@ -105,7 +105,7 @@ func cmdCI(args []string) int {
 	for _, r := range idx.Readiness {
 		rep.Degraded = append(rep.Degraded, r.Language+": "+r.Problem+" (fix: "+r.Fix+")")
 	}
-	h := mcp.NewHandler(cfg, root, client)
+	h := core.NewHandler(cfg, root, client)
 	vout, err := h.Invoke("prism_verify", map[string]any{"base": base})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("ci", err))

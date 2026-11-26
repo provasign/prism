@@ -1,0 +1,484 @@
+package core
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/provasign/prism/internal/grove"
+)
+
+// A rename is applied as a text edit (both bench arms used sed in 63 of 64
+// wide-bed cells; Edit needs a native Read per file). sed consumes lines;
+// change_impact returned symbols grouped by declaration, family and caller,
+// so the agent re-derived the line list with grep before every edit (37
+// greps after 32 answers, 2026-10-18). editSites is that line list, already
+// restricted to the change set: one row per occurrence, in grep's shape.
+
+const editSitesMax = 150
+
+// editSitesFileMax bounds the compact form: past editSitesMax rows the list
+// is given per file as line:col positions. Dropping it (the first cut) left
+// gson's 137-declaration rename with no list at all; that agent fell back to
+// compile-and-fix and grep (2026-10-18 A/B, 3 of 3 such cells lost or tied).
+const editSitesFileMax = 2000
+
+type editSite struct {
+	file string
+	line int
+	col  int
+	text string
+}
+
+// editCollector gathers edit occurrences from source lines, one per
+// file:line:col.
+type editCollector struct {
+	root  string
+	files map[string][]string
+	seen  map[string]bool
+	out   []editSite
+}
+
+func newEditCollector(root string) *editCollector {
+	return &editCollector{root: root, files: map[string][]string{}, seen: map[string]bool{}}
+}
+
+func (c *editCollector) lines(path string) []string {
+	if l, ok := c.files[path]; ok {
+		return l
+	}
+	data, err := os.ReadFile(filepath.Join(c.root, path))
+	if err != nil || len(data) > 4<<20 {
+		c.files[path] = nil
+		return nil
+	}
+	l := strings.Split(string(data), "\n")
+	c.files[path] = l
+	return l
+}
+
+// add records the occurrence of name at path:line (col 0: find it on the line).
+func (c *editCollector) add(path string, line, col int, name string) {
+	src := c.lines(path)
+	if line <= 0 || line > len(src) {
+		return
+	}
+	text := src[line-1]
+	if col <= 0 {
+		col = wordIndex(text, name) + 1
+		if col <= 0 {
+			return
+		}
+	}
+	key := path + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(col)
+	if c.seen[key] {
+		return
+	}
+	c.seen[key] = true
+	c.out = append(c.out, editSite{path, line, col, strings.TrimRight(text, "\r")})
+}
+
+// addDecl records a declaration's name line.
+func (c *editCollector) addDecl(d grove.SymbolRecord) {
+	path := normalizePath(d.FilePath)
+	src := c.lines(path)
+	l := declNameLine(src, d.Span.Start, d.Name)
+	if l <= 0 {
+		return
+	}
+	c.add(path, l, 0, d.Name)
+	if !tsFamilyLanguage(d.Language) {
+		return
+	}
+	// TypeScript overload signatures are one symbol: `push(message: string):
+	// Promise<void>;` lines up to the implementation each carry the name.
+	re := tsOverloadLineRe(d.Name)
+	if !re.MatchString(src[l-1]) || !tsSignatureLineEnds(src[l-1]) {
+		return
+	}
+	for n := l + 1; n <= len(src) && n < l+60 && (d.Span.End <= 0 || n <= d.Span.End); n++ {
+		if !re.MatchString(src[n-1]) {
+			if strings.HasSuffix(strings.TrimSpace(src[n-1]), "{") {
+				return // a multi-line implementation's body opens
+			}
+			continue // a doc comment, or a multi-line signature's next line
+		}
+		c.add(path, n, 0, d.Name)
+		if !tsSignatureLineEnds(src[n-1]) {
+			return // the implementation
+		}
+	}
+}
+
+func tsFamilyLanguage(lang string) bool {
+	switch lang {
+	case "typescript", "tsx", "javascript":
+		return true
+	}
+	return false
+}
+
+// tsOverloadLineRe matches a line declaring name as a method or function
+// (modifiers, then name, then `(` or `<`).
+func tsOverloadLineRe(name string) *regexp.Regexp {
+	wordResMu.Lock()
+	defer wordResMu.Unlock()
+	key := "\x00ov" + name
+	if re, ok := wordRes[key]; ok {
+		return re
+	}
+	re := regexp.MustCompile(`^\s*(?:(?:export|declare|default|public|private|protected|static|async|abstract|override|function|get|set)\s+)*\*?\s*` +
+		regexp.QuoteMeta(name) + `\s*[<(]`)
+	wordRes[key] = re
+	return re
+}
+
+// tsSignatureLineEnds reports whether a declaration line is an overload
+// signature (ends in `;`) or one continuing onto the next line.
+func tsSignatureLineEnds(line string) bool {
+	t := strings.TrimSpace(line)
+	return strings.HasSuffix(t, ";") || strings.HasSuffix(t, "(") || strings.HasSuffix(t, ",")
+}
+
+// finish renders the rows: path:line:col: text up to editSitesMax, else one
+// row per file listing line:col positions. keys holds every file:line.
+func (c *editCollector) finish() (rows []string, keys map[string]bool) {
+	if len(c.out) == 0 || len(c.out) > editSitesFileMax {
+		return nil, nil
+	}
+	sort.Slice(c.out, func(i, j int) bool {
+		a, b := c.out[i], c.out[j]
+		if a.file != b.file {
+			return a.file < b.file
+		}
+		if a.line != b.line {
+			return a.line < b.line
+		}
+		return a.col < b.col
+	})
+	keys = make(map[string]bool, len(c.out))
+	for _, s := range c.out {
+		keys[s.file+":"+strconv.Itoa(s.line)] = true
+	}
+	if len(c.out) <= editSitesMax {
+		rows = make([]string, 0, len(c.out))
+		for _, s := range c.out {
+			text := strings.TrimSpace(s.text)
+			if len(text) > 160 {
+				text = cutUTF8(text, 160) + "…"
+			}
+			rows = append(rows, fmt.Sprintf("%s:%d:%d: %s", s.file, s.line, s.col, text))
+		}
+		return rows, keys
+	}
+	for i := 0; i < len(c.out); {
+		j := i
+		var pos []string
+		for ; j < len(c.out) && c.out[j].file == c.out[i].file; j++ {
+			pos = append(pos, fmt.Sprintf("%d:%d", c.out[j].line, c.out[j].col))
+		}
+		rows = append(rows, fmt.Sprintf("%s (%d): %s", c.out[i].file, j-i, strings.Join(pos, " ")))
+		i = j
+	}
+	return rows, keys
+}
+
+// count is the number of occurrences collected.
+func (c *editCollector) count() int { return len(c.out) }
+
+// impactEditSites lists every occurrence of the change set's name the
+// change touches: each declaration's and family member's name, and every
+// call position the compiler or resolver tied to the set. Positions the
+// answer marks as another receiver or a misfit are not edits and are left
+// out. Nil when there is nothing positional to list.
+func (h *Handler) impactEditSites(r *grove.ChangeImpactResult, callers, members map[string]callerPositions) *editCollector {
+	if r == nil || h.Root == "" {
+		return nil
+	}
+	c := newEditCollector(h.Root)
+	addPositions := func(path string, ps []string, name string) {
+		for _, p := range ps {
+			l, col := parsePosition(p)
+			c.add(path, l, col, name)
+		}
+	}
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		for _, d := range group {
+			c.addDecl(d)
+			if p, ok := members[overloadCallerKey(d.FilePath, d.Span.Start, displayQN(d))]; ok {
+				addPositions(normalizePath(d.FilePath), p.positions, d.Name)
+			}
+		}
+	}
+	callee := ""
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		if len(group) > 0 {
+			callee = group[0].Name
+			break
+		}
+	}
+	for _, cl := range r.Callers {
+		if p, ok := callers[overloadCallerKey(cl.FilePath, cl.Span.Start, displayQN(cl))]; ok {
+			addPositions(normalizePath(cl.FilePath), p.positions, callee)
+		}
+	}
+	// `export { _gte as gte } from "../core/index.js"` names it too.
+	for _, a := range r.ReExports {
+		c.add(normalizePath(a.FilePath), a.Line, 0, callee)
+	}
+	return c
+}
+
+// memberEditSites lists a data member's confirmed occurrences: its
+// declarations and every access line with receiver or scope evidence.
+// Ambiguous accesses are not edits; their file:line keys come back
+// separately so the line partition can name them.
+func (h *Handler) memberEditSites(r *grove.ChangeImpactResult, leaf string) (*editCollector, map[string]bool) {
+	if r == nil || h.Root == "" {
+		return nil, nil
+	}
+	c := newEditCollector(h.Root)
+	for _, d := range r.Declarations {
+		c.addDecl(d)
+	}
+	for _, a := range r.Accesses {
+		c.add(normalizePath(a.FilePath), a.Line, 0, leaf)
+	}
+	unsure := map[string]bool{}
+	for _, a := range r.AmbiguousAccesses {
+		unsure[fmt.Sprintf("%s:%d", normalizePath(a.FilePath), a.Line)] = true
+	}
+	return c, unsure
+}
+
+// attachEditSites puts editSites and the line partition on an answer.
+func (h *Handler) attachEditSites(ctx context.Context, out map[string]any, r *grove.ChangeImpactResult, c *editCollector, leaf string, unsure map[string]bool) {
+	if c == nil {
+		return
+	}
+	rows, keys := c.finish()
+	if len(rows) == 0 {
+		return
+	}
+	out["editSites"] = rows
+	out["editSiteCount"] = c.count()
+	// Dynamic-language answers are always partial (callers are inferred);
+	// the "some of these may be uses" label there sent agents to grep the
+	// listed lines (rich highlight, 2 of 2 runs, 2026-10-16), so it is kept
+	// for answers partial for another reason (zod _zod.parse, TypeScript).
+	completeness, _ := out["completeness"].(string)
+	partial := completeness == "partial" && out["coverageNote"] != dynamicCallerNote
+	other := h.impactOtherMentions(ctx, r, leaf, keys, unsure, partial)
+	if len(other) == 0 {
+		return
+	}
+	out["otherMentions"] = other
+	for _, line := range other {
+		if strings.HasPrefix(line, unsupportedMentionPrefix) {
+			// GAP-09: "I did not look" must not read as "not there".
+			out["safeToClaimComplete"] = false
+		}
+	}
+	if out["coverageNote"] == dynamicCallerNote && !strings.Contains(other[0], "not checked") {
+		// The partition is the text search this note asked for.
+		out["coverageNote"] = "dynamic-language callers are inferred from names and receiver types; the line count below editSites accounts for every line naming the symbol."
+	}
+}
+
+// editSiteRow splits a detailed row "path:line:col: text".
+var editSiteRow = regexp.MustCompile(`^(\S+?):(\d+:\d+:.*)$`)
+
+// writeEditSiteRows prints detailed rows, naming each path once when a file
+// has more than one row (2026-11-15: full paths repeated on every row were
+// 4.5% of the bytes of the release bench's impact answers). The file header
+// "  path (n):" and the 3-space row indent stay clear of the budget
+// compaction patterns (impactbudget.go), which drop 4-space lines and
+// absorb "  path:" headers. Unparsed rows print unchanged.
+func writeEditSiteRows(b *strings.Builder, rows []any) {
+	type group struct {
+		path string
+		rest []string
+	}
+	var groups []*group
+	byPath := map[string]*group{}
+	var raw []string
+	for _, r := range rows {
+		s := fmt.Sprint(r)
+		m := editSiteRow.FindStringSubmatch(s)
+		if m == nil {
+			raw = append(raw, s)
+			continue
+		}
+		g := byPath[m[1]]
+		if g == nil {
+			g = &group{path: m[1]}
+			byPath[m[1]] = g
+			groups = append(groups, g)
+		}
+		g.rest = append(g.rest, m[2])
+	}
+	if len(groups) == len(rows)-len(raw) {
+		fmt.Fprintf(b, "editSites (%d; every occurrence this change touches, as path:line:col: text):\n", len(rows))
+		for _, r := range rows {
+			fmt.Fprintf(b, "  %v\n", r)
+		}
+		return
+	}
+	fmt.Fprintf(b, "editSites (%d in %d files; every occurrence this change touches, by file as path (count): then line:col: text; one-row files as path:line:col: text):\n", len(rows), len(groups)+len(raw))
+	for _, g := range groups {
+		if len(g.rest) == 1 {
+			fmt.Fprintf(b, "  %s:%s\n", g.path, g.rest[0])
+			continue
+		}
+		fmt.Fprintf(b, "  %s (%d):\n", g.path, len(g.rest))
+		for _, r := range g.rest {
+			fmt.Fprintf(b, "   %s\n", r)
+		}
+	}
+	for _, s := range raw {
+		fmt.Fprintf(b, "  %s\n", s)
+	}
+}
+
+// impactEditSiteCount is the number formatEditSitesText prints in its
+// "editSites (N ..." line, or 0 when there are no edit rows.
+func impactEditSiteCount(out map[string]any) int {
+	rows := anySlice(out["editSites"])
+	if len(rows) == 0 {
+		return 0
+	}
+	if n, _ := out["editSiteCount"].(int); n > len(rows) {
+		return n
+	}
+	return len(rows)
+}
+
+// formatEditSitesText renders editSites and the line partition.
+func formatEditSitesText(out map[string]any) string {
+	var b strings.Builder
+	if rows := anySlice(out["editSites"]); len(rows) > 0 {
+		if n := impactEditSiteCount(out); n > len(rows) {
+			fmt.Fprintf(&b, "editSites (%d in %d files; every occurrence this change touches, by file as path (count): line:col ...):\n", n, len(rows))
+			for _, l := range rows {
+				fmt.Fprintf(&b, "  %v\n", l)
+			}
+		} else {
+			writeEditSiteRows(&b, rows)
+		}
+	}
+	for _, l := range anySlice(out["otherMentions"]) {
+		fmt.Fprintf(&b, "%v\n", l)
+	}
+	return b.String()
+}
+
+// editSiteTextKeys returns "path:line" of each editSites row printed with
+// its text (the full form; the per-file form carries no text).
+func editSiteTextKeys(out map[string]any) map[string]bool {
+	texts := editSiteRowTexts(out)
+	if texts == nil {
+		return nil
+	}
+	keys := make(map[string]bool, len(texts))
+	for k := range texts {
+		keys[k] = true
+	}
+	return keys
+}
+
+// editSiteRowTexts maps "path:line" to the source text of that editSites row,
+// or nil when editSites is absent or truncated.
+func editSiteRowTexts(out map[string]any) map[string]string {
+	rows := anySlice(out["editSites"])
+	if n, _ := out["editSiteCount"].(int); len(rows) == 0 || n > len(rows) {
+		return nil
+	}
+	texts := make(map[string]string, len(rows))
+	for _, r := range rows {
+		s, _ := r.(string)
+		path, rest, ok := strings.Cut(s, ":")
+		for ok && path != "" {
+			// path may hold ':' (Windows drive): advance until rest starts "<line>:<col>: ".
+			line, tail, ok2 := strings.Cut(rest, ":")
+			if _, err := strconv.Atoi(line); err == nil && ok2 {
+				if col, text, ok3 := strings.Cut(tail, ": "); ok3 {
+					if _, err := strconv.Atoi(col); err == nil {
+						texts[path+":"+line] = text
+						break
+					}
+				}
+			}
+			var more string
+			more, rest, ok = strings.Cut(rest, ":")
+			path += ":" + more
+		}
+	}
+	return texts
+}
+
+// headerShownInEdits reports whether the editSites row at a declaration's
+// line already shows its whole header. A multiline declaration's row holds
+// only the opening line ("def redirect("), so its signature must still be
+// printed: the parameters are what a signature change edits.
+func headerShownInEdits(rows map[string]string, decl map[string]any) bool {
+	text, ok := rows[fmt.Sprintf("%v:%v", decl["filePath"], decl["line"])]
+	if !ok {
+		return false
+	}
+	open := strings.Count(text, "(")
+	return open == strings.Count(text, ")") && (open > 0 || !strings.Contains(fmt.Sprint(decl["signature"]), "("))
+}
+
+// parsePosition reads "12:5" (line:col) or "12" (line only).
+func parsePosition(p string) (int, int) {
+	p = strings.TrimSpace(p)
+	l, c, _ := strings.Cut(p, ":")
+	line, _ := strconv.Atoi(strings.TrimRight(l, "t"))
+	col, _ := strconv.Atoi(c)
+	return line, col
+}
+
+// declNameLine finds the line holding a declaration's name at or just after
+// its span start (decorators and annotations come first).
+func declNameLine(src []string, start int, name string) int {
+	if name == "" {
+		return 0
+	}
+	for l := start; l > 0 && l <= len(src) && l < start+8; l++ {
+		t := strings.TrimSpace(src[l-1])
+		if strings.HasPrefix(t, "@") || strings.HasPrefix(t, "//") || strings.HasPrefix(t, "#") || strings.HasPrefix(t, "*") {
+			continue
+		}
+		if wordIndex(src[l-1], name) >= 0 {
+			return l
+		}
+	}
+	return 0
+}
+
+var (
+	wordResMu sync.Mutex
+	wordRes   = map[string]*regexp.Regexp{}
+)
+
+// wordIndex is the byte index of name as a whole identifier in s, or -1.
+func wordIndex(s, name string) int {
+	wordResMu.Lock()
+	re, ok := wordRes[name]
+	if !ok {
+		re = regexp.MustCompile(`(^|[^\pL\pN_$])` + regexp.QuoteMeta(name) + `($|[^\pL\pN_$])`)
+		wordRes[name] = re
+	}
+	wordResMu.Unlock()
+	m := re.FindStringSubmatchIndex(s)
+	if m == nil {
+		return -1
+	}
+	return m[3]
+}

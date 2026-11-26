@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/provasign/prism/internal/config"
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -227,7 +227,7 @@ repository, for the whole session, not only at the start:
   callers, implementations, tests -> prism query --terms Name,Other --format text
 Once you know the file and lines you need, read them directly with your Read tool
 (or prism read path --from N --to M --format text); no further search is needed for that.
-Before you change ` + mcp.ImpactRequiredFor + `, you MUST run
+Before you change ` + core.ImpactRequiredFor + `, you MUST run
 prism change-impact Type.method --format text first.
 Known symbol: run change-impact or lookup on it directly, not a search for its name.
 grep, head and tail stay fine for build, test and log output, never for source code.
@@ -240,7 +240,7 @@ where the symbol is, find it first, then run change-impact. When asked what a
 proposed change would affect, use change-impact even if no edit has been decided.
 
 Obligations:
-  - Relay change-impact sites as-is; ` + mcp.ImpactOptionalFor + ` can proceed from
+  - Relay change-impact sites as-is; ` + core.ImpactOptionalFor + ` can proceed from
     the source you have read.
   - Report gaps; never narrow scope to fit what was found.
   - verify is optional: prism verify --removed A,B after a removal, or plain
@@ -391,7 +391,7 @@ func fitShellOutput(op, text string) string {
 		return text
 	}
 	if op == "change-impact" {
-		return mcp.CompactImpactTextTo(text, claudeShellOutputBudget)
+		return core.CompactImpactTextTo(text, claudeShellOutputBudget)
 	}
 	note := "\n// prism: answer cut here to stay under Claude Code's 30 KB shell-output limit; %d more bytes not shown — narrow it (fewer terms, --path, or a line range)\n"
 	cut := claudeShellOutputBudget - len(note) - 10

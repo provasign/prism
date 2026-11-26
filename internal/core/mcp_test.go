@@ -1,0 +1,298 @@
+package core
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/session"
+)
+
+// newTestHandler builds a Handler with no Grove client — suitable for
+// testing tools that don't touch the network (feedback, savings, compact).
+func newTestHandler(t *testing.T) *Handler {
+	t.Helper()
+	cfg := config.Default()
+	ledger := session.NewLedger("test-session")
+	return NewHandlerWithLedger(cfg, t.TempDir(), nil, ledger)
+}
+
+// ─── Handler.Invoke dispatch ──────────────────────────────────────────────
+
+func TestInvokeUnknownToolReturnsError(t *testing.T) {
+	h := newTestHandler(t)
+	_, err := h.Invoke("prism_does_not_exist", nil)
+	if err == nil {
+		t.Fatal("expected error for unknown tool")
+	}
+	if !strings.Contains(err.Error(), "unknown tool") {
+		t.Errorf("error %q should mention 'unknown tool'", err.Error())
+	}
+}
+
+// ─── toolFeedback ─────────────────────────────────────────────────────────
+
+func TestToolFeedbackAcceptsValidRating(t *testing.T) {
+	h := newTestHandler(t)
+	for _, rating := range []int{0, 1, 3, 5} {
+		out, err := h.Invoke("prism_feedback", map[string]any{
+			"tool":   "prism_query",
+			"rating": rating,
+		})
+		if err != nil {
+			t.Fatalf("rating %d: unexpected error: %v", rating, err)
+		}
+		m, ok := out.(map[string]any)
+		if !ok {
+			t.Fatalf("rating %d: got %T want map", rating, out)
+		}
+		if m["totalRatings"] == nil {
+			t.Errorf("rating %d: totalRatings missing from response", rating)
+		}
+	}
+}
+
+func TestToolFeedbackRejectsOutOfRangeRating(t *testing.T) {
+	h := newTestHandler(t)
+	for _, bad := range []int{-1, 6, 100} {
+		_, err := h.Invoke("prism_feedback", map[string]any{
+			"tool":   "prism_query",
+			"rating": bad,
+		})
+		if err == nil {
+			t.Errorf("rating %d: expected error, got nil", bad)
+		}
+	}
+}
+
+func TestToolFeedbackAccumulatesEntries(t *testing.T) {
+	h := newTestHandler(t)
+	for i := 0; i < 3; i++ {
+		out, err := h.Invoke("prism_feedback", map[string]any{"tool": "prism_read", "rating": 4})
+		if err != nil {
+			t.Fatalf("call %d: %v", i, err)
+		}
+		m := out.(map[string]any)
+		got := int(m["totalRatings"].(int))
+		if got != i+1 {
+			t.Errorf("call %d: totalRatings = %d, want %d", i, got, i+1)
+		}
+	}
+}
+
+// ─── toolSavings ──────────────────────────────────────────────────────────
+
+func TestToolSavingsReflectsLedger(t *testing.T) {
+	h := newTestHandler(t)
+	h.Ledger.Record("prism_query", 1000, 250)
+	h.Ledger.Record("prism_read", 500, 500)
+
+	out, err := h.Invoke("prism_savings", nil)
+	if err != nil {
+		t.Fatalf("prism_savings: %v", err)
+	}
+	snap, ok := out.(session.Summary)
+	if !ok {
+		t.Fatalf("expected session.Summary, got %T", out)
+	}
+	if snap.TotalOriginal != 1500 {
+		t.Errorf("TotalOriginal: got %d want 1500", snap.TotalOriginal)
+	}
+	if snap.TotalDelivered != 750 {
+		t.Errorf("TotalDelivered: got %d want 750", snap.TotalDelivered)
+	}
+	wantSavings := 50.0
+	if snap.SavingsPercent != wantSavings {
+		t.Errorf("SavingsPercent: got %v want %v", snap.SavingsPercent, wantSavings)
+	}
+}
+
+// ─── toolCompact ──────────────────────────────────────────────────────────
+
+func TestToolCompactRequiresTurns(t *testing.T) {
+	h := newTestHandler(t)
+	_, err := h.Invoke("prism_compact", map[string]any{})
+	if err == nil {
+		t.Fatal("expected error when turns missing")
+	}
+}
+
+func TestToolCompactPreservesLastThreeTurnsFull(t *testing.T) {
+	h := newTestHandler(t)
+	turns := make([]map[string]any, 6)
+	for i := range turns {
+		turns[i] = map[string]any{"role": "user", "content": strings.Repeat("x", 200)}
+	}
+	out, err := h.Invoke("prism_compact", map[string]any{"turns": turns})
+	if err != nil {
+		t.Fatalf("compact: %v", err)
+	}
+	m := out.(map[string]any)
+	compressed := m["compressedTurns"].([]map[string]any)
+	// Last 3 turns must survive at full content length.
+	n := len(compressed)
+	if n < 3 {
+		t.Fatalf("got %d compressed turns, want at least 3", n)
+	}
+	for i, turn := range compressed[n-3:] {
+		if len(turn["content"].(string)) != 200 {
+			t.Errorf("last-3 turn %d was truncated (len=%d)", i, len(turn["content"].(string)))
+		}
+	}
+}
+
+func TestToolCompactRecordsLedger(t *testing.T) {
+	h := newTestHandler(t)
+	turns := []map[string]any{
+		{"role": "user", "content": strings.Repeat("a", 500)},
+	}
+	_, err := h.Invoke("prism_compact", map[string]any{"turns": turns})
+	if err != nil {
+		t.Fatalf("compact: %v", err)
+	}
+	snap := h.Ledger.Snapshot()
+	if snap.ByTool["prism_compact"].Calls != 1 {
+		t.Error("prism_compact not recorded in ledger")
+	}
+}
+
+// ─── safePathWithinRoot ───────────────────────────────────────────────────
+
+func TestSafePathWithinRoot(t *testing.T) {
+	root := t.TempDir()
+	absOutside := filepath.Join(t.TempDir(), "outside.go")
+	cases := []struct {
+		path    string
+		wantErr bool
+	}{
+		{"internal/foo.go", false},
+		{"./internal/../internal/foo.go", false}, // canonicalize, still in root
+		{"../outside.go", true},                  // escape attempt
+		{absOutside, true},                       // absolute outside root
+	}
+	for _, tc := range cases {
+		_, _, err := safePathWithinRoot(root, tc.path)
+		if (err != nil) != tc.wantErr {
+			t.Errorf("safePathWithinRoot(%q): err=%v, wantErr=%v", tc.path, err, tc.wantErr)
+		}
+	}
+}
+
+func TestSafePathWithinRoot_EquivalentSymlinkRoots(t *testing.T) {
+	realRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(realRoot, "x.go"), []byte("package x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	linkRoot := filepath.Join(t.TempDir(), "linked-root")
+	if err := os.Symlink(realRoot, linkRoot); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	inputPath := filepath.Join(realRoot, "x.go")
+	wantAbs, err := filepath.EvalSymlinks(inputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs, sessionPath, err := safePathWithinRoot(linkRoot, inputPath)
+	if err != nil {
+		t.Fatalf("equivalent symlink path rejected: %v", err)
+	}
+	if abs != wantAbs {
+		t.Fatalf("abs = %q, want %q", abs, wantAbs)
+	}
+	if sessionPath != "x.go" {
+		t.Fatalf("sessionPath = %q, want x.go", sessionPath)
+	}
+}
+
+// TestSafePathWithinRoot_RelativeSymlinkEscape guards the security-review
+// finding: a RELATIVE path (the shape prism_read/CLI callers actually pass,
+// e.g. "leak.go") that is itself a symlink whose target resolves outside
+// root previously skipped EvalSymlinks entirely — only the filepath.IsAbs
+// branch resolved symlinks, so the join-then-containment-check saw the
+// unresolved in-root path, passed, and os.ReadFile then followed the link
+// at read time, serving the external file's content under the in-repo
+// name (the same symlink-escape failure class reported against other
+// code-indexing tools — attacker-controlled repo content could leak
+// signatures/source from outside the indexed tree).
+func TestSafePathWithinRoot_RelativeSymlinkEscape(t *testing.T) {
+	outsideDir := t.TempDir()
+	secret := filepath.Join(outsideDir, "secret.go")
+	if err := os.WriteFile(secret, []byte("package secret\n\nfunc TopSecret() int { return 1 }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	link := filepath.Join(root, "leak.go")
+	if err := os.Symlink(secret, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, _, err := safePathWithinRoot(root, "leak.go"); err == nil {
+		t.Fatal("relative path to a symlink escaping root was accepted; expected rejection")
+	}
+}
+
+// ─── ToolSchemas ──────────────────────────────────────────────────────────
+
+func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
+	schemas := ToolSchemas()
+	if len(schemas) != 6 {
+		t.Fatalf("want 6 tool schemas, got %d", len(schemas))
+	}
+	names := make(map[string]bool)
+	for _, s := range schemas {
+		name, ok := s["name"].(string)
+		if !ok || name == "" {
+			t.Error("schema missing name field")
+		}
+		if s["description"] == nil {
+			t.Errorf("schema %q missing description", name)
+		}
+		if s["inputSchema"] == nil {
+			t.Errorf("schema %q missing inputSchema", name)
+		}
+		names[name] = true
+	}
+	for _, want := range []string{
+		"prism_query", "prism_read", "prism_search", "prism_lookup",
+		"prism_change_impact", "prism_verify",
+	} {
+		if !names[want] {
+			t.Errorf("ToolSchemas missing %q", want)
+		}
+	}
+	// Demoted from the agent surface (CLI-only): never re-advertise without
+	// a deliberate decision — every extra tool is a routing error candidate.
+	// The second group went in 2026-08-15 on measured call counts: zero calls
+	// across 190 paired A/B cells, ~9.4 KB of schema for nothing.
+	for _, gone := range []string{
+		"prism_resolve", "prism_edges", "prism_cycles", "prism_drift",
+		"prism_compact", "prism_savings", "prism_feedback", "prism_evidence",
+		"prism_references", "prism_missing_implementations", "prism_dead_code",
+		"prism_rename_plan", "prism_map", "prism_node", "prism_arch_check",
+		"prism_index",
+		// The unified prism(task) tool was REMOVED (2026-08-09): natural
+		// language was its sole retrieval key, which contradicts the
+		// deterministic-anchor contract every other surface honors.
+		"prism",
+	} {
+		if names[gone] {
+			t.Errorf("ToolSchemas advertises %q, which was removed from the agent surface", gone)
+		}
+	}
+}
+
+// TestDispatchableToolsAllDispatch pins DispatchableTools to Invoke: every
+// listed name must route somewhere (any error but "unknown tool" is fine —
+// most tools need Grove), and dispatchable-but-unlisted names cannot happen
+// silently because the HTTP server derives its routes from this list.
+func TestDispatchableToolsAllDispatch(t *testing.T) {
+	h := newTestHandler(t)
+	for _, name := range DispatchableTools() {
+		_, err := h.Invoke(name, map[string]any{})
+		if err != nil && strings.Contains(err.Error(), "unknown tool") {
+			t.Errorf("%s is listed as dispatchable but Invoke does not know it", name)
+		}
+	}
+}

@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/core"
 )
 
 // A current server must stay quiet; replacement behavior is covered below.
@@ -124,7 +126,7 @@ func TestHandoffHelperProcess(t *testing.T) {
 		return
 	}
 	startupBinarySnapshot = binarySnapshot{}
-	_ = NewServer(&Handler{}).Serve(os.Stdin, os.Stdout)
+	_ = NewServer(&core.Handler{}).Serve(os.Stdin, os.Stdout)
 	os.Exit(0)
 }
 

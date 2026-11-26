@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 )
 
 // noGraphSummary counts the code files in root whose language has no graph
@@ -17,7 +17,7 @@ import (
 func noGraphSummary(root string) string {
 	counts := map[string]int{}
 	add := func(rel string) {
-		if lang := mcp.NoGraphLanguage(filepath.Ext(rel)); lang != "" {
+		if lang := core.NoGraphLanguage(filepath.Ext(rel)); lang != "" {
 			counts[lang]++
 		}
 	}

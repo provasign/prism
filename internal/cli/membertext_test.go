@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 )
 
 // A field rename plan used to print "1 site(s)" above 22 edits and list the
@@ -36,7 +36,7 @@ func TestChangeImpactTextRendersMemberResult(t *testing.T) {
 		"declarations":[{"qualifiedName":"DefaultWriter","filePath":"mode.go","line":42,"signature":"var DefaultWriter io.Writer"}],
 		"accesses":[{"filePath":"mode.go","line":42,"access":"decl"},{"filePath":"debug.go","line":69,"access":"read","enclosing":"debugPrint"}],
 		"relaySites":["debug.go:69:debugPrint [read]","mode.go:42:DefaultWriter [decl]"]}`), &m)
-	out := mcp.RenderFallbackText("prism_change_impact", m)
+	out := core.RenderFallbackText("prism_change_impact", m)
 	for _, want := range []string{
 		"DefaultWriter — change-impact (variable): 2 confirmed site(s), 0 ambiguous",
 		"relaySites (2 confirmed; copy this inventory):", "debug.go:69:debugPrint [read]",

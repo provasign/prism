@@ -15,10 +15,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/graphui"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/httpguard"
-	"github.com/provasign/prism/internal/mcp"
 	"github.com/provasign/prism/internal/version"
 )
 
@@ -84,7 +84,7 @@ func cmdGraph(args []string) int {
 	}
 	// Change impact is the same answer `prism change-impact` gives: the
 	// MCP tool, run in process.
-	handler := mcp.NewHandler(cfg, root, client)
+	handler := core.NewHandler(cfg, root, client)
 	impact := func(_ context.Context, query, file string) (map[string]any, error) {
 		args := map[string]any{"query": query}
 		if file != "" {

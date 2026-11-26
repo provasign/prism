@@ -7,12 +7,14 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/provasign/prism/internal/core"
 )
 
 type rpcReply struct {
 	ID     any            `json:"id"`
 	Result map[string]any `json:"result"`
-	Error  *rpcError      `json:"error"`
+	Error  *core.RPCError `json:"error"`
 }
 
 func startServe(t *testing.T) (io.WriteCloser, chan rpcReply) {

@@ -6,26 +6,26 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/version"
 )
 
 // Server wraps a Prism MCP handler with HTTP routes.
 type Server struct {
-	h *mcp.Handler
+	h *core.Handler
 }
 
 // New constructs the HTTP server.
-func New(h *mcp.Handler) *Server { return &Server{h: h} }
+func New(h *core.Handler) *Server { return &Server{h: h} }
 
 // Handler returns the http.Handler with all routes registered.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
 
-	// Routes derive from mcp.DispatchableTools — the hand-maintained list
+	// Routes derive from core.DispatchableTools — the hand-maintained list
 	// drifted until six tools 404'd. One source of truth, one test pinning it.
-	for _, name := range mcp.DispatchableTools() {
+	for _, name := range core.DispatchableTools() {
 		n := name
 		mux.HandleFunc("POST /"+n, func(w http.ResponseWriter, r *http.Request) {
 			s.callTool(w, r, n)

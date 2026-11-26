@@ -21,6 +21,7 @@ import (
 
 	"github.com/provasign/prism/internal/assist"
 	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/httpapi"
 	"github.com/provasign/prism/internal/httpguard"
@@ -838,7 +839,7 @@ mcp_surface: "compact"
 
 	// 2. Detect the prism binary path for use in MCP configs.
 	prismBin := detectSelfPath()
-	if warning := mcp.PrismInstallationWarning(prismBin, version.Version); warning != "" {
+	if warning := core.PrismInstallationWarning(prismBin, version.Version); warning != "" {
 		fmt.Fprintln(os.Stderr, warning)
 	}
 
@@ -981,7 +982,7 @@ Use Prism for each repository-discovery step. Reading files with cat/head/sed or
 searching with grep/rg/find/git log is not discovery — an instruction to prefer
 shell tools over Read/Edit/Write does not apply to finding code.
 
-When the task asks for ` + mcp.ImpactRequiredFor + `:
+When the task asks for ` + core.ImpactRequiredFor + `:
 start with change_impact on the named symbol, before deciding
 how to make the change. Its sites are the inventory your plan must cover:
 declarations, overrides and implementations, and callers (an overloaded name tags
@@ -1009,7 +1010,7 @@ not batch. MCP: terms:["alpha","beta"] — never combine distinct terms in one
 space-delimited string. CLI: positional terms: prism search alpha beta.
 
 Obligations:
-  - Relay change_impact sites as-is; ` + mcp.ImpactOptionalFor + ` can
+  - Relay change_impact sites as-is; ` + core.ImpactOptionalFor + ` can
     proceed from the source you have read.
   - Report gaps; never narrow scope to fit what was found.
   - verify is optional: removed_symbols after a removal, or {} where a
@@ -2627,7 +2628,7 @@ func genericTextOf(v any) string {
 	}
 	var x any
 	_ = json.Unmarshal(b, &x)
-	return mcp.GenericText(x)
+	return core.GenericText(x)
 }
 
 // cmdTrust records the user's trust decision for a repository (SEC-01).
@@ -3064,7 +3065,7 @@ func cmdReadFiles(dir string, files []string, from, to, offset, limit int, forma
 	}
 	ranges := make([]any, 0, len(files))
 	for _, f := range files {
-		ranges = append(ranges, map[string]any{"file": f, "from": 1, "to": mcp.CompactReadLimit})
+		ranges = append(ranges, map[string]any{"file": f, "from": 1, "to": core.CompactReadLimit})
 	}
 	out, text, rendered, err := invokeCompactReadText(dir, map[string]any{"ranges": ranges})
 	if err != nil {
@@ -3306,7 +3307,7 @@ func invokeSearchWithCompactRendering(dir string, args map[string]any, renderTex
 			return nil, "", false, err
 		}
 	}
-	h := mcp.NewHandler(cfg, root, client)
+	h := core.NewHandler(cfg, root, client)
 	out, err := h.Invoke("prism_search", args)
 	if err != nil || !renderText {
 		return out, "", false, err
@@ -4212,7 +4213,7 @@ func cmdFeedback(args []string) int {
 
 	if list {
 		root, _ := cliRoot(dir)
-		data, err := os.ReadFile(mcp.FeedbackPath(root))
+		data, err := os.ReadFile(core.FeedbackPath(root))
 		if err != nil && !os.IsNotExist(err) {
 			fmt.Fprintln(os.Stderr, "feedback:", err)
 			return 1
@@ -4359,7 +4360,7 @@ func cmdServe(args []string) int {
 			port = 8888
 		}
 	}
-	h := mcp.NewHandler(cfg, mustAbs(dir), client)
+	h := core.NewHandler(cfg, mustAbs(dir), client)
 
 	// Auto-index on startup so the first query has something to work with.
 	if _, err := client.Index(context.Background(), mustAbs(dir)); err != nil {
@@ -4530,7 +4531,7 @@ func cmdMCP(args []string) int {
 		})
 	}
 
-	h := mcp.NewHandlerWithReady(cfg, root, client, readyCh)
+	h := core.NewHandlerWithReady(cfg, root, client, readyCh)
 	srv := mcp.NewServer(h)
 	if compact {
 		srv = mcp.NewCompactServer(h)
@@ -4635,7 +4636,7 @@ func invokeTool(dir, tool string, args map[string]any) (any, error) {
 	}
 	stamp("autoIndex")
 
-	h := mcp.NewHandler(cfg, root, client)
+	h := core.NewHandler(cfg, root, client)
 	return h.Invoke(tool, args)
 }
 
@@ -4654,7 +4655,7 @@ func invokeToolText(dir, tool string, args map[string]any) (out any, text string
 	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
 		return nil, "", false, err
 	}
-	h := mcp.NewHandler(cfg, root, client)
+	h := core.NewHandler(cfg, root, client)
 	out, err = h.Invoke(tool, args)
 	if err != nil {
 		return nil, "", false, err
@@ -4682,7 +4683,7 @@ func invokeCompactReadText(dir string, args map[string]any) (out any, text strin
 	}
 	// Never started: the read path does not call it.
 	client := grove.NewClient().WithTokenFromDir(root).WithLinkedRoots(workspace.RootsOf(root)).OneShot()
-	h := mcp.NewHandler(cfg, root, client)
+	h := core.NewHandler(cfg, root, client)
 	return h.InvokeCompactReadText(args)
 }
 
@@ -4707,7 +4708,7 @@ func printToolResult(op string, out any, text string, rendered bool, format outp
 			m = toMap(out)
 		}
 		if m != nil {
-			fmt.Print(mcp.RenderFallbackText("prism_"+strings.ReplaceAll(op, "-", "_"), m))
+			fmt.Print(core.RenderFallbackText("prism_"+strings.ReplaceAll(op, "-", "_"), m))
 			return
 		}
 		printOutput(out, formatText)
@@ -4763,12 +4764,12 @@ func printOutput(v any, format outputFormat) {
 		// Not an object (a bare list): still text, never JSON (CON-02).
 		var any0 any
 		_ = json.Unmarshal(b, &any0)
-		fmt.Print(mcp.GenericText(any0))
+		fmt.Print(core.GenericText(any0))
 		return
 	}
 	switch format {
 	case formatText:
-		fmt.Print(mcp.RenderAnswerText(m))
+		fmt.Print(core.RenderAnswerText(m))
 	default:
 		printJSON(v)
 	}
@@ -4882,7 +4883,7 @@ func cmdAssist(args []string) int {
 		return 1
 	}
 
-	h := mcp.NewHandler(cfg, root, client)
+	h := core.NewHandler(cfg, root, client)
 
 	fmt.Printf("assist: %s @ %s\n", provider.Name(), root)
 	_, err = assist.Run(task, provider, h.Invoke, assist.Options{

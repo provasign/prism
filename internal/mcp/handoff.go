@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/version"
 )
 
@@ -61,7 +62,7 @@ func (s *Server) startHandoff() (*exec.Cmd, io.WriteCloser, *bufio.Reader, error
 	params := s.initParams
 	if len(params) == 0 {
 		params, _ = json.Marshal(map[string]any{
-			"protocolVersion": defaultProtocolVersion,
+			"protocolVersion": core.DefaultProtocolVersion,
 			"capabilities":    map[string]any{},
 			"clientInfo":      map[string]string{"name": "prism-handoff", "version": version.Version},
 		})

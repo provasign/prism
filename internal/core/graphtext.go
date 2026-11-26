@@ -1,0 +1,844 @@
+package core
+
+// Plain-text rendering for prism_read and prism_change_impact MCP results.
+//
+// Measured over the real protocol (Kinto index, 2026-08-18):
+//   - prism_change_impact CacheBase.get: 5,830 B as JSON, 1,907 B as text —
+//     3.1x. Symbol records are the most repetitive JSON this server emits
+//     (name/qualifiedName/filePath/kind/signature keys per entry), and the
+//     graph tools return lists of them.
+//   - prism_read: +7–18% — the envelope fields plus JSON string escaping of
+//     the entire source body (every newline, quote and tab).
+// prism_read was 56% of all prism calls in the full38 bench; every byte of
+// its result sits in the session cache and is re-paid on each later turn.
+//
+// Same contract as renderSearchAsText: render only shapes this code fully
+// understands, fall back to JSON on ANY unrecognized field — a silent drop
+// is worse than a bigger payload.
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
+// readTextFields are the fields renderReadAsText renders; any other field makes it decline.
+var readTextFields = map[string]bool{
+	"file": true, "strategy": true, "originalTokens": true,
+	"deliveredTokens": true, "savingsPercent": true, "content": true,
+	"delivery": true, "startLine": true, "endLine": true,
+	"totalLines": true, "warning": true, "note": true, "formatNote": true, "found": true,
+}
+
+// renderReadAsText renders a prism_read result: a short header line, then
+// the content verbatim (it is already line-numbered / compressed upstream).
+func renderReadAsText(out map[string]any) (string, bool) {
+	if out["delivery"] == "ranges" {
+		for key := range out {
+			if key != "delivery" && key != "ranges" && key != "note" && key != "continuation" {
+				return "", false
+			}
+		}
+		ranges, ok := out["ranges"].([]map[string]any)
+		if !ok || len(ranges) == 0 {
+			return "", false
+		}
+		var b strings.Builder
+		for _, item := range ranges {
+			part, rendered := renderReadAsText(item)
+			if !rendered {
+				return "", false
+			}
+			b.WriteString(part)
+		}
+		if note, ok := out["note"].(string); ok && note != "" {
+			fmt.Fprintf(&b, "// %s\n", note)
+		}
+		if continuation, ok := out["continuation"]; ok {
+			encoded, err := json.Marshal(continuation)
+			if err != nil {
+				return "", false
+			}
+			fmt.Fprintf(&b, "// Continue with %s\n", encoded)
+		}
+		return b.String(), true
+	}
+	known := readTextFields
+	for k := range out {
+		if !known[k] {
+			return "", false
+		}
+	}
+	content, ok := out["content"].(string)
+	if !ok {
+		if _, warned := out["warning"].(string); !warned {
+			return "", false
+		}
+		content = ""
+	}
+	var b strings.Builder
+	if sl, haveRange := out["startLine"]; haveRange {
+		fmt.Fprintf(&b, "// %v lines %v-%v of %v\n", out["file"], sl, out["endLine"], out["totalLines"])
+	} else {
+		fmt.Fprintf(&b, "// %v", out["file"])
+		if s, _ := out["strategy"].(string); s != "" && s != "verbatim" {
+			fmt.Fprintf(&b, " [%s]", s)
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString(content)
+	if !strings.HasSuffix(content, "\n") {
+		b.WriteString("\n")
+	}
+	if w, _ := out["warning"].(string); w != "" {
+		fmt.Fprintf(&b, "// %s\n", w)
+	}
+	if n, _ := out["note"].(string); n != "" {
+		fmt.Fprintf(&b, "// %s\n", n)
+	}
+	if n, _ := out["formatNote"].(string); n != "" {
+		fmt.Fprintf(&b, "// %s\n", n)
+	}
+	return b.String(), true
+}
+
+// renderChangeImpactAsText preserves the flat layout unless grouping repeated
+// file paths saves bytes both in the text and in its JSON transport envelope.
+func renderChangeImpactAsText(out map[string]any) (string, bool) {
+	if text, ok := FormatMemberImpactText(out); ok {
+		return text, true
+	}
+	flat, ok := renderChangeImpactLayout(out, false)
+	if !ok {
+		return "", false
+	}
+	grouped, ok := renderChangeImpactLayout(out, true)
+	if ok && len(grouped) < len(flat) {
+		flatJSON, _ := json.Marshal(flat)
+		groupedJSON, _ := json.Marshal(grouped)
+		if len(groupedJSON) < len(flatJSON) {
+			return grouped, true
+		}
+	}
+	return flat, true
+}
+
+// changeImpactTextFields are the fields renderChangeImpactLayout renders; any other field makes it decline.
+var changeImpactTextFields = map[string]bool{
+	"query": true, "declarations": true, "supers": true, "family": true,
+	"callers": true, "totalSites": true, "declaringTypes": true,
+	"declaringTypesNote": true, "completeness": true,
+	"externalSupers": true, "overridesExternal": true, "warning": true,
+	"widerAnchor": true, "hasHeuristicRefs": true,
+	"evidenceNote": true, "coverageNote": true, "methodFamilyNote": true,
+	"staleWarning": true, "scopeNote": true, "ambiguityNote": true,
+	"familyCompleteness": true, "callerCoverage": true, "callerEvidence": true,
+	"completenessScope": true, "safeToClaimComplete": true,
+	"scopeBoundary": true, "relaySites": true, "relayNote": true,
+	"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true, "callPositionsNote": true,
+	"reExports": true, "related": true, "degradedAnalysis": true,
+	"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
+	"workspaceConsumers": true, "workspaceScope": true, "linkedSites": true,
+	"resolvedNote": true, "partialTypeCheck": true,
+}
+
+func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool) {
+	known := changeImpactTextFields
+	for k := range out {
+		if !known[k] {
+			return "", false
+		}
+	}
+	var b strings.Builder
+	// The header counts what editSites lists when it is present: the
+	// symbol count (declarations + callers) sat above a larger line count
+	// and the two read as a contradiction (BUG-19).
+	sites, symbols := fmt.Sprintf("%v site(s)", out["totalSites"]), ""
+	if n := impactEditSiteCount(out); n > 0 {
+		sites = fmt.Sprintf("%d edit site(s)", n)
+		if fmt.Sprint(n) != fmt.Sprint(out["totalSites"]) {
+			symbols = fmt.Sprintf(" (%v symbols)", out["totalSites"])
+		}
+	}
+	if linked := intArg(out, "linkedSites", 0); linked > 0 {
+		fmt.Fprintf(&b, "// %v — change-impact: %s in this repository + %d in linked repositories%s\n", out["query"], sites, linked, symbols)
+	} else {
+		fmt.Fprintf(&b, "// %v — change-impact: %s%s\n", out["query"], sites, symbols)
+	}
+	b.WriteString(FormatImpactHeaderNotesText(out))
+	// A degraded analysis (a partial type-check, a compiler pass that did
+	// not run) qualifies every site below, so it leads (BUG-03).
+	if note, _ := out["degradedAnalysis"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if note, _ := out["resolvedAmbiguity"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if c, _ := out["completeness"].(string); c != "" {
+		fmt.Fprintf(&b, "completeness: %s\n", c)
+	}
+	if scope, _ := out["completenessScope"].(string); scope != "" {
+		fmt.Fprintf(&b, "completenessScope: %s\n", scope)
+	}
+	if safe, ok := out["safeToClaimComplete"].(bool); ok {
+		fmt.Fprintf(&b, "safeToClaimComplete: %t\n", safe)
+	}
+	if boundary, _ := out["scopeBoundary"].(string); boundary != "" {
+		fmt.Fprintf(&b, "// %s\n", boundary)
+	}
+	// Other repositories come before this repository's own lists: they are
+	// the sites an agent working here cannot see any other way.
+	b.WriteString(FormatWorkspaceConsumersText(out))
+	// With editSites, the relay inventory, the generic evidence notes and
+	// the declarations' signatures repeat what the edit rows already show
+	// (bench29: ~20% of a change_impact answer). A signature is still
+	// printed when its edit row holds only part of a multiline header.
+	hasEdits := len(anySlice(out["editSites"])) > 0
+	if hasEdits {
+		if note, _ := out["relayNote"].(string); note != "" && note != impactRelayNote {
+			fmt.Fprintf(&b, "// %s\n", note)
+		}
+	} else {
+		b.WriteString(FormatImpactRelaySitesText(out))
+	}
+	b.WriteString(formatEditSitesText(out))
+	b.WriteString(FormatImpactExtrasText(out))
+	for _, key := range []string{"familyCompleteness", "callerCoverage"} {
+		if value, _ := out[key].(string); value != "" {
+			fmt.Fprintf(&b, "%s: %s\n", key, value)
+		}
+	}
+	if ev, _ := out["callerEvidence"].(string); ev != "" {
+		fmt.Fprintf(&b, "// %s\n", ev)
+	}
+	if note, _ := out["overloadNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if lines, ok := out["callSitesByOverload"].([]string); ok && len(lines) > 0 {
+		header := "callSitesByOverload (each call line under the overload the compiler resolved it to):\n"
+		if src, _ := out["callSitesSource"].(string); src != "" {
+			header = "callSitesByOverload (" + src + "):\n"
+		}
+		b.WriteString(header)
+		for _, l := range lines {
+			b.WriteString("  " + l + "\n")
+		}
+	}
+	if note, _ := out["callPositionsNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if note, _ := out["unresolvedCallsNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if note, _ := out["unindexedNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if note, _ := out["coverageNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if note, _ := out["methodFamilyNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if hr, _ := out["hasHeuristicRefs"].(bool); hr && !hasEdits {
+		b.WriteString("// " + heuristicRefsNote + "\n")
+	}
+	if note, _ := out["evidenceNote"].(string); note != "" && !(hasEdits && note == indexedEvidenceNote) {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if c, _ := out["completeness"].(string); c == "type-level" {
+		b.WriteString("// class-level query: direct structural dependents only (calls into its " +
+			"members, type references, extends/implements) — a consumer that only does an " +
+			"instanceof/duck-typing check against an UNRELATED type has no edge here and will " +
+			"not appear; if this class's runtime BEHAVIOR changed (not just its shape), also " +
+			"prism_search for instanceof checks against types it might resemble\n")
+	}
+	// Call lines editSites already prints with their text are not repeated
+	// as caller evidence (bench29: the same lines twice in every answer).
+	shownInEdits := editSiteTextKeys(out)
+	editRows := editSiteRowTexts(out)
+	repeated := 0
+	for _, sec := range []struct{ key, label string }{
+		{"declarations", "declarations"},
+		{"supers", "supers"},
+		{"family", "family"},
+		{"callers", "callers"},
+		{"declaringTypes", "declaringTypes"},
+	} {
+		entries := anySlice(out[sec.key])
+		if len(entries) == 0 {
+			continue
+		}
+		fmt.Fprintf(&b, "%s (%d):\n", sec.label, len(entries))
+		lastFile := ""
+		for _, e := range entries {
+			m, ok := e.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			for key := range m {
+				switch key {
+				case "name", "qualifiedName", "filePath", "line", "kind", "signature", "via", "isTest", "evidence", "evidenceNote", "overloads", "calls":
+				default:
+					return "", false
+				}
+			}
+			name := m["qualifiedName"]
+			if name == nil || name == "" {
+				name = m["name"]
+			}
+			evidenceIndent := "    "
+			if groupPaths {
+				file, ok := m["filePath"].(string)
+				if !ok || file == "" || strings.ContainsAny(file, "\r\n") {
+					return "", false
+				}
+				if file != lastFile {
+					fmt.Fprintf(&b, "  %s:\n", file)
+					lastFile = file
+				}
+				fmt.Fprintf(&b, "    %v  line %v", name, m["line"])
+				evidenceIndent = "      "
+			} else {
+				fmt.Fprintf(&b, "  %v  %v:%v", name, m["filePath"], m["line"])
+			}
+			if via, _ := m["via"].(string); via != "" {
+				fmt.Fprintf(&b, "  (via %s)", via)
+			}
+			if test, _ := m["isTest"].(bool); test {
+				b.WriteString("  [test]")
+			}
+			if ov, _ := m["overloads"].(string); ov != "" {
+				fmt.Fprintf(&b, "  [calls %s]", ov)
+			}
+			if at, _ := m["calls"].(string); at != "" {
+				fmt.Fprintf(&b, "  [%s]", at)
+			}
+			b.WriteString("\n")
+			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" && !(hasEdits && (sec.key == "declarations" || sec.key == "family") && headerShownInEdits(editRows, m)) {
+				fmt.Fprintf(&b, "%s%s\n", evidenceIndent, compactImpactLine(sig))
+			}
+			for _, raw := range anySlice(m["evidence"]) {
+				evidence, ok := raw.(map[string]any)
+				if !ok || len(evidence) != 2 || evidence["line"] == nil || evidence["text"] == nil {
+					return "", false
+				}
+				if sec.key == "callers" && shownInEdits[fmt.Sprintf("%v:%v", m["filePath"], evidence["line"])] {
+					repeated++
+					continue
+				}
+				fmt.Fprintf(&b, "%s%v: %v\n", evidenceIndent, evidence["line"], evidence["text"])
+			}
+			if note, _ := m["evidenceNote"].(string); note != "" {
+				fmt.Fprintf(&b, "%s// %s\n", evidenceIndent, note)
+			}
+		}
+	}
+	if repeated > 0 {
+		fmt.Fprintf(&b, "// %d caller call line(s) are in editSites above and not repeated here.\n", repeated)
+	}
+	if n, _ := out["declaringTypesNote"].(string); n != "" {
+		fmt.Fprintf(&b, "// %s\n", n)
+	}
+	if es := anySlice(out["externalSupers"]); len(es) > 0 {
+		fmt.Fprintf(&b, "externalSupers: %v\n", es)
+	}
+	if oe := anySlice(out["overridesExternal"]); len(oe) > 0 {
+		fmt.Fprintf(&b, "overridesExternal: %v\n", oe)
+	}
+	if w, _ := out["warning"].(string); w != "" {
+		fmt.Fprintf(&b, "// %s\n", w)
+	}
+	for _, key := range []string{"staleWarning", "scopeNote", "ambiguityNote"} {
+		if note, _ := out[key].(string); note != "" {
+			fmt.Fprintf(&b, "// %s\n", note)
+		}
+	}
+	if wa, ok := out["widerAnchor"].(map[string]any); ok {
+		fmt.Fprintf(&b, "// wider anchor: %v (%v sites, %v) — %v\n",
+			wa["qualifiedName"], wa["totalSites"], wa["completeness"], wa["note"])
+	}
+	return b.String(), true
+}
+
+// FormatWorkspaceConsumersText renders the linked-repository section of a
+// change-impact answer: the call sites found there, then what was searched.
+func FormatWorkspaceConsumersText(out map[string]any) string {
+	var b strings.Builder
+	if lines := anySlice(out["workspaceConsumers"]); len(lines) > 0 {
+		b.WriteString("consumers in other repositories:\n")
+		for _, l := range lines {
+			fmt.Fprintf(&b, "%v\n", l)
+		}
+	}
+	if scope, _ := out["workspaceScope"].(string); scope != "" {
+		fmt.Fprintf(&b, "workspaceScope: %s\n", scope)
+	}
+	return b.String()
+}
+
+// FormatImpactRelaySitesText renders the canonical bounded site inventory for
+// both MCP and CLI text delivery. Keeping this in one place prevents either
+// surface from silently losing the copy instruction or changing its shape.
+func FormatImpactRelaySitesText(out map[string]any) string {
+	relay := anySlice(out["relaySites"])
+	if len(relay) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "relaySites (%d; copy this inventory):\n", len(relay))
+	for _, site := range relay {
+		fmt.Fprintf(&b, "  %v\n", site)
+	}
+	if note, _ := out["relayNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	return b.String()
+}
+
+// RenderLookupText shares MCP's lookup rendering, including batches, with the
+// CLI. Unknown shapes return false so callers can retain the complete JSON.
+func RenderLookupText(out any) (string, bool) {
+	m, ok := out.(map[string]any)
+	if !ok {
+		return "", false
+	}
+	return renderLookupAsText(m)
+}
+
+// lookupTextFields are the fields renderLookupAsText renders; any other field makes it decline.
+var lookupTextFields = map[string]bool{
+	"symbol": true, "content": true, "ambiguous": true, "candidates": true,
+	"matched": true, "name": true, "note": true, "overloads": true, "matchKind": true, "declarations": true,
+	// projectSymbol fields= shapes
+	"file": true, "line": true, "signature": true, "sig": true,
+	"doc": true, "docstring": true, "body": true, "source": true,
+	"kind": true, "parent": true, "modifiers": true,
+	"testOnly": true, "alsoNamed": true,
+}
+
+// renderLookupAsText renders a prism_lookup result. The JSON form shipped
+// the symbol body TWICE (symbol.rawText and content, both string-escaped)
+// plus index internals (id, blobSha, callSites) no agent uses: measured
+// 1,072 B for 221 B of content. Text form: one header line, the body once.
+func renderLookupAsText(out map[string]any) (string, bool) {
+	if _, batch := out["results"]; batch {
+		return renderLookupBatchAsText(out)
+	}
+	known := lookupTextFields
+	for k := range out {
+		if !known[k] {
+			return "", false
+		}
+	}
+	var b strings.Builder
+	// Flags come BEFORE any body: an agent reads top-down, and a NO EXACT
+	// MATCH printed after a full unrelated body arrived too late (the body
+	// had already been taken as the answer).
+	note, _ := out["note"].(string)
+	noteShown := false
+	if m, ok := out["matched"].(bool); ok && !m {
+		switch {
+		case strings.HasPrefix(note, "NO EXACT MATCH"):
+			fmt.Fprintf(&b, "// %s\n", note)
+		case note != "":
+			fmt.Fprintf(&b, "// NO EXACT MATCH — %s\n", note)
+		default:
+			b.WriteString("// NO EXACT MATCH\n")
+		}
+		noteShown = true
+		if cands := anySlice(out["candidates"]); len(cands) > 0 {
+			b.WriteString("// candidates:\n")
+			for _, c := range cands {
+				fmt.Fprintf(&b, "//   %v\n", c)
+			}
+		}
+		if content, _ := out["content"].(string); content != "" {
+			b.WriteString("// closest symbol shown below; it does NOT exactly match the requested name\n")
+		}
+	} else if amb, _ := out["ambiguous"].(bool); amb {
+		b.WriteString("// AMBIGUOUS — several symbols fit equally; the first is shown, all are listed at the end\n")
+		if note != "" {
+			fmt.Fprintf(&b, "// %s\n", note)
+			noteShown = true
+		}
+	} else if note != "" {
+		// inherited / case-insensitive resolutions say so up front.
+		fmt.Fprintf(&b, "// %s\n", note)
+		noteShown = true
+	}
+	if also := anySlice(out["alsoNamed"]); len(also) > 0 {
+		parts := make([]string, 0, len(also))
+		for _, a := range also {
+			parts = append(parts, fmt.Sprint(a))
+		}
+		fmt.Fprintf(&b, "// also named this (not shown): %s\n", strings.Join(parts, "; "))
+	}
+	if lines := anySlice(out["testOnly"]); len(lines) > 0 {
+		b.WriteString("// TEST-ONLY API (callers are all tests):\n")
+		for _, l := range lines {
+			fmt.Fprintf(&b, "//   %v\n", l)
+		}
+	}
+	contentStart, contentEnd := 0, 0
+	if sym, ok := out["symbol"].(map[string]any); ok {
+		name := sym["qualifiedName"]
+		if name == nil || name == "" {
+			name = sym["name"]
+		}
+		span, _ := sym["span"].(map[string]any)
+		contentStart, contentEnd = intArg(span, "start", 0), intArg(span, "end", 0)
+		fmt.Fprintf(&b, "// %v %v  %v", sym["kind"], name, sym["filePath"])
+		if span != nil {
+			fmt.Fprintf(&b, ":%v-%v", span["start"], span["end"])
+		}
+		b.WriteString("\n")
+	} else if s, isRecord := out["symbol"].(interface{ GetID() string }); isRecord {
+		_ = s // never happens today; guard for future concrete types
+		return "", false
+	} else if _, present := out["symbol"]; present && out["symbol"] != nil {
+		// A concrete grove.SymbolRecord (not yet a map): render via its JSON
+		// form to avoid mispresenting fields we cannot see here.
+		m := symbolToMap(out["symbol"])
+		if m == nil {
+			return "", false
+		}
+		name := m["qualifiedName"]
+		if name == nil || name == "" {
+			name = m["name"]
+		}
+		span, _ := m["span"].(map[string]any)
+		contentStart, contentEnd = intArg(span, "start", 0), intArg(span, "end", 0)
+		fmt.Fprintf(&b, "// %v %v  %v", m["kind"], name, m["filePath"])
+		if span != nil {
+			fmt.Fprintf(&b, ":%v-%v", span["start"], span["end"])
+		}
+		b.WriteString("\n")
+	}
+	if c, ok := out["content"].(string); ok && c != "" {
+		lines := strings.SplitAfter(c, "\n")
+		if lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		if contentStart > 0 && contentEnd >= contentStart+len(lines)-1 {
+			for i, line := range lines {
+				fmt.Fprintf(&b, "%d"+SourceLineSep+"%s", contentStart+i, line)
+			}
+		} else {
+			// Do not invent source locations when index metadata is missing or
+			// inconsistent with the delivered body.
+			b.WriteString(c)
+		}
+		if !strings.HasSuffix(c, "\n") {
+			b.WriteString("\n")
+		}
+	}
+	// Projection shape: no symbol/content, just the requested columns.
+	if _, hasSym := out["symbol"]; !hasSym {
+		for _, k := range []string{"name", "kind", "file", "line", "signature", "sig",
+			"doc", "docstring", "parent", "modifiers", "body", "source"} {
+			if v, ok := out[k]; ok && v != nil && v != "" {
+				fmt.Fprintf(&b, "%s: %v\n", k, v)
+			}
+		}
+	}
+	writeLookupOverloads(&b, anySlice(out["overloads"]))
+	for _, d := range anySlice(out["declarations"]) {
+		fmt.Fprintf(&b, "// declared: %v\n", d)
+	}
+	if m, ok := out["matched"].(bool); !ok || m {
+		if amb, _ := out["ambiguous"].(bool); amb {
+			b.WriteString("// AMBIGUOUS — same score for:\n")
+		}
+		for _, c := range anySlice(out["candidates"]) {
+			fmt.Fprintf(&b, "//   %v\n", c)
+		}
+	}
+	if note != "" && !noteShown {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	return b.String(), true
+}
+
+// writeLookupOverloads renders the other overloads lookup delivered with the
+// primary symbol: each with its span and line-numbered body, or its signature
+// when the body budget was spent.
+func writeLookupOverloads(b *strings.Builder, overloads []any) {
+	if len(overloads) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "// %d more overload(s) with the same name in this file:\n", len(overloads))
+	for _, raw := range overloads {
+		o, _ := raw.(map[string]any)
+		if o == nil {
+			continue
+		}
+		start, end := intArg(o, "line", 0), intArg(o, "end", 0)
+		fmt.Fprintf(b, "// overload %v  %v:%d-%d\n", o["name"], o["file"], start, end)
+		body, _ := o["content"].(string)
+		if body == "" {
+			body, _ = o["body"].(string)
+		}
+		if body == "" {
+			if sig, _ := o["signature"].(string); sig != "" {
+				fmt.Fprintf(b, "// signature: %s\n", sig)
+			}
+			if omitted, _ := o["bodyOmitted"].(bool); omitted {
+				fmt.Fprintf(b, "// body not delivered (lookup body budget); read %v lines %d-%d\n", o["file"], start, end)
+			}
+			continue
+		}
+		lines := strings.SplitAfter(body, "\n")
+		if lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		if start > 0 && end >= start+len(lines)-1 {
+			for i, line := range lines {
+				fmt.Fprintf(b, "%d"+SourceLineSep+"%s", start+i, line)
+			}
+		} else {
+			b.WriteString(body)
+		}
+		if !strings.HasSuffix(body, "\n") {
+			b.WriteString("\n")
+		}
+	}
+}
+
+// symbolToMap round-trips a concrete symbol value through its JSON encoding
+// into a generic map, so one rendering path serves both shapes.
+func symbolToMap(v any) map[string]any {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if json.Unmarshal(b, &m) != nil {
+		return nil
+	}
+	return m
+}
+
+// renderVerifyAsText mirrors the CLI's long-standing verify text output
+// (internal/cli/viewcmds.go renderVerifyText) on the MCP surface.
+func renderVerifyAsText(out map[string]any) (string, bool) {
+	if out["mode"] == "removed_symbols" {
+		return renderRemovedSymbolsAsText(out)
+	}
+	known := map[string]bool{
+		"verdict": true, "gateFailure": true, "base": true, "note": true, "changedFiles": true,
+		"signatureChanges": true, "missedSites": true, "unverifiedSeeds": true,
+		"contentAdvisories": true,
+		"newDependencies":   true, "archStatus": true, "archIntroduced": true,
+		"notes": true, "testCoverage": true,
+		"workspaceConsumers": true, "workspaceScope": true, "linkedVerdict": true,
+	}
+	for k := range out {
+		if !known[k] {
+			return "", false
+		}
+	}
+	verdict, _ := out["verdict"].(string)
+	var b strings.Builder
+	if verdict == "clean" {
+		fmt.Fprintf(&b, "verify: clean — %v\n", out["note"])
+		return b.String(), true
+	}
+	changed := anySlice(out["changedFiles"])
+	if lv, _ := out["linkedVerdict"].(string); lv != "" {
+		// The first line is what an agent or a CI log keeps: it must not
+		// say "complete" alone while another repository is unchecked.
+		fmt.Fprintf(&b, "verify: %s for this repository; %s — %d changed files vs %v\n", verdict, lv, len(changed), out["base"])
+	} else {
+		fmt.Fprintf(&b, "verify: %s — %d changed files vs %v\n", verdict, len(changed), out["base"])
+	}
+	if sigs := anySlice(out["signatureChanges"]); len(sigs) > 0 {
+		b.WriteString("\ncontract changes detected:\n")
+		for _, s := range sigs {
+			sm, ok := s.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			fmt.Fprintf(&b, "  %v:%v  %v\n", sm["file"], sm["line"], sm["reason"])
+		}
+	}
+	if missed := anySlice(out["missedSites"]); len(missed) > 0 {
+		fmt.Fprintf(&b, "\nMISSED SITES (%d) — required by the change, not touched by the diff:\n", len(missed))
+		for _, ms := range missed {
+			mm, ok := ms.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			fmt.Fprintf(&b, "  %v:%v  %v — %v\n", mm["file"], mm["line"], mm["qualifiedName"], mm["detail"])
+		}
+	}
+	if unv := anySlice(out["unverifiedSeeds"]); len(unv) > 0 {
+		fmt.Fprintf(&b, "\nUNVERIFIED contract changes (%d) — fail-closed, review these:\n", len(unv))
+		for _, u := range unv {
+			fmt.Fprintf(&b, "  %v\n", u)
+		}
+	}
+	if advisories := anySlice(out["contentAdvisories"]); len(advisories) > 0 {
+		fmt.Fprintf(&b, "\nCONTENT ADVISORIES (%d) — behavior not verified:\n", len(advisories))
+		for _, advisory := range advisories {
+			fmt.Fprintf(&b, "  %v\n", advisory)
+		}
+	}
+	if deps := anySlice(out["newDependencies"]); len(deps) > 0 {
+		b.WriteString("\ncross-component dependency candidates:\n")
+		for _, d := range deps {
+			dm, ok := d.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			fmt.Fprintf(&b, "  %v -> %v  %v crossing(s)  [tier: %v]\n",
+				dm["from"], dm["to"], dm["weight"], dm["minTier"])
+		}
+	}
+	if as, _ := out["archStatus"].(string); as == "fail" || as == "review" {
+		fmt.Fprintf(&b, "\narch rules touched by this diff: %s\n", as)
+		for _, v := range anySlice(out["archIntroduced"]) {
+			fmt.Fprintf(&b, "  %v\n", v)
+		}
+	}
+	for _, n := range anySlice(out["notes"]) {
+		fmt.Fprintf(&b, "note: %v\n", n)
+	}
+	if tc := anySlice(out["testCoverage"]); len(tc) > 0 {
+		b.WriteString("\ntest coverage of changed functions (informational, does not affect verdict):\n")
+		for _, e := range tc {
+			em, ok := e.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			if covered := anySlice(em["coveredBy"]); len(covered) > 0 {
+				fmt.Fprintf(&b, "  %v:%v  %v — covered by %d test(s): %v\n",
+					em["file"], em["line"], em["symbol"], len(covered), covered)
+			} else {
+				fmt.Fprintf(&b, "  %v:%v  %v — %v\n", em["file"], em["line"], em["symbol"], em["warning"])
+			}
+		}
+	}
+	if linked := FormatWorkspaceConsumersText(out); linked != "" {
+		b.WriteString("\n" + linked)
+	}
+	switch verdict {
+	case "complete":
+		switch {
+		case len(anySlice(out["contentAdvisories"])) > 0:
+			b.WriteString("\nno missed contract sites identified; content behavior above was not assessed\n")
+		case len(anySlice(out["workspaceConsumers"])) > 0:
+			b.WriteString("\nno missed sites in this repository; the linked-repository sites above were not checked\n")
+		default:
+			b.WriteString("\nno missed sites — the diff covers its own blast radius\n")
+		}
+	case "review":
+		b.WriteString("\nverdict: review — some contract changes could not be verified\n")
+		if failed, _ := out["gateFailure"].(bool); failed {
+			b.WriteString("gate: failed (--strict treats review as a failure)\n")
+		}
+	}
+	return b.String(), true
+}
+
+func renderRemovedSymbolsAsText(out map[string]any) (string, bool) {
+	// The scorer returns concrete residual structs. Normalize them before
+	// checking their shape, then decline unknown fields rather than omit them.
+	m := symbolToMap(out)
+	if m == nil {
+		return "", false
+	}
+	known := map[string]bool{"mode": true, "verdict": true, "gateFailure": true,
+		"clean": true, "checked": true, "residuals": true, "note": true, "linked": true}
+	for k := range m {
+		if !known[k] {
+			return "", false
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "verify --removed: %v (%v/%v clean)\n", m["verdict"], m["clean"], m["checked"])
+	if linked := anySlice(m["linked"]); len(linked) > 0 {
+		b.WriteString("  linked repositories (whole-identifier text lines, not resolved):\n")
+		for _, l := range linked {
+			fmt.Fprintf(&b, "    %v\n", l)
+		}
+	}
+	for _, item := range anySlice(m["residuals"]) {
+		r, ok := item.(map[string]any)
+		if !ok {
+			return "", false
+		}
+		for k := range r {
+			if k != "symbol" && k != "count" && k != "sites" && k != "matchedAs" {
+				return "", false
+			}
+		}
+		if r["count"] == float64(0) {
+			fmt.Fprintf(&b, "  %v: clean\n", r["symbol"])
+			continue
+		}
+		if as, _ := r["matchedAs"].(string); as != "" {
+			fmt.Fprintf(&b, "  %v: %v mention(s) of %s (matched by its final identifier; some may name another %s)\n", r["symbol"], r["count"], as, as)
+		} else {
+			fmt.Fprintf(&b, "  %v: %v mention(s)\n", r["symbol"], r["count"])
+		}
+		for _, item := range anySlice(r["sites"]) {
+			s, ok := item.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			for k := range s {
+				if k != "file" && k != "line" && k != "text" && k != "note" {
+					return "", false
+				}
+			}
+			if note, _ := s["note"].(string); note != "" {
+				fmt.Fprintf(&b, "    %s\n", note)
+			} else {
+				fmt.Fprintf(&b, "    %v:%v: %v\n", s["file"], s["line"], s["text"])
+			}
+		}
+	}
+	if note, _ := m["note"].(string); note != "" {
+		fmt.Fprintf(&b, "note: %s\n", note)
+	}
+	return b.String(), true
+}
+
+// querySourceTextFields are the fields renderQuerySourceAsText renders; any other field makes it decline.
+var querySourceTextFields = map[string]bool{
+	"content": true, "deliveredTokens": true, "delivery": true,
+	"files": true, "symbolCount": true, "textMatches": true,
+	"textBackend": true,
+}
+
+// renderQuerySourceAsText renders prism_query's source delivery: the content
+// is already formatted line-numbered markdown; the JSON envelope added ~17%
+// (1,589 B on a 9,212 B result, measured) purely in string escaping and
+// bookkeeping fields.
+func renderQuerySourceAsText(out map[string]any) (string, bool) {
+	known := querySourceTextFields
+	for k := range out {
+		if !known[k] {
+			return "", false
+		}
+	}
+	content, ok := out["content"].(string)
+	if !ok {
+		return "", false
+	}
+	var b strings.Builder
+	b.WriteString(content)
+	if !strings.HasSuffix(content, "\n") {
+		b.WriteString("\n")
+	}
+	if tm := anySlice(out["textMatches"]); len(tm) > 0 {
+		b.WriteString("\nmatched source lines:\n")
+		if !renderOneSearchText(&b, map[string]any{"textHits": out["textMatches"]}, nil) {
+			return "", false
+		}
+	}
+	return b.String(), true
+}
+
+const heuristicRefsNote = "includes name-derived references: completeness describes indexed scope, not receiver certainty. " +
+	"Verify ambiguous expressions; per-edge provenance is unavailable here."

@@ -9,14 +9,14 @@ import (
 	"testing"
 
 	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/grove"
-	"github.com/provasign/prism/internal/mcp"
 )
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	gc := grove.NewClient()
-	h := mcp.NewHandler(&config.Config{}, t.TempDir(), gc)
+	h := core.NewHandler(&config.Config{}, t.TempDir(), gc)
 	return httptest.NewServer(New(h).Handler())
 }
 

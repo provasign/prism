@@ -1,0 +1,249 @@
+package core
+
+import (
+	"encoding/json"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/grove"
+)
+
+func newH(t *testing.T) *Handler {
+	t.Helper()
+	root := t.TempDir()
+	gc := grove.NewClient().WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	return NewHandler(&config.Config{MaxCacheFiles: 100}, root, gc)
+}
+
+func TestNewHandler(t *testing.T) {
+	h := newH(t)
+	if h.Cfg == nil || h.Session == nil || h.Ledger == nil {
+		t.Error("nil field")
+	}
+}
+
+func TestInvoke_UnknownTool(t *testing.T) {
+	h := newH(t)
+	if _, err := h.Invoke("nope", nil); err == nil {
+		t.Error("expected err")
+	}
+}
+
+func TestInvoke_Savings(t *testing.T) {
+	h := newH(t)
+	out, err := h.Invoke("prism_savings", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out == nil {
+		t.Error("nil out")
+	}
+}
+
+func TestInvoke_DirMismatchRejected(t *testing.T) {
+	h := newH(t)
+	other := t.TempDir()
+	_, err := h.Invoke("prism_query", map[string]any{"terms": []string{"x"}, "dir": other})
+	if err == nil {
+		t.Fatal("expected error for dir outside server root")
+	}
+	if !strings.Contains(err.Error(), h.Root) || !strings.Contains(err.Error(), other) {
+		t.Errorf("error must name both roots, got: %v", err)
+	}
+}
+
+func TestInvoke_DirMatchingRootAccepted(t *testing.T) {
+	h := newH(t)
+	if _, err := h.Invoke("prism_query", map[string]any{"terms": []string{"x"}, "dir": h.Root}); err != nil {
+		t.Errorf("dir equal to server root must pass, got: %v", err)
+	}
+	// prism_index keeps its own dir semantics and is exempt from the guard.
+	if _, err := h.Invoke("prism_index", map[string]any{"dir": h.Root}); err != nil {
+		t.Errorf("prism_index with dir must pass, got: %v", err)
+	}
+}
+
+func TestSameRoot(t *testing.T) {
+	dir := t.TempDir()
+	if !sameRoot(dir, dir+string(filepath.Separator)) {
+		t.Error("trailing separator must not break equality")
+	}
+	if sameRoot(dir, t.TempDir()) {
+		t.Error("distinct dirs must not compare equal")
+	}
+}
+
+func TestQueryEmptyResultCarriesNote(t *testing.T) {
+	h := newH(t)
+	out, err := h.Invoke("prism_query", map[string]any{
+		"terms": []any{"noSuchSymbolAnywhere"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, ok := out.(queryResult)
+	if !ok {
+		t.Fatalf("want queryResult, got %T", out)
+	}
+	if len(res.Symbols) != 0 {
+		t.Fatalf("expected no symbols, got %d", len(res.Symbols))
+	}
+	if res.Note == "" {
+		t.Error("empty result must carry a diagnostic note")
+	}
+	if !strings.Contains(res.Note, "noSuchSymbolAnywhere") || !strings.Contains(res.Note, h.Root) {
+		t.Errorf("note must name the terms and the root, got: %q", res.Note)
+	}
+}
+
+func TestDirRemovedFromNonIndexSchemas(t *testing.T) {
+	for _, name := range []string{"prism_query", "prism_read", "prism_search", "prism_lookup"} {
+		props := toolSchema(name)["properties"].(map[string]any)
+		if _, has := props["dir"]; has {
+			t.Errorf("%s schema must not advertise dir; only prism_index honors it", name)
+		}
+	}
+	props := toolSchema("prism_index")["properties"].(map[string]any)
+	if _, has := props["dir"]; !has {
+		t.Error("prism_index schema must keep dir")
+	}
+}
+
+func TestDispatch_Initialize(t *testing.T) {
+	h := newH(t)
+	s := NewDispatcher(h)
+	res, e := s.dispatch("initialize", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	m, ok := res.(map[string]any)
+	if !ok || m["protocolVersion"] == nil {
+		t.Errorf("bad resp: %+v", res)
+	}
+	instructions, ok := m["instructions"].(string)
+	if !ok || !strings.Contains(instructions, "Use Prism for each repository-discovery step") {
+		t.Errorf("initialize must carry server routing instructions, got: %q", instructions)
+	}
+	for _, nativeTool := range []string{"Read", "Grep", "Glob", "find", "rg", "cat", "sed"} {
+		if !strings.Contains(instructions, nativeTool) {
+			t.Errorf("initialize instructions must route before native %s", nativeTool)
+		}
+	}
+	for _, guidance := range []string{
+		"Choose by the information needed now",
+		"prism_search locates unknown code or text",
+		"prism_query gathers related implementations, callers, and tests",
+		"removed_symbols optionally checks exact identifier mentions",
+		"make the smallest local edit",
+	} {
+		if !strings.Contains(instructions, guidance) {
+			t.Errorf("initialize instructions missing cost guidance %q", guidance)
+		}
+	}
+	for _, steering := range []string{"use at most", "STOP immediately"} {
+		if strings.Contains(instructions, steering) {
+			t.Errorf("initialize instructions contain workflow quota %q", steering)
+		}
+	}
+	if len(instructions) > 2000 {
+		t.Errorf("server instructions exceed Claude Code's 2 KB limit: %d bytes", len(instructions))
+	}
+}
+
+func TestAdvertisedDiscoveryDescriptionsRouteEfficiently(t *testing.T) {
+	wants := map[string]string{
+		"prism_query":         "RELATED-CONTEXT TOOL",
+		"prism_read":          "KNOWN-FILE TOOL",
+		"prism_search":        "LOCATOR TOOL",
+		"prism_lookup":        "KNOWN-SYMBOL TOOL",
+		"prism_change_impact": "CALL THIS BEFORE editing",
+		"prism_verify":        "CHANGE CHECK",
+	}
+	allGuidance := serverInstructions
+	for tool, want := range wants {
+		description := toolDescription(tool)
+		if !strings.HasPrefix(description, want) {
+			t.Errorf("%s description must lead with adoption guidance; got %q", tool, description)
+		}
+		allGuidance += "\n" + description
+	}
+	for _, conflict := range []string{
+		"CALL THIS FIRST",
+		"prefer one batched prism_query",
+		"only for one known body",
+		"prism_references",
+	} {
+		if strings.Contains(allGuidance, conflict) {
+			t.Errorf("advertised routing guidance contains conflicting or unavailable route %q", conflict)
+		}
+	}
+	terms := toolSchema("prism_query")["properties"].(map[string]any)["terms"].(map[string]any)["description"].(string)
+	if strings.Contains(strings.ToLower(terms), "guess") || !strings.Contains(terms, "prism_search") {
+		t.Errorf("query terms schema must route unknown anchors to search without guessing: %q", terms)
+	}
+	if got := toolDescription("prism_verify"); !strings.Contains(got, "removed_symbols") || !strings.Contains(got, "mid-loop") ||
+		!strings.Contains(got, "optional") || strings.Contains(got, "call it once after the final edit") {
+		t.Errorf("verify description must be optional and distinguish removal checks: %q", got)
+	}
+	for _, guidance := range []string{serverInstructions, toolDescription("prism_verify")} {
+		for _, want := range []string{"Python", "unchecked JavaScript", "PHP", "TypeScript", "checked JavaScript", "Go, Java, Rust, C/C++, and C#", "complete"} {
+			if !strings.Contains(guidance, want) {
+				t.Errorf("verify guidance omits %q: %q", want, guidance)
+			}
+		}
+	}
+}
+
+func TestDispatch_ToolsList(t *testing.T) {
+	h := newH(t)
+	s := NewDispatcher(h)
+	res, e := s.dispatch("tools/list", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if m, ok := res.(map[string]any); !ok || m["tools"] == nil {
+		t.Errorf("bad resp")
+	}
+}
+
+func TestDispatch_ToolsCall_BadJSON(t *testing.T) {
+	h := newH(t)
+	s := NewDispatcher(h)
+	_, e := s.dispatch("tools/call", json.RawMessage("{not json"))
+	if e == nil {
+		t.Error("expected err")
+	}
+}
+
+func TestDispatch_ToolsCall_InvokeError(t *testing.T) {
+	h := newH(t)
+	s := NewDispatcher(h)
+	_, e := s.dispatch("tools/call", json.RawMessage(`{"name":"nope"}`))
+	if e == nil {
+		t.Error("expected err")
+	}
+}
+
+func TestDispatch_ToolsCall_HiddenToolRejected(t *testing.T) {
+	h := newH(t)
+	s := NewDispatcher(h)
+	_, e := s.dispatch("tools/call", json.RawMessage(`{"name":"prism_savings"}`))
+	if e == nil || e.Code != -32601 {
+		t.Fatalf("hidden tool was callable: %#v", e)
+	}
+}
+
+func TestDispatch_Unknown(t *testing.T) {
+	h := newH(t)
+	s := NewDispatcher(h)
+	_, e := s.dispatch("nope", nil)
+	if e == nil || e.Code != -32601 {
+		t.Error("expected -32601")
+	}
+}
