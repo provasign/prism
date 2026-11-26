@@ -1,0 +1,11 @@
+# prism missing-implementations Store.Close --format text
+# exit 0
+// Store.Close — missing-implementations (0 type(s) already implement)
+missing (3):
+  Cache  disk/cache.go:5
+  Cache  mem/cache.go:7
+  Client  remote/client.go:5
+completenessScope: indexed-project-only
+safeToClaimComplete: false
+scopeBoundary: Do not claim global completeness from this result. It closes the indexed project graph only; external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof.
+note: Store does not declare Close yet: every implementer of Store would need it. 0 of 3 already have a member named Close.

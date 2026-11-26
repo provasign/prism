@@ -1,0 +1,13 @@
+# prism search Cache --scope symbols --format text
+# exit 0
+// root: $ROOT
+// indexed-symbol search only; text search was not run. Use --scope text to check references
+symbols (4):
+  struct Cache  disk/cache.go:5-5  type Cache struct{ Dir string }  [name-exact]
+  struct Cache  mem/cache.go:7-7  type Cache struct{ m map[string]string }  [name-exact]
+  class Cache  scripts/cache.py:4-6  class Cache:  [name-exact]
+  function New  mem/cache.go:10-10  func New() *Cache  [path]
+// 6 member(s) of Cache matched only through its name and are not listed (prism lookup Cache for its outline)
+// locator result — use prism lookup for known symbol bodies, prism read for a known file/range, or prism query for related implementations, callers, and tests
+
+// No body: 3 different symbols share the name "Cache" -- Cache disk/cache.go:5-5; Cache mem/cache.go:7-7; Cache scripts/cache.py:4-6. Use prism lookup with the qualified name you mean.

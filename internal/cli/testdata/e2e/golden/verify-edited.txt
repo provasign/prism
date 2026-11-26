@@ -1,0 +1,8 @@
+# prism verify --format text
+# exit 0
+verify: complete — 1 changed files vs HEAD
+
+test coverage of changed functions (informational, does not affect verdict):
+  mem/cache.go:13  Cache.Get — no verified test caller found in the graph for this changed function — confirm you ran a test that actually exercises it, not just a passing suite
+
+no missed sites — the diff covers its own blast radius

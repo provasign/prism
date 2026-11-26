@@ -808,6 +808,7 @@ func (h *Handler) renderSearchBodiesUnlessShared(out map[string]any, regions []s
 		noted[name] = true
 		parts := []string{fmt.Sprintf("%s %s:%d-%d", region.symbol.QualifiedName, region.file, region.symbol.Span.Start, region.symbol.Span.End)}
 		parts = append(parts, others...)
+		sort.Strings(parts) // regions arrive in no fixed order
 		notes = append(notes, fmt.Sprintf("// No body: %d different symbols share the name %q -- %s. Use op=lookup with the qualified name you mean.",
 			len(parts), name, strings.Join(parts, "; ")))
 	}

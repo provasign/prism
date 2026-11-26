@@ -1,0 +1,6 @@
+# prism references Default --format text
+# exit 0
+// Default — 3 use(s) of the name (one definition)
+  app/app.go:17:16: return config.Default
+  config/config.go:5:5: var Default = "none"
+  mem/cache.go:17:16: return config.Default

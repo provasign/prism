@@ -1,0 +1,27 @@
+# prism map --format text
+# exit 0
+view: 6 components, 9 induced edges
+scope: production code (1 test files excluded; --tests to include); not shown: 1 auxiliary component(s) (docs/examples, or isolated code in a language the rest does not use): scripts; --all-components to include
+evidence: precise 11, heuristic 6 · weakest tier: heuristic
+
+components (symbols · exported · fan-in/fan-out):
+  app        2 · 2 exported · in 0 / out 5
+  config     1 · 1 exported · in 2 / out 0
+  disk       3 · 3 exported · in 1 / out 1
+  mem        5 · 4 exported · in 1 / out 2
+  remote     3 · 3 exported · in 1 / out 1
+  store      2 · 2 exported · in 4 / out 0
+
+edges (by weight; expand with --expand 'from->to'):
+  app -> disk  3 (calls 1, imports 1, uses-type 1)  [precise 2, heuristic 1]
+  app -> mem  3 (calls 2, imports 1)  [precise 2, heuristic 1]
+  app -> remote  3 (calls 1, imports 1, uses-type 1)  [precise 2, heuristic 1]
+  app -> store  3 (calls 1, imports 1, uses-type 1)  [precise 3]
+  app -> config  1 (imports 1)  [precise 1]
+  disk -> store  1 (implements 1)  [heuristic 1]
+  mem -> config  1 (imports 1)  [precise 1]
+  mem -> store  1 (implements 1)  [heuristic 1]
+  remote -> store  1 (implements 1)  [heuristic 1]
+
+cycles: none
+complete-at-tier:heuristic over indexed project edges; external dependencies excluded

@@ -1,0 +1,10 @@
+# prism read app/app.go --from 12 --to 17 --format text
+# exit 0
+// app/app.go lines 12-17 of 27
+12→// Lookup reads key from s, falling back to config.Default.
+13→func Lookup(s store.Store, key string) string {
+14→	if v := s.Get(key); v != "" {
+15→		return v
+16→	}
+17→	return config.Default
+// lines 12-17 of 27 — this is a WINDOW, not the file

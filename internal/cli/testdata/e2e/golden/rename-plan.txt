@@ -1,0 +1,23 @@
+# prism rename-plan Lookup Find --format text
+# exit 0
+// Lookup → Find — rename-plan: 5 site(s): 5 edit(s), 0 ambiguous, 0 unresolved
+completeness: closed
+completenessScope: repository (compiler-backed go)
+safeToClaimComplete: true
+scopeBoundary: Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+edits (5):
+  app/app.go:13
+    - func Lookup(s store.Store, key string) string {
+    + func Find(s store.Store, key string) string {
+  app/app.go:23
+    - 		Lookup(mem.New(), key),
+    + 		Find(mem.New(), key),
+  app/app.go:24
+    - 		Lookup(&disk.Cache{Dir: "/tmp"}, key),
+    + 		Find(&disk.Cache{Dir: "/tmp"}, key),
+  app/app.go:25
+    - 		Lookup(remote.Client{URL: "https://example.com"}, key),
+    + 		Find(remote.Client{URL: "https://example.com"}, key),
+  app/app_test.go:12
+    - 	if got := Lookup(c, "k"); got != "v" {
+    + 	if got := Find(c, "k"); got != "v" {

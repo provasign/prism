@@ -1,0 +1,4 @@
+# prism cycles --format text
+# exit 0
+cycles: none
+complete-at-tier:heuristic over indexed project edges; external dependencies excluded

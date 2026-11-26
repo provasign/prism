@@ -1,0 +1,18 @@
+# prism lookup Lookup mem.Cache.Get --format text
+# exit 0
+// lookup Lookup
+// function Lookup  app/app.go:13-18
+13→func Lookup(s store.Store, key string) string {
+14→	if v := s.Get(key); v != "" {
+15→		return v
+16→	}
+17→	return config.Default
+18→}
+// lookup mem.Cache.Get
+// method Cache.Get  mem/cache.go:13-18
+13→func (c *Cache) Get(key string) string {
+14→	if v, ok := c.m[key]; ok {
+15→		return v
+16→	}
+17→	return config.Default
+18→}

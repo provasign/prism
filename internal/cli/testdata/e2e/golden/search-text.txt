@@ -1,0 +1,22 @@
+# prism search Default --scope text --format text
+# exit 0
+// COMPLETE — 6 matches across 3 files
+// Default (config/config.go:5); 2 indexed caller site(s): Lookup app/app.go:13-18 Get mem/cache.go:13-18.
+config/config.go:
+  4: // Default is returned for a missing key.
+  5: var Default = "none"
+app/app.go:
+  12: // Lookup reads key from s, falling back to config.Default.
+  17: 	return config.Default
+mem/cache.go:
+  12: // Get returns the value for key, or config.Default.
+  17: 	return config.Default
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:
+**`config/config.go`**
+// Full enclosing body Default spans 5-5
+// Evidence: exact match for 1 supplied term(s)
+
+```go
+5→var Default = "none"
+```

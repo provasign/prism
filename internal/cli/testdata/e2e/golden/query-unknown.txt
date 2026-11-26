@@ -1,0 +1,3 @@
+# prism query --terms NoSuchThing --format text
+# exit 0
+// no symbols matched terms ["NoSuchThing"] under project root $ROOT; check term spelling and that the code lives under this root

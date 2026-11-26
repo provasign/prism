@@ -1,0 +1,26 @@
+# prism change-impact Default --format text
+# exit 0
+// Default — change-impact (variable): 3 confirmed site(s), 0 ambiguous
+completeness: member-accesses
+accessCoverage: receiver-typed
+completenessScope: indexed-project-only
+safeToClaimComplete: false
+// Field/variable impact is computed from source occurrences, not call edges. 3 access line(s) confirmed by receiver-type or declaring-scope evidence. Reflection, string-keyed access (getattr, JSON/ORM tags, templates) and generated code are not tracked.
+// Do not claim global completeness from this result. It closes the indexed project graph only; external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof.
+relaySites (3 confirmed; copy this inventory):
+  app/app.go:17:Lookup [read]
+  config/config.go:5:Default [decl]
+  mem/cache.go:17:Cache.Get [read]
+// relaySites lists the CONFIRMED sites (declaration plus reads/writes/initializers with receiver-type or declaring-scope evidence).
+editSites (3; every occurrence this change touches, as path:line:col: text):
+  app/app.go:17:16: return config.Default
+  config/config.go:5:5: var Default = "none"
+  mem/cache.go:17:16: return config.Default
+Every line naming Default in this repository (whole word, 6): 3 in editSites above, 0 code line(s) naming something else, 0 string literal(s), 3 comment/doc line(s). In test files: 0, 0, 0 and 0 of those.
+comments/docs naming Default (3):
+  app/app.go:12: // Lookup reads key from s, falling back to config.Default.
+  config/config.go:4: // Default is returned for a missing key.
+  mem/cache.go:12: // Get returns the value for key, or config.Default.
+declarations (1):
+  Default  config/config.go:5
+    var Default = "none"

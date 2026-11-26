@@ -1,0 +1,6 @@
+# prism resolve Cache --format text
+# exit 0
+// Cache — 3 candidate(s)
+  disk.Cache  struct  disk/cache.go:5
+  mem.Cache  struct  mem/cache.go:7
+  scripts.Cache  class  scripts/cache.py:4

@@ -1,0 +1,4 @@
+# prism change-impact NoSuchThing --format text
+# exit 4
+# stderr
+change-impact: no method or function named "NoSuchThing" is indexed

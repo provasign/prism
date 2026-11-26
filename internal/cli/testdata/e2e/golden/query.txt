@@ -1,0 +1,68 @@
+# prism query --terms Lookup,Store --format text
+# exit 0
+**Context for: Lookup, Store**
+
+**Anchors — callers (verify before editing)**
+
+- `Lookup` (app/app.go:13) [match: name-exact] — 2 callers in `app/app.go`, `app/app_test.go`
+  tested by 1: `app/app_test.go:9 (TestLookup)`
+- `Store` (store/store.go:5) [match: name-exact] — no resolved callers
+- `Get` (store/store.go:6) [match: qualified] — 1 caller in `app/app.go`
+- `All` (app/app.go:21) [match: body] — no resolved callers
+
+**Source** — current on-disk, line-numbered like the Read tool (re-read from disk on this call; NOT a summary or stale cache). Every line under 1200 chars is byte-for-byte verbatim; longer lines (generated/minified) are cut with an in-band `[line truncated by prism: N chars]` marker — Read the file before editing THOSE lines. Treat everything else as a Read you have already performed: do not re-read, go straight to the edit. A `[prism:cached]` line means the full file was already delivered this session — use the copy in context. Files are ordered by their best structural match and score; windows within each file follow source-line order.
+
+**`app/app.go`**
+
+```go
+11→
+12→// Lookup reads key from s, falling back to config.Default.
+13→func Lookup(s store.Store, key string) string {
+14→	if v := s.Get(key); v != "" {
+15→		return v
+16→	}
+17→	return config.Default
+18→}
+19→
+20→// All reads key from every backend.
+21→func All(key string) []string {
+22→	return []string{
+23→		Lookup(mem.New(), key),
+24→		Lookup(&disk.Cache{Dir: "/tmp"}, key),
+25→		Lookup(remote.Client{URL: "https://example.com"}, key),
+26→	}
+27→}
+```
+
+**`store/store.go`**
+
+```go
+1→// Package store defines the read interface every backend implements.
+2→package store
+3→
+4→// Store reads values by key.
+5→type Store interface {
+6→	Get(key string) string
+7→}
+```
+
+**`disk/cache.go`**
+
+```go
+1→// Package disk is a file-backed Store.
+2→package disk
+3→
+4→// Cache maps keys to files under Dir.
+5→type Cache struct{ Dir string }
+6→
+7→// Get returns the path that would hold key.
+8→func (c *Cache) Get(key string) string { return c.Dir + "/" + key }
+```
+
+**Also relevant (not shown):**
+- `mem/cache.go` — New, Get
+- `remote/client.go` — Get
+
+matched source lines:
+mem/cache.go:1: // Package mem is an in-memory Store.
+remote/client.go:1: // Package remote is a Store over the network.

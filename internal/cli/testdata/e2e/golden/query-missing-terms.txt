@@ -1,0 +1,4 @@
+# prism query --format text
+# exit 2
+# stderr
+query: --terms is required; use prism search first when no anchor is known

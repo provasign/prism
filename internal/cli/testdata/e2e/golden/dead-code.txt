@@ -1,0 +1,7 @@
+# prism dead-code --format text
+# exit 0
+// dead-code — 9 considered, 19 reachable from 18 root(s)
+exportedUnreferenced (2):
+  All  app/app.go:21
+  Cache.get  scripts/cache.py:5
+caveats: reflection, dependency injection, serialization hooks, and code generation call symbols invisibly — verify before deleting, exported symbols are treated as live roots; for a library, exported liveness is not statically decidable in-project, symbols referenced only from build tags, templates, or embedded assets are not seen by the graph

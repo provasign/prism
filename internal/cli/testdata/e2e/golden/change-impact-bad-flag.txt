@@ -1,0 +1,4 @@
+# prism change-impact Store.Get --no-such-flag --format text
+# exit 2
+# stderr
+change-impact: unknown flag "--no-such-flag" (see prism help)

@@ -1,0 +1,11 @@
+# prism edges Lookup --format text
+# exit 0
+// Lookup — graph edges
+calls in:
+  All  app/app.go:21
+  TestLookup  app/app_test.go:9  [test]
+calls out:
+  Cache.Get  disk/cache.go:8
+  Cache.Get  mem/cache.go:13
+  Client.Get  remote/client.go:8
+  Store.Get  store/store.go:6

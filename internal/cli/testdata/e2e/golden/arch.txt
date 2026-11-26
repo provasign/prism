@@ -1,0 +1,9 @@
+# prism arch --format text
+# exit 1
+arch: fail — 1 rules checked against 9 induced edges
+scope: production code (1 test files excluded; --tests to include)
+
+VIOLATION of "mem -> config"  [tier: precise]
+  mem -> config  1 crossing(s) (imports 1)
+    mem/cache.go:4  cache.go -> config.go  (imports, precise)
+complete-at-tier:heuristic over indexed project edges; external dependencies excluded

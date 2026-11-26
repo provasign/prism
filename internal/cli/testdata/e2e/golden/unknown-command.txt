@@ -1,0 +1,4 @@
+# prism no-such-command --format text
+# exit 2
+# stderr
+prism: unknown command "no-such-command" (prism help lists commands)

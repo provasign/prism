@@ -1,0 +1,14 @@
+# prism node Lookup --format text
+# exit 0
+// app/app.go — Lookup
+func Lookup(s store.Store, key string) string {
+	if v := s.Get(key); v != "" {
+		return v
+	}
+	return config.Default
+}
+
+// neighbours:
+//   calls in (2): All, TestLookup
+//   calls out (4): Cache.Get, Cache.Get, Client.Get, Store.Get
+//   uses-type out (1): Store

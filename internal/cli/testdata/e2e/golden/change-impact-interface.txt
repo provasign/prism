@@ -1,0 +1,31 @@
+# prism change-impact Store.Get --format text
+# exit 0
+// Store.Get — change-impact: 5 edit site(s)
+completeness: closed
+completenessScope: repository (compiler-backed go)
+safeToClaimComplete: true
+// Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. Not covered: reflection/runtime dispatch and consumers outside this repository.
+editSites (5; every occurrence this change touches, as path:line:col: text):
+  app/app.go:14:12: if v := s.Get(key); v != "" {
+  disk/cache.go:8:17: func (c *Cache) Get(key string) string { return c.Dir + "/" + key }
+  mem/cache.go:13:17: func (c *Cache) Get(key string) string {
+  remote/client.go:8:17: func (c Client) Get(key string) string { return c.URL + "/" + key }
+  store/store.go:6:2: Get(key string) string
+Every line naming Get in this repository (whole word, 8): 5 in editSites above, 0 code line(s) naming something else, 0 string literal(s), 3 comment/doc line(s). In test files: 0, 0, 0 and 0 of those.
+comments/docs naming Get (3):
+  disk/cache.go:7: // Get returns the path that would hold key.
+  mem/cache.go:12: // Get returns the value for key, or config.Default.
+  remote/client.go:7: // Get returns the URL for key.
+familyCompleteness: closed
+callerCoverage: indexed
+// Each caller lists where it calls the change set (line:col of the called name); the compiler resolved these.
+// Call expressions below are shown as evidence for each caller.
+declarations (1):
+  Store.Get  store/store.go:6
+family (3):
+  Cache.Get  disk/cache.go:8
+  Cache.Get  mem/cache.go:13
+  Client.Get  remote/client.go:8
+callers (1):
+  Lookup  app/app.go:13  [at 14:12]
+// 1 caller call line(s) are in editSites above and not repeated here.

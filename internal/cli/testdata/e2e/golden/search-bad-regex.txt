@@ -1,0 +1,6 @@
+# prism search [unclosed --regex --format text
+# exit 0
+warning: invalid regular expression: error parsing regexp: missing closing ]: `[unclosed`; fix the pattern or drop --regex for a literal search
+invalidPattern: [unclosed
+resultsComplete: false
+root: $ROOT

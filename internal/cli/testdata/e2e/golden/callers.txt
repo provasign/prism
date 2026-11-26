@@ -1,0 +1,6 @@
+# prism callers Lookup --format text
+# exit 0
+// Lookup — 2 transitive caller(s), depth 3
+Lookup  app/app.go:13
+  <- All  app/app.go:21
+  <- TestLookup  app/app_test.go:9  [test]

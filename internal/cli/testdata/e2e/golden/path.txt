@@ -1,0 +1,6 @@
+# prism path All Store.Get --format text
+# exit 0
+// All -> Store.Get: 2 hop(s)
+   All  app/app.go:21
+-> Lookup  app/app.go:13
+-> Store.Get  store/store.go:6

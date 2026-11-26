@@ -1,0 +1,4 @@
+# prism lookup NoSuchThing --format text
+# exit 4
+// lookup NoSuchThing
+// NO EXACT MATCH — no symbol named "NoSuchThing" in the index — check the spelling, or use prism search for a name fragment

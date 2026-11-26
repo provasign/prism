@@ -1,0 +1,12 @@
+# prism test-plan --format text
+# exit 0
+test-plan vs HEAD: candidates found
+1 changed files, 1 changed symbols; run first: 0 focused + 0 transitive test files; run for safety: 1 test files in 1 packages
+Run the focused files first, then the transitive ones; the run-for-safety tier is the complete set over the indexed dependency graph. Choose runner syntax from the repository. Test helpers/fixtures are not necessarily runnable files.
+boundary: Static graph candidates, not measured test coverage. Tests are identified by file-path conventions and by test attributes (Rust #[test], Python test_*, JUnit @Test); other framework tests may not be recognized. Run-first tiers follow resolved call paths and order tests; the run-for-safety tier is the package-level dependency closure and is the set to treat as complete over the indexed graph. Runtime dispatch, reflection, external consumers, and dependencies absent from the index may be missed. Choose test commands and broader validation using these gaps and repository requirements.
+gap: 8 import edges have external or unresolved targets; file-level dependency propagation does not cover them
+gap: unresolved graph endpoint: Store (store/store.go)
+Run for safety — every test in a package that depends, directly or through other packages, on a changed file (package, test files, package hops; files listed with --format json):
+  app (1, 1 hops)
+not covered by either tier: tests chosen by a runner's name pattern rather than code dependency, tests that load code by reflection, string or configuration (DI containers, plugin registries, dynamic imports), and integration or end-to-end tests outside this repository
+End of test-plan: 0 run-first files, 1 run-for-safety files, 2 gaps. If this footer is missing, read the remaining output before choosing tests.

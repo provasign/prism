@@ -1,0 +1,3 @@
+# prism verify --format text
+# exit 0
+verify: clean — no changes vs HEAD
