@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/provasign/prism/internal/mcp"
 )
 
 func TestSearchCLIExplicitZeroContextAndMergedDefault(t *testing.T) {
@@ -146,32 +144,4 @@ func TestSearchCLIIncludeBodiesMatchesMCPOption(t *testing.T) {
 	if strings.Contains(locator, "Exact source") || !strings.Contains(locator, "func Target()") {
 		t.Fatalf("CLI --no-bodies did not retain only the locator: %s", locator)
 	}
-}
-
-func TestSearchCLIContextPayloadPreservesEvidenceWithFewerBytes(t *testing.T) {
-	out := map[string]any{
-		"root": "/repo", "textBackend": "rg",
-		"textHits": []any{map[string]any{
-			"file": "src/repeated/long/package/name/search/fixture.go",
-			"hits": []any{
-				map[string]any{"line": 2, "text": "MATCH one", "before": []string{"before"}, "after": []string{"MATCH two", "after"}},
-				map[string]any{"line": 3, "text": "MATCH two", "before": []string{"before", "MATCH one"}, "after": []string{"after"}},
-			},
-		}},
-	}
-	legacy := captureStdout(func() { printOutput(out, formatText) })
-	merged, ok := mcp.RenderSearchText(out)
-	if !ok {
-		t.Fatal("could not render fixture")
-	}
-	for _, evidence := range []string{"before", "MATCH one", "MATCH two", "after", "fixture.go", "// root: /repo"} {
-		if !strings.Contains(legacy, evidence) || strings.Count(merged, evidence) != 1 {
-			t.Fatalf("evidence lost/duplicated: %q in %s", evidence, merged)
-		}
-	}
-	if len(merged)*2 >= len(legacy) {
-		t.Fatalf("expected >50%% fixture payload reduction: %d -> %d", len(legacy), len(merged))
-	}
-	t.Logf("same source evidence: legacy CLI %d bytes, merged CLI %d bytes (%.1f%% fewer); not a model-token/cost measurement",
-		len(legacy), len(merged), 100*(1-float64(len(merged))/float64(len(legacy))))
 }

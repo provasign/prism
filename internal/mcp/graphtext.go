@@ -22,6 +22,14 @@ import (
 	"strings"
 )
 
+// readTextFields are the fields renderReadAsText renders; any other field makes it decline.
+var readTextFields = map[string]bool{
+	"file": true, "strategy": true, "originalTokens": true,
+	"deliveredTokens": true, "savingsPercent": true, "content": true,
+	"delivery": true, "startLine": true, "endLine": true,
+	"totalLines": true, "warning": true, "note": true, "formatNote": true, "found": true,
+}
+
 // renderReadAsText renders a prism_read result: a short header line, then
 // the content verbatim (it is already line-numbered / compressed upstream).
 func renderReadAsText(out map[string]any) (string, bool) {
@@ -55,12 +63,7 @@ func renderReadAsText(out map[string]any) (string, bool) {
 		}
 		return b.String(), true
 	}
-	known := map[string]bool{
-		"file": true, "strategy": true, "originalTokens": true,
-		"deliveredTokens": true, "savingsPercent": true, "content": true,
-		"delivery": true, "startLine": true, "endLine": true,
-		"totalLines": true, "warning": true, "note": true, "formatNote": true, "found": true,
-	}
+	known := readTextFields
 	for k := range out {
 		if !known[k] {
 			return "", false
@@ -120,24 +123,27 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 	return flat, true
 }
 
+// changeImpactTextFields are the fields renderChangeImpactLayout renders; any other field makes it decline.
+var changeImpactTextFields = map[string]bool{
+	"query": true, "declarations": true, "supers": true, "family": true,
+	"callers": true, "totalSites": true, "declaringTypes": true,
+	"declaringTypesNote": true, "completeness": true,
+	"externalSupers": true, "overridesExternal": true, "warning": true,
+	"widerAnchor": true, "hasHeuristicRefs": true,
+	"evidenceNote": true, "coverageNote": true, "methodFamilyNote": true,
+	"staleWarning": true, "scopeNote": true, "ambiguityNote": true,
+	"familyCompleteness": true, "callerCoverage": true, "callerEvidence": true,
+	"completenessScope": true, "safeToClaimComplete": true,
+	"scopeBoundary": true, "relaySites": true, "relayNote": true,
+	"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true, "callPositionsNote": true,
+	"reExports": true, "related": true, "degradedAnalysis": true,
+	"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
+	"workspaceConsumers": true, "workspaceScope": true, "linkedSites": true,
+	"resolvedNote": true, "partialTypeCheck": true,
+}
+
 func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool) {
-	known := map[string]bool{
-		"query": true, "declarations": true, "supers": true, "family": true,
-		"callers": true, "totalSites": true, "declaringTypes": true,
-		"declaringTypesNote": true, "completeness": true,
-		"externalSupers": true, "overridesExternal": true, "warning": true,
-		"widerAnchor": true, "hasHeuristicRefs": true,
-		"evidenceNote": true, "coverageNote": true, "methodFamilyNote": true,
-		"staleWarning": true, "scopeNote": true, "ambiguityNote": true,
-		"familyCompleteness": true, "callerCoverage": true, "callerEvidence": true,
-		"completenessScope": true, "safeToClaimComplete": true,
-		"scopeBoundary": true, "relaySites": true, "relayNote": true,
-		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true, "callPositionsNote": true,
-		"reExports": true, "related": true, "degradedAnalysis": true,
-		"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
-		"workspaceConsumers": true, "workspaceScope": true, "linkedSites": true,
-		"resolvedNote": true, "partialTypeCheck": true,
-	}
+	known := changeImpactTextFields
 	for k := range out {
 		if !known[k] {
 			return "", false
@@ -399,6 +405,17 @@ func RenderLookupText(out any) (string, bool) {
 	return renderLookupAsText(m)
 }
 
+// lookupTextFields are the fields renderLookupAsText renders; any other field makes it decline.
+var lookupTextFields = map[string]bool{
+	"symbol": true, "content": true, "ambiguous": true, "candidates": true,
+	"matched": true, "name": true, "note": true, "overloads": true, "matchKind": true, "declarations": true,
+	// projectSymbol fields= shapes
+	"file": true, "line": true, "signature": true, "sig": true,
+	"doc": true, "docstring": true, "body": true, "source": true,
+	"kind": true, "parent": true, "modifiers": true,
+	"testOnly": true, "alsoNamed": true,
+}
+
 // renderLookupAsText renders a prism_lookup result. The JSON form shipped
 // the symbol body TWICE (symbol.rawText and content, both string-escaped)
 // plus index internals (id, blobSha, callSites) no agent uses: measured
@@ -407,15 +424,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 	if _, batch := out["results"]; batch {
 		return renderLookupBatchAsText(out)
 	}
-	known := map[string]bool{
-		"symbol": true, "content": true, "ambiguous": true, "candidates": true,
-		"matched": true, "name": true, "note": true, "overloads": true, "matchKind": true, "declarations": true,
-		// projectSymbol fields= shapes
-		"file": true, "line": true, "signature": true, "sig": true,
-		"doc": true, "docstring": true, "body": true, "source": true,
-		"kind": true, "parent": true, "modifiers": true,
-		"testOnly": true, "alsoNamed": true,
-	}
+	known := lookupTextFields
 	for k := range out {
 		if !known[k] {
 			return "", false
@@ -795,16 +804,19 @@ func renderRemovedSymbolsAsText(out map[string]any) (string, bool) {
 	return b.String(), true
 }
 
+// querySourceTextFields are the fields renderQuerySourceAsText renders; any other field makes it decline.
+var querySourceTextFields = map[string]bool{
+	"content": true, "deliveredTokens": true, "delivery": true,
+	"files": true, "symbolCount": true, "textMatches": true,
+	"textBackend": true,
+}
+
 // renderQuerySourceAsText renders prism_query's source delivery: the content
 // is already formatted line-numbered markdown; the JSON envelope added ~17%
 // (1,589 B on a 9,212 B result, measured) purely in string escaping and
 // bookkeeping fields.
 func renderQuerySourceAsText(out map[string]any) (string, bool) {
-	known := map[string]bool{
-		"content": true, "deliveredTokens": true, "delivery": true,
-		"files": true, "symbolCount": true, "textMatches": true,
-		"textBackend": true,
-	}
+	known := querySourceTextFields
 	for k := range out {
 		if !known[k] {
 			return "", false

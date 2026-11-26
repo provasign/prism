@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/mcp"
 )
 
 // setHome points both HOME (unix) and USERPROFILE (what os.UserHomeDir reads
@@ -178,22 +180,6 @@ func TestPrintOutput_Text_Read(t *testing.T) {
 		t.Errorf("missing content: %q", got)
 	}
 }
-
-func TestPrintOutput_Text_Read_ShaPointer(t *testing.T) {
-	input := map[string]any{
-		"file":     "internal/foo.go",
-		"strategy": "sha-pointer",
-		"content":  "abc123",
-	}
-	got := captureStdout(func() { printOutput(input, formatText) })
-	if !strings.Contains(got, "[cached") {
-		t.Errorf("expected cached marker: %q", got)
-	}
-	if strings.Contains(got, "abc123") {
-		t.Errorf("sha should not appear as content: %q", got)
-	}
-}
-
 func TestPrintOutput_Text_Query(t *testing.T) {
 	input := map[string]any{
 		"budgetUsed": 100,
@@ -206,7 +192,7 @@ func TestPrintOutput_Text_Query(t *testing.T) {
 			},
 		},
 	}
-	got := captureStdout(func() { printOutput(input, formatText) })
+	got := mcp.RenderFallbackText("prism_query", input)
 	if !strings.Contains(got, "pkg/a.go") {
 		t.Errorf("missing filePath: %q", got)
 	}

@@ -28,195 +28,9 @@ func GenericText(v any) string {
 	return b.String()
 }
 
-// printOutput prints v in the requested format.
-// JSON round-trips through map[string]any so both typed structs (queryResult)
-// and plain maps are handled uniformly by the text/lean formatters.
-// printTextMatches renders the merged full-text section of a prism_query /
-// prism_search response: per-file matched lines, cached files as line
-// numbers only.
-func writeTextMatches(w io.Writer, m map[string]any) {
-	groups := asSliceAny(m["textMatches"])
-	if groups == nil {
-		groups = asSliceAny(m["textHits"])
-	}
-	if len(groups) == 0 {
-		return
-	}
-	backend, _ := m["textBackend"].(string)
-	fmt.Fprintf(w, "// text matches (%s):\n", backend)
-	for _, g := range groups {
-		gm, ok := g.(map[string]any)
-		if !ok {
-			continue
-		}
-		if note, _ := gm["note"].(string); note != "" && gm["file"] == nil {
-			fmt.Fprintf(w, "//   %s\n", note)
-			// exhaustive=true inventory: the files past the render cap
-			// (same as the MCP renderer in searchtext.go).
-			for _, f := range asSliceAny(gm["files"]) {
-				fmt.Fprintf(w, "//   %v\n", f)
-			}
-			continue
-		}
-		file, _ := gm["file"].(string)
-		if cached, _ := gm["cached"].(bool); cached {
-			var lines []string
-			for _, l := range asSliceAny(gm["lines"]) {
-				lines = append(lines, fmt.Sprint(jsonInt(l)))
-			}
-			fmt.Fprintf(w, "//   %s:%s [cached — content already delivered this session]\n",
-				file, strings.Join(lines, ","))
-			continue
-		}
-		for _, h := range asSliceAny(gm["hits"]) {
-			hm, ok := h.(map[string]any)
-			if !ok {
-				continue
-			}
-			line := jsonInt(hm["line"])
-			before := asSliceAny(hm["before"])
-			for i, l := range before {
-				fmt.Fprintf(w, "//   %s:%d-  %v\n", file, line-len(before)+i, l)
-			}
-			fmt.Fprintf(w, "//   %s:%d: %v\n", file, line, hm["text"])
-			for i, l := range asSliceAny(hm["after"]) {
-				fmt.Fprintf(w, "//   %s:%d-  %v\n", file, line+1+i, l)
-			}
-			if len(before) > 0 || hm["after"] != nil {
-				fmt.Fprintln(w, "//   --")
-			}
-		}
-		if more := jsonInt(gm["moreHits"]); more > 0 {
-			fmt.Fprintf(w, "//   %s: +%d more matches\n", file, more)
-		}
-	}
-}
-
 // printTextOutput renders a Prism response as plain text for agent consumption.
 // Handles prism_query, prism_read, prism_search, and prism_lookup responses.
 func writeTextOutput(w io.Writer, m map[string]any) {
-	if root, _ := m["root"].(string); root != "" {
-		if _, search := m["results"]; search || m["textHits"] != nil || m["symbols"] != nil || m["files"] != nil {
-			fmt.Fprintf(w, "// root: %s\n", root)
-		}
-	}
-	// Multi-term prism_search: one group per term, each rendered by the
-	// single-term path below so the two forms read identically.
-	if groups, ok := m["results"]; ok {
-		if note, _ := m["note"].(string); note != "" {
-			fmt.Fprintln(w, "// "+note)
-		}
-		writeDidYouMean(w, m)
-		for _, g := range asSliceAny(groups) {
-			gm, ok := g.(map[string]any)
-			if !ok {
-				continue
-			}
-			fmt.Fprintf(w, "// ── %v ──\n", gm["query"])
-			writeTextOutput(w, gm)
-		}
-		for _, f := range asSliceAny(m["failedTerms"]) {
-			fmt.Fprintf(w, "// failed: %v\n", f)
-		}
-		return
-	}
-	// A pure text search (scope="text") has textHits and nothing else. Without
-	// this branch it fell past every case below to the JSON fallback, so
-	// `prism search X --scope text --format text` — the exact invocation the
-	// steering gives Bash-only subagents — printed JSON, several times the
-	// tokens of the line-oriented form it asked for.
-	// prism_query source delivery: the assembled context IS the answer.
-	// Measured 2026-08-26 (jackson worktree): the MCP surface returned the
-	// full 21KB context while this CLI path printed FIVE FILE PATHS — the
-	// files_only branch below fired because the query payload has "files"
-	// and no "symbols" key, and the entire "content" field (5,201 delivered
-	// tokens, anchors, callers) was silently discarded. Every Bash-only
-	// consumer (subagents, CI — exactly who the CLAUDE.md bash table sends
-	// here) got paths where the tool's whole purpose is context.
-	// prism_read also carries "content" but never "files"; its own branch
-	// below prints the header line — the guard keeps it out of this one.
-	if content, ok := m["content"].(string); ok && content != "" {
-		if _, isQuery := m["files"]; isQuery {
-			fmt.Fprint(w, content)
-			if !strings.HasSuffix(content, "\n") {
-				fmt.Fprintln(w)
-			}
-			writeTextMatches(w, m)
-			return
-		}
-	}
-	// files_only delivery: paths, no lines.
-	if files, ok := m["files"]; ok {
-		if _, hasSyms := m["symbols"]; !hasSyms {
-			for _, f := range asSliceAny(files) {
-				fmt.Fprintf(w, "%v\n", f)
-			}
-			if len(asSliceAny(files)) == 0 {
-				fmt.Fprintln(w, "// no matching files")
-			}
-			for _, k := range []string{"warning", "note"} {
-				if s, _ := m[k].(string); s != "" {
-					fmt.Fprintln(w, "// "+s)
-				}
-			}
-			return
-		}
-	}
-	if _, hasHits := m["textHits"]; hasHits {
-		_, hasSyms := m["symbols"]
-		_, hasContent := m["content"]
-		if !hasSyms && !hasContent {
-			// Headline first — the graph's reading of the term leads, the
-			// grep lines follow (searchtext.go has the measurement).
-			if s, _ := m["resolvedNote"].(string); s != "" {
-				fmt.Fprintln(w, "// "+s)
-			}
-			writeTextMatches(w, m)
-			if len(asSliceAny(m["textHits"])) == 0 {
-				// Same evidence rule as the MCP renderer (searchtext.go):
-				// a bare null is indistinguishable from a broken/partial
-				// search, so state completion explicitly.
-				if timedOut, _ := m["timedOut"].(bool); timedOut {
-					fmt.Fprintln(w, "// no matches — search timed out before finishing; results may be incomplete")
-				} else {
-					fmt.Fprintln(w, "// no matches — search completed (not truncated, not timed out)")
-				}
-			}
-			for _, k := range []string{"warning", "note"} {
-				if s, _ := m[k].(string); s != "" {
-					fmt.Fprintln(w, "// "+s)
-				}
-			}
-			writeDidYouMean(w, m)
-			// Graph rollup of a truncated search's FULL hit set (rollup.go) —
-			// same rendering as the MCP text surface.
-			if ru, _ := m["hitRollup"].([]any); len(ru) > 0 {
-				fmt.Fprintln(w, "// ALL matches by enclosing symbol (graph rollup of the full set):")
-				for _, e := range ru {
-					em, _ := e.(map[string]any)
-					if em == nil {
-						continue
-					}
-					if note, _ := em["note"].(string); note != "" {
-						fmt.Fprintln(w, "//   "+note)
-						continue
-					}
-					span, _ := em["span"].(map[string]any)
-					line := fmt.Sprintf("//   %v  %v", em["symbol"], em["file"])
-					if span != nil {
-						line += fmt.Sprintf(":%v-%v", span["start"], span["end"])
-					}
-					fmt.Fprintf(w, "%s  (%v hits)\n", line, em["hits"])
-				}
-			}
-			// The truncation warning is already carried in m["warning"] and
-			// printed above; printing a second line here duplicated it.
-			if t, _ := m["truncated"].(bool); t && m["warning"] == nil {
-				fmt.Fprintln(w, "// truncated at the hit limit — raise --limit, or --exhaustive")
-			}
-			return
-		}
-	}
 	// prism_node: source PLUS the orientation payload. Must come first — its
 	// shape overlaps prism_lookup's (symbol+content) and prism_read's
 	// (file+content), so without this branch both node views fell through and
@@ -238,107 +52,6 @@ func writeTextOutput(w io.Writer, m map[string]any) {
 				fmt.Fprintf(w, "  %v\n", c)
 			}
 			return
-		}
-	}
-	// prism_lookup: top-level "content" + "symbol" subkey
-	if sym, hasSym := m["symbol"].(map[string]any); hasSym && sym != nil {
-		if content, ok := m["content"].(string); ok {
-			writeLookupFlagsText(w, m)
-			name, _ := sym["name"].(string)
-			fp, _ := sym["filePath"].(string)
-			fmt.Fprintf(w, "// %s — %s\n", fp, name)
-			span, _ := sym["span"].(map[string]any)
-			start, end := jsonInt(span["start"]), jsonInt(span["end"])
-			lines := strings.SplitAfter(content, "\n")
-			if lines[len(lines)-1] == "" {
-				lines = lines[:len(lines)-1]
-			}
-			if start > 0 && end >= start && len(lines) <= end-start+1 {
-				for i, line := range lines {
-					fmt.Fprintf(w, "%d"+SourceLineSep+"%s", start+i, line)
-				}
-			} else {
-				fmt.Fprint(w, content)
-			}
-			if !strings.HasSuffix(content, "\n") {
-				fmt.Fprintln(w)
-			}
-			writeLookupOverloadsText(w, m)
-			return
-		}
-	}
-	// prism_read: top-level "content" + "file" key
-	if content, ok := m["content"].(string); ok {
-		file, _ := m["file"].(string)
-		strategy, _ := m["strategy"].(string)
-		if strategy == "sha-pointer" {
-			fmt.Fprintf(w, "// %s [cached — use previous read]\n", file)
-		} else {
-			if file != "" {
-				fmt.Fprintf(w, "// %s\n", file)
-			}
-			fmt.Fprint(w, content)
-			if !strings.HasSuffix(content, "\n") {
-				fmt.Fprintln(w)
-			}
-		}
-		return
-	}
-	// prism_query and prism_search: "symbols" array
-	if rawSyms, ok := m["symbols"]; ok {
-		syms, _ := rawSyms.([]any)
-		for _, s := range syms {
-			sym, ok := s.(map[string]any)
-			if !ok {
-				continue
-			}
-			fp, _ := sym["filePath"].(string)
-			name, _ := sym["name"].(string)
-			category, _ := sym["category"].(string)
-			content, _ := sym["content"].(string)
-			if content == "" {
-				content, _ = sym["rawText"].(string)
-			}
-			if fp != "" && name != "" {
-				if category != "" {
-					fmt.Fprintf(w, "// %s — %s [%s]\n", fp, name, category)
-				} else {
-					fmt.Fprintf(w, "// %s — %s\n", fp, name)
-				}
-			}
-			if content != "" {
-				fmt.Fprint(w, content)
-				if !strings.HasSuffix(content, "\n") {
-					fmt.Fprintln(w)
-				}
-				fmt.Fprintln(w)
-			}
-		}
-		// Merged full-text hits (prism_query: "textMatches"; prism_search:
-		// "textHits") — matches outside any indexed symbol.
-		writeTextMatches(w, m)
-		if note, _ := m["note"].(string); note != "" {
-			fmt.Fprintln(w, "// "+note)
-		}
-		return
-	}
-	// prism_lookup with --fields: projected columns (name/file/line + selected),
-	// no "content"/"symbol". Render the requested columns compactly.
-	if _, hasContent := m["content"]; !hasContent {
-		if _, hasSymbols := m["symbols"]; !hasSymbols {
-			if _, hasCands := m["candidates"]; !hasCands {
-				if file, ok := m["file"].(string); ok {
-					if _, hasName := m["name"]; hasName {
-						fmt.Fprintf(w, "// %v — %s:%d\n", m["name"], file, jsonInt(m["line"]))
-						for _, col := range []string{"kind", "signature", "doc", "modifiers", "parent", "body"} {
-							if v, ok := m[col]; ok {
-								fmt.Fprintf(w, "%s: %v\n", col, v)
-							}
-						}
-						return
-					}
-				}
-			}
 		}
 	}
 	// prism_resolve: "candidates" list of {name, kind, file, line, testDouble}
@@ -386,14 +99,6 @@ func writeTextOutput(w io.Writer, m map[string]any) {
 				fmt.Fprintf(w, "  %v  %v:%v%s\n", sm["name"], sm["file"], jsonInt(sm["line"]), tag)
 			}
 		}
-		return
-	}
-	// The four task-shaped ops. Their responses have no "content"/"symbols"
-	// key, so they used to fall straight through to printJSON — meaning
-	// `--format text` was a documented no-op on exactly the commands the
-	// Bash-only playbook tells agents to run that way.
-	if _, ok := m["declarations"]; ok {
-		writeChangeImpactText(w, m)
 		return
 	}
 	if _, ok := m["edits"]; ok || (m["status"] == "collision" && m["newName"] != nil) {
@@ -608,21 +313,6 @@ func writeSiteGroup(w io.Writer, label string, v any) {
 	}
 }
 
-// printNotes emits the advisory keys (completeness, warnings, notes) that
-// carry the caveats a caller must not silently drop.
-// printDidYouMean renders an empty search's near-miss symbol candidates —
-// the retry pointer attachEmptySearchGuidance's note refers to.
-func writeDidYouMean(w io.Writer, m map[string]any) {
-	dym := asSliceAny(m["didYouMean"])
-	if len(dym) == 0 {
-		return
-	}
-	fmt.Fprintln(w, "// closest indexed symbols:")
-	for _, d := range dym {
-		fmt.Fprintf(w, "//   %v\n", d)
-	}
-}
-
 func writeNotes(w io.Writer, m map[string]any, keys ...string) {
 	for _, k := range keys {
 		switch v := m[k].(type) {
@@ -643,30 +333,6 @@ func writeNotes(w io.Writer, m map[string]any, keys ...string) {
 				fmt.Fprintf(w, "%s: %s\n", k, strings.Join(parts, ", "))
 			}
 		}
-	}
-}
-
-func writeChangeImpactText(w io.Writer, m map[string]any) {
-	if text, ok := FormatMemberImpactText(m); ok {
-		fmt.Fprint(w, text)
-		return
-	}
-	fmt.Fprintf(w, "// %v — change-impact: %d site(s)\n", m["query"], jsonInt(m["totalSites"]))
-	if note, _ := m["degradedAnalysis"].(string); note != "" {
-		fmt.Fprintf(w, "// %s\n", note) // qualifies every site below
-	}
-	fmt.Fprint(w, FormatImpactHeaderNotesText(m))
-	writeNotes(w, m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "familyCompleteness", "callerCoverage", "callerEvidence", "coverageNote", "evidenceNote", "hasHeuristicRefs")
-	fmt.Fprint(w, FormatImpactRelaySitesText(m))
-	fmt.Fprint(w, FormatImpactExtrasText(m))
-	writeSiteGroup(w, "declarations", m["declarations"])
-	writeSiteGroup(w, "supers", m["supers"])
-	writeSiteGroup(w, "family", m["family"])
-	writeSiteGroup(w, "declaringTypes", m["declaringTypes"])
-	writeSiteGroup(w, "callers", m["callers"])
-	writeNotes(w, m, "declaringTypesNote", "externalSupers", "overridesExternal", "warning", "ambiguityNote", "scopeNote")
-	if hint, ok := m["widerAnchor"].(map[string]any); ok {
-		fmt.Fprintf(w, "widerAnchor: %v\n", hint["note"])
 	}
 }
 
@@ -818,93 +484,6 @@ func writeDeadCodeText(w io.Writer, m map[string]any) {
 	writeNotes(w, m, "caveats")
 }
 
-// jsonInt coerces a JSON number (float64 after round-trip) or int to int.
-// printLookupOverloadsText prints what lookup delivers beside the primary body:
-// same-file overloads (body, or signature when the budget was spent) and
-// cross-symbol ambiguity candidates. Text mode used to stop after the primary
-// body, so a CLI caller never learned other overloads or candidates existed.
-func writeLookupOverloadsText(w io.Writer, m map[string]any) {
-	if overloads := asSliceAny(m["overloads"]); len(overloads) > 0 {
-		fmt.Fprintf(w, "// %d more overload(s) with the same name in this file:\n", len(overloads))
-		for _, raw := range overloads {
-			o, _ := raw.(map[string]any)
-			if o == nil {
-				continue
-			}
-			start, end := jsonInt(o["line"]), jsonInt(o["end"])
-			fmt.Fprintf(w, "// overload %v  %v:%d-%d\n", o["name"], o["file"], start, end)
-			body, _ := o["content"].(string)
-			if body == "" {
-				body, _ = o["body"].(string)
-			}
-			if body == "" {
-				if sig, _ := o["signature"].(string); sig != "" {
-					fmt.Fprintf(w, "// signature: %s\n", sig)
-				}
-				if omitted, _ := o["bodyOmitted"].(bool); omitted {
-					fmt.Fprintf(w, "// body not delivered (lookup body budget); read %v lines %d-%d\n", o["file"], start, end)
-				}
-				continue
-			}
-			lines := strings.SplitAfter(body, "\n")
-			if lines[len(lines)-1] == "" {
-				lines = lines[:len(lines)-1]
-			}
-			if start > 0 && end >= start+len(lines)-1 {
-				for i, line := range lines {
-					fmt.Fprintf(w, "%d"+SourceLineSep+"%s", start+i, line)
-				}
-			} else {
-				fmt.Fprint(w, body)
-			}
-			if !strings.HasSuffix(body, "\n") {
-				fmt.Fprintln(w)
-			}
-		}
-	}
-	for _, d := range asSliceAny(m["declarations"]) {
-		fmt.Fprintf(w, "// declared: %v\n", d)
-	}
-	if amb, _ := m["ambiguous"].(bool); amb {
-		fmt.Fprintln(w, "// AMBIGUOUS — same score for:")
-		for _, c := range asSliceAny(m["candidates"]) {
-			fmt.Fprintf(w, "//   %v\n", c)
-		}
-	}
-}
-
-// printLookupFlagsText prints a lookup's NO EXACT MATCH / AMBIGUOUS /
-// inherited / case-insensitive flags BEFORE the body. This path used to
-// ignore matched:false entirely, so the Bash fallback route showed a wrong
-// body exactly as if it were the answer.
-func writeLookupFlagsText(w io.Writer, m map[string]any) {
-	note, _ := m["note"].(string)
-	if matched, present := m["matched"].(bool); present && !matched {
-		switch {
-		case strings.HasPrefix(note, "NO EXACT MATCH"):
-			fmt.Fprintln(w, "// "+note)
-		case note != "":
-			fmt.Fprintln(w, "// NO EXACT MATCH — "+note)
-		default:
-			fmt.Fprintf(w, "// NO EXACT MATCH for %v — the symbol below is only the closest hit\n", m["name"])
-		}
-		if cands := asSliceAny(m["candidates"]); len(cands) > 0 {
-			fmt.Fprintln(w, "// candidates:")
-			for _, c := range cands {
-				fmt.Fprintf(w, "//   %v\n", c)
-			}
-		}
-		fmt.Fprintln(w, "// closest symbol shown below; it does NOT exactly match the requested name")
-		return
-	}
-	if amb, _ := m["ambiguous"].(bool); amb {
-		fmt.Fprintln(w, "// AMBIGUOUS — several symbols fit equally; the first is shown, all are listed at the end")
-	}
-	if note != "" {
-		fmt.Fprintln(w, "// "+note)
-	}
-}
-
 func jsonInt(v any) int {
 	switch n := v.(type) {
 	case int:
@@ -1049,3 +628,191 @@ func asSliceAny(v any) []any {
 var referenceRow = regexp.MustCompile(`^(.+?):(\d+(?::\d+)?: .*|\d+(?::\d+)?)$`)
 
 var genericLead = map[string]int{"query": 0, "name": 1, "status": 2, "error": 3, "warning": 4, "note": 5}
+
+// fallbackRenderers are the answer renderers with a fixed field list, and
+// that list. RenderToolText declines an answer carrying any other field (the
+// MCP server then sends JSON, which loses nothing).
+var fallbackRenderers = map[string]struct {
+	render func(map[string]any) (string, bool)
+	fields map[string]bool
+}{
+	"prism_read":          {renderReadAsText, readTextFields},
+	"prism_change_impact": {renderChangeImpactAsText, changeImpactTextFields},
+	"prism_lookup":        {renderLookupAsText, lookupTextFields},
+	"prism_search":        {renderSearchAsText, searchTextFields},
+	"prism_query":         {renderQuerySourceAsText, querySourceTextFields},
+}
+
+// querySymbolsTextFields are the fields of a query symbols delivery
+// (--delivery symbols, the queryResult struct).
+var querySymbolsTextFields = map[string]bool{
+	"budgetUsed": true, "symbols": true, "textMatches": true,
+	"textBackend": true, "note": true, "staleWarning": true,
+}
+
+// renderQuerySymbolsAsText renders a query symbols delivery: each symbol's
+// file, name and category, then its source; then matched source lines.
+func renderQuerySymbolsAsText(out map[string]any) (string, bool) {
+	syms, ok := out["symbols"]
+	if !ok {
+		return "", false
+	}
+	var b strings.Builder
+	if w, _ := out["staleWarning"].(string); w != "" {
+		fmt.Fprintf(&b, "// %s\n", w)
+	}
+	for _, s := range anySlice(syms) {
+		sym, ok := s.(map[string]any)
+		if !ok {
+			continue
+		}
+		fp, _ := sym["filePath"].(string)
+		name, _ := sym["name"].(string)
+		category, _ := sym["category"].(string)
+		content, _ := sym["content"].(string)
+		if content == "" {
+			content, _ = sym["rawText"].(string)
+		}
+		if fp != "" && name != "" {
+			if category != "" {
+				fmt.Fprintf(&b, "// %s — %s [%s]\n", fp, name, category)
+			} else {
+				fmt.Fprintf(&b, "// %s — %s\n", fp, name)
+			}
+		}
+		if content != "" {
+			b.WriteString(content)
+			if !strings.HasSuffix(content, "\n") {
+				b.WriteString("\n")
+			}
+			b.WriteString("\n")
+		}
+	}
+	if tm := anySlice(out["textMatches"]); len(tm) > 0 {
+		b.WriteString("matched source lines:\n")
+		if !renderOneSearchText(&b, map[string]any{"textHits": out["textMatches"]}, nil) {
+			return "", false
+		}
+	}
+	if note, _ := out["note"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	return b.String(), true
+}
+
+// RenderFallbackText is the CLI's text for an answer RenderToolText
+// declined. A tool with its own renderer gets that renderer over the fields
+// it knows, then every other field as key/value lines, so the text form and
+// the MCP form come from one renderer and nothing is dropped. Without one,
+// or when even the known fields do not render, the answer is printed as
+// key/value lines (the task ops keep their shape-specific forms). Never JSON.
+func RenderFallbackText(tool string, m map[string]any) string {
+	r, ok := fallbackRenderers[tool]
+	if !ok {
+		return RenderAnswerText(m)
+	}
+	m, _ = intifyNumbers(m).(map[string]any) // after a JSON round trip, the renderers read ints
+	if text, ok := r.render(m); ok {
+		return text
+	}
+	if tool == "prism_query" {
+		if _, symbols := m["symbols"]; symbols {
+			r.render, r.fields = renderQuerySymbolsAsText, querySymbolsTextFields
+		}
+	}
+	if items := anySlice(m["results"]); len(items) > 0 {
+		return renderFallbackBatch(tool, m, items)
+	}
+	known, rest := map[string]any{}, map[string]any{}
+	for k, v := range m {
+		if r.fields[k] {
+			known[k] = v
+		} else {
+			rest[k] = v
+		}
+	}
+	text, ok := r.render(known)
+	if !ok || len(known) == 0 {
+		return GenericText(m)
+	}
+	if len(rest) > 0 {
+		if !strings.HasSuffix(text, "\n") {
+			text += "\n"
+		}
+		text += GenericText(rest)
+	}
+	return text
+}
+
+// renderFallbackBatch renders a several-name answer entry by entry: an entry
+// is {name|query, result} or {name|query, error}, or (multi-term search)
+// a result carrying its own query.
+func renderFallbackBatch(tool string, m map[string]any, items []any) string {
+	var b strings.Builder
+	for _, raw := range items {
+		item, ok := raw.(map[string]any)
+		if !ok {
+			b.WriteString(GenericText(raw))
+			continue
+		}
+		label := fmt.Sprint(firstNonNil(item["query"], item["name"]))
+		if e, ok := item["error"]; ok {
+			fmt.Fprintf(&b, "// %s: ERROR: %v\n", label, e)
+			continue
+		}
+		res, nested := item["result"].(map[string]any)
+		if !nested {
+			res = item
+		}
+		fmt.Fprintf(&b, "// ── %s ──\n", label)
+		text := RenderFallbackText(tool, res)
+		b.WriteString(text)
+		if !strings.HasSuffix(text, "\n") {
+			b.WriteString("\n")
+		}
+	}
+	rest := map[string]any{}
+	for k, v := range m {
+		if k != "results" {
+			rest[k] = v
+		}
+	}
+	if len(rest) > 0 {
+		b.WriteString(GenericText(rest))
+	}
+	return b.String()
+}
+
+func firstNonNil(vs ...any) any {
+	for _, v := range vs {
+		if v != nil {
+			return v
+		}
+	}
+	return ""
+}
+
+// intifyNumbers copies v with every integral float64 (what a JSON round trip
+// makes of an int) turned back into an int.
+func intifyNumbers(v any) any {
+	switch x := v.(type) {
+	case float64:
+		if x == float64(int(x)) {
+			return int(x)
+		}
+		return x
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, e := range x {
+			out[k] = intifyNumbers(e)
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = intifyNumbers(e)
+		}
+		return out
+	}
+	return v
+}

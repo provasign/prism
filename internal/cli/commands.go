@@ -4699,8 +4699,17 @@ func printToolResult(op string, out any, text string, rendered bool, format outp
 			}
 			return
 		}
-		// No compact text form: the CLI's own text renderers, ending in
-		// the generic key/value fallback, never JSON (CON-02).
+		// The tool's renderer declined this answer: the same renderer over
+		// the fields it knows plus the rest as key/value lines, never JSON
+		// (CON-02, ENG-04).
+		m, _ := out.(map[string]any) // the renderers expect the tool's own types
+		if m == nil {
+			m = toMap(out)
+		}
+		if m != nil {
+			fmt.Print(mcp.RenderFallbackText("prism_"+strings.ReplaceAll(op, "-", "_"), m))
+			return
+		}
 		printOutput(out, formatText)
 		return
 	}

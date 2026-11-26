@@ -19,6 +19,33 @@ func RenderSearchText(out any) (string, bool) {
 	return renderSearchAsText(m)
 }
 
+// searchTextFields are the fields renderSearchAsText renders; any other field makes it decline.
+var searchTextFields = map[string]bool{
+	"textHits": true, "textBackend": true, "truncated": true,
+	"totalHits": true, "filesMatched": true, "warning": true,
+	"files": true, "fileCount": true, "rejectedPaths": true,
+	"timedOut": true, "resolvedNote": true, "results": true,
+	"failedTerms": true, "note": true, "query": true,
+	"symbols": true, "hitRollup": true, "didYouMean": true,
+	"symbolsTruncated": true,
+	"scopeNote":        true,
+	"fallbackResults":  true,
+	"fallbackOmitted":  true,
+	"fallbackFailed":   true,
+	"root":             true,
+	"countComplete":    true,
+	"caseSensitive":    true,
+	"notSearched":      true,
+	"resultsComplete":  true,
+	"inlineBodies":     true,
+	"searchLeads":      true,
+	"searchLeadNote":   true,
+	"condensedNote":    true,
+	"fileInventory":    true,
+	"testFileCounts":   true,
+	"budgetHidden":     true,
+}
+
 // renderSearchAsText renders a prism_search TEXT result as plain grep-style
 // "path:line: text" lines instead of JSON.
 //
@@ -36,31 +63,7 @@ func RenderSearchText(out any) (string, bool) {
 // shape contains a field this function does not recognise: a silent drop
 // is worse than a slightly larger response.
 func renderSearchAsText(out map[string]any) (string, bool) {
-	known := map[string]bool{
-		"textHits": true, "textBackend": true, "truncated": true,
-		"totalHits": true, "filesMatched": true, "warning": true,
-		"files": true, "fileCount": true, "rejectedPaths": true,
-		"timedOut": true, "resolvedNote": true, "results": true,
-		"failedTerms": true, "note": true, "query": true,
-		"symbols": true, "hitRollup": true, "didYouMean": true,
-		"symbolsTruncated": true,
-		"scopeNote":        true,
-		"fallbackResults":  true,
-		"fallbackOmitted":  true,
-		"fallbackFailed":   true,
-		"root":             true,
-		"countComplete":    true,
-		"caseSensitive":    true,
-		"notSearched":      true,
-		"resultsComplete":  true,
-		"inlineBodies":     true,
-		"searchLeads":      true,
-		"searchLeadNote":   true,
-		"condensedNote":    true,
-		"fileInventory":    true,
-		"testFileCounts":   true,
-		"budgetHidden":     true,
-	}
+	known := searchTextFields
 	for k := range out {
 		if !known[k] {
 			return "", false

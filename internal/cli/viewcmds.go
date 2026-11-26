@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/provasign/prism/internal/mcp"
 	"os"
 	"sort"
 	"strings"
@@ -316,128 +315,6 @@ func cmdVerify(args []string) int {
 		return 1
 	}
 	return 0
-}
-
-func renderVerifyText(m map[string]any) {
-	if m == nil {
-		fmt.Println("verify: empty result")
-		return
-	}
-	verdict, _ := m["verdict"].(string)
-	if verdict == "clean" {
-		fmt.Printf("verify: clean — %v\n", m["note"])
-		return
-	}
-	changed := asSliceAny(m["changedFiles"])
-	if lv, _ := m["linkedVerdict"].(string); lv != "" {
-		fmt.Printf("verify: %s for this repository; %s — %d changed files vs %v\n", verdict, lv, len(changed), m["base"])
-	} else {
-		fmt.Printf("verify: %s — %d changed files vs %v\n", verdict, len(changed), m["base"])
-	}
-
-	if sigs := asSliceAny(m["signatureChanges"]); len(sigs) > 0 {
-		fmt.Println("\ncontract changes detected:")
-		for _, s := range sigs {
-			sm, _ := s.(map[string]any)
-			if sm == nil {
-				continue
-			}
-			fmt.Printf("  %s:%v  %v\n", sm["file"], sm["line"], sm["reason"])
-		}
-	}
-
-	missedList := asSliceAny(m["missedSites"])
-	if len(missedList) > 0 {
-		fmt.Printf("\nMISSED SITES (%d) — required by the change, not touched by the diff:\n", len(missedList))
-		for _, ms := range missedList {
-			mm, _ := ms.(map[string]any)
-			if mm == nil {
-				continue
-			}
-			fmt.Printf("  %s:%v  %v — %v\n", mm["file"], mm["line"], mm["qualifiedName"], mm["detail"])
-		}
-	}
-
-	if unv := asSliceAny(m["unverifiedSeeds"]); len(unv) > 0 {
-		fmt.Printf("\nUNVERIFIED contract changes (%d) — fail-closed, review these:\n", len(unv))
-		for _, u := range unv {
-			fmt.Printf("  %v\n", u)
-		}
-	}
-	if advisories := asSliceAny(m["contentAdvisories"]); len(advisories) > 0 {
-		fmt.Printf("\nCONTENT ADVISORIES (%d) — behavior not verified:\n", len(advisories))
-		for _, advisory := range advisories {
-			fmt.Printf("  %v\n", advisory)
-		}
-	}
-
-	if deps := asSliceAny(m["newDependencies"]); len(deps) > 0 {
-		fmt.Println("\ncross-component dependency candidates (all evidence in changed code; no base-graph comparison):")
-		for _, d := range deps {
-			dm, _ := d.(map[string]any)
-			if dm == nil {
-				continue
-			}
-			fmt.Printf("  %v -> %v  %v crossing(s)  [tier: %v]\n",
-				dm["from"], dm["to"], dm["weight"], dm["minTier"])
-		}
-	}
-	if as, _ := m["archStatus"].(string); as == "fail" || as == "review" {
-		fmt.Printf("\narch rules touched by this diff: %s\n", as)
-		renderViolations(asSliceAny(m["archIntroduced"]), "ARCH")
-	}
-
-	if tests := asSliceAny(m["affectedTests"]); len(tests) > 0 { // legacy servers only
-		fmt.Printf("\naffected tests to run (%d):\n", len(tests))
-		max := len(tests)
-		if max > 15 {
-			max = 15
-		}
-		for _, tv := range tests[:max] {
-			tm, _ := tv.(map[string]any)
-			if tm == nil {
-				continue
-			}
-			fmt.Printf("  %v  (%s)\n", tm["name"], tm["file"])
-		}
-		if len(tests) > 15 {
-			fmt.Printf("  … and %d more\n", len(tests)-15)
-		}
-	}
-	for _, n := range asSliceAny(m["notes"]) {
-		fmt.Printf("note: %v\n", n)
-	}
-	if tc := asSliceAny(m["testCoverage"]); len(tc) > 0 {
-		fmt.Println("\ntest coverage of changed functions (informational, does not affect verdict):")
-		for _, e := range tc {
-			em, _ := e.(map[string]any)
-			if em == nil {
-				continue
-			}
-			if covered := asSliceAny(em["coveredBy"]); len(covered) > 0 {
-				fmt.Printf("  %v:%v  %v — covered by %d test(s): %v\n", em["file"], em["line"], em["symbol"], len(covered), covered)
-			} else {
-				fmt.Printf("  %v:%v  %v — %v\n", em["file"], em["line"], em["symbol"], em["warning"])
-			}
-		}
-	}
-	linked := mcp.FormatWorkspaceConsumersText(m)
-	if linked != "" {
-		fmt.Print("\n" + linked)
-	}
-	switch verdict {
-	case "complete":
-		switch {
-		case len(asSliceAny(m["contentAdvisories"])) > 0:
-			fmt.Println("\nno missed contract sites identified; content behavior above was not assessed")
-		case len(asSliceAny(m["workspaceConsumers"])) > 0:
-			fmt.Println("\nno missed sites in this repository; the linked-repository sites above were not checked")
-		default:
-			fmt.Println("\nno missed sites — the diff covers its own blast radius")
-		}
-	case "review":
-		fmt.Println("\nverdict: review — some contract changes could not be verified (--strict exits 1)")
-	}
 }
 
 // toMap round-trips a tool result through JSON into a generic map so the
