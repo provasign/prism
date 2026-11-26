@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/core"
 )
 
 func writeCLIFile(t *testing.T, root, rel, content string) string {
@@ -233,7 +235,7 @@ func TestCmdFeedback_Smoke(t *testing.T) {
 
 func TestInvokeTool_Smoke(t *testing.T) {
 	dir := setupCLIProject(t)
-	out, err := invokeTool(dir, "prism_savings", nil)
+	out, err := invokeTool(dir, rawRequest{"prism_savings", nil})
 	if err != nil {
 		t.Fatalf("invokeTool: %v", err)
 	}
@@ -244,10 +246,10 @@ func TestInvokeTool_Smoke(t *testing.T) {
 
 func TestInvokeTool_DoesNotReuseConversationCache(t *testing.T) {
 	dir := setupCLIProject(t)
-	if _, err := invokeTool(dir, "prism_read", map[string]any{"file": "main.go"}); err != nil {
+	if _, err := invokeTool(dir, core.ReadRequest{File: "main.go"}); err != nil {
 		t.Fatalf("first prism_read: %v", err)
 	}
-	out, err := invokeTool(dir, "prism_read", map[string]any{"file": "main.go"})
+	out, err := invokeTool(dir, core.ReadRequest{File: "main.go"})
 	if err != nil {
 		t.Fatalf("second prism_read: %v", err)
 	}
@@ -399,3 +401,12 @@ func TestCmdErrorPaths_FileAsDir(t *testing.T) {
 		t.Errorf("cmdServe file-as-dir: want rc=1, got %d", rc)
 	}
 }
+
+// rawRequest is a tool call with no typed request (tests only).
+type rawRequest struct {
+	tool string
+	args map[string]any
+}
+
+func (r rawRequest) Tool() string         { return r.tool }
+func (r rawRequest) Args() map[string]any { return r.args }

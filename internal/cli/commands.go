@@ -2882,20 +2882,8 @@ func cmdQuery(args []string) int {
 		fmt.Fprintf(os.Stderr, "query: at most %d terms per call (the MCP gateway rejects more); ask about the terms the current question needs\n", maxBatchTerms)
 		return 2
 	}
-	invokeArgs := map[string]any{"terms": terms, "limit": limit}
-	if delivery != "" {
-		invokeArgs["delivery"] = delivery
-	}
-	if maxFiles > 0 {
-		invokeArgs["max_files"] = maxFiles
-	}
-	if profile != "" {
-		invokeArgs["profile"] = profile
-	}
-	if len(include) > 0 {
-		invokeArgs["include"] = include
-	}
-	out, text, rendered, err := invokeRepoToolText(dir, repo, "prism_query", invokeArgs)
+	req := core.QueryRequest{Terms: terms, Limit: limit, Delivery: delivery, MaxFiles: maxFiles, Profile: profile, Include: include}
+	out, text, rendered, err := invokeRepoToolText(dir, repo, req)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "query:", err)
 		return 1
@@ -3005,36 +2993,24 @@ func cmdRead(args []string) int {
 	} else if to > 0 {
 		offset, limit = 1, to
 	}
-	readArgs := map[string]any{"file": file}
-	if includeSensitive {
-		readArgs["include_sensitive"] = true
-	}
-	if offset > 0 {
-		readArgs["offset"] = offset
-	}
-	if limit > 0 {
-		readArgs["limit"] = limit
-	}
+	readReq := core.ReadRequest{File: file, IncludeSensitive: includeSensitive, Offset: max(offset, 0), Limit: max(limit, 0)}
 	var out any
 	var text string
 	var rendered bool
 	var err error
 	if format == formatText && !includeSensitive {
-		compactArgs := map[string]any{"file": file}
-		if includeSensitive {
-			compactArgs["include_sensitive"] = true
-		}
+		compactReq := core.CompactReadRequest{File: file, IncludeSensitive: includeSensitive}
 		start := 1
 		if offset > 0 {
 			start = offset
-			compactArgs["from"] = start
+			compactReq.From = start
 		}
 		if limit > 0 {
-			compactArgs["to"] = start + limit - 1
+			compactReq.To = start + limit - 1
 		}
-		out, text, rendered, err = invokeCompactReadText(dir, compactArgs)
+		out, text, rendered, err = invokeCompactReadText(dir, compactReq)
 	} else {
-		out, text, rendered, err = invokeToolText(dir, "prism_read", readArgs)
+		out, text, rendered, err = invokeToolText(dir, readReq)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
@@ -3063,11 +3039,7 @@ func cmdReadFiles(dir string, files []string, from, to, offset, limit int, forma
 		fmt.Fprintf(os.Stderr, "read: at most %d files per call (the MCP gateway rejects more)\n", maxBatchTerms)
 		return 2
 	}
-	ranges := make([]any, 0, len(files))
-	for _, f := range files {
-		ranges = append(ranges, map[string]any{"file": f, "from": 1, "to": core.CompactReadLimit})
-	}
-	out, text, rendered, err := invokeCompactReadText(dir, map[string]any{"ranges": ranges})
+	out, text, rendered, err := invokeCompactReadText(dir, core.CompactReadFilesRequest{Files: files})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return exitForError(err)
@@ -3224,59 +3196,24 @@ args:
 	if dir == "" {
 		dir = "."
 	}
-	var query any = bare[0]
-	if len(bare) > 1 {
-		query = bare
+	searchReq := core.SearchRequest{
+		Terms: bare, Scope: scope, Regex: regex, Case: caseMode, Word: word,
+		NoDefaultExcludes: noDefaultExcludes, IncludeSensitive: includeSensitive,
+		Paths: paths, Globs: globs, FilesOnly: filesOnly, Exhaustive: exhaustive,
+		RollupOnly: rollupOnly, Repo: repo,
 	}
-	// An explicit --limit is a caller-chosen shape; without it the MCP
-	// default response budget applies (internal/mcp/searchbudget.go).
-	searchArgs := map[string]any{"query": query}
+	// An explicit --limit is a caller-chosen shape; without it the default
+	// response budget applies (internal/core/searchbudget.go).
 	if limitSet {
-		searchArgs["limit"] = limit
-	}
-	if scope != "" {
-		searchArgs["scope"] = scope
-	}
-	if regex {
-		searchArgs["regex"] = true
-	}
-	if caseMode != "" {
-		searchArgs["case"] = caseMode
-	}
-	if word {
-		searchArgs["word"] = true
-	}
-	if noDefaultExcludes {
-		searchArgs["no_default_excludes"] = true
-	}
-	if includeSensitive {
-		searchArgs["include_sensitive"] = true
-	}
-	if len(paths) > 0 {
-		searchArgs["path"] = paths
-	}
-	if len(globs) > 0 {
-		searchArgs["glob"] = globs
-	}
-	if filesOnly {
-		searchArgs["files_only"] = true
+		searchReq.Limit = &limit
 	}
 	if includeBodiesSet {
-		searchArgs["include_bodies"] = includeBodies
-	}
-	if exhaustive {
-		searchArgs["exhaustive"] = true
-	}
-	if rollupOnly {
-		searchArgs["rollup_only"] = true
+		searchReq.IncludeBodies = &includeBodies
 	}
 	if contextSet {
-		searchArgs["context"] = contextLines
+		searchReq.Context = &contextLines
 	}
-	if repo != "" {
-		searchArgs["repo"] = repo
-	}
-	out, compactText, rendered, err := invokeSearchWithCompactRendering(dir, searchArgs, format == formatText)
+	out, compactText, rendered, err := invokeSearchWithCompactRendering(dir, searchReq, format == formatText)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
@@ -3290,7 +3227,8 @@ args:
 	return 0
 }
 
-func invokeSearchWithCompactRendering(dir string, args map[string]any, renderText bool) (any, string, bool, error) {
+func invokeSearchWithCompactRendering(dir string, r core.SearchRequest, renderText bool) (any, string, bool, error) {
+	args := r.Args()
 	root, sub := cliRoot(dir)
 	rebaseArgs(args, root, sub)
 	noteRoot(root, sub)
@@ -3329,7 +3267,7 @@ func cmdLookup(args []string) int {
 	format := formatText
 	repo := ""
 	fileHint := ""
-	var fields []any
+	var fields []string
 	var bare []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -3404,12 +3342,9 @@ func cmdLookup(args []string) int {
 		fmt.Fprintln(os.Stderr, "lookup: at most 10 names per call")
 		return 2
 	}
-	var names any = bare[0]
 	// Text output goes through the batch form even for one name: that is the
 	// shape (and the "// lookup <name>" header) an agent gets over MCP.
-	if len(bare) > 1 || format == formatText {
-		names = bare
-	}
+	lookupReq := core.LookupRequest{Names: bare, AsList: format == formatText}
 	for _, n := range bare {
 		warnShellExpandedName("lookup", n)
 	}
@@ -3421,25 +3356,16 @@ func cmdLookup(args []string) int {
 		}
 		repo = selected
 	}
-	callArgs := map[string]any{"name": names}
-	if len(fields) > 0 {
-		callArgs["fields"] = fields
-	}
-	if repo != "" {
-		callArgs["repo"] = repo
-	}
-	if fileHint != "" {
-		callArgs["file"] = fileHint
-	}
+	lookupReq.Fields, lookupReq.Repo, lookupReq.File = fields, repo, fileHint
 	var out any
 	var text string
 	var rendered bool
 	var err error
 	if repo != "" && repo != "all" && fileHint != "" {
-		delete(callArgs, "repo")
-		out, text, rendered, err = invokeRepoToolText(dir, repo, "prism_lookup", callArgs)
+		lookupReq.Repo = ""
+		out, text, rendered, err = invokeRepoToolText(dir, repo, lookupReq)
 	} else {
-		out, text, rendered, err = invokeToolText(dir, "prism_lookup", callArgs)
+		out, text, rendered, err = invokeToolText(dir, lookupReq)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
@@ -3502,11 +3428,7 @@ func cmdNode(args []string) int {
 			}
 		}
 	}
-	callArgs := map[string]any{"name": name}
-	if fileHint != "" {
-		callArgs["file"] = fileHint
-	}
-	out, err := invokeTool(dir, "prism_node", callArgs)
+	out, err := invokeTool(dir, core.NodeRequest{Name: name, File: fileHint})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "node:", err)
 		return exitForError(err)
@@ -3538,7 +3460,7 @@ func cmdResolve(args []string) int {
 			return usageError(err)
 		}
 	}
-	out, err := invokeTool(dir, "prism_resolve", map[string]any{"name": name})
+	out, err := invokeTool(dir, core.ResolveRequest{Name: name})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "resolve:", err)
 		return exitForError(err)
@@ -3555,7 +3477,7 @@ func cmdEdges(args []string) int {
 	name := args[0]
 	dir, dirSet := ".", false
 	direction := "both"
-	var kinds []any
+	var kinds []string
 	format := formatText
 	for i := 1; i < len(args); i++ {
 		a := args[i]
@@ -3592,11 +3514,7 @@ func cmdEdges(args []string) int {
 			}
 		}
 	}
-	callArgs := map[string]any{"name": name, "direction": direction}
-	if len(kinds) > 0 {
-		callArgs["kinds"] = kinds
-	}
-	out, err := invokeTool(dir, "prism_edges", callArgs)
+	out, err := invokeTool(dir, core.EdgesRequest{Name: name, Direction: direction, Kinds: kinds})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "edges:", err)
 		return exitForError(err)
@@ -3611,7 +3529,7 @@ func cmdCallers(args []string) int {
 	if rc != 0 {
 		return rc
 	}
-	callArgs := map[string]any{"name": args[0]}
+	callersReq := core.CallersRequest{Name: args[0]}
 	dir, dirSet := ".", false
 	format := formatText
 	for i := 1; i < len(args); i++ {
@@ -3622,14 +3540,14 @@ func cmdCallers(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["depth"] = n
+			callersReq.Depth = n
 			i++
 		case "--file":
 			v, err := flagValue("callers", args, i)
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["file"] = v
+			callersReq.File = v
 			i++
 		case "--format":
 			f, err := formatFlag("callers", args, i)
@@ -3647,7 +3565,7 @@ func cmdCallers(args []string) int {
 			}
 		}
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_callers", callArgs)
+	out, text, rendered, err := invokeToolText(dir, callersReq)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "callers:", err)
 		return exitForError(err)
@@ -3663,7 +3581,7 @@ func cmdPath(args []string) int {
 	if rc != 0 {
 		return rc
 	}
-	callArgs := map[string]any{"from": args[0], "to": args[1]}
+	pathReq := core.CallPathRequest{From: args[0], To: args[1]}
 	dir, dirSet := ".", false
 	format := formatText
 	for i := 2; i < len(args); i++ {
@@ -3685,7 +3603,7 @@ func cmdPath(args []string) int {
 			}
 		}
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_call_path", callArgs)
+	out, text, rendered, err := invokeToolText(dir, pathReq)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "path:", err)
 		return exitForError(err)
@@ -3748,14 +3666,7 @@ func cmdReferences(args []string) int {
 			}
 		}
 	}
-	callArgs := map[string]any{"name": name}
-	if file != "" {
-		callArgs["file"] = file
-	}
-	if kind != "" {
-		callArgs["kind"] = kind
-	}
-	out, err := invokeTool(dir, "prism_references", callArgs)
+	out, err := invokeTool(dir, core.ReferencesRequest{Name: name, File: file, Kind: kind})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "references:", err)
 		return exitForError(err)
@@ -3840,17 +3751,14 @@ func cmdChangeImpact(args []string) int {
 	var firstErr error
 	for _, query := range queries {
 		warnShellExpandedName("change-impact", query)
-		callArgs := map[string]any{"query": query}
-		if file != "" {
-			callArgs["file"] = file
-		}
-		out, text, rendered, err := session.invoke("prism_change_impact", callArgs)
+		impactReq := core.ChangeImpactRequest{Query: query, File: file}
+		out, text, rendered, err := session.invoke(impactReq)
 		if err != nil && repo == "" {
 			// The name is not defined here but a linked repository may define
 			// it (lookup already answers that way). Ask them in turn instead
 			// of making the agent rerun with --repo: that rerun was 2 of 10
 			// change-impact calls in the 11-16 cross-repo run.
-			out, text, rendered, err = changeImpactInLinked(dir, session, callArgs, err)
+			out, text, rendered, err = changeImpactInLinked(dir, session, impactReq, err)
 		}
 		if len(queries) == 1 {
 			if err != nil {
@@ -3887,12 +3795,12 @@ func cmdChangeImpact(args []string) int {
 // changeImpactInLinked retries an indexed-name miss in the linked repository
 // selected by lookup. Ambiguous definitions remain errors; linked clients are
 // owned by the parent session and reused for the rest of the batch.
-func changeImpactInLinked(dir string, session *repoToolSession, callArgs map[string]any, miss error) (any, string, bool, error) {
+func changeImpactInLinked(dir string, session *repoToolSession, req core.ChangeImpactRequest, miss error) (any, string, bool, error) {
 	if !strings.Contains(miss.Error(), "is indexed") || session.handler.Workspace == nil || len(session.handler.Workspace.Linked()) == 0 {
 		return nil, "", false, miss
 	}
-	name, _ := callArgs["query"].(string)
-	found, err := session.handler.Invoke("prism_lookup", map[string]any{"name": name})
+	name := req.Query
+	found, err := session.handler.Do(core.LookupRequest{Names: []string{name}})
 	m, _ := found.(map[string]any)
 	if err != nil || m == nil {
 		return nil, "", false, miss
@@ -3922,7 +3830,7 @@ func changeImpactInLinked(dir string, session *repoToolSession, callArgs map[str
 		}
 		session.linked[id] = linked
 	}
-	return linked.invoke("prism_change_impact", callArgs)
+	return linked.invoke(req)
 }
 
 func cmdRenamePlan(args []string) int {
@@ -3965,14 +3873,7 @@ func cmdRenamePlan(args []string) int {
 			}
 		}
 	}
-	callArgs := map[string]any{"query": query, "newName": newName}
-	if file != "" {
-		callArgs["file"] = file
-	}
-	if allowCollision {
-		callArgs["allow_collision"] = true
-	}
-	out, err := invokeTool(dir, "prism_rename_plan", callArgs)
+	out, err := invokeTool(dir, core.RenamePlanRequest{Query: query, NewName: newName, File: file, AllowCollision: allowCollision})
 	if err != nil {
 		return reportToolError("rename-plan", err, format)
 	}
@@ -3990,7 +3891,7 @@ func cmdRenamePlan(args []string) int {
 func cmdChangeImpactDiff(args []string) int {
 	dir, dirSet := ".", false
 	format := formatText
-	callArgs := map[string]any{}
+	var diffReq core.ChangeImpactDiffRequest
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -4000,7 +3901,7 @@ func cmdChangeImpactDiff(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["base"] = v
+			diffReq.Base = v
 			i++
 		case "--format":
 			f, err := formatFlag("change-impact", args, i)
@@ -4020,7 +3921,7 @@ func cmdChangeImpactDiff(args []string) int {
 			}
 		}
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_change_impact_diff", callArgs)
+	out, text, rendered, err := invokeToolText(dir, diffReq)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
 		if strings.Contains(err.Error(), "not a git repository") || strings.Contains(err.Error(), "unknown revision") {
@@ -4076,14 +3977,7 @@ func cmdMissingImplementations(args []string) int {
 			}
 		}
 	}
-	callArgs := map[string]any{"query": query}
-	if file != "" {
-		callArgs["file"] = file
-	}
-	if signature != "" {
-		callArgs["signature"] = signature
-	}
-	out, err := invokeTool(dir, "prism_missing_implementations", callArgs)
+	out, err := invokeTool(dir, core.MissingImplementationsRequest{Query: query, File: file, Signature: signature})
 	if err != nil {
 		return reportToolError("missing-implementations", err, format)
 	}
@@ -4094,7 +3988,7 @@ func cmdMissingImplementations(args []string) int {
 func cmdDeadCode(args []string) int {
 	dir, dirSet := ".", false
 	format := formatText
-	var roots []any
+	var roots []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -4123,11 +4017,7 @@ func cmdDeadCode(args []string) int {
 			}
 		}
 	}
-	callArgs := map[string]any{}
-	if len(roots) > 0 {
-		callArgs["roots"] = roots
-	}
-	out, err := invokeTool(dir, "prism_dead_code", callArgs)
+	out, err := invokeTool(dir, core.DeadCodeRequest{Roots: roots})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "dead-code:", err)
 		return exitInternal
@@ -4147,7 +4037,7 @@ func cmdCompact(args []string) int {
 		fmt.Fprintln(os.Stderr, "compact: stdin must be a JSON array of turns:", err)
 		return 2
 	}
-	out, err := invokeTool(dir, "prism_compact", map[string]any{"turns": turns})
+	out, err := invokeTool(dir, core.CompactRequest{Turns: turns})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "compact:", err)
 		return 1
@@ -4229,12 +4119,7 @@ func cmdFeedback(args []string) int {
 		tool = "prism_query"
 	}
 
-	out, err := invokeTool(dir, "prism_feedback", map[string]any{
-		"tool":    tool,
-		"queryId": queryID,
-		"rating":  rating,
-		"notes":   notes,
-	})
+	out, err := invokeTool(dir, core.FeedbackRequest{ToolName: tool, QueryID: queryID, Rating: rating, Notes: notes})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "feedback:", err)
 		return 1
@@ -4614,7 +4499,8 @@ func newClientOpts(dir string, oneShot, force bool) (*config.Config, *grove.Clie
 	return cfg, client, nil
 }
 
-func invokeTool(dir, tool string, args map[string]any) (any, error) {
+func invokeTool(dir string, r core.Request) (any, error) {
+	tool, args := r.Tool(), r.Args()
 	timing := os.Getenv("PRISM_TIMING") != ""
 	tInv := time.Now()
 	stamp := func(stage string) {
@@ -4643,7 +4529,8 @@ func invokeTool(dir, tool string, args map[string]any) (any, error) {
 // invokeToolText runs a tool and renders its answer with the same renderer
 // the MCP server uses (compact gateway wording), so --format text matches
 // what an agent receives over MCP. rendered=false: caller prints out itself.
-func invokeToolText(dir, tool string, args map[string]any) (out any, text string, rendered bool, err error) {
+func invokeToolText(dir string, r core.Request) (out any, text string, rendered bool, err error) {
+	tool, args := r.Tool(), r.Args()
 	root, sub := cliRoot(dir)
 	rebaseArgs(args, root, sub)
 	noteRoot(root, sub)
@@ -4670,7 +4557,8 @@ func invokeToolText(dir, tool string, args map[string]any) (out any, text string
 // it neither opens the engine nor builds a missing index. A cold `prism read
 // README.md` used to index the repository first, and an unusable
 // .grove/grove.db failed a readable file with "file is not a database".
-func invokeCompactReadText(dir string, args map[string]any) (out any, text string, rendered bool, err error) {
+func invokeCompactReadText(dir string, r core.Request) (out any, text string, rendered bool, err error) {
+	args := r.Args()
 	root, sub := cliRoot(dir)
 	rebaseArgs(args, root, sub)
 	noteRoot(root, sub)

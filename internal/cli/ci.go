@@ -106,7 +106,7 @@ func cmdCI(args []string) int {
 		rep.Degraded = append(rep.Degraded, r.Language+": "+r.Problem+" (fix: "+r.Fix+")")
 	}
 	h := core.NewHandler(cfg, root, client)
-	vout, err := h.Invoke("prism_verify", map[string]any{"base": base})
+	vout, err := h.Do(core.VerifyRequest{Base: base})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("ci", err))
 		if strings.Contains(err.Error(), "not a git repository") || strings.Contains(err.Error(), "unknown revision") {
@@ -139,7 +139,7 @@ func cmdCI(args []string) int {
 			Message: fmt.Sprintf("architecture rule %v: %v -> %v (%d site(s), weakest evidence %v)", m["rule"], edge["from"], edge["to"], len(sites), m["minTier"]),
 		})
 	}
-	if dout, derr := h.Invoke("prism_change_impact_diff", map[string]any{"base": base}); derr == nil {
+	if dout, derr := h.Do(core.ChangeImpactDiffRequest{Base: base}); derr == nil {
 		d := toMap(dout)
 		for _, c := range anySliceCLI(d["changes"]) {
 			if cm, ok := c.(map[string]any); ok {

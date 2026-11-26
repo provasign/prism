@@ -86,11 +86,7 @@ func cmdGraph(args []string) int {
 	// MCP tool, run in process.
 	handler := core.NewHandler(cfg, root, client)
 	impact := func(_ context.Context, query, file string) (map[string]any, error) {
-		args := map[string]any{"query": query}
-		if file != "" {
-			args["file"] = file
-		}
-		out, err := handler.Invoke("prism_change_impact", args)
+		out, err := handler.Do(core.ChangeImpactRequest{Query: query, File: file})
 		if err != nil {
 			return nil, err
 		}

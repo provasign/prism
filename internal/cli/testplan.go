@@ -12,7 +12,7 @@ func cmdTestPlan(args []string) int {
 	dir, dirSet := ".", false
 	format := formatText
 	targets := false
-	callArgs := map[string]any{}
+	var req core.TestPlanRequest
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--base":
@@ -20,15 +20,14 @@ func cmdTestPlan(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["base"] = v
+			req.Base = v
 			i++
 		case "--coverage":
 			v, err := flagValue("test-plan", args, i)
 			if err != nil {
 				return usageError(err)
 			}
-			cov, _ := callArgs["coverage"].([]any)
-			callArgs["coverage"] = append(cov, v)
+			req.Coverage = append(req.Coverage, v)
 			i++
 		case "--format":
 			v, err := flagValue("test-plan", args, i)
@@ -54,7 +53,7 @@ func cmdTestPlan(args []string) int {
 			}
 		}
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_test_plan", callArgs)
+	out, text, rendered, err := invokeToolText(dir, req)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "test-plan:", err)
 		return 2

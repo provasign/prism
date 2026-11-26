@@ -97,7 +97,8 @@ func (s *repoToolSession) close() {
 	s.client.Shutdown()
 }
 
-func (s *repoToolSession) invoke(tool string, args map[string]any) (out any, text string, rendered bool, err error) {
+func (s *repoToolSession) invoke(r core.Request) (out any, text string, rendered bool, err error) {
+	tool, args := r.Tool(), r.Args()
 	call := make(map[string]any, len(args))
 	for key, value := range args {
 		call[key] = value
@@ -143,13 +144,13 @@ func (s *repoToolSession) invoke(tool string, args map[string]any) (out any, tex
 }
 
 // invokeRepoToolText is the single-request form of the shared CLI session.
-func invokeRepoToolText(dir, repo, tool string, args map[string]any) (any, string, bool, error) {
+func invokeRepoToolText(dir, repo string, r core.Request) (any, string, bool, error) {
 	s, err := newRepoToolSession(dir, repo)
 	if err != nil {
 		return nil, "", false, err
 	}
 	defer s.close()
-	return s.invoke(tool, args)
+	return s.invoke(r)
 }
 
 func graphRepoHint(tool string, args map[string]any, ws *workspace.Workspace) string {

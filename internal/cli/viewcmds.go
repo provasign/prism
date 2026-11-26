@@ -6,6 +6,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/provasign/prism/internal/core"
 )
 
 // Layer-3 view commands: `prism map` renders the component-level projection
@@ -16,7 +18,7 @@ import (
 func cmdMap(args []string) int {
 	dir, dirSet := ".", false
 	jsonOut := false
-	callArgs := map[string]any{}
+	var mapReq core.MapRequest
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--depth", "--max-sites":
@@ -24,14 +26,18 @@ func cmdMap(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs[strings.TrimPrefix(strings.ReplaceAll(a, "-sites", "_sites"), "--")] = n
+			if a == "--depth" {
+				mapReq.Depth = n
+			} else {
+				mapReq.MaxSites = n
+			}
 			i++
 		case "--component":
 			v, err := flagValue("map", args, i)
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["component"] = v
+			mapReq.Component = v
 			i++
 		case "--expand":
 			v, err := flagValue("map", args, i)
@@ -43,13 +49,12 @@ func cmdMap(args []string) int {
 				fmt.Fprintln(os.Stderr, "map: --expand wants 'from->to'")
 				return 2
 			}
-			callArgs["from"] = strings.TrimSpace(from)
-			callArgs["to"] = strings.TrimSpace(to)
+			mapReq.ExpandFrom, mapReq.ExpandTo = strings.TrimSpace(from), strings.TrimSpace(to)
 			i++
 		case "--tests":
-			callArgs["include_tests"] = true
+			mapReq.IncludeTests = true
 		case "--all-components":
-			callArgs["include_auxiliary"] = true
+			mapReq.IncludeAuxiliary = true
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -69,7 +74,7 @@ func cmdMap(args []string) int {
 			}
 		}
 	}
-	out, err := invokeTool(dir, "prism_map", callArgs)
+	out, err := invokeTool(dir, mapReq)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "map:", err)
 		return exitForError(err)
@@ -85,7 +90,7 @@ func cmdMap(args []string) int {
 func cmdCycles(args []string) int {
 	dir, dirSet := ".", false
 	jsonOut := false
-	callArgs := map[string]any{}
+	var cyclesReq core.CyclesRequest
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--depth":
@@ -93,10 +98,10 @@ func cmdCycles(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["depth"] = n
+			cyclesReq.Depth = n
 			i++
 		case "--tests":
-			callArgs["include_tests"] = true
+			cyclesReq.IncludeTests = true
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -116,7 +121,7 @@ func cmdCycles(args []string) int {
 			}
 		}
 	}
-	out, err := invokeTool(dir, "prism_cycles", callArgs)
+	out, err := invokeTool(dir, cyclesReq)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cycles:", err)
 		return 1
@@ -135,8 +140,7 @@ func cmdCycles(args []string) int {
 func cmdArch(args []string) int {
 	dir, dirSet := ".", false
 	jsonOut := false
-	callArgs := map[string]any{}
-	var extraDeny []any
+	var archReq core.ArchCheckRequest
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--depth":
@@ -144,19 +148,19 @@ func cmdArch(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["depth"] = n
+			archReq.Depth = n
 			i++
 		case "--deny":
 			v, err := flagValue("arch", args, i)
 			if err != nil {
 				return usageError(err)
 			}
-			extraDeny = append(extraDeny, v)
+			archReq.Deny = append(archReq.Deny, v)
 			i++
 		case "--tests":
-			callArgs["include_tests"] = true
+			archReq.IncludeTests = true
 		case "--strict":
-			callArgs["strict"] = true
+			archReq.Strict = true
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -176,10 +180,7 @@ func cmdArch(args []string) int {
 			}
 		}
 	}
-	if len(extraDeny) > 0 {
-		callArgs["deny"] = extraDeny
-	}
-	out, err := invokeTool(dir, "prism_arch_check", callArgs)
+	out, err := invokeTool(dir, archReq)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "arch:", err)
 		return exitInternal
@@ -258,7 +259,7 @@ func renderViolations(list []any, label string) {
 func cmdVerify(args []string) int {
 	dir, dirSet := ".", false
 	jsonOut := false
-	callArgs := map[string]any{}
+	var verifyReq core.VerifyRequest
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--base":
@@ -266,10 +267,10 @@ func cmdVerify(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["base"] = v
+			verifyReq.Base = v
 			i++
 		case "--strict":
-			callArgs["strict"] = true
+			verifyReq.Strict = true
 		case "--removed":
 			// Mid-loop residual check: --removed a,b,c reports exact
 			// identifier mentions instead of running the full diff check.
@@ -277,7 +278,7 @@ func cmdVerify(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			callArgs["removed_symbols"] = syms
+			verifyReq.RemovedSymbols = syms
 			i++
 		case "--json":
 			jsonOut = true
@@ -300,7 +301,7 @@ func cmdVerify(args []string) int {
 			}
 		}
 	}
-	out, text, rendered, err := invokeToolText(dir, "prism_verify", callArgs)
+	out, text, rendered, err := invokeToolText(dir, verifyReq)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "verify:", err)
 		return 2
