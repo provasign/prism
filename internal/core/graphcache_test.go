@@ -1,7 +1,6 @@
 package core
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -114,10 +113,7 @@ func TestGraphDedupeSmallResultNeverPointered(t *testing.T) {
 // verify/arch_check (gates) never flow through delivery dedupe: their
 // dispatch lines in Invoke must call the tool directly, not graphDelivery.
 func TestGateToolsAreNotWiredThroughDedupe(t *testing.T) {
-	src, err := os.ReadFile("tools.go")
-	if err != nil {
-		t.Fatal(err)
-	}
+	src := packageSource(t)
 	for _, gate := range []string{"toolVerify", "toolArchCheck"} {
 		if strings.Contains(string(src), "graphDelivery(name, args)(h."+gate) {
 			t.Errorf("%s is a GATE and must not be wired through graphDelivery — "+

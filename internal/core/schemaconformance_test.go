@@ -1,8 +1,6 @@
 package core
 
 import (
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -21,7 +19,7 @@ import (
 // inputSchema, so the parameter existed in code and was UNREACHABLE from any
 // real agent. A smoke run "tested" it by invoking Invoke directly, bypassing
 // the schema exactly like this bug did, and reported false adoption data
-// that had to be thrown out. This test parses tools.go once (no server
+// that had to be thrown out. This test parses the package source once (no server
 // round-trip needed) and cross-checks the two views the earlier verification
 // never compared.
 //
@@ -30,11 +28,7 @@ import (
 // trying to be exact. A new false positive should be understood before being
 // added to the list, not silenced by widening a regex.
 func TestSchemaAdvertisesEveryArgTheToolFuncReads(t *testing.T) {
-	src, err := os.ReadFile(filepath.Join(".", "tools.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := string(src)
+	body := packageSource(t)
 
 	// Split into per-tool toolXxx function bodies (brace-balanced), and
 	// separately gather the case "prism_x": -> toolXxx() dispatch map so we

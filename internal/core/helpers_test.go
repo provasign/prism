@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/provasign/prism/internal/grove"
@@ -123,4 +125,28 @@ func TestCategorize_MarkdownConst(t *testing.T) {
 	if got := categorize(sym); got != ranking.CategoryDoc {
 		t.Errorf("markdown const should be CategoryDoc, got %q", got)
 	}
+}
+
+// packageSource is every non-test Go file of this package, concatenated: the
+// tests that check dispatch wiring and schema conformance read the source.
+func packageSource(t *testing.T) string {
+	t.Helper()
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(files)
+	var b strings.Builder
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		data, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b.Write(data)
+		b.WriteString("\n")
+	}
+	return b.String()
 }

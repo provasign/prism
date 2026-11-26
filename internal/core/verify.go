@@ -285,25 +285,10 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		refreshErrors = indexed.Errors
 	}
 
-	changed, err := gitChangedRanges(h.Root, base)
+	changed, deletedFiles, err := verifyDiff(h.Root, base)
 	if err != nil {
 		return nil, err
 	}
-	deletedFiles := gitDeletedFiles(h.Root, base)
-	// prism init's own files are not the agent's change (the forced probe
-	// reported "8 changed files" for a one-file edit, 2026-09-29).
-	for f := range changed {
-		if prismOwnedFile(f) {
-			delete(changed, f)
-		}
-	}
-	kept := deletedFiles[:0]
-	for _, f := range deletedFiles {
-		if !prismOwnedFile(f) {
-			kept = append(kept, f)
-		}
-	}
-	deletedFiles = kept
 	if len(changed) == 0 && len(deletedFiles) == 0 {
 		return map[string]any{"verdict": "clean", "base": base,
 			"gateFailure": false, "note": "no changes vs " + base}, nil
@@ -355,12 +340,6 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	// gating (never affects verdict), so a coverage miss on a change this
 	// can't resolve (e.g. a new file, a symbol change_impact can't scope)
 	// degrades to a silent skip, never a wrong verdict.
-	type testCoverageEntry struct {
-		symbol, file string
-		line         int
-		coveredBy    []string
-		checked      bool
-	}
 	var testCoverage []testCoverageEntry
 	// Symbols in test files are NOT contracts: a deleted test function has no
 	// callers that must migrate, yet each one used to surface as "review its
@@ -865,109 +844,26 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	// file-level — a pre-existing edge elsewhere in a touched file must not
 	// fire). No base-graph comparison is performed, so these are candidates
 	// for review, never asserted as "introduced".
-	symbols, edges, err := h.Grove.SnapshotGraph(ctx)
-	var newDeps []map[string]any
-	archStatus := "no-rules"
-	var archIntroduced []view.Violation
-	if err != nil {
+	newDeps, archStatus, archIntroduced, depErr := h.verifyDependencies(ctx, changed)
+	if depErr != nil {
 		// FAIL CLOSED: without the graph, neither new cross-component
 		// dependencies nor arch rules were checked. Silently reporting
 		// "no-rules" and an empty dependency list read as a pass.
-		archStatus = "unchecked"
 		unverifiedSeeds = append(unverifiedSeeds,
-			"dependency and architecture checks did not run: "+err.Error())
-	}
-	if err == nil {
-		v := view.Build(symbols, edges, view.Options{MaxSites: 1 << 30})
-		for _, e := range v.Edges {
-			all := len(e.Sites) > 0
-			for _, s := range e.Sites {
-				if !touched(changed, s.FromFile, grove.SpanInfo{Start: s.FromLine, End: s.FromLine}) {
-					all = false
-					break
-				}
-			}
-			if all {
-				sites := e.Sites
-				if len(sites) > 3 {
-					sites = sites[:3]
-				}
-				newDeps = append(newDeps, map[string]any{
-					"from": e.From, "to": e.To, "weight": e.Weight,
-					"minTier": view.MinTier(e.Tiers), "sites": sites,
-					"caveat": "candidate — all evidence is in changed code; no base-graph comparison performed",
-				})
-			}
-		}
-		if len(h.Cfg.ArchDeny) > 0 {
-			if rules, rerr := view.ParseRules(h.Cfg.ArchDeny); rerr == nil {
-				archStatus = "pass"
-				for _, viol := range v.CheckRules(rules) {
-					// Only violations this diff touches; pre-existing debt is
-					// prism arch's job, not the diff verdict's.
-					introduced := false
-					for _, s := range viol.Edge.Sites {
-						if lineTouched(changed, s.FromFile, s.FromLine) || touched(changed, s.FromFile, grove.SpanInfo{Start: s.FromLine, End: s.FromLine}) {
-							introduced = true
-							break
-						}
-					}
-					if introduced {
-						archIntroduced = append(archIntroduced, viol)
-						if viol.MinTier != "heuristic" {
-							archStatus = "fail"
-						} else if archStatus == "pass" {
-							archStatus = "review"
-						}
-					}
-				}
-			}
-		}
+			"dependency and architecture checks did not run: "+depErr.Error())
 	}
 
 	// Verdict, fail-closed: incomplete beats review beats complete. A
 	// contract change we could not verify can never yield "complete".
-	verdict := "complete"
-	switch {
-	case len(missed) > 0 || archStatus == "fail":
-		verdict = "incomplete"
-	case len(unverifiedSeeds) > 0 || archStatus == "review":
-		verdict = "review"
-	}
+	verdict := verifyVerdict(len(missed), len(unverifiedSeeds), archStatus)
 	h.Ledger.RecordCall("prism_verify")
-	testCoverageOut := make([]map[string]any, 0, len(testCoverage))
-	for _, tc := range testCoverage {
-		e := map[string]any{"symbol": tc.symbol, "file": tc.file, "line": tc.line}
-		if len(tc.coveredBy) > 0 {
-			e["coveredBy"] = tc.coveredBy
-		} else {
-			e["warning"] = "no verified test caller found in the graph for this changed function — " +
-				"confirm you ran a test that actually exercises it, not just a passing suite"
-		}
-		testCoverageOut = append(testCoverageOut, e)
+	testCoverageOut := verifyTestCoverageOut(testCoverage)
+	// Consumers of a changed contract in linked repositories.
+	seedSyms := make([]grove.SymbolRecord, 0, len(seeds))
+	for _, sd := range seeds {
+		seedSyms = append(seedSyms, sd.sym)
 	}
-	// Consumers of a changed contract in linked repositories. The targets
-	// are the BASE symbols (the names and signatures consumers were written
-	// against): after a rename or a removal the new name has no consumers,
-	// the old one does. They are reported, not judged: this verdict covers
-	// this repository's diff, and the other repositories were not rebuilt.
-	linkedOut := map[string]any{}
-	linkedUnchecked := 0
-	if h.workspaceConfigured() && len(seeds) > 0 {
-		var syms []grove.SymbolRecord
-		for _, sd := range seeds {
-			syms = append(syms, sd.sym)
-		}
-		ans := h.linkedAnswer(ctx, h.targetsOf(syms))
-		ans.attach(linkedOut)
-		linkedUnchecked = ans.sites + ans.matches
-		switch {
-		case linkedUnchecked > 0:
-			linkedOut["linkedVerdict"] = fmt.Sprintf("NOT checked: %d line(s) in linked repositories reference a contract this diff changed or removed (listed below)", linkedUnchecked)
-		case ans.incomplete:
-			linkedOut["linkedVerdict"] = "linked repositories were NOT all searched (see workspaceScope)"
-		}
-	}
+	linkedOut := h.verifyLinkedConsumers(ctx, seedSyms)
 	result := map[string]any{
 		"verdict":           verdict,
 		"gateFailure":       verdict == "incomplete" || (strict && (verdict == "review" || linkedOut["linkedVerdict"] != nil)),
@@ -1722,4 +1618,149 @@ func valueOnlyCaller(impact *grove.ChangeImpactResult, site grove.SymbolRecord) 
 		}
 	}
 	return false
+}
+
+// testCoverageEntry is one changed function body and the verified tests that
+// call it (verify's informational testCoverage section).
+type testCoverageEntry struct {
+	symbol, file string
+	line         int
+	coveredBy    []string
+	checked      bool
+}
+
+// verifyDependencies is verify's step 3. Cross-component dependency
+// CANDIDATES: induced edges whose every evidence site sits inside code this
+// diff touched (line-level, not file-level: a pre-existing edge elsewhere in
+// a touched file must not fire). No base-graph comparison is performed, so
+// these are candidates for review, never asserted as "introduced". Then the
+// declared architecture rules, for violations the diff touches. An error
+// means neither check ran (archStatus "unchecked").
+func (h *Handler) verifyDependencies(ctx context.Context, changed map[string][]lineRange) (newDeps []map[string]any, archStatus string, archIntroduced []view.Violation, err error) {
+	symbols, edges, err := h.Grove.SnapshotGraph(ctx)
+	archStatus = "no-rules"
+	if err != nil {
+		return nil, "unchecked", nil, err
+	}
+	{
+		v := view.Build(symbols, edges, view.Options{MaxSites: 1 << 30})
+		for _, e := range v.Edges {
+			all := len(e.Sites) > 0
+			for _, s := range e.Sites {
+				if !touched(changed, s.FromFile, grove.SpanInfo{Start: s.FromLine, End: s.FromLine}) {
+					all = false
+					break
+				}
+			}
+			if all {
+				sites := e.Sites
+				if len(sites) > 3 {
+					sites = sites[:3]
+				}
+				newDeps = append(newDeps, map[string]any{
+					"from": e.From, "to": e.To, "weight": e.Weight,
+					"minTier": view.MinTier(e.Tiers), "sites": sites,
+					"caveat": "candidate — all evidence is in changed code; no base-graph comparison performed",
+				})
+			}
+		}
+		if len(h.Cfg.ArchDeny) > 0 {
+			if rules, rerr := view.ParseRules(h.Cfg.ArchDeny); rerr == nil {
+				archStatus = "pass"
+				for _, viol := range v.CheckRules(rules) {
+					// Only violations this diff touches; pre-existing debt is
+					// prism arch's job, not the diff verdict's.
+					introduced := false
+					for _, s := range viol.Edge.Sites {
+						if lineTouched(changed, s.FromFile, s.FromLine) || touched(changed, s.FromFile, grove.SpanInfo{Start: s.FromLine, End: s.FromLine}) {
+							introduced = true
+							break
+						}
+					}
+					if introduced {
+						archIntroduced = append(archIntroduced, viol)
+						if viol.MinTier != "heuristic" {
+							archStatus = "fail"
+						} else if archStatus == "pass" {
+							archStatus = "review"
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return newDeps, archStatus, archIntroduced, nil
+}
+
+// verifyVerdict is fail-closed: incomplete beats review beats complete. A
+// contract change that could not be verified never yields "complete".
+func verifyVerdict(missed, unverified int, archStatus string) string {
+	switch {
+	case missed > 0 || archStatus == "fail":
+		return "incomplete"
+	case unverified > 0 || archStatus == "review":
+		return "review"
+	}
+	return "complete"
+}
+
+// verifyTestCoverageOut renders the testCoverage section.
+func verifyTestCoverageOut(entries []testCoverageEntry) []map[string]any {
+	out := make([]map[string]any, 0, len(entries))
+	for _, tc := range entries {
+		e := map[string]any{"symbol": tc.symbol, "file": tc.file, "line": tc.line}
+		if len(tc.coveredBy) > 0 {
+			e["coveredBy"] = tc.coveredBy
+		} else {
+			e["warning"] = "no verified test caller found in the graph for this changed function — " +
+				"confirm you ran a test that actually exercises it, not just a passing suite"
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
+// verifyLinkedConsumers lists the consumers of changed contracts in linked
+// repositories. The targets are the BASE symbols (the names and signatures
+// consumers were written against): after a rename or a removal the new name
+// has no consumers, the old one does. They are reported, not judged: the
+// verdict covers this repository's diff, and the other repositories were
+// not rebuilt.
+func (h *Handler) verifyLinkedConsumers(ctx context.Context, seeds []grove.SymbolRecord) map[string]any {
+	out := map[string]any{}
+	if !h.workspaceConfigured() || len(seeds) == 0 {
+		return out
+	}
+	ans := h.linkedAnswer(ctx, h.targetsOf(seeds))
+	ans.attach(out)
+	switch unchecked := ans.sites + ans.matches; {
+	case unchecked > 0:
+		out["linkedVerdict"] = fmt.Sprintf("NOT checked: %d line(s) in linked repositories reference a contract this diff changed or removed (listed below)", unchecked)
+	case ans.incomplete:
+		out["linkedVerdict"] = "linked repositories were NOT all searched (see workspaceScope)"
+	}
+	return out
+}
+
+// verifyDiff is the change verify checks: the changed line ranges and the
+// deleted files since base, without the files prism init owns (the forced
+// probe reported "8 changed files" for a one-file edit, 2026-09-29).
+func verifyDiff(root, base string) (map[string][]lineRange, []string, error) {
+	changed, err := gitChangedRanges(root, base)
+	if err != nil {
+		return nil, nil, err
+	}
+	for f := range changed {
+		if prismOwnedFile(f) {
+			delete(changed, f)
+		}
+	}
+	var deleted []string
+	for _, f := range gitDeletedFiles(root, base) {
+		if !prismOwnedFile(f) {
+			deleted = append(deleted, f)
+		}
+	}
+	return changed, deleted, nil
 }
