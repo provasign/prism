@@ -61,6 +61,9 @@ var e2eCases = []e2eCase{
 	{name: "change-impact-variable", args: []string{"change-impact", "Default"}, json: true, sites: true},
 	{name: "change-impact-unknown", args: []string{"change-impact", "NoSuchThing"}, exit: 4, json: true},
 	{name: "change-impact-bad-flag", args: []string{"change-impact", "Store.Get", "--no-such-flag"}, exit: 2},
+	{name: "change-impact-flag-typo", args: []string{"change-impact", "Store.Get", "--fil", "mem/cache.go"}, exit: 2},
+	{name: "change-impact-equals-flag", args: []string{"change-impact", "Cache.Get", "--file=mem/cache.go"}, json: true, sites: true},
+	{name: "search-after-dashdash", args: []string{"search", "--scope", "text", "--", "-key"}},
 	{name: "missing-implementations", args: []string{"missing-implementations", "Store.Close"}, json: true},
 	{name: "rename-plan", args: []string{"rename-plan", "Lookup", "Find"}, json: true},
 	{name: "references", args: []string{"references", "Default"}, json: true},
@@ -116,7 +119,7 @@ func TestE2E(t *testing.T) {
 			edited = true
 		}
 		t.Run(c.name, func(t *testing.T) {
-			rc, out, errOut := runE2E(append(append([]string{}, c.args...), "--format", "text"))
+			rc, out, errOut := runE2E(withFormat(c.args, "text"))
 			if rc != c.exit {
 				t.Errorf("exit %d, want %d\nstdout:\n%s\nstderr:\n%s", rc, c.exit, out, errOut)
 			}
@@ -125,7 +128,7 @@ func TestE2E(t *testing.T) {
 			compareGolden(t, goldenDir, c, rc, text, errText)
 
 			if c.json {
-				jrc, jout, jerr := runE2E(append(append([]string{}, c.args...), "--format", "json"))
+				jrc, jout, jerr := runE2E(withFormat(c.args, "json"))
 				if jrc != rc {
 					t.Errorf("--format json exit %d, text exit %d\nstderr:\n%s", jrc, rc, jerr)
 				}
@@ -216,7 +219,7 @@ func checkE2EText(t *testing.T, text string, c e2eCase) {
 
 func compareGolden(t *testing.T, dir string, c e2eCase, rc int, text, errText string) {
 	t.Helper()
-	got := "# prism " + strings.Join(c.args, " ") + " --format text\n# exit " + strconv.Itoa(rc) + "\n" + text
+	got := "# prism " + strings.Join(withFormat(c.args, "text"), " ") + "\n# exit " + strconv.Itoa(rc) + "\n" + text
 	if errText != "" {
 		got += "# stderr\n" + errText
 	}
@@ -263,4 +266,15 @@ func lineDiff(want, got string) string {
 		}
 	}
 	return b.String()
+}
+
+// withFormat adds --format f, before a -- so it stays a flag.
+func withFormat(args []string, f string) []string {
+	out := append([]string{}, args...)
+	for i, a := range out {
+		if a == "--" {
+			return append(append(append([]string{}, out[:i]...), "--format", f), out[i:]...)
+		}
+	}
+	return append(out, "--format", f)
 }

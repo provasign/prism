@@ -59,7 +59,12 @@ func Run(args []string) int {
 		return 0
 	}
 	if c := lookupCommand(cmd); c != nil {
-		return c.run(rest)
+		args, err := c.normalizeArgs(rest)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return exitUsage
+		}
+		return c.run(args)
 	}
 	return unknownCommand(cmd)
 }

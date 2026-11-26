@@ -1,7 +1,7 @@
 # prism status --format text
 # exit 0
-edgeCount: 71
-filesIndexed: 9
+edgeCount: 72
+filesIndexed: 10
 native (7):
   - go: full pass over 7 file(s) took <dur>
   - go: go list resolved 6 package(s)
@@ -10,4 +10,4 @@ native (7):
   - go: resolved 7 native call edge(s)
   - go: resolved 3 native type-use edge(s)
   - python: skipped: no Python project config (previous native edges carried forward)
-symbolCount: 20
+symbolCount: 21

@@ -1,0 +1,4 @@
+# prism change-impact Store.Get --fil mem/cache.go --format text
+# exit 2
+# stderr
+change-impact: unknown flag "--fil"; did you mean "--file"? (see prism help)

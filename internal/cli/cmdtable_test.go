@@ -26,6 +26,10 @@ func TestCommandHelpListsEveryFlag(t *testing.T) {
 			inHelp[m[1]] = true
 		}
 		for _, f := range strings.Fields(c.flags) {
+			if strings.HasSuffix(f, "!") {
+				continue // removed; recognized only to say so
+			}
+			f = strings.TrimSuffix(f, "=")
 			if !inHelp[f] {
 				t.Errorf("prism %s accepts %s but its help does not mention it:\n%s", c.name, f, help)
 			}
@@ -42,12 +46,6 @@ var extraParsers = map[string][]string{
 	"workspace":     {"workspaceAdd", "workspaceRemove", "workspaceDiscover", "workspaceFetch", "workspaceExport"},
 }
 
-// notFlags are flag-shaped literals a parser compares against that are not
-// options it accepts: a removed flag answered with an error.
-var notFlags = map[string]map[string]bool{
-	"query": {"--depth": true, "--graph-depth": true},
-}
-
 var parserFlag = regexp.MustCompile(`^-{1,2}[a-zA-Z][a-zA-Z0-9-]*$`)
 
 // Every flag a command's parser matches is declared in its table entry, so
@@ -59,7 +57,7 @@ func TestCommandFlagsMatchTheirParsers(t *testing.T) {
 		name = name[strings.LastIndex(name, ".")+1:]
 		declared := map[string]bool{}
 		for _, f := range strings.Fields(c.flags) {
-			declared[f] = true
+			declared[strings.TrimRight(f, "=!")] = true
 		}
 		var undeclared []string
 		for _, fn := range append([]string{name}, extraParsers[c.name]...) {
@@ -68,7 +66,7 @@ func TestCommandFlagsMatchTheirParsers(t *testing.T) {
 				t.Fatalf("prism %s: parser %s not found", c.name, fn)
 			}
 			for f := range flagLiterals(fd) {
-				if !declared[f] && !notFlags[c.name][f] {
+				if !declared[f] {
 					undeclared = append(undeclared, f)
 				}
 			}
@@ -133,4 +131,34 @@ func flagLiterals(fd *ast.FuncDecl) map[string]bool {
 		return true
 	})
 	return out
+}
+
+func TestNormalizeArgs(t *testing.T) {
+	c := &command{name: "x", flags: "--file= --strict --old! -C="}
+	cases := []struct {
+		in   []string
+		want []string
+		err  string
+	}{
+		{[]string{"A", "--file=a.go"}, []string{"A", "--file", "a.go"}, ""},
+		{[]string{"--file", "--strict"}, []string{"--file", "--strict"}, ""}, // a value is never a flag
+		{[]string{"--", "--file=x", "-z"}, []string{"--", "--file=x", "-z"}, ""},
+		{[]string{"-C", "2", "-1"}, []string{"-C", "2", "-1"}, ""},
+		{[]string{"--old"}, []string{"--old"}, ""},
+		{[]string{"--strict=yes"}, nil, "--strict takes no value"},
+		{[]string{"--fiel"}, nil, `unknown flag "--fiel"; did you mean "--file"?`},
+		{[]string{"--nothing-like-it"}, nil, `unknown flag "--nothing-like-it" (see prism help)`},
+	}
+	for _, tc := range cases {
+		got, err := c.normalizeArgs(tc.in)
+		if tc.err != "" {
+			if err == nil || !strings.Contains(err.Error(), tc.err) {
+				t.Errorf("%v: err %v, want %q", tc.in, err, tc.err)
+			}
+			continue
+		}
+		if err != nil || !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%v: got %v, %v; want %v", tc.in, got, err, tc.want)
+		}
+	}
 }

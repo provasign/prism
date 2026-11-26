@@ -1,0 +1,14 @@
+# prism search --scope text --format text -- -key
+# exit 0
+// root: $ROOT
+// COMPLETE — 1 matches across 1 file
+docs/flags.md:1: Pass -key to skip the lookup.
+
+// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:
+**`docs/flags.md`**
+// Full enclosing body docs/flags.md spans 1-2
+// Evidence: exact match for 1 supplied term(s)
+
+```
+1→Pass -key to skip the lookup.
+```
