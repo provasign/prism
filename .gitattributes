@@ -12,3 +12,5 @@
 *.yaml merge=fuse
 *.yml merge=fuse
 *.toml merge=fuse
+# The e2e fixture and goldens are compared byte for byte; keep LF on Windows.
+internal/cli/testdata/e2e/** text eol=lf
