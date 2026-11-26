@@ -3967,7 +3967,10 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 				return nil, enriched
 			}
 			if calls := ambiguousImpactCalls(err); calls != "" {
-				return nil, fmt.Errorf("%w\nThese are different functions; pick one and call it by its full name:\n%s", err, calls)
+				// Grove ends with a bare "re-run with one of these"; the
+				// calls below say it with the exact call, so the phrase goes.
+				msg := strings.TrimRight(danglingRerun.ReplaceAllString(err.Error(), ""), " \n")
+				return nil, fmt.Errorf("%s\nThese are different functions; pick one and call it by its full name:\n%s", msg, calls)
 			}
 		}
 		if note := h.unindexedNote(ctx, leafOf(query)); note != "" {
@@ -5182,6 +5185,10 @@ func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.Sym
 // explaining the delimiter. A visible separator leaves every whitespace
 // character after it as source, so no note is needed.
 const SourceLineSep = "→"
+
+// danglingRerun is Grove's closing "re-run with one of these" phrase, with
+// any parenthetical after it.
+var danglingRerun = regexp.MustCompile(`(?m)[ \t]*re-run with one of these[^\n]*$`)
 
 // ambiguousImpactCalls lists each candidate of a short ambiguity as a call the
 // agent can send back unchanged. A bare "re-run with one of these" was where

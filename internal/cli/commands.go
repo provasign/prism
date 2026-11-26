@@ -3285,6 +3285,11 @@ args:
 		return 1
 	}
 	printToolResult("search", out, compactText, rendered, format)
+	if m := toMap(out); m != nil {
+		if _, invalid := m["invalidPattern"]; invalid {
+			return exitUsage // the warning above names the bad pattern
+		}
+	}
 	return 0
 }
 
@@ -3852,8 +3857,7 @@ func cmdChangeImpact(args []string) int {
 		}
 		if len(queries) == 1 {
 			if err != nil {
-				fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
-				return exitForError(err)
+				return reportToolError("change-impact", err, format)
 			}
 			printToolResult("change-impact", out, text, rendered, format)
 			return 0
@@ -3973,8 +3977,7 @@ func cmdRenamePlan(args []string) int {
 	}
 	out, err := invokeTool(dir, "prism_rename_plan", callArgs)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, prefixOnce("rename-plan", err))
-		return exitForError(err)
+		return reportToolError("rename-plan", err, format)
 	}
 	printOutput(out, format)
 	// A collision without --allow-collision returns no plan: exit 1.
@@ -4085,8 +4088,7 @@ func cmdMissingImplementations(args []string) int {
 	}
 	out, err := invokeTool(dir, "prism_missing_implementations", callArgs)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, prefixOnce("missing-implementations", err))
-		return exitForError(err)
+		return reportToolError("missing-implementations", err, format)
 	}
 	printOutput(out, format)
 	return 0

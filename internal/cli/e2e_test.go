@@ -51,19 +51,15 @@ var e2eCases = []e2eCase{
 	{name: "read-range", args: []string{"read", "app/app.go", "--from", "12", "--to", "17"}, json: true},
 	{name: "search-text", args: []string{"search", "Default", "--scope", "text"}, json: true},
 	{name: "search-symbols", args: []string{"search", "Cache", "--scope", "symbols"}, json: true},
-	// An invalid pattern exits 0 with a warning; the exit-code table says a
-	// usage error is 2. Recorded as it is, to be decided.
-	{name: "search-bad-regex", args: []string{"search", "[unclosed", "--regex"}},
+	{name: "search-bad-regex", args: []string{"search", "[unclosed", "--regex"}, exit: 2, json: true},
 	{name: "query", args: []string{"query", "--terms", "Lookup,Store"}, json: true},
 	{name: "query-unknown", args: []string{"query", "--terms", "NoSuchThing"}},
 	{name: "query-missing-terms", args: []string{"query"}, exit: 2},
 	{name: "change-impact-interface", args: []string{"change-impact", "Store.Get"}, json: true, sites: true},
-	// The ambiguity answer is on stderr and --format json prints nothing on
-	// stdout. Recorded as it is, to be decided.
-	{name: "change-impact-ambiguous", args: []string{"change-impact", "Cache.Get"}, exit: 5},
+	{name: "change-impact-ambiguous", args: []string{"change-impact", "Cache.Get"}, exit: 5, json: true},
 	{name: "change-impact-scoped", args: []string{"change-impact", "Cache.Get", "--file", "mem/cache.go"}, json: true, sites: true},
 	{name: "change-impact-variable", args: []string{"change-impact", "Default"}, json: true, sites: true},
-	{name: "change-impact-unknown", args: []string{"change-impact", "NoSuchThing"}, exit: 4},
+	{name: "change-impact-unknown", args: []string{"change-impact", "NoSuchThing"}, exit: 4, json: true},
 	{name: "change-impact-bad-flag", args: []string{"change-impact", "Store.Get", "--no-such-flag"}, exit: 2},
 	{name: "missing-implementations", args: []string{"missing-implementations", "Store.Close"}, json: true},
 	{name: "rename-plan", args: []string{"rename-plan", "Lookup", "Find"}, json: true},

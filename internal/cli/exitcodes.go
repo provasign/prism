@@ -3,6 +3,9 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"os"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -21,7 +24,8 @@ const (
 const exitCodesHelp = `prism exit codes
   0   answered
   1   finding: verify incomplete, arch violation, rename-plan collision
-  2   usage error (bad flag, missing argument, not a git repository)
+  2   usage error (bad flag, missing argument, not a git repository,
+      an invalid search --regex pattern)
   3   degraded: answered, but compiler-backed analysis did not run (index)
   4   not found: no symbol, file or component by that name
       (lookup, node, resolve, edges, references, read, change-impact,
@@ -112,4 +116,36 @@ func exitForAnswer(cmd string, out any) int {
 		}
 	}
 	return exitOK
+}
+
+// ambiguousCandidate matches one "  pkg.Type.method  (path:line)" line of an
+// ambiguity answer.
+var ambiguousCandidate = regexp.MustCompile(`(?m)^\s+(\S+)\s+\(([^()\s]+):(\d+)\)$`)
+
+// reportToolError prints a tool error and returns its exit code. Text goes to
+// stderr as before; under --format json stdout gets one JSON document, so a
+// script reading stdout is not left with nothing. An ambiguity lists its
+// candidates.
+func reportToolError(cmd string, err error, format outputFormat) int {
+	msg := prefixOnce(cmd, err)
+	rc := exitForError(err)
+	if format != formatJSON {
+		fmt.Fprintln(os.Stderr, msg)
+		return rc
+	}
+	status := map[int]string{exitUsage: "usage_error", exitNotFound: "not_found", exitAmbiguous: "ambiguous"}[rc]
+	if status == "" {
+		status = "error"
+	}
+	out := map[string]any{"status": status, "error": msg, "exitCode": rc}
+	if rc == exitAmbiguous {
+		var cands []map[string]any
+		for _, m := range ambiguousCandidate.FindAllStringSubmatch(err.Error(), -1) {
+			line, _ := strconv.Atoi(m[3])
+			cands = append(cands, map[string]any{"name": m[1], "file": m[2], "line": line})
+		}
+		out["candidates"] = cands
+	}
+	printJSON(out)
+	return rc
 }

@@ -4,7 +4,7 @@
 change-impact: "Cache.Get" is ambiguous — 2 candidates:
   disk.Cache.Get  (disk/cache.go:8)
   mem.Cache.Get  (mem/cache.go:13)
-These are same-named types in different packages or modules; no change sets were merged. re-run with one of these
+These are same-named types in different packages or modules; no change sets were merged.
 These are different functions; pick one and run it by its full name:
   prism change-impact 'disk.Cache.Get' --file 'disk/cache.go' --format text
   prism change-impact 'mem.Cache.Get' --file 'mem/cache.go' --format text
