@@ -431,27 +431,18 @@ func TestSteeringBlock_PreservesTermBoundaries(t *testing.T) {
 	}
 }
 
-func TestCmdInit_ModeFlagAcceptedAndIgnored(t *testing.T) {
-	// --mode is kept for one release so existing scripts do not break; it must
-	// not fail, and must not write an agent_mode key back into prism.yaml.
-	for _, mode := range []string{"mcp", "cli", "both"} {
-		t.Run(mode, func(t *testing.T) {
-			setHome(t, t.TempDir())
-			dir := t.TempDir()
-			if rc := cmdInit([]string{"--harness", "claude", "--interface", "mcp", dir, "--mode", mode}); rc != 0 {
-				t.Fatalf("rc %d", rc)
-			}
-			raw, _ := os.ReadFile(filepath.Join(dir, "prism.yaml"))
-			if strings.Contains(string(raw), "agent_mode") {
-				t.Errorf("prism.yaml still carries agent_mode: %s", raw)
-			}
-			claudeMD, _ := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
-			for _, want := range []string{"mcp__prism__prism", "prism query"} {
-				if !strings.Contains(string(claudeMD), want) {
-					t.Errorf("CLAUDE.md missing %q regardless of --mode %q", want, mode)
-				}
-			}
-		})
+func TestCmdInit_ModeFlagRemoved(t *testing.T) {
+	// --mode printed "ignored" from v0.38.0 to v1.3; it is now an unknown
+	// flag (CON-09), rejected before anything is written.
+	setHome(t, t.TempDir())
+	dir := t.TempDir()
+	var rc int
+	errOut := captureStderr(func() { rc = cmdInit([]string{"--harness", "claude", "--interface", "mcp", dir, "--mode", "cli"}) })
+	if rc != 2 || !strings.Contains(errOut, `unknown flag "--mode"`) {
+		t.Fatalf("rc %d, stderr %q", rc, errOut)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "prism.yaml")); err == nil {
+		t.Fatal("init wrote prism.yaml despite the rejected flag")
 	}
 }
 

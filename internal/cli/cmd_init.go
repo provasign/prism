@@ -67,7 +67,6 @@ func cmdInit(args []string) int {
 }
 
 func runInit(args []string) int {
-	// --mode mcp|cli|both  (legacy no-op)
 	// --no-permissions     (skip the Claude Code tool auto-allow entry)
 	// --print-config <id>  (print one agent's snippet, write nothing, exit)
 	// --refresh            (rewrite ONLY agents already configured)
@@ -133,17 +132,6 @@ func runInit(args []string) int {
 			}
 			printConfig = v
 			i++
-		case "--mode":
-			// Accepted and ignored since v0.38.0. The three modes only ever
-			// chose which steering text was written: they gated no tool, and
-			// "cli" registered the MCP servers anyway, so the flag described
-			// what the agent was TOLD rather than what it was given. One
-			// template now covers both surfaces.
-			if i+1 < len(args) {
-				fmt.Fprintln(os.Stderr, "note: --mode is no longer needed and is ignored; "+
-					"steering now covers MCP tools and the CLI together")
-				i++
-			}
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("init", a)
