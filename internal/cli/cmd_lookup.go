@@ -35,9 +35,7 @@ func cmdLookup(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			for _, item := range items {
-				fields = append(fields, item)
-			}
+			fields = append(fields, items...)
 			i++
 		case "--repo":
 			v, err := flagValue("lookup", args, i)

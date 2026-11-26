@@ -20,9 +20,7 @@ func cmdDeadCode(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			for _, item := range items {
-				roots = append(roots, item)
-			}
+			roots = append(roots, items...)
 			i++
 		case "--format":
 			f, err := formatFlag("dead-code", args, i)

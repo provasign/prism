@@ -111,9 +111,7 @@ func cmdEdges(args []string) int {
 			if err != nil {
 				return usageError(err)
 			}
-			for _, item := range items {
-				kinds = append(kinds, item)
-			}
+			kinds = append(kinds, items...)
 			i++
 		case "--format":
 			f, err := formatFlag("edges", args, i)
