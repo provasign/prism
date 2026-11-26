@@ -305,587 +305,77 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		staleNote = "index refresh incomplete: " + strings.Join(errs, "; ")
 	}
 
-	// 1) Which changed symbols altered their contract? Diff each changed
-	// file's base version (parsed in memory) against the current index.
-	type seed struct {
-		sym    grove.SymbolRecord
-		before *grove.SymbolRecord // base-side symbol (old contract), when known
-		reason string
-		// callsStayValid: the edit only added a trailing variadic parameter
-		// to a Go function, so direct calls compile unchanged. Interface
-		// declarations, other implementations and value uses still count.
-		callsStayValid bool
-	}
-	var seeds []seed
-	var unverifiedSeeds []string
-	// addedMembers: members added to an interface's body. Every type
-	// meant to implement the interface must add them; missing-
-	// implementations names the ones that do not (2026-11-22, BUG-03:
-	// these used to stay "verification not implemented for this kind").
-	type addedMember struct {
-		iface grove.SymbolRecord
-		name  string
-	}
-	var addedMembers []addedMember
-	var contentAdvisories []string
-	// testCoverage answers a DIFFERENT question than the seeds above: not
-	// "did every caller of a changed CONTRACT get updated" but "does a
-	// verified test exercise the function/method whose BODY changed" — a
-	// pure body edit (the common shape of a bug fix) never becomes a seed
-	// at all (addSeed only fires on signature change/rename/removal/member-
-	// contract extraction), so it was previously invisible to verify.
-	// Measured (2026-09-23, 12-task hard-core-failure review): every
-	// unsolved task was a body-only change, and the agent's own test run
-	// was the thing that gave a false pass — this is informational, not
-	// gating (never affects verdict), so a coverage miss on a change this
-	// can't resolve (e.g. a new file, a symbol change_impact can't scope)
-	// degrades to a silent skip, never a wrong verdict.
-	var testCoverage []testCoverageEntry
-	// Symbols in test files are NOT contracts: a deleted test function has no
-	// callers that must migrate, yet each one used to surface as "review its
-	// old-contract dependents manually" — measured on a real diff, 3 deleted
-	// test funcs produced 3 of 7 flags with zero actionable content. A gate
-	// that mostly cries wolf gets clicked past.
-	addSeed := func(sym grove.SymbolRecord, before *grove.SymbolRecord, reason string) {
-		if isTestFilePath(sym.FilePath) {
-			return
-		}
-		// A Java anonymous class is a local implementation, not a named
-		// contract. Its synthetic <anonymous@line:col> identity changes when
-		// code moves, which looks like a removal/rename and falsely marks
-		// unrelated interface callers as missed sites. Changes to the
-		// interface itself still seed their own impact check.
-		if isSyntheticAnonymousJavaSymbol(sym) {
-			return
-		}
-		switch sym.Kind {
-		case "function", "method", "constructor":
-			seeds = append(seeds, seed{sym: sym, before: before, reason: reason})
-		case "document", "file":
-			// Not code; no contract to break.
-		case "const", "variable", "field", "decorator", "annotation":
-			// No call-shaped blast radius, so change_impact cannot compute a
-			// required set — but a renamed/removed exported const or field
-			// DOES break its references. Silently dropping these produced a
-			// false "complete" (measured: renaming an exported const with a
-			// stale reference left behind verified clean, exit 0). Surface
-			// them as unverified so the verdict degrades to "review".
-			unverifiedSeeds = append(unverifiedSeeds,
-				fmt.Sprintf("%s %s (%s) — no call-shaped blast radius to verify; check references with prism_search scope=text exhaustive=true for %s",
-					sym.Kind, displayQN(sym), reason, sym.Name))
-		default:
-			// interface/struct/class/type contract changes: real blast
-			// radius, no automated per-member verification yet — surfaced
-			// as unverified, never silently passed.
-			unverifiedSeeds = append(unverifiedSeeds,
-				fmt.Sprintf("%s %s (%s) — automated verification not implemented for this kind; review its references", sym.Kind, displayQN(sym), reason))
-		}
-	}
-	for _, f := range changedFiles {
-		baseContent := gitShow(h.Root, base, f)
-		if baseContent == nil {
-			continue // new file: nothing had callers under the old contract
-		}
-		// Unsupported file types return (nil, nil) from the parser; an error
-		// here is a real analysis failure. A changed file whose contracts
-		// could not be diffed must degrade the verdict, not silently pass.
-		before, err := h.Grove.PreviewFileSymbols(f, baseContent)
-		if err != nil {
-			unverifiedSeeds = append(unverifiedSeeds,
-				f+" — base version could not be parsed ("+err.Error()+"); its contract changes were NOT checked")
-			continue
-		}
-		fd, err := h.Grove.DiffFile(ctx, before, f)
-		if err != nil {
-			unverifiedSeeds = append(unverifiedSeeds,
-				f+" — contract diff failed ("+err.Error()+"); its contract changes were NOT checked")
-			continue
-		}
-		for _, c := range fd.Changed {
-			if goUnexportedStringConstValueOnly(c.Before, c.After) {
-				contentAdvisories = append(contentAdvisories,
-					fmt.Sprintf("%s:%d %s — string content changed; verify does not assess its behavior; run relevant tests",
-						c.After.FilePath, c.After.Span.Start, displayQN(*c.After)))
-				continue
-			}
-			if c.SignatureChanged && c.After != nil {
-				// Go callers are still valid when the only signature edit adds
-				// an optional trailing variadic parameter, so requiring every
-				// old call to change produced false missed sites. The change is
-				// still a contract change: a method must still match its
-				// interface, and a function used as a value has a new type.
-				// Keep the seed and exempt only direct call lines.
-				if c.Before != nil && strings.HasSuffix(f, ".go") &&
-					goAddedTrailingVariadic(c.Before.Signature, c.After.Signature) {
-					n := len(seeds)
-					addSeed(*c.After, c.Before, "optional trailing variadic parameter added to "+
-						displayQN(*c.After)+"; direct calls stay valid")
-					if len(seeds) > n {
-						seeds[n].callsStayValid = true
-					}
-					continue
-				}
-				// GAP-04: a one-line interface (`type I interface{ A() }`)
-				// that gains a member changes its signature line, not its
-				// body, so it skipped the added-member check below and
-				// stayed UNVERIFIED. Diff its members here too.
-				if c.After.Kind == "interface" && c.Before != nil && !isTestFilePath(c.After.FilePath) {
-					beforeBlock := splitInlineBody(blockText(h.Root, base, f, c.Before, true))
-					afterBlock := splitInlineBody(blockText(h.Root, "", f, c.After, false))
-					added, removed := memberAdditionsRemovals(beforeBlock, afterBlock)
-					if len(added) > 0 && len(removed) == 0 && len(memberContractChanges(beforeBlock, afterBlock)) == 0 {
-						for _, name := range added {
-							addedMembers = append(addedMembers, addedMember{iface: *c.After, name: name})
-						}
-						continue
-					}
-				}
-				// "signature of X changed" is wrong for a const whose VALUE
-				// changed; say what actually happened per kind.
-				word := "signature"
-				switch c.After.Kind {
-				case "const", "variable", "field":
-					word = "declaration"
-				}
-				addSeed(*c.After, c.Before, word+" of "+displayQN(*c.After)+" changed")
-				continue
-			}
-			// A pure declaration block (Go/TS interface, type alias) holds
-			// member SIGNATURES as its body — its members are not separate
-			// symbols, so a member's signature change surfaces only as a
-			// body change on the block. That IS a contract change; routing
-			// it through addSeed lands it in unverifiedSeeds -> "review"
-			// (measured: a mutated Driver.ts interface member passed
-			// verify as "complete" without this — every implementation of
-			// the member was a required site, none flagged).
-			if c.BodyChanged && c.After != nil {
-				switch c.After.Kind {
-				case "interface", "type", "trait", "protocol":
-					// Member-level extraction: line-diff the block's before/
-					// after text and turn each member whose parameter list
-					// changed into a synthesized method seed — the normal
-					// pipeline (base-contract enumeration) then finds every
-					// implementation and caller of the OLD member contract.
-					// Falls back to the unverified-block seed when nothing
-					// extractable changed (fail-closed, measured: typeorm
-					// held at review/0% without this).
-					beforeBlock := blockText(h.Root, base, f, c.Before, true)
-					afterBlock := blockText(h.Root, "", f, c.After, false)
-					members := memberContractChanges(beforeBlock, afterBlock)
-					added, removed := memberAdditionsRemovals(beforeBlock, afterBlock)
-					if !isTestFilePath(c.After.FilePath) && c.After.Kind == "interface" {
-						for _, name := range added {
-							addedMembers = append(addedMembers, addedMember{iface: *c.After, name: name})
-						}
-					} else {
-						added = nil
-					}
-					if len(removed) > 0 {
-						addSeed(*c.After, c.Before, "member(s) "+strings.Join(removed, ", ")+" removed from declaration block "+displayQN(*c.After))
-					}
-					if len(members) == 0 {
-						if len(added) == 0 && len(removed) == 0 {
-							addSeed(*c.After, c.Before, "declaration block "+displayQN(*c.After)+" changed (member contracts live in its body)")
-						}
-						break
-					}
-					for _, m := range members {
-						after := *c.After
-						after.Name = m.name
-						after.QualifiedName = displayQN(*c.After) + "." + m.name
-						after.Kind = "method"
-						after.Signature = m.afterSig
-						beforeSym := after
-						beforeSym.Signature = m.beforeSig
-						addSeed(after, &beforeSym,
-							"member "+after.QualifiedName+" of declaration block changed")
-					}
-				}
-			}
-		}
-		// Test-coverage check: every changed function/method/constructor,
-		// contract-changed or not (this is the whole point — body-only
-		// changes are excluded from `seeds` above). Non-fatal by design:
-		// a lookup failure (ambiguous name, unscoped symbol) just skips
-		// that entry rather than degrading the verdict, since this signal
-		// has never been validated as gating-safe the way the seed/impact
-		// logic has.
-		for _, c := range fd.Changed {
-			if c.After == nil || isTestFilePath(c.After.FilePath) {
-				continue
-			}
-			switch c.After.Kind {
-			case "function", "method", "constructor":
-			default:
-				continue
-			}
-			// Module-level pseudo-symbols ("<top-level>", "<module>") are how
-			// some parsers attribute import/constant edits; they are not a
-			// function a test could call, and a warning on one sends the agent
-			// hunting for coverage that cannot exist (seen on the first probe).
-			if strings.HasPrefix(c.After.Name, "<") {
-				continue
-			}
-			name := c.After.QualifiedName
-			if name == "" {
-				name = c.After.Name
-			}
-			entry := testCoverageEntry{symbol: displayQN(*c.After), file: f, line: c.After.Span.Start}
-			if r, err := h.Grove.ChangeImpactScoped(ctx, name, f); err == nil {
-				entry.checked = true
-				for _, caller := range r.Callers {
-					if isVerifiedTestCaller("/" + filepath.ToSlash(caller.FilePath)) {
-						entry.coveredBy = append(entry.coveredBy,
-							fmt.Sprintf("%s:%d", caller.FilePath, caller.Span.Start))
-					}
-				}
-			}
-			if entry.checked {
-				testCoverage = append(testCoverage, entry)
-			}
-		}
-		for _, c := range fd.Renamed {
-			if c.After != nil {
-				addSeed(*c.After, c.Before, displayQN(*c.After)+" renamed")
-			}
-		}
-		// REMOVED symbols are contract changes too — the strongest kind. A
-		// deleted method breaks every caller, yet fd.Removed was never read,
-		// so deleting a called method verified "complete" with exit 0
-		// (measured). The removed symbol carries the OLD contract, so it is
-		// its own "before": change_impact resolves the callers that must
-		// change.
-		for _, rem := range fd.Removed {
-			removed := rem
-			addSeed(removed, &removed, displayQN(removed)+" removed")
-		}
-	}
+	s := &verifyState{h: h, base: base, changed: changed,
+		seen: map[string]bool{}, staleSeen: map[string]bool{}}
+	// 1) Seed stage: which changed symbols altered their contract?
+	s.verifyCollectSeeds(ctx, changedFiles, deletedFiles)
 
-	// Deleted files: every symbol they declared is a removed contract. These
-	// files never appear in `changed` (their after-side is /dev/null), so
-	// without this a deletion — the most destructive contract change there
-	// is — was invisible to the gate. Also covers the old path of a move.
-	for _, f := range deletedFiles {
-		baseContent := gitShow(h.Root, base, f)
-		if baseContent == nil {
-			continue
-		}
-		gone, err := h.Grove.PreviewFileSymbols(f, baseContent)
-		if err != nil {
-			// Unsupported file type: nothing to parse, but a deletion we
-			// could not analyze must not read as verified.
-			unverifiedSeeds = append(unverifiedSeeds,
-				f+" was deleted and could not be parsed — review its references manually")
-			continue
-		}
-		for _, sym := range gone {
-			s := sym
-			addSeed(s, &s, displayQN(s)+" removed with file "+f)
-		}
-	}
-
-	// 2) For each contract change, the engine computes the required set;
-	// anything the diff did not touch is a missed site. Line-precise where
-	// the caller's AST call sites name the seed; span-level otherwise.
-	var missed []missedSite
-	var sigChanges []map[string]any
-	var notes []string
 	if staleNote != "" {
 		// A failed refresh means every comparison below ran against a
 		// possibly stale index — the verdict must degrade to "review", not
 		// read as an authoritative "complete" with a footnote.
-		notes = append(notes, staleNote)
-		unverifiedSeeds = append(unverifiedSeeds, staleNote)
+		s.notes = append(s.notes, staleNote)
+		s.unverifiedSeeds = append(s.unverifiedSeeds, staleNote)
 	}
-	seen := map[string]bool{}
-	staleSeen := map[string]bool{}
-	// Whole-file deletions collapse to ONE rendered line per file. The
-	// per-symbol seeds still run through impact analysis below unchanged —
-	// only the sigChanges REPORT is grouped: measured 2026-09-02 (6rqii7zt
-	// #88), a deleted 34-symbol directory produced ~30 near-identical
-	// "X removed with file Y" lines in a 13.9k-char verify response, and
-	// the agent dismissed the whole block in one sentence. A report shape
-	// the reader skips is noise even when every line is true.
-	deletedFileSyms := map[string]int{}
-	for _, sd := range seeds {
-		if strings.Contains(sd.reason, " removed with file ") {
-			deletedFileSyms[sd.sym.FilePath]++
-			continue
-		}
-		sigChanges = append(sigChanges, map[string]any{
-			"symbol": displayQN(sd.sym), "file": sd.sym.FilePath, "line": sd.sym.Span.Start,
-			"reason": sd.reason,
-		})
-	}
-	delFiles := make([]string, 0, len(deletedFileSyms))
-	for f := range deletedFileSyms {
-		delFiles = append(delFiles, f)
-	}
-	sort.Strings(delFiles)
-	for _, f := range delFiles {
-		sigChanges = append(sigChanges, map[string]any{
-			"file":   f,
-			"reason": fmt.Sprintf("file deleted — %d symbol(s) removed with it", deletedFileSyms[f]),
-		})
-	}
-	// Reconstruct the base graph once, restoring every changed/deleted file.
-	// Name/signature matches cannot establish a type family.
-	var baseImpacts []*grove.ChangeImpactResult
-	var baseFailures []string
-	if len(seeds) > 0 {
-		files := make(map[string][]byte, len(changedFiles)+len(deletedFiles))
-		for _, f := range append(append([]string{}, changedFiles...), deletedFiles...) {
-			files[f] = gitShow(h.Root, base, f)
-		}
-		queries := make([][2]string, len(seeds))
-		for i, sd := range seeds {
-			sym := sd.sym
-			if sd.before != nil {
-				sym = *sd.before
-			}
-			queries[i] = [2]string{displayQN(sym), sym.FilePath}
-		}
-		var previewErr error
-		baseImpacts, baseFailures, previewErr = h.Grove.PreviewChangeImpacts(ctx, queries, files)
-		if previewErr != nil {
-			unverifiedSeeds = append(unverifiedSeeds, "base-contract coverage unavailable: "+previewErr.Error())
-		}
-	}
-	baseSites := newBaseSiteProjector(h, changed, deletedFiles)
-	for seedIndex, sd := range seeds {
-		impact, err := h.changeImpactFor(ctx, sd.sym)
-		var bc *grove.ChangeImpactResult
-		if seedIndex < len(baseImpacts) {
-			bc = baseImpacts[seedIndex]
-		}
-		if seedIndex < len(baseFailures) && baseFailures[seedIndex] != "" {
-			unverifiedSeeds = append(unverifiedSeeds, displayQN(sd.sym)+": base impact unresolved: "+baseFailures[seedIndex])
-		}
-		// RENAMES: the post-edit graph cannot see stale callers of a name
-		// that no longer resolves. Measured 2026-08-25 (electrum
-		// seed_type->calc_seed_type, 4 call sites reverted): verify printed
-		// "calc_seed_type renamed" and then "no missed sites". The gate was
-		// structurally blind to the shape rename_plan exists for. Stale
-		// references to the OLD name ARE recoverable from the reference
-		// layer, which is name-based rather than resolution-based.
-		if stale := h.staleOldNameRefs(ctx, sd.sym, sd.before); len(stale) > 0 {
-			for _, s := range stale {
-				// One physical line, one finding. Every member of a renamed
-				// TYPE seeds separately (networkx: __call__, _convert_and_call,
-				// …), so without this the same decorator line was reported 32
-				// times for 3 real sites — a gate that inflates its own output
-				// teaches people to ignore it.
-				key := s.file + ":" + strconv.Itoa(s.line) + ":" + s.oldName
-				if staleSeen[key] {
-					continue
-				}
-				staleSeen[key] = true
-				name := s.enclosing
-				if name == "" {
-					name = s.oldName
-				}
-				missed = append(missed, missedSite{
-					Symbol: s.oldName, QualifiedName: name,
-					File: s.file, Line: s.line, Kind: "stale-reference",
-					BecauseOf: displayQN(sd.sym),
-					Detail: "still references the old name " + s.oldName +
-						" — renamed to " + s.newName,
-				})
-			}
-		}
-		if err != nil {
-			if bc == nil {
-				// FAIL CLOSED: a contract change whose blast radius could not
-				// be computed must not read as "complete".
-				unverifiedSeeds = append(unverifiedSeeds,
-					displayQN(sd.sym)+" — impact could not be computed: "+err.Error())
-				continue
-			}
-			impact = bc
-			notes = append(notes, displayQN(sd.sym)+": required set enumerated from the BASE contract (old-signature family + callers)")
-		} else if obligationSiteCount(impact) == 0 {
-			if bc == nil {
-				// FAIL CLOSED: empty blast radius, and the base contract was
-				// not recoverable either (no before-symbol, unparsable
-				// signature, or genuinely uncalled) — review, never a pass.
-				unverifiedSeeds = append(unverifiedSeeds,
-					displayQN(sd.sym)+" — the post-edit graph shows no overrides, callers, or declaring "+
-						"types for the NEW signature; dependents of the OLD signature cannot be enumerated "+
-						"from this graph (or the method is uncalled) — review its old-contract dependents manually")
-				continue
-			}
-			impact = bc
-			notes = append(notes, displayQN(sd.sym)+": required set enumerated from the BASE contract (old-signature family + callers)")
-		}
-		if impact.Completeness != "" && impact.Completeness != "closed" {
-			notes = append(notes, displayQN(sd.sym)+": impact completeness is "+impact.Completeness)
-		}
-		if coverage, note := impactCoverage(impact); coverage == "partial" || impactCallerCoverage(impact) == "partial" {
-			unverifiedSeeds = append(unverifiedSeeds, displayQN(sd.sym)+": "+note)
-		}
-		if impact.HasHeuristicRefs {
-			notes = append(notes, displayQN(sd.sym)+": required set includes name-derived "+
-				"(framework template/query) references — probably right, not certain")
-		}
-		if sd.callsStayValid {
-			for _, ref := range h.goFuncValueRefs(ctx, sd.sym) {
-				if lineTouched(changed, ref.File, ref.Line) {
-					continue
-				}
-				key := fmt.Sprintf("%s:%d:%s", ref.File, ref.Line, sd.sym.Name)
-				if !seen[key] {
-					seen[key] = true
-					missed = append(missed, ref)
-				}
-			}
-		}
-		var required []grove.SymbolRecord
-		if impact != bc {
-			required = impactSites(impact, false)
-		}
-		// Augment a non-empty post-edit set with base-contract survivors the
-		// severed graph no longer links to the seed (Java overload families:
-		// measured 3/30 file catch on jackson-serialize without this).
-		if bc != nil {
-			projected, gaps := baseSites.project(ctx, bc, sd.sym.Name)
-			required = append(required, projected...)
-			unverifiedSeeds = append(unverifiedSeeds, gaps...)
-		}
-		for _, site := range required {
-			if site.FilePath == sd.sym.FilePath && site.Span.Start == sd.sym.Span.Start {
-				continue // the seed itself
-			}
-			// Line-precise: the caller's recorded call lines naming the seed.
-			var callLines []int
-			for _, cs := range site.CallSites {
-				if cs.Callee == sd.sym.Name || strings.HasSuffix(cs.Callee, "."+sd.sym.Name) {
-					callLines = append(callLines, cs.Line)
-				}
-			}
-			if len(callLines) > 0 {
-				if sd.callsStayValid {
-					continue
-				}
-				for _, ln := range callLines {
-					if !lineTouched(changed, site.FilePath, ln) {
-						key := fmt.Sprintf("%s:%d:%s", site.FilePath, ln, sd.sym.Name)
-						if seen[key] {
-							continue
-						}
-						seen[key] = true
-						missed = append(missed, missedSite{
-							Symbol: site.Name, QualifiedName: displayQN(site),
-							File: site.FilePath, Line: ln, Kind: site.Kind,
-							BecauseOf: sd.reason,
-							Detail:    fmt.Sprintf("calls %s at line %d — line not touched by the diff", sd.sym.Name, ln),
-						})
-					}
-				}
-				continue
-			}
-			if sd.callsStayValid && valueOnlyCaller(impact, site) {
-				// A caller where no call names the seed holds it as a value,
-				// and goFuncValueRefs above decided those (a typed slot
-				// breaks, `f := Do` does not). Contract members still fall
-				// through: an interface's Do no longer matches.
-				continue
-			}
-			// Span-level fallback (no AST call sites recorded).
-			if !touched(changed, site.FilePath, site.Span) {
-				key := fmt.Sprintf("%s:%d:%s", site.FilePath, site.Span.Start, sd.sym.Name)
-				if seen[key] {
-					continue
-				}
-				seen[key] = true
-				missed = append(missed, missedSite{
-					Symbol: site.Name, QualifiedName: displayQN(site),
-					File: site.FilePath, Line: site.Span.Start, Kind: site.Kind,
-					BecauseOf: sd.reason,
-					Detail:    "in the required change set — file region not touched by the diff",
-				})
-			}
-		}
-	}
-	for _, am := range addedMembers {
-		query := displayQN(am.iface) + "." + am.name
-		because := "member " + query + " added to interface " + displayQN(am.iface)
-		mi, err := h.Grove.MissingImplementations(ctx, query)
-		if err != nil || mi == nil {
-			reason := "no answer"
-			if err != nil {
-				reason = err.Error()
-			}
-			unverifiedSeeds = append(unverifiedSeeds,
-				fmt.Sprintf("interface %s (%s) — missing-implementations could not be computed (%s); review its implementations", displayQN(am.iface), because, strings.SplitN(reason, "\n", 2)[0]))
-			continue
-		}
-		for _, t := range mi.Missing {
-			missed = append(missed, missedSite{
-				Symbol: t.Name, QualifiedName: displayQN(t),
-				File: t.FilePath, Line: t.Span.Start, Kind: t.Kind,
-				BecauseOf: because,
-				Detail:    "does not implement " + query + "; the compiler rejects every use of it as " + displayQN(am.iface),
-			})
-		}
-		for _, t := range mi.Unverifiable {
-			unverifiedSeeds = append(unverifiedSeeds,
-				fmt.Sprintf("%s %s (%s) — its implementation may come from outside the index; check it implements %s", t.Kind, displayQN(t), because, query))
-		}
-	}
-	sort.Slice(missed, func(i, j int) bool {
-		if missed[i].File != missed[j].File {
-			return missed[i].File < missed[j].File
-		}
-		return missed[i].Line < missed[j].Line
-	})
+	sigChanges := verifySignatureChanges(s.seeds)
+	// 2) Per-kind checks: for each contract change, the engine computes the
+	// required set; anything the diff did not touch is a missed site.
+	s.verifyCheckSeeds(ctx, changedFiles, deletedFiles)
 
+	return s.verifyReport(ctx, strict, changedFiles, sigChanges), nil
+}
+
+// verifyReport assembles the result: dependency and architecture checks,
+// the fail-closed verdict, test coverage and linked-repository consumers.
+func (s *verifyState) verifyReport(ctx context.Context, strict bool, changedFiles []string, sigChanges []map[string]any) map[string]any {
+	h := s.h
 	// 3) Cross-component dependency CANDIDATES: induced edges whose every
 	// evidence site sits inside code this diff touched (line-level, not
 	// file-level — a pre-existing edge elsewhere in a touched file must not
 	// fire). No base-graph comparison is performed, so these are candidates
 	// for review, never asserted as "introduced".
-	newDeps, archStatus, archIntroduced, depErr := h.verifyDependencies(ctx, changed)
+	newDeps, archStatus, archIntroduced, depErr := h.verifyDependencies(ctx, s.changed)
 	if depErr != nil {
 		// FAIL CLOSED: without the graph, neither new cross-component
 		// dependencies nor arch rules were checked. Silently reporting
 		// "no-rules" and an empty dependency list read as a pass.
-		unverifiedSeeds = append(unverifiedSeeds,
+		s.unverifiedSeeds = append(s.unverifiedSeeds,
 			"dependency and architecture checks did not run: "+depErr.Error())
 	}
 
 	// Verdict, fail-closed: incomplete beats review beats complete. A
 	// contract change we could not verify can never yield "complete".
-	verdict := verifyVerdict(len(missed), len(unverifiedSeeds), archStatus)
+	verdict := verifyVerdict(len(s.missed), len(s.unverifiedSeeds), archStatus)
 	h.Ledger.RecordCall("prism_verify")
-	testCoverageOut := verifyTestCoverageOut(testCoverage)
+	testCoverageOut := verifyTestCoverageOut(s.testCoverage)
 	// Consumers of a changed contract in linked repositories.
-	seedSyms := make([]grove.SymbolRecord, 0, len(seeds))
-	for _, sd := range seeds {
+	seedSyms := make([]grove.SymbolRecord, 0, len(s.seeds))
+	for _, sd := range s.seeds {
 		seedSyms = append(seedSyms, sd.sym)
 	}
 	linkedOut := h.verifyLinkedConsumers(ctx, seedSyms)
 	result := map[string]any{
 		"verdict":           verdict,
 		"gateFailure":       verdict == "incomplete" || (strict && (verdict == "review" || linkedOut["linkedVerdict"] != nil)),
-		"base":              base,
+		"base":              s.base,
 		"changedFiles":      changedFiles,
 		"signatureChanges":  sigChanges,
-		"missedSites":       missedSiteMaps(missed),
-		"unverifiedSeeds":   unverifiedSeeds,
-		"contentAdvisories": contentAdvisories,
+		"missedSites":       missedSiteMaps(s.missed),
+		"unverifiedSeeds":   s.unverifiedSeeds,
+		"contentAdvisories": s.contentAdvisories,
 		"newDependencies":   newDeps,
 		"archStatus":        archStatus,
 		"archIntroduced":    archIntroduced,
-		"notes":             notes,
+		"notes":             s.notes,
 		// Informational only, never affects verdict/gateFailure — see
-		// testCoverage's declaration comment above for why body-only
+		// verifyState.testCoverage's declaration comment for why body-only
 		// changes need this separately from the seed/missedSites pipeline.
 		"testCoverage": testCoverageOut,
 	}
 	for k, v := range linkedOut {
 		result[k] = v
 	}
-	return result, nil
+	return result
 }
 
 // paramList extracts a normalized parameter-list string from a signature:
