@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/provasign/prism/internal/core"
 )
@@ -12,30 +11,28 @@ func cmdDeadCode(args []string) int {
 	dir, dirSet := ".", false
 	format := formatText
 	var roots []string
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
+	it := newArgIter("dead-code", args)
+	for it.next() {
+		switch it.Flag {
 		case "--roots":
-			items, err := listFlag("dead-code", args, i)
+			items, err := it.list()
 			if err != nil {
 				return usageError(err)
 			}
 			roots = append(roots, items...)
-			i++
 		case "--format":
-			f, err := formatFlag("dead-code", args, i)
+			f, err := it.format()
 			if err != nil {
 				return usageError(err)
 			}
 			format = f
-			i++
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("dead-code", a)
-			}
-			if err := positionalDir("dead-code", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("dead-code", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	out, err := invokeTool(dir, core.DeadCodeRequest{Roots: roots})

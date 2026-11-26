@@ -19,28 +19,27 @@ func cmdMap(args []string) int {
 	dir, dirSet := ".", false
 	jsonOut := false
 	var mapReq core.MapRequest
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
+	it := newArgIter("map", args)
+	for it.next() {
+		switch it.Flag {
 		case "--depth", "--max-sites":
-			n, err := positiveIntFlag("map", args, i)
+			n, err := it.positiveInt()
 			if err != nil {
 				return usageError(err)
 			}
-			if a == "--depth" {
+			if it.Flag == "--depth" {
 				mapReq.Depth = n
 			} else {
 				mapReq.MaxSites = n
 			}
-			i++
 		case "--component":
-			v, err := flagValue("map", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			mapReq.Component = v
-			i++
 		case "--expand":
-			v, err := flagValue("map", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
@@ -50,7 +49,6 @@ func cmdMap(args []string) int {
 				return 2
 			}
 			mapReq.ExpandFrom, mapReq.ExpandTo = strings.TrimSpace(from), strings.TrimSpace(to)
-			i++
 		case "--tests":
 			mapReq.IncludeTests = true
 		case "--all-components":
@@ -59,19 +57,18 @@ func cmdMap(args []string) int {
 			jsonOut = true
 		case "--format":
 			// Accept the flag every other command uses; "text" is the default.
-			f, err := formatFlag("map", args, i)
+			f, err := it.format()
 			if err != nil {
 				return usageError(err)
 			}
 			jsonOut = f != formatText
-			i++
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("map", a)
-			}
-			if err := positionalDir("map", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("map", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	out, err := invokeTool(dir, mapReq)
@@ -91,34 +88,33 @@ func cmdCycles(args []string) int {
 	dir, dirSet := ".", false
 	jsonOut := false
 	var cyclesReq core.CyclesRequest
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
+	it := newArgIter("cycles", args)
+	for it.next() {
+		switch it.Flag {
 		case "--depth":
-			n, err := positiveIntFlag("cycles", args, i)
+			n, err := it.positiveInt()
 			if err != nil {
 				return usageError(err)
 			}
 			cyclesReq.Depth = n
-			i++
 		case "--tests":
 			cyclesReq.IncludeTests = true
 		case "--json":
 			jsonOut = true
 		case "--format":
 			// Accept the flag every other command uses; "text" is the default.
-			f, err := formatFlag("cycles", args, i)
+			f, err := it.format()
 			if err != nil {
 				return usageError(err)
 			}
 			jsonOut = f != formatText
-			i++
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("cycles", a)
-			}
-			if err := positionalDir("cycles", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("cycles", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	out, err := invokeTool(dir, cyclesReq)
@@ -141,22 +137,21 @@ func cmdArch(args []string) int {
 	dir, dirSet := ".", false
 	jsonOut := false
 	var archReq core.ArchCheckRequest
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
+	it := newArgIter("arch", args)
+	for it.next() {
+		switch it.Flag {
 		case "--depth":
-			n, err := positiveIntFlag("arch", args, i)
+			n, err := it.positiveInt()
 			if err != nil {
 				return usageError(err)
 			}
 			archReq.Depth = n
-			i++
 		case "--deny":
-			v, err := flagValue("arch", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			archReq.Deny = append(archReq.Deny, v)
-			i++
 		case "--tests":
 			archReq.IncludeTests = true
 		case "--strict":
@@ -165,19 +160,18 @@ func cmdArch(args []string) int {
 			jsonOut = true
 		case "--format":
 			// Accept the flag every other command uses; "text" is the default.
-			f, err := formatFlag("arch", args, i)
+			f, err := it.format()
 			if err != nil {
 				return usageError(err)
 			}
 			jsonOut = f != formatText
-			i++
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("arch", a)
-			}
-			if err := positionalDir("arch", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("arch", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	out, err := invokeTool(dir, archReq)
@@ -260,45 +254,43 @@ func cmdVerify(args []string) int {
 	dir, dirSet := ".", false
 	jsonOut := false
 	var verifyReq core.VerifyRequest
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
+	it := newArgIter("verify", args)
+	for it.next() {
+		switch it.Flag {
 		case "--base":
-			v, err := flagValue("verify", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			verifyReq.Base = v
-			i++
 		case "--strict":
 			verifyReq.Strict = true
 		case "--removed":
 			// Mid-loop residual check: --removed a,b,c reports exact
 			// identifier mentions instead of running the full diff check.
-			syms, err := listFlag("verify", args, i)
+			syms, err := it.list()
 			if err != nil {
 				return usageError(err)
 			}
 			verifyReq.RemovedSymbols = syms
-			i++
 		case "--json":
 			jsonOut = true
 		case "--format":
 			// Every other prism command spells this --format; verify only
 			// understood --json, so the documented flag silently produced
 			// the text view and a script asking for JSON parsed prose.
-			f, err := formatFlag("verify", args, i)
+			f, err := it.format()
 			if err != nil {
 				return usageError(err)
 			}
 			jsonOut = f != formatText
-			i++
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("verify", a)
-			}
-			if err := positionalDir("verify", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("verify", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	out, text, rendered, err := invokeToolText(dir, verifyReq)

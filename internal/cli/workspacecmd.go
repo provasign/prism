@@ -98,24 +98,26 @@ func refHead(s workspace.Status) string {
 }
 
 func workspaceAdd(args []string) int {
-	var targets []string
 	var id string
 	index := true
-	for i := 0; i < len(args); i++ {
+	it := newArgIter("workspace add", args)
+	for it.next() {
 		switch {
-		case args[i] == "--no-index":
+		case it.Flag == "--no-index":
 			index = false
-		case args[i] == "--id" && i+1 < len(args):
-			i++
-			id = args[i]
-		case strings.HasPrefix(args[i], "--id="):
-			id = strings.TrimPrefix(args[i], "--id=")
-		case strings.HasPrefix(args[i], "-"):
-			return rejectUnknownFlag("workspace add", args[i])
+		case it.Flag == "--id":
+			v, ok := it.rawValue()
+			if !ok {
+				return it.unknown()
+			}
+			id = v
+		case strings.HasPrefix(it.Flag, "--id="):
+			id = strings.TrimPrefix(it.Flag, "--id=")
 		default:
-			targets = append(targets, args[i])
+			return it.unknown()
 		}
 	}
+	targets := it.Pos
 	if len(targets) == 0 || (id != "" && len(targets) > 1) {
 		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path|git-url[@ref]>... [--id <name>] [--no-index]   (--id names a single repository)")
 		return 2
@@ -540,9 +542,10 @@ func shortSHA(sha string) string {
 // line per reference and declaration signatures; no source bodies.
 func workspaceExport(push bool, args []string) int {
 	var outFile, server, repo, ref string
-	for i := 0; i < len(args); i++ {
+	it := newArgIter("workspace export", args)
+	for it.next() {
 		var dst *string
-		switch args[i] {
+		switch it.Flag {
 		case "-o", "--output":
 			dst = &outFile
 		case "--server":
@@ -552,14 +555,17 @@ func workspaceExport(push bool, args []string) int {
 		case "--ref":
 			dst = &ref
 		default:
-			return rejectUnknownFlag("workspace export", args[i])
+			return it.unknown()
 		}
-		if i+1 >= len(args) {
-			fmt.Fprintf(os.Stderr, "workspace: %s needs a value\n", args[i])
+		v, ok := it.rawValue()
+		if !ok {
+			fmt.Fprintf(os.Stderr, "workspace: %s needs a value\n", it.Flag)
 			return 2
 		}
-		i++
-		*dst = args[i]
+		*dst = v
+	}
+	if len(it.Pos) > 0 {
+		return rejectUnknownFlag("workspace export", it.Pos[0]) // it takes no positionals
 	}
 	root, _ := cliRoot("")
 	// The bundle must describe the tree on disk: bring the index up to date.
@@ -609,25 +615,28 @@ func workspaceExport(push bool, args []string) int {
 // cmdLinkServer runs the shared link server over a directory of bundles.
 func cmdLinkServer(args []string) int {
 	dir, port := "", 8890
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
+	it := newArgIter("link-server", args)
+	for it.next() {
+		switch it.Flag {
 		case "--dir":
-			if i+1 >= len(args) {
+			v, ok := it.rawValue()
+			if !ok {
 				fmt.Fprintln(os.Stderr, "link-server: --dir needs a value")
 				return 2
 			}
-			i++
-			dir = args[i]
+			dir = v
 		case "--port":
-			p, err := positiveIntFlag("link-server", args, i)
+			p, err := it.positiveInt()
 			if err != nil {
 				return usageError(err)
 			}
 			port = p
-			i++
 		default:
-			return rejectUnknownFlag("link-server", args[i])
+			return it.unknown()
 		}
+	}
+	if len(it.Pos) > 0 {
+		return rejectUnknownFlag("link-server", it.Pos[0]) // it takes no positionals
 	}
 	if dir == "" {
 		fmt.Fprintln(os.Stderr, "usage: prism link-server --dir <bundle-store> [--port N]   (PRISM_LINK_TOKEN sets the required bearer token)")

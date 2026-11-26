@@ -32,10 +32,11 @@ func cmdGraph(args []string) int {
 	dir, dirSet := ".", false
 	port, portSet := defaultGraphPort, false
 	open, tests := true, false
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
+	it := newArgIter("graph", args)
+	for it.next() {
+		switch it.Flag {
 		case "--port":
-			p, err := positiveIntFlag("graph", args, i)
+			p, err := it.positiveInt()
 			if err == nil && p > 65535 {
 				err = fmt.Errorf("graph: --port must be 1-65535, got %d", p)
 			}
@@ -43,18 +44,17 @@ func cmdGraph(args []string) int {
 				return usageError(err)
 			}
 			port, portSet = p, true
-			i++
 		case "--no-open":
 			open = false
 		case "--tests":
 			tests = true
 		default:
-			if len(a) > 0 && a[0] == '-' {
-				return rejectUnknownFlag("graph", a)
-			}
-			if err := positionalDir("graph", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("graph", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 

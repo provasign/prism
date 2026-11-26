@@ -28,25 +28,23 @@ func cmdServe(args []string) int {
 	port := 0 // resolved after config load: flag > prism.yaml port > 8888
 	dir, dirSet := ".", false
 	listen, tokenFile := "127.0.0.1", ""
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch {
-		case a == "--listen":
-			v, err := flagValue("serve", args, i)
+	it := newArgIter("serve", args)
+	for it.next() {
+		switch it.Flag {
+		case "--listen":
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			listen = v
-			i++
-		case a == "--token-file":
-			v, err := flagValue("serve", args, i)
+		case "--token-file":
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			tokenFile = v
-			i++
-		case a == "--port":
-			p, err := positiveIntFlag("serve", args, i)
+		case "--port":
+			p, err := it.positiveInt()
 			if err == nil && p > 65535 {
 				err = fmt.Errorf("serve: --port must be 1-65535, got %d", p)
 			}
@@ -54,13 +52,13 @@ func cmdServe(args []string) int {
 				return usageError(err)
 			}
 			port = p
-			i++
-		case strings.HasPrefix(a, "-"):
-			return rejectUnknownFlag("serve", a)
 		default:
-			if err := positionalDir("serve", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("serve", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	// SEC-02: a non-loopback listener needs a token the operator chose and

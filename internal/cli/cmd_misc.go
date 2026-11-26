@@ -41,25 +41,23 @@ func cmdFeedback(args []string) int {
 	list := false
 	dir, dirSet := ".", false
 
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
+	it := newArgIter("feedback", args)
+	for it.next() {
+		switch it.Flag {
 		case "--tool":
-			v, err := flagValue("feedback", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			tool = v
-			i++
 		case "--query-id":
-			v, err := flagValue("feedback", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			queryID = v
-			i++
 		case "--rating":
-			v, err := flagValue("feedback", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
@@ -68,23 +66,21 @@ func cmdFeedback(args []string) int {
 				return usageError(fmt.Errorf("feedback: --rating wants an integer 0-5, got %q", v))
 			}
 			rating = n
-			i++
 		case "--notes":
-			v, err := flagValue("feedback", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			notes = v
-			i++
 		case "--list":
 			list = true
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("feedback", a)
-			}
-			if err := positionalDir("feedback", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("feedback", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 
@@ -188,40 +184,37 @@ func cmdAssist(args []string) int {
 	apply := false
 	applyAmbiguous := false
 	verify := ""
-	var taskParts []string
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
+	it := newArgIter("assist", args)
+	for it.next() {
+		switch it.Flag {
 		case "--model":
-			v, err := flagValue("assist", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			model = v
-			i++
 		case "--apply":
 			apply = true
 		case "--apply-ambiguous":
 			apply = true
 			applyAmbiguous = true
 		case "--verify":
-			v, err := flagValue("assist", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			verify = v
-			i++
 		case "--dir":
-			v, err := flagValue("assist", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			dir = v
-			i++
 		default:
-			taskParts = append(taskParts, a)
+			return it.unknown()
 		}
 	}
-	task := strings.TrimSpace(strings.Join(taskParts, " "))
+	task := strings.TrimSpace(strings.Join(it.Pos, " "))
 	if task == "" {
 		fmt.Fprintln(os.Stderr, `usage: prism assist [--model <spec>] [--apply] [--verify "<cmd>"] [--dir <root>] "<task>"
   model specs: ollama:<tag> | claude:<model> | openai:<model>  (default: auto-detect)`)

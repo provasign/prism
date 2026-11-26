@@ -19,52 +19,45 @@ func cmdLookup(args []string) int {
 	repo := ""
 	fileHint := ""
 	var fields []string
-	var bare []string
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
+	it := newArgIter("lookup", args)
+	for it.next() {
+		switch it.Flag {
 		case "--dir":
-			if i+1 >= len(args) || args[i+1] == "" || strings.HasPrefix(args[i+1], "-") {
+			v, ok := it.rawValue()
+			if !ok || v == "" || strings.HasPrefix(v, "-") {
 				fmt.Fprintln(os.Stderr, "lookup: --dir requires a path")
 				return 2
 			}
-			explicitDir = args[i+1]
-			i++
+			explicitDir = v
 		case "--fields":
-			items, err := listFlag("lookup", args, i)
+			items, err := it.list()
 			if err != nil {
 				return usageError(err)
 			}
 			fields = append(fields, items...)
-			i++
 		case "--repo":
-			v, err := flagValue("lookup", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			repo = v
-			i++
 		case "--file", "--path":
-			v, err := flagValue("lookup", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			fileHint = v
-			i++
 		case "--format":
-			f, err := formatFlag("lookup", args, i)
+			f, err := it.format()
 			if err != nil {
 				return usageError(err)
 			}
 			format = f
-			i++
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("lookup", a)
-			}
-			bare = append(bare, a)
+			return it.unknown()
 		}
 	}
+	bare := it.Pos
 	if len(bare) == 0 {
 		fmt.Fprintln(os.Stderr, "usage: prism lookup <name>... [--dir <path>]  (two arguments use the second as a directory if it exists)")
 		return 2

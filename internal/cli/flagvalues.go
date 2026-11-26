@@ -105,6 +105,93 @@ func takeFormat(cmd string, args []string) ([]string, outputFormat, int) {
 	return rest, format, 0
 }
 
+// argIter walks one command's arguments for its parser: next stops at each
+// flag, collecting positionals on the way, and everything after "--" is
+// positional. The value methods are the helpers above applied to the current
+// flag, and consume its value, so a parser is a switch on it.Flag with no
+// index arithmetic (ENG-03), and the messages stay those of the helpers.
+type argIter struct {
+	cmd  string
+	args []string
+	i    int
+	// Flag is the flag next stopped at.
+	Flag string
+	// Pos holds the positional arguments seen so far, in order.
+	Pos []string
+}
+
+func newArgIter(cmd string, args []string) *argIter {
+	return &argIter{cmd: cmd, args: args, i: -1}
+}
+
+// next advances to the next flag and reports whether there is one.
+func (it *argIter) next() bool {
+	for it.i++; it.i < len(it.args); it.i++ {
+		a := it.args[it.i]
+		if a == "--" {
+			it.Pos = append(it.Pos, it.args[it.i+1:]...)
+			it.i = len(it.args)
+			return false
+		}
+		if strings.HasPrefix(a, "-") {
+			it.Flag = a
+			return true
+		}
+		it.Pos = append(it.Pos, a)
+	}
+	return false
+}
+
+// unknown reports the current flag as unknown and returns exit code 2.
+func (it *argIter) unknown() int { return rejectUnknownFlag(it.cmd, it.Flag) }
+
+// value returns the current flag's value (flagValue).
+func (it *argIter) value() (string, error) {
+	v, err := flagValue(it.cmd, it.args, it.i)
+	it.i++
+	return v, err
+}
+
+// rawValue returns the argument after the current flag as written, even
+// empty or flag-shaped, and false when there is none. For parsers with their
+// own message for a missing value.
+func (it *argIter) rawValue() (string, bool) {
+	if it.i+1 >= len(it.args) {
+		it.i++
+		return "", false
+	}
+	it.i++
+	return it.args[it.i], true
+}
+
+// positiveInt returns the current flag's value as an integer >= 1.
+func (it *argIter) positiveInt() (int, error) {
+	n, err := positiveIntFlag(it.cmd, it.args, it.i)
+	it.i++
+	return n, err
+}
+
+// list returns the current flag's comma-separated values.
+func (it *argIter) list() ([]string, error) {
+	items, err := listFlag(it.cmd, it.args, it.i)
+	it.i++
+	return items, err
+}
+
+// choice returns the current flag's value when it is one of choices.
+func (it *argIter) choice(choices ...string) (string, error) {
+	v, err := choiceFlag(it.cmd, it.args, it.i, choices...)
+	it.i++
+	return v, err
+}
+
+// format parses the current --format flag's value.
+func (it *argIter) format() (outputFormat, error) {
+	f, err := formatFlag(it.cmd, it.args, it.i)
+	it.i++
+	return f, err
+}
+
 // usageError prints a flag-value error and returns the usage exit code.
 func usageError(err error) int {
 	fmt.Fprintln(os.Stderr, err)

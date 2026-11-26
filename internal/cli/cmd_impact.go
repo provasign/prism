@@ -173,33 +173,31 @@ func cmdChangeImpactDiff(args []string) int {
 	dir, dirSet := ".", false
 	format := formatText
 	var diffReq core.ChangeImpactDiffRequest
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
+	it := newArgIter("change-impact", args)
+	for it.next() {
+		switch it.Flag {
 		case "--diff":
 		case "--base":
-			v, err := flagValue("change-impact", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			diffReq.Base = v
-			i++
 		case "--format":
-			f, err := formatFlag("change-impact", args, i)
+			f, err := it.format()
 			if err != nil {
 				return usageError(err)
 			}
 			format = f
-			i++
 		case "--json":
 			format = formatJSON
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("change-impact", a)
-			}
-			if err := positionalDir("change-impact", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("change-impact", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	out, text, rendered, err := invokeToolText(dir, diffReq)

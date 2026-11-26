@@ -97,11 +97,11 @@ func cmdWatch(args []string) int {
 	defer func() { indexAnywhere = false }()
 	dir, dirSet := ".", false
 	debounce := 2 * time.Second
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
+	it := newArgIter("watch", args)
+	for it.next() {
+		switch it.Flag {
 		case "--debounce":
-			v, err := flagValue("watch", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
@@ -110,14 +110,13 @@ func cmdWatch(args []string) int {
 				return usageError(fmt.Errorf("watch: --debounce wants a positive duration such as 2s, got %q", v))
 			}
 			debounce = d
-			i++
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("watch", a)
-			}
-			if err := positionalDir("watch", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("watch", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 

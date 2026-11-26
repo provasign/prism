@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/provasign/prism/internal/core"
 )
@@ -30,34 +29,26 @@ func cmdSearch(args []string) int {
 	contextLines := 0
 	contextSet := false
 	repo := ""
-	var bare []string
-args:
-	for i := 0; i < len(args); i++ {
-		a := args[i]
+	// After "--" every argument is a term, so a term that starts with "-"
+	// can be searched (BUG-18); argIter does that.
+	it := newArgIter("search", args)
+	for it.next() {
 		var err error
-		switch a {
-		case "--":
-			// End of flags: every later argument is a term, so a term that
-			// starts with "-" can be searched (BUG-18).
-			bare = append(bare, args[i+1:]...)
-			break args
+		switch it.Flag {
 		case "--dir":
 			// The unambiguous way to say where to search, now that bare
 			// arguments are terms rather than "term then directory".
-			dir, err = flagValue("search", args, i)
-			i++
+			dir, err = it.value()
 		case "--scope":
 			// The steering has documented `prism search <t> --scope text` since
 			// v0.37.0 while this parser knew only --limit and --format, so the
 			// flag was dropped and every CLI text search silently returned the
 			// merged symbol view instead. A Bash-only subagent following its own
 			// instructions got the wrong answer shape and no indication why.
-			scope, err = choiceFlag("search", args, i, "text", "symbols", "both")
-			i++
+			scope, err = it.choice("text", "symbols", "both")
 		case "--repo":
 			// A linked repository's id, or "all": text matches there.
-			repo, err = flagValue("search", args, i)
-			i++
+			repo, err = it.value()
 		case "--regex":
 			regex = true
 		case "--ignore-case", "-i":
@@ -75,14 +66,12 @@ args:
 			// octodns/manager.py` is what an agent that already knows the
 			// file wants; without it, it uses grep instead.
 			var p string
-			p, err = flagValue("search", args, i)
+			p, err = it.value()
 			paths = append(paths, p)
-			i++
 		case "--glob", "--include":
 			var g string
-			g, err = flagValue("search", args, i)
+			g, err = it.value()
 			globs = append(globs, g)
-			i++
 		case "--include-bodies":
 			includeBodies = true
 			includeBodiesSet = true
@@ -96,35 +85,30 @@ args:
 		case "--rollup-only":
 			rollupOnly = true
 		case "--context", "-C":
-			if i+1 >= len(args) {
+			v, ok := it.rawValue()
+			if !ok {
 				return usageError(fmt.Errorf("search: --context requires a non-negative integer"))
 			}
-			n, convErr := strconv.Atoi(args[i+1])
+			n, convErr := strconv.Atoi(v)
 			if convErr != nil || n < 0 {
-				return usageError(fmt.Errorf("search: --context requires a non-negative integer, got %q", args[i+1]))
+				return usageError(fmt.Errorf("search: --context requires a non-negative integer, got %q", v))
 			}
 			contextLines, contextSet = n, true
-			i++
 		case "--limit":
-			limit, err = positiveIntFlag("search", args, i)
+			limit, err = it.positiveInt()
 			limitSet = true
-			i++
 		case "--format":
-			format, err = formatFlag("search", args, i)
-			i++
+			format, err = it.format()
 		default:
 			// An unknown flag used to be dropped in silence — the mechanism
 			// behind this whole class of bug. Fail loudly instead.
-			if strings.HasPrefix(a, "-") {
-				fmt.Fprintf(os.Stderr, "search: unknown flag %q\n", a)
-				return 2
-			}
-			bare = append(bare, a)
+			return it.unknown()
 		}
 		if err != nil {
 			return usageError(err)
 		}
 	}
+	bare := it.Pos
 	if len(bare) == 0 {
 		fmt.Fprintln(os.Stderr, "usage: prism search <term> [term...] [--dir <path>]")
 		return 2

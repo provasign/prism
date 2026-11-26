@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/provasign/prism/internal/core"
 )
@@ -23,55 +22,47 @@ func cmdQuery(args []string) int {
 	repo := ""
 	var terms []string
 	var include []string
-	for i := 0; i < len(args); i++ {
-		a := args[i]
+	it := newArgIter("query", args)
+	for it.next() {
 		var err error
-		switch a {
+		switch it.Flag {
 		case "--repo":
-			repo, err = flagValue("query", args, i)
-			i++
+			repo, err = it.value()
 		case "--profile":
-			profile, err = flagValue("query", args, i)
-			i++
+			profile, err = it.value()
 		case "--limit":
-			limit, err = positiveIntFlag("query", args, i)
-			i++
+			limit, err = it.positiveInt()
 		case "--terms":
 			var more []string
-			more, err = listFlag("query", args, i)
+			more, err = it.list()
 			terms = append(terms, more...)
-			i++
 		case "--include":
 			var more []string
-			more, err = listFlag("query", args, i)
+			more, err = it.list()
 			include = append(include, more...)
-			i++
 		case "--depth", "--graph-depth":
 			// graph_depth has never been read by any handler; sending it was
 			// a silent no-op. Say so instead of pretending it tunes anything.
 			fmt.Fprintln(os.Stderr, "query: --depth/--graph-depth has no effect and was removed; expansion is a fixed one-hop call neighborhood")
 			return 2
 		case "--delivery":
-			delivery, err = choiceFlag("query", args, i, "source", "symbols")
-			i++
+			delivery, err = it.choice("source", "symbols")
 		case "--max-files":
-			maxFiles, err = positiveIntFlag("query", args, i)
-			i++
+			maxFiles, err = it.positiveInt()
 		case "--format":
-			format, err = formatFlag("query", args, i)
-			i++
+			format, err = it.format()
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("query", a)
-			}
-			if dirSet {
-				return usageError(fmt.Errorf("query: takes one directory, got %q and %q; pass terms with --terms a,b", dir, a))
-			}
-			dir, dirSet = a, true
+			return it.unknown()
 		}
 		if err != nil {
 			return usageError(err)
 		}
+	}
+	for _, a := range it.Pos {
+		if dirSet {
+			return usageError(fmt.Errorf("query: takes one directory, got %q and %q; pass terms with --terms a,b", dir, a))
+		}
+		dir, dirSet = a, true
 	}
 	if len(terms) == 0 {
 		fmt.Fprintln(os.Stderr, "query: --terms is required; use prism search first when no anchor is known")

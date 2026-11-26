@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/provasign/prism/internal/core"
 )
@@ -13,24 +12,23 @@ func cmdTestPlan(args []string) int {
 	format := formatText
 	targets := false
 	var req core.TestPlanRequest
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
+	it := newArgIter("test-plan", args)
+	for it.next() {
+		switch it.Flag {
 		case "--base":
-			v, err := flagValue("test-plan", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			req.Base = v
-			i++
 		case "--coverage":
-			v, err := flagValue("test-plan", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			req.Coverage = append(req.Coverage, v)
-			i++
 		case "--format":
-			v, err := flagValue("test-plan", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
@@ -43,14 +41,13 @@ func cmdTestPlan(args []string) int {
 			default:
 				return usageError(fmt.Errorf("test-plan: --format must be text, json or targets"))
 			}
-			i++
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("test-plan", a)
-			}
-			if err := positionalDir("test-plan", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("test-plan", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	out, text, rendered, err := invokeToolText(dir, req)

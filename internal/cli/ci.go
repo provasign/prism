@@ -51,23 +51,21 @@ func cmdCI(args []string) int {
 	dir, dirSet := ".", false
 	base := "HEAD"
 	format := "text"
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
+	it := newArgIter("ci", args)
+	for it.next() {
+		switch it.Flag {
 		case "--base":
-			v, err := flagValue("ci", args, i)
+			v, err := it.value()
 			if err != nil {
 				return usageError(err)
 			}
 			base = v
-			i++
 		case "--format":
-			v, err := choiceFlag("ci", args, i, "text", "github", "sarif", "json")
+			v, err := it.choice("text", "github", "sarif", "json")
 			if err != nil {
 				return usageError(err)
 			}
 			format = v
-			i++
 		case "--json":
 			format = "json"
 		case "--untrusted":
@@ -75,12 +73,12 @@ func cmdCI(args []string) int {
 		case "--trusted":
 			trust.SetOverride(trust.Trusted)
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("ci", a)
-			}
-			if err := positionalDir("ci", &dir, &dirSet, a); err != nil {
-				return usageError(err)
-			}
+			return it.unknown()
+		}
+	}
+	for _, a := range it.Pos {
+		if err := positionalDir("ci", &dir, &dirSet, a); err != nil {
+			return usageError(err)
 		}
 	}
 	root := mustAbs(dir)
