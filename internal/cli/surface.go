@@ -171,33 +171,9 @@ func promptInterface(def string) (string, error) {
 // harnesses' project configs, so choosing CLI after MCP leaves no server
 // registered. Other servers in those files are untouched.
 func unregisterMCPTools(projectDir string, harnesses []string) {
-	type target struct {
-		harness, name, rel string
-		keys               []string
-	}
-	for _, t := range []target{
-		{"claude", "Claude Code", ".mcp.json", []string{"mcpServers"}},
-		{"cursor", "Cursor", filepath.Join(".cursor", "mcp.json"), []string{"mcpServers"}},
-		{"vscode", "VS Code", filepath.Join(".vscode", "mcp.json"), []string{"servers"}},
-		{"gemini", "Gemini CLI", filepath.Join(".gemini", "settings.json"), []string{"mcpServers"}},
-		{"opencode", "opencode", "opencode.json", []string{"mcp"}},
-	} {
-		if !harnessSelected(harnesses, t.harness) {
-			continue
-		}
-		p := filepath.Join(projectDir, t.rel)
-		if removed, err := removeJSONMapEntry(p, t.keys, "prism"); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not remove Prism from %s config (%s): %v\n", t.name, p, err)
-		} else if removed {
-			fmt.Printf("removed Prism MCP registration (CLI interface): %s\n", p)
-		}
-	}
-	if harnessSelected(harnesses, "codex") {
-		p := filepath.Join(projectDir, ".codex", "config.toml")
-		if removed, err := removePrismCodexConfig(p); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not remove Prism from Codex config (%s): %v\n", p, err)
-		} else if removed {
-			fmt.Printf("removed Prism MCP registration (CLI interface): %s\n", p)
+	for _, h := range harnessRegistry {
+		if harnessSelected(harnesses, h.Status().id) {
+			h.Remove(projectDir)
 		}
 	}
 }

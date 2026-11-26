@@ -147,142 +147,26 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 	// CON-06: these files are committed, so they name no machine path. The
 	// IDEs get ${workspaceFolder}, which both interpolate, instead of this
 	// checkout's absolute path.
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact", workspaceFolderVar}}
-	// Claude Code launches project-scope MCP servers with cwd at the project
-	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
-	// portable and correct after the repo moves. The IDE writers below keep
-	// the explicit dir because their launch cwd is not guaranteed.
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact"}}
-
-	// Build each harness's compact gateway registration and write it.
-	type writer struct {
-		harness string
-		name    string
-		path    string
-		build   func(string) []byte
-		maps    [][]string
+	r := &mcpRegistration{
+		projectDir: projectDir, prismBin: prismBin,
+		permissions: permissions, refresh: refresh, denyBuiltinSearch: denyBuiltinSearch,
+		entry: mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact", workspaceFolderVar}},
+		// Claude Code launches project-scope MCP servers with cwd at the
+		// project root, so its entry needs no pinned absolute path — this
+		// keeps .mcp.json portable and correct after the repo moves. The IDE
+		// writers keep the explicit dir because their launch cwd is not
+		// guaranteed.
+		claudeEntry:    mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact"}},
+		claudeSettings: claudeSettings,
 	}
-
-	writers := []writer{
-		{
-			harness: "claude",
-			name:    "Claude Code",
-			path:    filepath.Join(projectDir, ".mcp.json"),
-			build: func(string) []byte {
-				return buildMCPConfig("prism", claudeEntry)
-			},
-			maps: [][]string{{"mcpServers"}},
-		},
-		{
-			harness: "cursor",
-			name:    "Cursor",
-			path:    filepath.Join(projectDir, ".cursor", "mcp.json"),
-			build: func(string) []byte {
-				return buildMCPConfig("prism", entry)
-			},
-			maps: [][]string{{"mcpServers"}},
-		},
-		{
-			harness: "vscode",
-			name:    "VS Code",
-			path:    filepath.Join(projectDir, ".vscode", "mcp.json"),
-			build: func(string) []byte {
-				return buildVSCodeConfig(prismBin, workspaceFolderVar)
-			},
-			maps: [][]string{{"servers"}},
-		},
-		{
-			harness: "gemini",
-			name:    "Gemini CLI",
-			path:    filepath.Join(projectDir, ".gemini", "settings.json"),
-			build: func(string) []byte {
-				return buildMCPConfig("prism", claudeEntry)
-			},
-			maps: [][]string{{"mcpServers"}},
-		},
-		{
-			harness: "opencode",
-			name:    "opencode",
-			path:    filepath.Join(projectDir, "opencode.json"),
-			build: func(path string) []byte {
-				return buildOpencodeConfigForPath(prismBin, path)
-			},
-			maps: [][]string{{"mcp"}, {"mcp", "servers"}},
-		},
-	}
-
-	for _, w := range writers {
-		if !harnessSelected(harnesses, w.harness) {
+	for _, h := range harnessRegistry {
+		if !harnessSelected(harnesses, h.Status().id) {
 			continue
 		}
-		p := w.path
-		// --refresh rewrites only what a previous install configured: if the
-		// config file does not exist yet, this tool was never set up and must
-		// not be added now.
-		if refresh {
-			if _, err := os.Stat(p); err != nil {
-				continue
-			}
-		}
-		parent := filepath.Dir(p)
-		if err := os.MkdirAll(parent, 0o755); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not create %s config dir: %v\n", w.name, err)
-			continue
-		}
-		// Skip writing .mcp.json if the prism entry is already correct.
-		// Writing the file resets Claude Code's MCP approval state, which
-		// forces the user to re-approve on every `prism init` run.
-		if filepath.Base(p) == ".mcp.json" && mcpEntryAlreadyPresent(p, "prism", claudeEntry) {
-			fmt.Printf("already registered with %s: %s\n", w.name, p)
-			written = append(written, p)
-			ensureClaudeCodeApproval(claudeSettings, "prism", permissions, denyBuiltinSearch)
-			continue
-		}
-		isClaudeCode := w.name == "Claude Code"
-		if old := existingPrismCommand(p, w.maps); old != "" && old != prismBin && filepath.IsAbs(old) {
-			fmt.Printf("replaced the machine-specific command %s with %q in %s\n", old, prismBin, p)
-		}
-		content := w.build(p)
-		// Merge rather than overwrite existing configs.
-		merged, err := mergeOrCreate(p, content, w.maps...)
-		if err != nil {
-			initWriteFailed(p, err)
-			continue
-		}
-		if err := os.WriteFile(p, merged, 0o644); err != nil {
-			initWriteFailed(p, err)
-			continue
-		}
-		fmt.Printf("registered with %s: %s\n", w.name, p)
-		written = append(written, p)
-		if isClaudeCode {
-			ensureClaudeCodeApproval(claudeSettings, "prism", permissions, denyBuiltinSearch)
+		if path, ok := h.Apply(r); ok {
+			written = append(written, path)
 		}
 	}
-
-	if harnessSelected(harnesses, "codex") {
-		codexPath := filepath.Join(projectDir, ".codex", "config.toml")
-		if !(refresh && !fileExists(codexPath)) {
-			if err := writePrismCodexConfig(codexPath, prismBin, []string{"mcp", "--compact"}); err != nil {
-				initWriteFailed(codexPath, err)
-			} else {
-				fmt.Printf("registered with Codex CLI: %s\n", codexPath)
-				written = append(written, codexPath)
-			}
-		}
-	}
-
-	if harnessSelected(harnesses, "windsurf") {
-		legacyPath := filepath.Join(projectDir, ".windsurf", "mcp.json")
-		removed, err := removeJSONMapEntry(legacyPath, []string{"mcpServers"}, "prism")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not migrate legacy Windsurf config %s: %v\n", legacyPath, err)
-		} else if removed {
-			fmt.Printf("removed unsupported project-local Windsurf Prism registration: %s\n", legacyPath)
-		}
-		fmt.Fprintln(os.Stderr, "warning: Windsurf does not document a project-local MCP config; Prism wrote project steering only and did not modify user-global Windsurf settings")
-	}
-
 	return written
 }
 

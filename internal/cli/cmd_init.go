@@ -66,85 +66,94 @@ func cmdInit(args []string) int {
 	return rc
 }
 
-func runInit(args []string) int {
-	// --no-permissions     (skip the Claude Code tool auto-allow entry)
-	// --print-config <id>  (print one agent's snippet, write nothing, exit)
-	// --refresh            (rewrite ONLY agents already configured)
-	permissions := true
-	printConfig := ""
-	refresh := false
-	denyBuiltinSearch := false
-	readGuard := false
-	noReadGuard := false
-	yes := false
-	workspaceMode := ""
-	interfaceArg := ""
-	var harnessArgs []string
-	filtered := args[:0]
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
+// initOptions are runInit's flags.
+type initOptions struct {
+	permissions       bool   // --no-permissions skips the Claude Code tool auto-allow entry
+	printConfig       string // --print-config <id>: print one agent's snippet, write nothing
+	refresh           bool   // --refresh: rewrite ONLY agents already configured
+	denyBuiltinSearch bool
+	readGuard         bool
+	noReadGuard       bool
+	yes               bool
+	workspaceMode     string
+	interfaceArg      string
+	harnessArgs       []string
+	dir               string
+}
+
+// parseInitArgs reads init's flags and its one optional directory; rc is
+// non-zero when the arguments are a usage error.
+func parseInitArgs(args []string) (opt initOptions, rc int) {
+	opt.permissions = true
+	it := newArgIter("init", args)
+	for it.next() {
+		switch it.Flag {
 		case "--global":
 			fmt.Fprintln(os.Stderr, "init: --global was removed; Prism MCP configuration is project-local. Use --harness to select clients.")
-			return 2
+			return opt, 2
 		case "--harness":
-			if _, err := flagValue("init", args, i); err != nil {
+			v, err := it.value()
+			if err != nil {
 				fmt.Fprintln(os.Stderr, "init: --harness requires a comma-separated value")
-				return 2
+				return opt, 2
 			}
-			harnessArgs = append(harnessArgs, args[i+1])
-			i++
+			opt.harnessArgs = append(opt.harnessArgs, v)
 		case "--interface":
-			if _, err := flagValue("init", args, i); err != nil {
+			v, err := it.value()
+			if err != nil {
 				fmt.Fprintln(os.Stderr, "init: --interface requires mcp or cli")
-				return 2
+				return opt, 2
 			}
-			iface, err := parseInterface(args[i+1])
+			iface, err := parseInterface(v)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "init:", err)
-				return 2
+				return opt, 2
 			}
-			interfaceArg = iface
-			i++
+			opt.interfaceArg = iface
 		case "--no-permissions":
-			permissions = false
+			opt.permissions = false
 		case "--deny-builtin-search":
-			denyBuiltinSearch = true
+			opt.denyBuiltinSearch = true
 		case "--read-guard":
-			readGuard = true
+			opt.readGuard = true
 		case "--no-read-guard":
-			noReadGuard = true
+			opt.noReadGuard = true
 		case "--refresh":
-			refresh = true
+			opt.refresh = true
 		case "--yes", "-y":
-			yes = true
+			opt.yes = true
 		case "--workspace":
-			v, err := choiceFlag("init", args, i, "auto", "none")
+			v, err := it.choice("auto", "none")
 			if err != nil {
-				return usageError(err)
+				return opt, usageError(err)
 			}
-			workspaceMode = v
-			i++
+			opt.workspaceMode = v
 		case "--print-config":
-			v, err := flagValue("init", args, i)
+			v, err := it.value()
 			if err != nil {
-				return usageError(err)
+				return opt, usageError(err)
 			}
-			printConfig = v
-			i++
+			opt.printConfig = v
 		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("init", a)
-			}
-			filtered = append(filtered, a)
+			return opt, it.unknown()
 		}
 	}
-	args = filtered
-	if len(args) > 1 {
-		return usageError(fmt.Errorf("init: takes one directory, got %q and %q", args[0], args[1]))
+	if len(it.Pos) > 1 {
+		return opt, usageError(fmt.Errorf("init: takes one directory, got %q and %q", it.Pos[0], it.Pos[1]))
 	}
+	opt.dir = dirArg(it.Pos, 0, ".")
+	return opt, 0
+}
 
-	dir := dirArg(args, 0, ".")
+func runInit(args []string) int {
+	opt, rc := parseInitArgs(args)
+	if rc != 0 {
+		return rc
+	}
+	permissions, printConfig, refresh := opt.permissions, opt.printConfig, opt.refresh
+	denyBuiltinSearch, readGuard, noReadGuard := opt.denyBuiltinSearch, opt.readGuard, opt.noReadGuard
+	workspaceMode := opt.workspaceMode
+	dir := opt.dir
 	abs, _ := filepath.Abs(dir)
 	if printConfig == "" {
 		initRealRoot = abs
@@ -210,51 +219,13 @@ func runInit(args []string) int {
 		}
 	}
 
-	harnesses, err := parseHarnesses(harnessArgs)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "init:", err)
-		return 2
+	harnesses, rc := chooseInitHarnesses(abs, recordedHarnesses, opt)
+	if rc != 0 {
+		return rc
 	}
-	if len(harnesses) == 0 {
-		if refresh {
-			if len(recordedHarnesses) == 0 {
-				fmt.Fprintln(os.Stderr, "init: --refresh cannot choose harnesses because prism.yaml has no recorded selection; pass --harness <ids>")
-				return 2
-			}
-			harnesses = recordedHarnesses
-		} else if yes {
-			if len(recordedHarnesses) == 0 {
-				fmt.Fprintln(os.Stderr, "init: --yes cannot choose harnesses because prism.yaml has no recorded selection; pass --harness <ids>")
-				return 2
-			}
-			harnesses = recordedHarnesses
-		} else if isInteractive() {
-			harnesses, err = promptHarnesses(abs, recordedHarnesses)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "init:", err)
-				return 2
-			}
-		} else {
-			fmt.Fprintln(os.Stderr, "init: no harness selected in non-interactive mode; pass --harness <ids> (or --yes to reuse harnesses recorded in prism.yaml)")
-			return 2
-		}
-	}
-
-	// Interface: the flag wins; otherwise the default is what prism.yaml
-	// records, which --refresh/--yes reuse and an interactive init offers.
-	iface := interfaceArg
-	if iface == "" {
-		def := defaultInterface(prismYAML)
-		if isInteractive() && !refresh && !yes {
-			fmt.Fprintln(os.Stderr, interfaceRecommendation(abs))
-			iface, err = promptInterface(def)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "init:", err)
-				return 2
-			}
-		} else {
-			iface = def
-		}
+	iface, rc := chooseInitInterface(abs, prismYAML, opt)
+	if rc != 0 {
+		return rc
 	}
 
 	// 1. Write prism.yaml into the project. Grove is embedded in-process now,
@@ -335,6 +306,67 @@ mcp_surface: "compact"
 		fmt.Printf("restart or reload %s so it replaces any running older Prism MCP process\n", strings.Join(harnesses, ", "))
 	}
 	return 0
+}
+
+// chooseInitHarnesses picks the harnesses to configure: --harness, else the
+// selection prism.yaml records (--refresh, --yes), else an interactive prompt.
+func chooseInitHarnesses(abs string, recordedHarnesses []string, opt initOptions) ([]string, int) {
+	refresh, yes := opt.refresh, opt.yes
+	harnesses, err := parseHarnesses(opt.harnessArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "init:", err)
+		return nil, 2
+	}
+	if len(harnesses) == 0 {
+		if refresh {
+			if len(recordedHarnesses) == 0 {
+				fmt.Fprintln(os.Stderr, "init: --refresh cannot choose harnesses because prism.yaml has no recorded selection; pass --harness <ids>")
+				return nil, 2
+			}
+			harnesses = recordedHarnesses
+		} else if yes {
+			if len(recordedHarnesses) == 0 {
+				fmt.Fprintln(os.Stderr, "init: --yes cannot choose harnesses because prism.yaml has no recorded selection; pass --harness <ids>")
+				return nil, 2
+			}
+			harnesses = recordedHarnesses
+		} else if isInteractive() {
+			harnesses, err = promptHarnesses(abs, recordedHarnesses)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "init:", err)
+				return nil, 2
+			}
+		} else {
+			fmt.Fprintln(os.Stderr, "init: no harness selected in non-interactive mode; pass --harness <ids> (or --yes to reuse harnesses recorded in prism.yaml)")
+			return nil, 2
+		}
+	}
+	return harnesses, 0
+}
+
+// chooseInitInterface picks mcp or cli: the flag wins; otherwise the default
+// is what prism.yaml records, which --refresh/--yes reuse and an interactive
+// init offers.
+func chooseInitInterface(abs, prismYAML string, opt initOptions) (string, int) {
+	refresh, yes := opt.refresh, opt.yes
+	var err error
+	// Interface: the flag wins; otherwise the default is what prism.yaml
+	// records, which --refresh/--yes reuse and an interactive init offers.
+	iface := opt.interfaceArg
+	if iface == "" {
+		def := defaultInterface(prismYAML)
+		if isInteractive() && !refresh && !yes {
+			fmt.Fprintln(os.Stderr, interfaceRecommendation(abs))
+			iface, err = promptInterface(def)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "init:", err)
+				return "", 2
+			}
+		} else {
+			iface = def
+		}
+	}
+	return iface, 0
 }
 
 // mergePrismYAML rewrites only the keys init manages (version, profile,
@@ -519,29 +551,14 @@ type harnessStatus struct {
 	projectMCP  bool
 }
 
-var harnessStatuses = []harnessStatus{
-	{id: "claude", label: "Claude Code", command: "claude", configPaths: []string{".mcp.json"}, projectMCP: true},
-	{id: "codex", label: "Codex CLI", command: "codex", configPaths: []string{".codex/config.toml"}, projectMCP: true},
-	{id: "cursor", label: "Cursor", command: "cursor", configPaths: []string{".cursor/mcp.json", ".cursorrules"}, projectMCP: true},
-	{id: "windsurf", label: "Windsurf", command: "windsurf", configPaths: []string{".windsurf/mcp.json", ".windsurfrules"}, projectMCP: false},
-	{id: "vscode", label: "VS Code", command: "code", configPaths: []string{".vscode/mcp.json"}, projectMCP: true},
-	{id: "gemini", label: "Gemini CLI", command: "gemini", configPaths: []string{".gemini/settings.json"}, projectMCP: true},
-	{id: "opencode", label: "OpenCode", command: "opencode", configPaths: []string{"opencode.json"}, projectMCP: true},
-}
-
 func detectedHarnesses(projectDir string, recorded []string) []string {
 	want := map[string]bool{}
 	for _, id := range recorded {
 		want[id] = true
 	}
-	for _, h := range harnessStatuses {
-		if _, err := exec.LookPath(h.command); err == nil {
-			want[h.id] = true
-		}
-		for _, rel := range h.configPaths {
-			if fileExists(filepath.Join(projectDir, filepath.FromSlash(rel))) {
-				want[h.id] = true
-			}
+	for _, h := range harnessRegistry {
+		if h.Detect(projectDir) {
+			want[h.Status().id] = true
 		}
 	}
 	var selected []string
