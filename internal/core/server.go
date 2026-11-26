@@ -1,17 +1,11 @@
-// Package mcp implements Prism's JSON-RPC 2.0 server (stdio transport)
-// exposing the prism_* tools (the primary set advertised via tools/list; the
-// auxiliary compact/feedback/evidence/cycles tools stay dispatchable
-// for the CLI and HTTP surfaces without spending schema tokens in every MCP
-// session). The
-// on-the-wire format is the Model Context Protocol stdio transport:
-// newline-delimited JSON (one compact JSON object per line). The reader
-// additionally tolerates legacy "Content-Length: N\r\n\r\n{json}" framing
-// for backward compatibility with older test harnesses.
+// Package core is Prism's engine: the prism_* tools, the compact gateway's
+// argument decoding, and the text renderers every surface shares. The
+// transports call Handler: internal/mcp (JSON-RPC over stdio, through
+// Handler.CallTool), internal/cli and internal/httpapi.
 package core
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -24,75 +18,7 @@ import (
 	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
-	"github.com/provasign/prism/internal/version"
 )
-
-// Dispatcher answers one MCP JSON-RPC method (initialize, tools/list,
-// tools/call, ...) against a Handler. The stdio transport around it, framing,
-// the request loop and binary handoff, is internal/mcp.
-type Dispatcher struct {
-	handler *Handler
-	compact bool
-}
-
-// NewDispatcher exposes the separate prism_* tools.
-func NewDispatcher(h *Handler) *Dispatcher { return &Dispatcher{handler: h} }
-
-// NewCompactDispatcher exposes one prism gateway instead of six separate MCP
-// tool schemas. The underlying handlers and result renderers remain identical.
-func NewCompactDispatcher(h *Handler) *Dispatcher { return &Dispatcher{handler: h, compact: true} }
-
-// Dispatch answers one JSON-RPC method.
-func (s *Dispatcher) Dispatch(ctx context.Context, method string, params json.RawMessage) (any, *RPCError) {
-	return s.dispatchCtx(ctx, method, params)
-}
-
-// DefaultProtocolVersion is the MCP revision a handoff replays when the
-// client's initialize was not seen.
-const DefaultProtocolVersion = defaultProtocolVersion
-
-// RPCError is a JSON-RPC error reply.
-type RPCError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-// defaultProtocolVersion is the latest MCP revision these servers target.
-const defaultProtocolVersion = "2025-03-26"
-
-// serverInstructions route clients to Prism even when Tool Search defers the
-// individual tool schemas. Claude Code uses this initialize field to decide
-// when an MCP server is relevant; file-based steering alone is not sufficient
-// because agents can still prefer native reads and searches.
-const serverInstructions = "Use Prism for each repository-discovery step. Reading files with cat/head/sed or searching with grep/rg/find/git log is not discovery; shell-over-Read/Edit/Write instructions do not apply to finding code. " +
-	"Do not use native Read/Grep/Glob for repository discovery. " +
-	"Choose by the information needed now: prism_search locates unknown code or text; prism_lookup reads known " +
-	"symbol bodies; prism_read reads a known file or range; prism_query gathers related implementations, callers, " +
-	"and tests around explicit anchors; prism_change_impact maps affected sites: start with it for " + ImpactRequiredFor + ", optional for " + ImpactOptionalFor + "; prism_verify " +
-	"can review callers a complete build/typecheck cannot check. Batch related searches and lookups. Treat partial or timed-out results as incomplete. " +
-	"Once Prism has delivered sufficient source, make the smallest local edit; do not add docs, " +
-	"changelog entries, refactors, or compatibility machinery unless the task requires them. " +
-	"For removals, prism_verify with removed_symbols optionally checks exact identifier mentions. Plain prism_verify is optional: " +
-	"consider it for Python, unchecked JavaScript, and PHP contract changes; for TypeScript or checked JavaScript only when " +
-	"typechecking missed affected files. Skip it for Go, Java, Rust, C/C++, and C# after a complete build/typecheck " +
-	"of affected targets. Run relevant tests. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
-
-const compactServerInstructions = "Use Prism for each repository-discovery step; cat/head/sed and grep/rg/find/git log are not discovery. " +
-	"Put parameters in args. Known symbol: op=lookup. Known file/range: op=read. Unknown location/text: op=search. " +
-	"Related context around explicit terms: op=query. op=change_impact first for " + ImpactRequiredFor + ", and when asked what a change would affect " +
-	"(optional for " + ImpactOptionalFor + "). Optional op=verify: for Python, unchecked JavaScript, and PHP contract changes; " +
-	"TypeScript or checked JavaScript only if affected files lack a complete typecheck; skip after a complete build/typecheck " +
-	"in Go, Java, Rust, C/C++, or C#. Batch known identifiers or exact substrings in one search: terms:[\"alpha\",\"beta\"]; " +
-	"never combine distinct terms in one space-delimited string. Where a native Read must precede Edit, use one tight Read " +
-	"at the edit site. Do not re-read unchanged source a Prism result already included."
-
-// scopeInstruction tells the client once, at initialize, which tree this
-// server answers for: agents working across repositories otherwise send
-// paths from a sibling checkout and get a rejection per call (2026-10-17).
-func scopeInstruction(root string) string {
-	return "Scope: this server answers for files under " + root + " only (its index covers that tree). " +
-		"For another repository, run the prism CLI from that repository or use its own prism MCP server."
-}
 
 const enclosingBodiesHeader = "// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:"
 
@@ -469,145 +395,6 @@ func schemaAcceptsValue(schema map[string]any, value any) bool {
 	return false
 }
 
-// supportedProtocolVersions are the MCP revisions this server can speak.
-var supportedProtocolVersions = map[string]bool{
-	"2024-11-05": true,
-	"2025-03-26": true,
-	"2025-06-18": true,
-}
-
-// negotiateProtocolVersion echoes the client's requested protocolVersion when
-// it is one we support (required by the MCP spec), otherwise falls back to our
-// latest. Maximizes compatibility across clients (Claude Code, Cursor, VS Code,
-// Copilot) that each pin different revisions.
-func negotiateProtocolVersion(params json.RawMessage) string {
-	var p struct {
-		ProtocolVersion string `json:"protocolVersion"`
-	}
-	if err := json.Unmarshal(params, &p); err == nil && supportedProtocolVersions[p.ProtocolVersion] {
-		return p.ProtocolVersion
-	}
-	return defaultProtocolVersion
-}
-
-func (s *Dispatcher) dispatch(method string, params json.RawMessage) (any, *RPCError) {
-	return s.dispatchCtx(context.Background(), method, params)
-}
-
-func (s *Dispatcher) dispatchCtx(ctx context.Context, method string, params json.RawMessage) (any, *RPCError) {
-	switch method {
-	case "initialize":
-		instructions := serverInstructions
-		if s.compact {
-			instructions = compactServerInstructions
-		}
-		instructions += " " + scopeInstruction(s.handler.Root)
-		if ws := s.handler.Workspace; ws != nil && len(ws.Linked()) > 0 {
-			instructions += " Linked repositories, readable by path from that root: " + ws.Describe() +
-				"; lookup and change_impact cover them, and search takes repo=<id> or repo=all."
-		}
-		if warning := legacyProjectWarning(s.handler.Root); warning != "" {
-			instructions += " " + warning
-		}
-		return map[string]any{
-			"protocolVersion": negotiateProtocolVersion(params),
-			"serverInfo":      map[string]string{"name": "prism", "version": version.Version},
-			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"instructions":    instructions,
-		}, nil
-	case "ping":
-		return map[string]any{}, nil
-	case "tools/list":
-		if s.compact {
-			return map[string]any{"tools": CompactToolSchemas()}, nil
-		}
-		return map[string]any{"tools": ToolSchemas()}, nil
-	case "tools/call":
-		var call struct {
-			Name      string         `json:"name"`
-			Arguments map[string]any `json:"arguments"`
-		}
-		if err := json.Unmarshal(params, &call); err != nil {
-			return nil, &RPCError{Code: -32602, Message: err.Error()}
-		}
-		if s.compact && call.Name != "prism" {
-			return nil, &RPCError{Code: -32601, Message: fmt.Sprintf("tool %q is not exposed by the compact Prism MCP; call prism with op and args", call.Name)}
-		}
-		if !s.compact && !legacyMCPTool(call.Name) {
-			return nil, &RPCError{Code: -32601, Message: fmt.Sprintf("tool %q is not exposed by the Prism MCP", call.Name)}
-		}
-		actualName := call.Name
-		actualArgs := call.Arguments
-		if call.Name == "prism" {
-			var err error
-			actualName, actualArgs, err = expandCompactCall(call.Arguments)
-			if err != nil {
-				return nil, &RPCError{Code: -32602, Message: err.Error()}
-			}
-		}
-		invokeName := actualName
-		if s.compact && actualName == "prism_read" {
-			if _, batch := actualArgs["ranges"]; batch {
-				invokeName = "prism_read_compact"
-			}
-		}
-		if s.compact && actualName == "prism_query" && (actualArgs["paths"] != nil || actualArgs["glob"] != nil) {
-			invokeName = "prism_query_compact"
-		}
-		pathNotes := resolveMissingArgPaths(s.handler.Root, invokeName, actualArgs)
-		out, err := s.handler.InvokeContext(ctx, invokeName, actualArgs)
-		if err != nil {
-			// A tool failure is a result the model reads, not a protocol
-			// error (MCP spec; SEC-05). -32xxx stays for protocol errors.
-			return map[string]any{"content": []map[string]string{{"type": "text", "text": err.Error()}}, "isError": true}, nil
-		}
-		if s.compact && actualName == "prism_read" && invokeName == actualName {
-			compactSingleReadNote(out, call.Arguments)
-		}
-		// MCP content is free-form text — JSON is not required, only what
-		// this server has always sent by default. prism_search gets a plain
-		// grep-style rendering instead: measured 1.19-1.32x fewer bytes for
-		// identical hits, on the highest-call-count tool
-		// in the system, where the saving is paid back on every later turn
-		// the result sits in cache. Falls back to JSON for any shape the
-		// renderer does not fully recognise (symbol-bearing results, or an
-		// unexpected field) rather than risk dropping content silently.
-		text, rendered := s.handler.RenderToolText(s.compact, actualName, actualArgs, out)
-		if !rendered {
-			// Compact JSON: results land in an agent's context window, and
-			// indentation is pure token overhead.
-			encoded, _ := json.Marshal(out)
-			text = string(encoded)
-		}
-		for i := len(pathNotes) - 1; i >= 0; i-- {
-			text = "// " + pathNotes[i] + "\n" + text
-		}
-		// Result-size accounting: this is the number that compounds via
-		// cache re-reads on every later turn (measured: median 4.4x, mean
-		// 11x effective multiplier across real sessions).
-		s.handler.Ledger.RecordResult(actualName, ranking.EstimateTokens(text))
-		content := []map[string]string{{"type": "text", "text": text}}
-		// Stale-context delivery: when any recently delivered file changed
-		// on disk, every context-bearing response carries the warning, so
-		// the agent learns mid-task instead of at merge time. Cheap probe
-		// (bounded hash comparison); prism_drift gives symbol-level detail.
-		if contextBearingTool(actualName) {
-			if warning := s.handler.StaleContextWarning(); warning != "" {
-				if s.compact {
-					warning = compactToolWording(warning)
-				}
-				content = append(content, map[string]string{"type": "text", "text": warning})
-			}
-		}
-		if note := conflictingInstallationNote(); note != "" {
-			content = append(content, map[string]string{"type": "text", "text": note})
-		}
-		return map[string]any{"content": content}, nil
-	default:
-		return nil, &RPCError{Code: -32601, Message: "method not found"}
-	}
-}
-
 // RenderToolText is the one text renderer for a tool result. The MCP server
 // and the CLI's --format text both call it, so an agent sees the same answer
 // through either transport: same layout, same edit sites, same wording.
@@ -727,15 +514,6 @@ func splitStaleWarning(out map[string]any) (map[string]any, string) {
 		}
 	}
 	return cp, w
-}
-
-func legacyMCPTool(name string) bool {
-	switch name {
-	case "prism_query", "prism_read", "prism_search", "prism_lookup", "prism_change_impact", "prism_verify":
-		return true
-	default:
-		return false
-	}
 }
 
 // RenderCompactSearchText is the canonical compact search renderer shared by

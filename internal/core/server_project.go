@@ -28,10 +28,10 @@ var projectSteeringPaths = []string{
 	".windsurfrules",
 }
 
-// legacyProjectWarning performs a small, read-only scan of project metadata so
+// LegacyProjectWarning performs a small, read-only scan of project metadata so
 // a harness that reopens an old repository learns how to migrate before its
 // first tool call. Explicit prism init remains the only migration writer.
-func legacyProjectWarning(root string) string {
+func LegacyProjectWarning(root string) string {
 	if root == "" {
 		return ""
 	}

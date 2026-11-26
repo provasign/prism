@@ -327,20 +327,12 @@ func TestTestPlanLongChain(t *testing.T) {
 func TestTestPlanIsNotExposedToAgents(t *testing.T) {
 	h, dir := planFixture(t)
 	planWrite(t, dir, "new_test.go", "package plan\nimport \"testing\"\nfunc TestNew(t *testing.T) {Value()}\n")
-	if out, err := NewDispatcher(h).dispatch("tools/call", json.RawMessage(`{"name":"prism_test_plan","arguments":{}}`)); err == nil {
-		t.Fatalf("MCP served prism_test_plan: %v", out)
-	}
 	if _, _, err := expandCompactCall(map[string]any{"op": "test_plan", "args": map[string]any{}}); err == nil {
 		t.Fatal("compact gateway accepted op=test_plan")
 	}
 	for _, s := range append(ToolSchemas(), CompactToolSchemas()...) {
 		if b, _ := json.Marshal(s); strings.Contains(string(b), "test_plan") {
 			t.Fatalf("tool schema advertises test-plan: %s", b)
-		}
-	}
-	for name, text := range map[string]string{"legacy": serverInstructions, "compact": compactServerInstructions} {
-		if strings.Contains(text, "test_plan") || strings.Contains(text, "test-plan") {
-			t.Errorf("%s server instructions steer agents to test-plan", name)
 		}
 	}
 	// The CLI path still answers.

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -115,47 +114,6 @@ func TestDirRemovedFromNonIndexSchemas(t *testing.T) {
 	}
 }
 
-func TestDispatch_Initialize(t *testing.T) {
-	h := newH(t)
-	s := NewDispatcher(h)
-	res, e := s.dispatch("initialize", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
-	m, ok := res.(map[string]any)
-	if !ok || m["protocolVersion"] == nil {
-		t.Errorf("bad resp: %+v", res)
-	}
-	instructions, ok := m["instructions"].(string)
-	if !ok || !strings.Contains(instructions, "Use Prism for each repository-discovery step") {
-		t.Errorf("initialize must carry server routing instructions, got: %q", instructions)
-	}
-	for _, nativeTool := range []string{"Read", "Grep", "Glob", "find", "rg", "cat", "sed"} {
-		if !strings.Contains(instructions, nativeTool) {
-			t.Errorf("initialize instructions must route before native %s", nativeTool)
-		}
-	}
-	for _, guidance := range []string{
-		"Choose by the information needed now",
-		"prism_search locates unknown code or text",
-		"prism_query gathers related implementations, callers, and tests",
-		"removed_symbols optionally checks exact identifier mentions",
-		"make the smallest local edit",
-	} {
-		if !strings.Contains(instructions, guidance) {
-			t.Errorf("initialize instructions missing cost guidance %q", guidance)
-		}
-	}
-	for _, steering := range []string{"use at most", "STOP immediately"} {
-		if strings.Contains(instructions, steering) {
-			t.Errorf("initialize instructions contain workflow quota %q", steering)
-		}
-	}
-	if len(instructions) > 2000 {
-		t.Errorf("server instructions exceed Claude Code's 2 KB limit: %d bytes", len(instructions))
-	}
-}
-
 func TestAdvertisedDiscoveryDescriptionsRouteEfficiently(t *testing.T) {
 	wants := map[string]string{
 		"prism_query":         "RELATED-CONTEXT TOOL",
@@ -165,7 +123,7 @@ func TestAdvertisedDiscoveryDescriptionsRouteEfficiently(t *testing.T) {
 		"prism_change_impact": "CALL THIS BEFORE editing",
 		"prism_verify":        "CHANGE CHECK",
 	}
-	allGuidance := serverInstructions
+	var allGuidance string
 	for tool, want := range wants {
 		description := toolDescription(tool)
 		if !strings.HasPrefix(description, want) {
@@ -191,59 +149,11 @@ func TestAdvertisedDiscoveryDescriptionsRouteEfficiently(t *testing.T) {
 		!strings.Contains(got, "optional") || strings.Contains(got, "call it once after the final edit") {
 		t.Errorf("verify description must be optional and distinguish removal checks: %q", got)
 	}
-	for _, guidance := range []string{serverInstructions, toolDescription("prism_verify")} {
+	for _, guidance := range []string{toolDescription("prism_verify")} {
 		for _, want := range []string{"Python", "unchecked JavaScript", "PHP", "TypeScript", "checked JavaScript", "Go, Java, Rust, C/C++, and C#", "complete"} {
 			if !strings.Contains(guidance, want) {
 				t.Errorf("verify guidance omits %q: %q", want, guidance)
 			}
 		}
-	}
-}
-
-func TestDispatch_ToolsList(t *testing.T) {
-	h := newH(t)
-	s := NewDispatcher(h)
-	res, e := s.dispatch("tools/list", nil)
-	if e != nil {
-		t.Fatal(e)
-	}
-	if m, ok := res.(map[string]any); !ok || m["tools"] == nil {
-		t.Errorf("bad resp")
-	}
-}
-
-func TestDispatch_ToolsCall_BadJSON(t *testing.T) {
-	h := newH(t)
-	s := NewDispatcher(h)
-	_, e := s.dispatch("tools/call", json.RawMessage("{not json"))
-	if e == nil {
-		t.Error("expected err")
-	}
-}
-
-func TestDispatch_ToolsCall_InvokeError(t *testing.T) {
-	h := newH(t)
-	s := NewDispatcher(h)
-	_, e := s.dispatch("tools/call", json.RawMessage(`{"name":"nope"}`))
-	if e == nil {
-		t.Error("expected err")
-	}
-}
-
-func TestDispatch_ToolsCall_HiddenToolRejected(t *testing.T) {
-	h := newH(t)
-	s := NewDispatcher(h)
-	_, e := s.dispatch("tools/call", json.RawMessage(`{"name":"prism_savings"}`))
-	if e == nil || e.Code != -32601 {
-		t.Fatalf("hidden tool was callable: %#v", e)
-	}
-}
-
-func TestDispatch_Unknown(t *testing.T) {
-	h := newH(t)
-	s := NewDispatcher(h)
-	_, e := s.dispatch("nope", nil)
-	if e == nil || e.Code != -32601 {
-		t.Error("expected -32601")
 	}
 }

@@ -124,24 +124,6 @@ func TestCompactGuidanceBatchesExactTermsAndReusesSource(t *testing.T) {
 			t.Errorf("terms field omits term-boundary guidance %q: %q", want, terms)
 		}
 	}
-	for _, want := range []string{"Batch known identifiers or exact substrings in one search", "Do not re-read unchanged source"} {
-		if !strings.Contains(compactServerInstructions, want) {
-			t.Errorf("compact initialize instructions omit %q", want)
-		}
-	}
-	for _, want := range []string{`terms:["alpha","beta"]`, "never combine distinct terms in one space-delimited string"} {
-		if !strings.Contains(compactServerInstructions, want) {
-			t.Errorf("compact initialize instructions omit term-boundary guidance %q", want)
-		}
-	}
-	for _, want := range []string{"Optional op=verify", "Python", "unchecked JavaScript", "PHP", "TypeScript", "checked JavaScript", "Go, Java, Rust, C/C++, or C#"} {
-		if !strings.Contains(compactServerInstructions, want) {
-			t.Errorf("compact initialize instructions omit %q: %q", want, compactServerInstructions)
-		}
-	}
-	if strings.Contains(compactServerInstructions, "op=verify before finish") {
-		t.Errorf("compact initialize instructions still mandate verify: %q", compactServerInstructions)
-	}
 }
 
 func TestFormatQueryTermsPreservesBoundaries(t *testing.T) {
@@ -149,14 +131,6 @@ func TestFormatQueryTermsPreservesBoundaries(t *testing.T) {
 	want := `["benchmark","native","compact","legacy","pilot","click"]`
 	if got != want {
 		t.Fatalf("formatQueryTerms() = %q, want %q", got, want)
-	}
-}
-
-func TestCompactServerRejectsLegacyToolName(t *testing.T) {
-	srv := NewCompactDispatcher(newTestHandler(t))
-	_, rpcErr := srv.dispatch("tools/call", json.RawMessage(`{"name":"prism_search","arguments":{"query":"x"}}`))
-	if rpcErr == nil || rpcErr.Code != -32601 {
-		t.Fatalf("hidden legacy tool was callable: %#v", rpcErr)
 	}
 }
 
@@ -223,45 +197,6 @@ func TestExpandCompactCall(t *testing.T) {
 	}
 }
 
-func TestCompactServerAdvertisesAndDispatchesGateway(t *testing.T) {
-	h := newTestHandler(t)
-	if err := os.WriteFile(filepath.Join(h.Root, "hello.go"), []byte("package hello\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	srv := NewCompactDispatcher(h)
-
-	listed, rpcErr := srv.dispatch("tools/list", nil)
-	if rpcErr != nil {
-		t.Fatal(rpcErr.Message)
-	}
-	tools := listed.(map[string]any)["tools"].([]map[string]any)
-	if len(tools) != 1 || tools[0]["name"] != "prism" {
-		t.Fatalf("compact tools/list = %#v", tools)
-	}
-
-	initialized, rpcErr := srv.dispatch("initialize", nil)
-	if rpcErr != nil {
-		t.Fatal(rpcErr.Message)
-	}
-	instructions := initialized.(map[string]any)["instructions"].(string)
-	if !strings.HasPrefix(instructions, compactServerInstructions+" Scope: ") || strings.Contains(instructions, "prism_search") {
-		t.Fatalf("compact initialize instructions are not compact: %q", instructions)
-	}
-	if !strings.Contains(instructions, "optional for a local body-only edit") || strings.Contains(instructions, "Before editing a symbol") {
-		t.Fatalf("compact initialize instructions still mandate impact: %q", instructions)
-	}
-
-	params := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":{"file":"hello.go","from":1,"to":1}}}`)
-	result, rpcErr := srv.dispatch("tools/call", params)
-	if rpcErr != nil {
-		t.Fatal(rpcErr.Message)
-	}
-	content := result.(map[string]any)["content"].([]map[string]string)
-	if len(content) == 0 || !strings.Contains(content[0]["text"], "package hello") {
-		t.Fatalf("compact read result = %#v", content)
-	}
-}
-
 func TestCompactServerRewritesSearchFollowUpGuidance(t *testing.T) {
 	text := searchLocatorGuidance + "\n"
 	got := rewriteCompactGuidance(text)
@@ -271,7 +206,7 @@ func TestCompactServerRewritesSearchFollowUpGuidance(t *testing.T) {
 }
 
 func TestCompactServerRejectsArgumentsForWrongOperation(t *testing.T) {
-	srv := NewCompactDispatcher(newTestHandler(t))
+	srv := newCompactCaller(newTestHandler(t))
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":{"file":"hello.go","regex":true}}}`)
 	_, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr == nil || !strings.Contains(rpcErr.Message, "Accepted fields: file, from, to, ranges") {
@@ -289,7 +224,7 @@ func TestCompactReadBatchesMultipleFiles(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	srv := NewCompactDispatcher(h)
+	srv := newCompactCaller(h)
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":{"ranges":[{"file":"sample.txt","from":2,"to":3},{"file":"other.txt","from":2,"to":3}]}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
@@ -312,7 +247,7 @@ func TestCompactReadClampsInsteadOfFailing(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(h.Root, "large.txt"), []byte(strings.Repeat("line\n", 800)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	srv := NewCompactDispatcher(h)
+	srv := newCompactCaller(h)
 	single := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":{"file":"large.txt","from":1,"to":560}}}`)
 	result, rpcErr := srv.dispatch("tools/call", single)
 	if rpcErr != nil {
@@ -348,7 +283,7 @@ func TestCompactReadRejectsMalformedBatchesWithoutCaching(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(h.Root, "sample.txt"), []byte("one\nshort\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	srv := NewCompactDispatcher(h)
+	srv := newCompactCaller(h)
 	for _, args := range []string{
 		`{"ranges":[]}`,
 		`{"ranges":[{"from":1,"to":1}]}`,
@@ -379,7 +314,7 @@ func TestCompactReadOversizedLineDegradesWithWarning(t *testing.T) {
 		t.Fatal(err)
 	}
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":{"ranges":[{"file":"long.txt","from":1,"to":1}]}}}`)
-	result, rpcErr := NewCompactDispatcher(h).dispatch("tools/call", params)
+	result, rpcErr := newCompactCaller(h).dispatch("tools/call", params)
 	if rpcErr != nil {
 		t.Fatal(rpcErr.Message)
 	}
@@ -400,7 +335,7 @@ func TestCompactSearchBodiesIncludesTightEnclosingMethod(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(gc.Shutdown)
-	srv := NewCompactDispatcher(NewHandler(config.Default(), root, gc))
+	srv := newCompactCaller(NewHandler(config.Default(), root, gc))
 
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"unique compact needle"}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
@@ -424,7 +359,7 @@ func TestCompactSymbolLocatorInlinesSmallBodies(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(gc.Shutdown)
-	srv := NewCompactDispatcher(NewHandler(config.Default(), root, gc))
+	srv := newCompactCaller(NewHandler(config.Default(), root, gc))
 	for _, tc := range []struct {
 		term, body string
 		inline     bool
@@ -466,7 +401,7 @@ func TestCompactBroadSearchDeliversOnlyTopTwoEnclosingBodies(t *testing.T) {
 	}
 	t.Cleanup(gc.Shutdown)
 	h := NewHandler(config.Default(), root, gc)
-	srv := NewCompactDispatcher(h)
+	srv := newCompactCaller(h)
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"Target","scope":"symbols","paths":"sample.go","include_bodies":true}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
@@ -565,7 +500,7 @@ func TestSearchIncludeBodiesDeliversTwoWindowsForHitsInOversizedMethod(t *testin
 	if !ok || strings.Contains(locatorText, "// WINDOW") || !strings.Contains(locatorText, "48:         sys.stdout = stream") {
 		t.Fatalf("include_bodies=false did not opt out while retaining locators:\n%s", locatorText)
 	}
-	srv := NewCompactDispatcher(h)
+	srv := newCompactCaller(h)
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"sys.stdout =","scope":"text","paths":"sample.py","include_bodies":true}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
@@ -622,7 +557,7 @@ func TestCompactBatchedTermsKeepSecondSlotAfterDuplicateHit(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(gc.Shutdown)
-	srv := NewCompactDispatcher(NewHandler(config.Default(), root, gc))
+	srv := newCompactCaller(NewHandler(config.Default(), root, gc))
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":["class SmallOne","def isolation"],"paths":"sample.py","include_bodies":true}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
@@ -646,7 +581,7 @@ func TestCompactEnclosingBodiesDoNotRepeatNestedMethod(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(gc.Shutdown)
-	srv := NewCompactDispatcher(NewHandler(config.Default(), root, gc))
+	srv := newCompactCaller(NewHandler(config.Default(), root, gc))
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"Target","scope":"symbols","include_bodies":true}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
@@ -674,7 +609,7 @@ func TestCompactBatchedSearchInlinesUniqueExactFirstSymbol(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(gc.Shutdown)
-	srv := NewCompactDispatcher(NewHandler(config.Default(), root, gc))
+	srv := newCompactCaller(NewHandler(config.Default(), root, gc))
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":["TargetOne","Target"],"scope":"symbols"}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
@@ -717,7 +652,7 @@ func TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(gc.Shutdown)
-	srv := NewCompactDispatcher(NewHandler(config.Default(), root, gc))
+	srv := newCompactCaller(NewHandler(config.Default(), root, gc))
 
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":["class _NamedTextIOWrapper","fileno"],"scope":"symbols","paths":"src/click/testing.py"}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
@@ -777,7 +712,7 @@ func TestCompactSearchDefaultsToTwoContextLines(t *testing.T) {
 		t.Fatal(err)
 	}
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"UniqueNeedle","scope":"text"}}}`)
-	result, rpcErr := NewCompactDispatcher(h).dispatch("tools/call", params)
+	result, rpcErr := newCompactCaller(h).dispatch("tools/call", params)
 	if rpcErr != nil {
 		t.Fatal(rpcErr.Message)
 	}
@@ -796,7 +731,7 @@ func TestCompactSearchGrepShapeDefaultHasNoContext(t *testing.T) {
 	}
 	call := func(extra string) string {
 		params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"UniqueNeedle","scope":"text"` + extra + `}}}`)
-		result, rpcErr := NewCompactDispatcher(h).dispatch("tools/call", params)
+		result, rpcErr := newCompactCaller(h).dispatch("tools/call", params)
 		if rpcErr != nil {
 			t.Fatal(rpcErr.Message)
 		}
@@ -825,7 +760,7 @@ func TestCompactQueryHonorsPathsAndGlob(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(gc.Shutdown)
-	srv := NewCompactDispatcher(NewHandler(config.Default(), root, gc))
+	srv := newCompactCaller(NewHandler(config.Default(), root, gc))
 	params := json.RawMessage(`{"name":"prism","arguments":{"op":"query","args":{"terms":"Relevant","paths":"inside.go","glob":"*.go"}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {

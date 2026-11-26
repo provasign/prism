@@ -68,7 +68,7 @@ func TestWriteMessage(t *testing.T) {
 
 func TestWriteMessage_WithError(t *testing.T) {
 	var buf bytes.Buffer
-	if err := writeMessage(&buf, 1, nil, &core.RPCError{Code: -1, Message: "boo"}); err != nil {
+	if err := writeMessage(&buf, 1, nil, &RPCError{Code: -1, Message: "boo"}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "boo") {

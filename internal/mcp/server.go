@@ -1,6 +1,6 @@
 // Package mcp is Prism's MCP stdio transport: message framing, the request
 // loop (concurrency, cancellation, panics) and the handoff to an upgraded
-// binary. What each method answers is core.Dispatcher.
+// binary. What each method answers is Dispatcher.
 package mcp
 
 import (
@@ -24,7 +24,7 @@ import (
 
 // Server is the JSON-RPC stdio server.
 type Server struct {
-	d *core.Dispatcher
+	d *Dispatcher
 
 	// OnHandoff, when set, releases this process's engine once an upgraded
 	// binary has taken over the session.
@@ -34,11 +34,11 @@ type Server struct {
 }
 
 // NewServer wires a Handler into a stdio JSON-RPC server.
-func NewServer(h *core.Handler) *Server { return &Server{d: core.NewDispatcher(h)} }
+func NewServer(h *core.Handler) *Server { return &Server{d: NewDispatcher(h)} }
 
 // NewCompactServer exposes one prism gateway instead of six separate MCP tool
 // schemas. The underlying handlers and result renderers remain identical.
-func NewCompactServer(h *core.Handler) *Server { return &Server{d: core.NewCompactDispatcher(h)} }
+func NewCompactServer(h *core.Handler) *Server { return &Server{d: NewCompactDispatcher(h)} }
 
 type request struct {
 	JSONRPC string          `json:"jsonrpc"`
@@ -53,7 +53,7 @@ type request struct {
 func (s *Server) Serve(r io.Reader, w io.Writer) error {
 	reader := bufio.NewReader(r)
 	var wmu sync.Mutex
-	write := func(id any, result any, rpcErr *core.RPCError) error {
+	write := func(id any, result any, rpcErr *RPCError) error {
 		wmu.Lock()
 		defer wmu.Unlock()
 		return writeMessage(w, id, result, rpcErr)
@@ -72,7 +72,7 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 			return nil
 		}
 		if errors.Is(err, errFrame) {
-			if werr := write(nil, nil, &core.RPCError{Code: -32600, Message: err.Error()}); werr != nil {
+			if werr := write(nil, nil, &RPCError{Code: -32600, Message: err.Error()}); werr != nil {
 				return werr
 			}
 			continue
@@ -83,7 +83,7 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 		var req request
 		if err := json.Unmarshal(msg, &req); err != nil {
 			// A client waiting for a reply hung forever (SEC-05).
-			if werr := write(nil, nil, &core.RPCError{Code: -32700, Message: "parse error: " + err.Error()}); werr != nil {
+			if werr := write(nil, nil, &RPCError{Code: -32700, Message: "parse error: " + err.Error()}); werr != nil {
 				return werr
 			}
 			continue
@@ -119,7 +119,7 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 				return relayToReplacement(cmd, childIn, childOut, msg, reader, w)
 			}
 			fmt.Fprintln(os.Stderr, "mcp: handoff to upgraded binary failed:", err)
-			if err := write(req.ID, nil, &core.RPCError{Code: -32001, Message: note}); err != nil {
+			if err := write(req.ID, nil, &RPCError{Code: -32001, Message: note}); err != nil {
 				return err
 			}
 			return nil
@@ -158,7 +158,7 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 			}
 			result, rpcErr := s.safeDispatch(ctx, req.Method, req.Params)
 			if errors.Is(ctx.Err(), context.Canceled) {
-				result, rpcErr = nil, &core.RPCError{Code: -32800, Message: "request cancelled"}
+				result, rpcErr = nil, &RPCError{Code: -32800, Message: "request cancelled"}
 			}
 			_ = write(req.ID, result, rpcErr)
 		}(req)
@@ -174,11 +174,11 @@ const mcpConcurrency = 4
 
 // safeDispatch turns a panic anywhere in a request into a -32603 reply; one
 // bad request used to end the whole session (SEC-05).
-func (s *Server) safeDispatch(ctx context.Context, method string, params json.RawMessage) (result any, rpcErr *core.RPCError) {
+func (s *Server) safeDispatch(ctx context.Context, method string, params json.RawMessage) (result any, rpcErr *RPCError) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintf(os.Stderr, "mcp: %s panicked: %v\n", method, r)
-			result, rpcErr = nil, &core.RPCError{Code: -32603, Message: fmt.Sprintf("internal error: %v", r)}
+			result, rpcErr = nil, &RPCError{Code: -32603, Message: fmt.Sprintf("internal error: %v", r)}
 		}
 	}()
 	return s.d.Dispatch(ctx, method, params)
@@ -296,7 +296,7 @@ func readMessage(r *bufio.Reader) ([]byte, error) {
 	return buf, err
 }
 
-func writeMessage(w io.Writer, id any, result any, rpcErr *core.RPCError) error {
+func writeMessage(w io.Writer, id any, result any, rpcErr *RPCError) error {
 	resp := map[string]any{"jsonrpc": "2.0", "id": id}
 	if rpcErr != nil {
 		resp["error"] = rpcErr

@@ -17,7 +17,7 @@ import (
 // (rerun + pinned beds, 2026-09-25). Each test replays the shape of the call
 // an agent made.
 
-func compactFixture(t *testing.T, files map[string]string) *Dispatcher {
+func compactFixture(t *testing.T, files map[string]string) *toolCaller {
 	t.Helper()
 	root := t.TempDir()
 	for name, body := range files {
@@ -34,10 +34,10 @@ func compactFixture(t *testing.T, files map[string]string) *Dispatcher {
 		t.Fatal(err)
 	}
 	t.Cleanup(gc.Shutdown)
-	return NewCompactDispatcher(NewHandler(config.Default(), root, gc))
+	return newCompactCaller(NewHandler(config.Default(), root, gc))
 }
 
-func callCompact(t *testing.T, srv *Dispatcher, op string, args map[string]any) string {
+func callCompact(t *testing.T, srv *toolCaller, op string, args map[string]any) string {
 	t.Helper()
 	raw, err := json.Marshal(map[string]any{"name": "prism", "arguments": map[string]any{"op": op, "args": args}})
 	if err != nil {

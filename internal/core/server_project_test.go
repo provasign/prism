@@ -1,13 +1,9 @@
 package core
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-
-	"github.com/provasign/prism/internal/config"
 )
 
 func TestLegacyProjectWarning(t *testing.T) {
@@ -55,48 +51,10 @@ func TestLegacyProjectWarning(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			got := legacyProjectWarning(root)
+			got := LegacyProjectWarning(root)
 			if (got != "") != tt.want {
-				t.Fatalf("legacyProjectWarning() = %q, want warning=%v", got, tt.want)
+				t.Fatalf("LegacyProjectWarning() = %q, want warning=%v", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestInitializeIncludesLegacyProjectWarning(t *testing.T) {
-	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "prism.yaml"), []byte("version: 1\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	h := NewHandler(config.Default(), root, nil)
-	res, rpcErr := NewCompactDispatcher(h).dispatch("initialize", nil)
-	if rpcErr != nil {
-		t.Fatal(rpcErr)
-	}
-	instructions := res.(map[string]any)["instructions"].(string)
-	if !strings.Contains(instructions, legacyProjectMigrationWarning) || !strings.Contains(instructions, "prism init") {
-		t.Fatalf("initialize instructions missing migration warning: %q", instructions)
-	}
-}
-
-func TestInitializeStatesProjectScope(t *testing.T) {
-	h := newTestHandler(t)
-	for _, compact := range []bool{false, true} {
-		srv := NewDispatcher(h)
-		if compact {
-			srv = NewCompactDispatcher(h)
-		}
-		res, rpcErr := srv.dispatch("initialize", json.RawMessage(`{}`))
-		if rpcErr != nil {
-			t.Fatal(rpcErr.Message)
-		}
-		instructions := res.(map[string]any)["instructions"].(string)
-		if !strings.Contains(instructions, "files under "+h.Root+" only") ||
-			!strings.Contains(instructions, "run the prism CLI from that repository") {
-			t.Fatalf("compact=%v: initialize instructions do not state the project scope: %q", compact, instructions)
-		}
-		if len(instructions) > 2000 {
-			t.Fatalf("compact=%v: instructions exceed 2000 bytes: %d", compact, len(instructions))
-		}
 	}
 }

@@ -29,7 +29,7 @@ func TestCompactReadForceRecoversDeliveredSource(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			srv := NewCompactDispatcher(h)
+			srv := newCompactCaller(h)
 			call := func(force *bool) string {
 				t.Helper()
 				var args map[string]any

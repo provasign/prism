@@ -83,7 +83,7 @@ func TestVerifyIgnoresPrismOwnedFiles(t *testing.T) {
 }
 
 // callCompactErr returns the text of a call's answer or its error.
-func callCompactErr(t *testing.T, srv *Dispatcher, op string, args map[string]any) string {
+func callCompactErr(t *testing.T, srv *toolCaller, op string, args map[string]any) string {
 	t.Helper()
 	raw, err := json.Marshal(map[string]any{"name": "prism", "arguments": map[string]any{"op": op, "args": args}})
 	if err != nil {

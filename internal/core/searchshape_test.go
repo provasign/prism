@@ -72,7 +72,7 @@ func TestSearchShapeTable(t *testing.T) {
 func TestSearchShapeRowsEndToEnd(t *testing.T) {
 	// A fresh server per row: the session cache would otherwise turn a later
 	// row's body into an "already delivered" pointer.
-	fixture := func() *Dispatcher {
+	fixture := func() *toolCaller {
 		return compactFixture(t, map[string]string{
 			"Deser.java": "package p;\n\nclass Deser {\n" +
 				"    Object fromArray(Object p) {\n        int act = findCoercion(p);\n        if (act > 0) {\n            return null;\n        }\n        return p;\n    }\n\n" +

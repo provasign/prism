@@ -9,7 +9,7 @@ import (
 )
 
 func TestMissingReadIsMCPContentNotRPCError(t *testing.T) {
-	srv := NewCompactDispatcher(newTestHandler(t))
+	srv := newCompactCaller(newTestHandler(t))
 	call := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":{"file":"absent.go","from":1,"to":5}}}`)
 	result, rpcErr := srv.dispatch("tools/call", call)
 	if rpcErr != nil {
