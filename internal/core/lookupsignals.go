@@ -126,9 +126,13 @@ func (h *Handler) addLookupCallerSignal(ctx context.Context, result any, onlyPri
 		return result
 	}
 	if lines := h.testOnlySignal(ctx, check); len(lines) > 0 {
-		if isTypeKind(sym.Kind) {
-			lines = h.keepOverloadGaps(lines)
-		}
+		// A lookup keeps only the overload gap (production calls another
+		// overload: the sites that would switch to this one). "No production
+		// code calls it" alone is the normal state of a library's public API,
+		// whose callers are its users: gin's Context.SaveUploadedFile read as
+		// TEST-ONLY API (2026-11-26). change_impact still reports it, as part
+		// of the impact inventory.
+		lines = h.keepOverloadGaps(lines)
 		if len(lines) > 0 {
 			out["testOnly"] = lines
 		}

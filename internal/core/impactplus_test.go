@@ -177,6 +177,16 @@ func TestChangeImpactFlagsTestOnlyOverloadAndSignatureSelectsIt(t *testing.T) {
 	}
 }
 
+// A public method only tests call, with no same-named overload, is a
+// library's normal API: lookup must not label it test-only.
+func TestLookupQuietForTestOnlyMethodWithoutOverloadGap(t *testing.T) {
+	h := newImpactPlusHandler(t, treeParserFixture)
+	text := invokeCompactText(t, h, "lookup", map[string]any{"name": "TreeParser.next"})
+	if strings.Contains(text, "TEST-ONLY") {
+		t.Fatalf("lookup flagged a test-only method that has no overload gap:\n%s", text)
+	}
+}
+
 func TestLookupQuietForProductionCalledMethod(t *testing.T) {
 	h := newImpactPlusHandler(t, treeParserFixture)
 	text := invokeCompactText(t, h, "lookup", map[string]any{"name": "Context.treeAsTokens"})
