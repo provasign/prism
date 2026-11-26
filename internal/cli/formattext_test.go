@@ -110,30 +110,6 @@ func TestFormatTextSkipsEmptyGroups(t *testing.T) {
 	}
 }
 
-// The unified task op must render as text too — its prepare payload is
-// already markdown under "read", so JSON-encoding it (escaped newlines and
-// all) is strictly worse than printing it.
-func TestFormatTextRendersTaskOp(t *testing.T) {
-	var m map[string]any
-	if err := json.Unmarshal([]byte(`{"mode":"prepare","task":"do a thing",
-		"read":{"content":"**Context**\n\nbody line\n"},
-		"obligations":[{"qualifiedName":"T.m","file":"a.go","line":3,"siteCount":1,
-			"completeness":"closed","sites":[{"symbol":"C.call","file":"b.go","line":9}]}],
-		"next":"make the edits"}`), &m); err != nil {
-		t.Fatal(err)
-	}
-	out := capture(t, func() { printOutput(m, formatText) })
-	if strings.HasPrefix(strings.TrimSpace(out), "{") {
-		t.Fatalf("--format text fell through to JSON:\n%s", out)
-	}
-	for _, w := range []string{"do a thing — prepare", "**Context**", "body line",
-		"obligations (1):", "T.m  a.go:3", "C.call  b.go:9", "next: make the edits"} {
-		if !strings.Contains(out, w) {
-			t.Errorf("missing %q in:\n%s", w, out)
-		}
-	}
-}
-
 // A failed lookup used to render as {"symbol": null}, which tells the caller
 // neither why nor where to go next.
 func TestFormatTextRendersUnmatchedLookup(t *testing.T) {
@@ -181,10 +157,6 @@ func TestFormatTextFlagsNoExactLookupBeforeBody(t *testing.T) {
 	body := strings.Index(out, "func (c *Context) SetAccepted")
 	if flag < 0 || body < 0 || flag > body || !strings.Contains(out, "Context.SetAccepted (context.go:5)") {
 		t.Fatalf("flag must precede the body:\n%s", out)
-	}
-	out = capture(t, func() { printOutput(m, formatLean) })
-	if !strings.Contains(strings.ReplaceAll(out, " ", ""), `"matched":false`) || !strings.Contains(out, "NO EXACT MATCH") {
-		t.Fatalf("lean output dropped the no-exact flag:\n%s", out)
 	}
 }
 

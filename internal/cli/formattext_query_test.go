@@ -9,7 +9,10 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
+
+	"github.com/provasign/prism/internal/mcp"
 	"testing"
 )
 
@@ -19,7 +22,7 @@ func TestQueryTextPrintsContentNotJustFiles(t *testing.T) {
 		"files":["a.java","b.java"],"deliveredTokens":42,"symbolCount":3,
 		"delivery":"source","textBackend":"rg","textMatches":[{"file":"a.java",
 		"hits":[{"line":103,"text":"# ORCHID_DEEP_ONLY","before":["line 102"],"after":["line 104"]}]}]}`), &m)
-	got := captureStdout(func() { printTextOutput(m) })
+	got := captureStdout(func() { fmt.Print(mcp.RenderAnswerText(m)) })
 	if !strings.Contains(got, "line of source") {
 		t.Fatalf("query content discarded; got %q", got)
 	}
@@ -33,7 +36,7 @@ func TestQueryTextPrintsContentNotJustFiles(t *testing.T) {
 func TestReadTextKeepsHeader(t *testing.T) {
 	var m map[string]any
 	json.Unmarshal([]byte(`{"file":"a.java","strategy":"verbatim","content":"1\tpackage x;\n"}`), &m)
-	got := captureStdout(func() { printTextOutput(m) })
+	got := captureStdout(func() { fmt.Print(mcp.RenderAnswerText(m)) })
 	if !strings.Contains(got, "a.java") {
 		t.Fatalf("read header lost: %q", got)
 	}
@@ -45,7 +48,7 @@ func TestReadTextKeepsHeader(t *testing.T) {
 func TestFilesOnlyDeliveryStillPrintsPaths(t *testing.T) {
 	var m map[string]any
 	json.Unmarshal([]byte(`{"files":["a.java","b.java"]}`), &m)
-	got := captureStdout(func() { printTextOutput(m) })
+	got := captureStdout(func() { fmt.Print(mcp.RenderAnswerText(m)) })
 	if !strings.Contains(got, "a.java") || !strings.Contains(got, "b.java") {
 		t.Fatalf("files_only regressed: %q", got)
 	}
