@@ -22,7 +22,12 @@ var goMissingModule = regexp.MustCompile(`could not import ([A-Za-z0-9._-]+\.[A-
 
 // goImportFailure captures the import path and go/types' reason from a
 // "could not import <path> (<reason>)" diagnostic.
-var goImportFailure = regexp.MustCompile(`could not import (\S+) \((.*)\)\s*$`)
+// The diagnostic may be clipped ("…") before the closing parenthesis.
+var goImportFailure = regexp.MustCompile(`could not import (\S+) \((.*?)(?:\)\s*|…)$`)
+
+// goPartialPackage names the package of a "project import <pkg> type-checked
+// partially" diagnostic.
+var goPartialPackage = regexp.MustCompile(`^project import (\S+) type-checked partially`)
 
 // goTooOld matches the go command refusing a go.mod/go.work newer than itself
 // under GOTOOLCHAIN=local: "go.mod requires go >= 1.27 (running go 1.26.3; ...".
@@ -117,6 +122,13 @@ func Readiness(root string, native []string) []ReadinessIssue {
 			}
 		case strings.HasPrefix(d, "go: "):
 			reason := strings.TrimPrefix(d, "go: ")
+			if m := goPartialPackage.FindStringSubmatch(reason); m != nil && goOutsideMainBuild(root, m[1]) {
+				// An example or nested module `go build ./...` never builds
+				// (chi's _examples): its own missing downloads do not make the
+				// project's analysis degraded, and `go mod download` at the
+				// root would not fetch them anyway.
+				continue
+			}
 			if !goModulesRead {
 				goModules, goModulesRead = goMainModules(root), true
 			}
@@ -267,6 +279,30 @@ func goModulePath(gomod string) string {
 func goPathInModules(path string, mods []string) bool {
 	for _, m := range mods {
 		if path == m || strings.HasPrefix(path, m+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// goOutsideMainBuild reports whether pkg, a package the Go pass named by its
+// repository-relative directory, is outside the root module's build: a
+// directory go ignores (a segment starting with "_" or ".", or testdata) or
+// a nested module with its own go.mod. Packages go list lists are named by
+// import path, which is not a directory under root.
+func goOutsideMainBuild(root, pkg string) bool {
+	if filepath.IsAbs(pkg) || strings.Contains(strings.SplitN(pkg, "/", 2)[0], ".") {
+		return false
+	}
+	if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(pkg))); err != nil || !info.IsDir() {
+		return false
+	}
+	segs := strings.Split(pkg, "/")
+	for i, seg := range segs {
+		if strings.HasPrefix(seg, "_") || strings.HasPrefix(seg, ".") || seg == "testdata" {
+			return true
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(strings.Join(segs[:i+1], "/")), "go.mod")); err == nil {
 			return true
 		}
 	}

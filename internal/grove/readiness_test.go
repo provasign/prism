@@ -238,3 +238,39 @@ func TestReadinessTypeScriptDependencyAndVersion(t *testing.T) {
 		t.Fatalf("typescript 7: %+v", got)
 	}
 }
+
+// Missing downloads in code `go build ./...` never builds (an _examples
+// directory, a nested module) do not make the project degraded; the same
+// failure in a listed package still does (chi, 2026-11-25).
+func TestReadinessIgnoresPackagesOutsideTheMainBuild(t *testing.T) {
+	root := t.TempDir()
+	for _, d := range []string{"_examples/rest", "tools/gen"} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = os.WriteFile(filepath.Join(root, "go.mod"), []byte("module github.com/go-chi/chi/v5\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(root, "tools", "go.mod"), []byte("module tools\n"), 0o644)
+	outside := []string{
+		"go: project import _examples/rest type-checked partially: _examples/rest/main.go:49:2: could not import github.com/go-chi/docgen (can't find import: \"github.com/go-chi/docgen\": cannot find package …",
+		"go: project import tools/gen type-checked partially: tools/gen/x.go:3:2: could not import example.com/gen (can't find import)",
+	}
+	if got := Readiness(root, outside); len(got) != 0 {
+		t.Fatalf("outside the main build reported: %+v", got)
+	}
+	inside := []string{"go: project import github.com/go-chi/chi/v5/render type-checked partially: render.go:3:2: could not import github.com/go-chi/docgen (can't find import)"}
+	if got := Readiness(root, inside); len(got) != 1 {
+		t.Fatalf("a listed package's missing download must still be reported: %+v", got)
+	}
+}
+
+// A clipped local-package diagnostic ("…" instead of the closing
+// parenthesis) is still recognized as local, not as a missing download.
+func TestReadinessClippedLocalImport(t *testing.T) {
+	root := t.TempDir()
+	_ = os.WriteFile(filepath.Join(root, "go.mod"), []byte("module github.com/go-chi/chi/v5\n"), 0o644)
+	got := Readiness(root, []string{"go: project import github.com/go-chi/chi/v5/x type-checked partially: x.go:7:2: could not import github.com/go-chi/chi/v5/middleware (project source package github.com/go-chi/chi/v5/middleware was not selec…"})
+	if len(got) != 1 || !strings.Contains(got[0].Problem, "local package") {
+		t.Fatalf("clipped local import: %+v", got)
+	}
+}
