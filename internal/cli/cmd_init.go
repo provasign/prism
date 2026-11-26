@@ -180,43 +180,8 @@ func runInit(args []string) int {
 		return printAgentConfig(printConfig, abs, detectSelfPath())
 	}
 
-	// --read-guard / --no-read-guard are standalone actions, like
-	// --print-config: they target .claude/settings.json directly and don't
-	// depend on harness selection, so requiring a full init run (and its
-	// interactive harness prompt) around a one-line toggle would be
-	// needless friction. Mutually exclusive; neither touches any hook the
-	// user did not ask prism to install (see addHookEntry/removeHookEntry).
-	if readGuard && noReadGuard {
-		fmt.Fprintln(os.Stderr, "init: --read-guard and --no-read-guard are mutually exclusive")
-		return 2
-	}
-	if readGuard {
-		if err := installReadGuard(abs); err != nil {
-			fmt.Fprintln(os.Stderr, "init:", err)
-			return 1
-		}
-		return 0
-	}
-	if noReadGuard {
-		if err := uninstallReadGuard(abs); err != nil {
-			fmt.Fprintln(os.Stderr, "init:", err)
-			return 1
-		}
-		return 0
-	}
-
-	// An existing read guard is upgraded by any init run: brew upgrades the
-	// binary but not the hook scripts and settings copied into the project.
-	if readGuardInstalled(abs) {
-		if err := installReadGuard(abs); err != nil {
-			fmt.Fprintln(os.Stderr, "init:", err)
-		}
-	} else if sedGuardInstalled(abs) {
-		// An older prism installed a sed guard; prism no longer rewrites
-		// the agent's sed commands.
-		if err := removeSedGuard(abs); err != nil {
-			fmt.Fprintln(os.Stderr, "init:", err)
-		}
+	if rc, done := initReadGuard(abs, readGuard, noReadGuard); done {
+		return rc
 	}
 
 	harnesses, rc := chooseInitHarnesses(abs, recordedHarnesses, opt)
@@ -306,6 +271,51 @@ mcp_surface: "compact"
 		fmt.Printf("restart or reload %s so it replaces any running older Prism MCP process\n", strings.Join(harnesses, ", "))
 	}
 	return 0
+}
+
+// initReadGuard handles the read guard. --read-guard and --no-read-guard
+// are whole runs of their own (done); any other run upgrades an installed
+// guard and removes an older sed guard.
+func initReadGuard(abs string, readGuard, noReadGuard bool) (rc int, done bool) {
+	// --read-guard / --no-read-guard are standalone actions, like
+	// --print-config: they target .claude/settings.json directly and don't
+	// depend on harness selection, so requiring a full init run (and its
+	// interactive harness prompt) around a one-line toggle would be
+	// needless friction. Mutually exclusive; neither touches any hook the
+	// user did not ask prism to install (see addHookEntry/removeHookEntry).
+	if readGuard && noReadGuard {
+		fmt.Fprintln(os.Stderr, "init: --read-guard and --no-read-guard are mutually exclusive")
+		return 2, true
+	}
+	if readGuard {
+		if err := installReadGuard(abs); err != nil {
+			fmt.Fprintln(os.Stderr, "init:", err)
+			return 1, true
+		}
+		return 0, true
+	}
+	if noReadGuard {
+		if err := uninstallReadGuard(abs); err != nil {
+			fmt.Fprintln(os.Stderr, "init:", err)
+			return 1, true
+		}
+		return 0, true
+	}
+
+	// An existing read guard is upgraded by any init run: brew upgrades the
+	// binary but not the hook scripts and settings copied into the project.
+	if readGuardInstalled(abs) {
+		if err := installReadGuard(abs); err != nil {
+			fmt.Fprintln(os.Stderr, "init:", err)
+		}
+	} else if sedGuardInstalled(abs) {
+		// An older prism installed a sed guard; prism no longer rewrites
+		// the agent's sed commands.
+		if err := removeSedGuard(abs); err != nil {
+			fmt.Fprintln(os.Stderr, "init:", err)
+		}
+	}
+	return 0, false
 }
 
 // chooseInitHarnesses picks the harnesses to configure: --harness, else the
