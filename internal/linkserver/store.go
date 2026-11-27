@@ -33,12 +33,32 @@ type repoEntry struct {
 	etag string
 }
 
+// indexed is a parsed bundle with lookup maps holding positions in its
+// Refs and Defs, not copies: a 1,000-repository store held each site three
+// times before (2.7 GB for 198 MB of bundles in the load test).
 type indexed struct {
 	size   int
 	bundle Bundle
-	byKey  map[string][]Site
-	defs   map[string][]Def
-	byName map[string][]Def // qualified name, and its last segment
+	byKey  map[string][]int32 // site key -> Refs positions
+	defs   map[string][]int32 // declaration key -> Defs positions
+	byName map[string][]int32 // qualified name, and its last segment -> Defs positions
+}
+
+func (ix *indexed) sites(key string) []Site {
+	pos := ix.byKey[key]
+	out := make([]Site, len(pos))
+	for i, p := range pos {
+		out[i] = ix.bundle.Refs[p]
+	}
+	return out
+}
+
+func (ix *indexed) defsAt(pos []int32) []Def {
+	out := make([]Def, len(pos))
+	for i, p := range pos {
+		out[i] = ix.bundle.Defs[p]
+	}
+	return out
 }
 
 // Options tune a Store.
@@ -149,9 +169,46 @@ func (s *Store) Refresh(ctx context.Context) error {
 	return nil
 }
 
-// Run refreshes the catalog every interval until ctx ends. Errors are
-// passed to onErr (a log) and the next tick retries.
+// Warm loads every repository's default bundle into memory, eight at a
+// time, so the first queries after a start or a refresh do not wait on the
+// backend (2.7 s for 1,000 cold bundles from S3 in the load test).
+func (s *Store) Warm(ctx context.Context) {
+	s.mu.RLock()
+	var keys []string
+	for _, e := range s.repos {
+		sha := e.refs.Refs["main"]
+		if sha == "" {
+			sha = e.refs.Refs["master"]
+		}
+		if sha == "" {
+			sha = e.refs.Latest
+		}
+		if k := bundleKey(e.refs.Repo, sha); sha != "" && s.bundles[k] == nil {
+			keys = append(keys, k)
+		}
+	}
+	s.mu.RUnlock()
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
+	for _, k := range keys {
+		if ctx.Err() != nil {
+			break
+		}
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(k string) {
+			defer func() { <-sem; wg.Done() }()
+			s.load(ctx, k)
+		}(k)
+	}
+	wg.Wait()
+}
+
+// Run warms the cache, then refreshes the catalog (and warms what changed)
+// every interval until ctx ends. Errors are passed to onErr (a log) and the
+// next tick retries.
 func (s *Store) Run(ctx context.Context, every time.Duration, onErr func(error)) {
+	s.Warm(ctx)
 	if every <= 0 {
 		return
 	}
@@ -165,6 +222,7 @@ func (s *Store) Run(ctx context.Context, every time.Duration, onErr func(error))
 			if err := s.Refresh(ctx); err != nil && onErr != nil {
 				onErr(err)
 			}
+			s.Warm(ctx)
 		}
 	}
 }
@@ -600,18 +658,31 @@ func (s *Store) load(ctx context.Context, key string) *indexed {
 	if err != nil {
 		return nil
 	}
-	ix = &indexed{size: len(data), byKey: map[string][]Site{}, defs: map[string][]Def{}, byName: map[string][]Def{}}
+	ix = &indexed{size: len(data), byKey: map[string][]int32{}, defs: map[string][]int32{}, byName: map[string][]int32{}}
 	if json.Unmarshal(data, &ix.bundle) != nil {
 		return nil
 	}
-	for _, site := range ix.bundle.Refs {
-		ix.byKey[site.Key] = append(ix.byKey[site.Key], site)
+	// Repeated strings (keys, files, enclosing symbols) share one copy.
+	intern := map[string]string{}
+	in := func(v string) string {
+		if c, ok := intern[v]; ok {
+			return c
+		}
+		intern[v] = v
+		return v
 	}
-	for _, d := range ix.bundle.Defs {
-		ix.defs[d.Key] = append(ix.defs[d.Key], d)
-		ix.byName[d.Name] = append(ix.byName[d.Name], d)
-		if i := strings.LastIndexByte(d.Name, '.'); i >= 0 {
-			ix.byName[d.Name[i+1:]] = append(ix.byName[d.Name[i+1:]], d)
+	for i := range ix.bundle.Refs {
+		r := &ix.bundle.Refs[i]
+		r.Key, r.File, r.From = in(r.Key), in(r.File), in(r.From)
+		ix.byKey[r.Key] = append(ix.byKey[r.Key], int32(i))
+	}
+	for i := range ix.bundle.Defs {
+		d := &ix.bundle.Defs[i]
+		d.File, d.Kind = in(d.File), in(d.Kind)
+		ix.defs[d.Key] = append(ix.defs[d.Key], int32(i))
+		ix.byName[d.Name] = append(ix.byName[d.Name], int32(i))
+		if j := strings.LastIndexByte(d.Name, '.'); j >= 0 {
+			ix.byName[d.Name[j+1:]] = append(ix.byName[d.Name[j+1:]], int32(i))
 		}
 	}
 	s.mu.Lock()
@@ -680,7 +751,7 @@ bundles:
 		resp.Searched++
 		var sites []Site
 		for _, k := range req.Keys {
-			sites = append(sites, ix.byKey[k]...)
+			sites = append(sites, ix.sites(k)...)
 		}
 		if len(sites) == 0 {
 			continue
@@ -751,11 +822,11 @@ func (s *Store) DefineFor(ctx context.Context, key, name string, allow Allow) ([
 	out := []RepoDefs{}
 	cur, hidden := s.current(ctx, nil, allow)
 	for _, ix := range cur {
-		defs := ix.defs[key]
+		pos := ix.defs[key]
 		if key == "" {
-			defs = ix.byName[name]
+			pos = ix.byName[name]
 		}
-		if len(defs) > 0 {
+		if defs := ix.defsAt(pos); len(defs) > 0 {
 			out = append(out, RepoDefs{Repo: ix.bundle.Repo, SHA: ix.bundle.SHA, Ref: ix.bundle.Ref, Defs: defs})
 		}
 	}

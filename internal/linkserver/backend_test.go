@@ -131,3 +131,22 @@ func replicaContract(t *testing.T, s1, s2 *Store) {
 		t.Fatal(err)
 	}
 }
+
+func TestWarmLoadsEveryDefaultBundle(t *testing.T) {
+	dir := t.TempDir()
+	b, _ := OpenFS(dir)
+	s1, _ := OpenStore(context.Background(), b, Options{})
+	for i := 0; i < 20; i++ {
+		if err := s1.Put(Bundle{Format: 1, Repo: fmt.Sprintf("example.org/r%d", i), SHA: "c1", Ref: "main"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s2, _ := OpenStore(context.Background(), b, Options{})
+	if got := s2.Stats().CachedBundles; got != 0 {
+		t.Fatalf("cached before warm: %d", got)
+	}
+	s2.Warm(context.Background())
+	if got := s2.Stats().CachedBundles; got != 20 {
+		t.Fatalf("cached after warm: %d, want 20", got)
+	}
+}

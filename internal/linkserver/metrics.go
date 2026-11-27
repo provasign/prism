@@ -3,6 +3,7 @@ package linkserver
 import (
 	"fmt"
 	"net/http"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -105,6 +106,9 @@ func (m *Metrics) serve(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprintf(&b, "# HELP prism_link_repositories Repositories in the catalog.\n# TYPE prism_link_repositories gauge\nprism_link_repositories %d\n", st.Repositories)
 	fmt.Fprintf(&b, "# HELP prism_link_cached_bundles Bundles held in memory.\n# TYPE prism_link_cached_bundles gauge\nprism_link_cached_bundles %d\n", st.CachedBundles)
 	fmt.Fprintf(&b, "# HELP prism_link_cached_bytes Size of the bundles held in memory, as stored.\n# TYPE prism_link_cached_bytes gauge\nprism_link_cached_bytes %d\n", st.CachedBytes)
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	fmt.Fprintf(&b, "# HELP prism_link_heap_inuse_bytes Go heap in use.\n# TYPE prism_link_heap_inuse_bytes gauge\nprism_link_heap_inuse_bytes %d\n", ms.HeapInuse)
 	fmt.Fprintf(&b, "# HELP prism_link_uptime_seconds Seconds since start.\n# TYPE prism_link_uptime_seconds gauge\nprism_link_uptime_seconds %.0f\n", time.Since(started).Seconds())
 	_, _ = w.Write([]byte(b.String()))
 }

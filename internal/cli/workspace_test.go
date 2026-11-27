@@ -1327,3 +1327,54 @@ func TestLinkServerAddrNeedsAHost(t *testing.T) {
 		}
 	}
 }
+
+// The operator commands, through the real dispatcher (its flag check runs
+// before link-server sees the arguments).
+func TestLinkServerOperatorCommands(t *testing.T) {
+	t.Setenv("PRISM_LINK_TOKEN", "")
+	dir := t.TempDir()
+	tokens, store, backup := filepath.Join(dir, "tokens.json"), filepath.Join(dir, "store"), filepath.Join(dir, "backup")
+	var secret string
+	out := captureStdout(func() {
+		if rc := Run([]string{"link-server", "token", "create", "--tokens", tokens, "--name", "ci-app", "--upload", "example.org/app", "--expires", "90d"}); rc != 0 {
+			t.Fatalf("token create rc=%d", rc)
+		}
+	})
+	secret = strings.TrimSpace(out)
+	if !strings.HasPrefix(secret, "plk_") {
+		t.Fatalf("token create printed %q", out)
+	}
+	list := captureStdout(func() { Run([]string{"link-server", "token", "list", "--tokens", tokens}) })
+	if !strings.Contains(list, "ci-app") || !strings.Contains(list, "example.org/app") || strings.Contains(list, secret) {
+		t.Fatalf("token list:\n%s", list)
+	}
+	id := strings.Split(strings.TrimPrefix(secret, "plk_"), "_")[0]
+	s, err := linkserver.Open(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, sha := range []string{"c1", "c2", "c3"} {
+		if err := s.Put(linkserver.Bundle{Format: 1, Repo: "example.org/app", SHA: sha, Ref: "main"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, args := range [][]string{
+		{"link-server", "check", "--dir", store},
+		{"link-server", "prune", "--dir", store, "--keep", "1"},
+		{"link-server", "backup", "--dir", store, "--to", backup},
+		{"link-server", "delete", "--dir", store, "--repo", "example.org/app", "--sha", "c3"},
+		{"link-server", "restore", "--dir", store, "--from", backup},
+		{"link-server", "check", "--dir", store, "--json"},
+		{"link-server", "delete", "--dir", store, "--repo", "example.org/app"},
+		{"link-server", "token", "revoke", "--tokens", tokens, id},
+	} {
+		var rc int
+		out := captureStdout(func() { rc = Run(args) })
+		if rc != 0 {
+			t.Fatalf("%v: rc=%d\n%s", args, rc, out)
+		}
+	}
+	if rc := Run([]string{"link-server", "--dir", store}); rc != 2 {
+		t.Fatalf("serving with no credentials: rc=%d, want 2 (usage)", rc)
+	}
+}
