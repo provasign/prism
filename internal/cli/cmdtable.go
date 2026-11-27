@@ -255,7 +255,7 @@ var commandTable = []*command{
                                   discover [--link]         Related checkouts found in manifests
                                   Guide: docs/MULTI_REPO.md
 `},
-	{name: "link-server", flags: "--dir= --s3= --s3-endpoint= --s3-region= --s3-path-style --azure= --azure-path-style --gcs= --gcs-endpoint= --addr= --port= --tokens= --no-auth --tls-cert= --tls-key= --client-ca= --ops-addr= --audit-log= --rate= --max-conns= --max-bundle-mb= --keep= --refresh= --trust-proxy --name= --upload= --read= --admin --expires= --repo= --sha= --to= --from= --json", run: cmdLinkServer, help: `  prism link-server --dir <store> | --s3 s3://… | --azure https://… | --gcs gs://… [options]
+	{name: "link-server", flags: "--dir= --s3= --s3-endpoint= --s3-region= --s3-path-style --azure= --azure-path-style --gcs= --gcs-endpoint= --addr= --port= --tokens= --no-auth --tls-cert= --tls-key= --client-ca= --ops-addr= --audit-log= --rate= --max-conns= --max-bundle-mb= --keep= --refresh= --trust-proxy --single-replica --name= --upload= --read= --admin --expires= --repo= --sha= --to= --from= --json", run: cmdLinkServer, help: `  prism link-server --dir <store> | --s3 s3://… | --azure https://… | --gcs gs://… [options]
                                   Serve uploaded link bundles: who references a symbol across
                                   repositories that are not checked out. Per-token credentials
                                   (--tokens), TLS/mTLS, audit log, rate limits, retention, metrics.
@@ -265,7 +265,8 @@ var commandTable = []*command{
                                   --no-auth to serve open. --addr, --port (8890), --tls-cert,
                                   --tls-key, --client-ca (mTLS), --ops-addr (/health, /metrics),
                                   --audit-log (default stdout), --rate, --max-conns, --max-bundle-mb,
-                                  --keep (20), --refresh (10s), --trust-proxy.
+                                  --keep (20), --refresh (10s), --trust-proxy, --single-replica
+                                  (a store that ignores conditional writes; refused otherwise).
                                   Subcommands: token create|list|revoke (--tokens, --name, --upload,
                                   --read, --admin, --expires), prune (--repo, --keep), delete (--repo,
                                   --sha), check (--json), backup (--to), restore (--from).

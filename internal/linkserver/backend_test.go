@@ -150,3 +150,56 @@ func TestWarmLoadsEveryDefaultBundle(t *testing.T) {
 		t.Fatalf("cached after warm: %d, want 20", got)
 	}
 }
+
+// ignoresConditions is a store that accepts conditional headers and ignores
+// them, as LocalStack 3.8 does.
+type ignoresConditions struct{ *FSBlob }
+
+func (b ignoresConditions) PutIf(ctx context.Context, key string, data []byte, _ string) (string, error) {
+	if err := b.FSBlob.Put(ctx, key, data); err != nil {
+		return "", err
+	}
+	return etagOf(data), nil
+}
+
+func TestVerifyConditionalWrites(t *testing.T) {
+	fs, _ := OpenFS(t.TempDir())
+	if err := VerifyConditionalWrites(context.Background(), fs); err != nil {
+		t.Fatalf("filesystem store: %v", err)
+	}
+	if keys, _ := fs.List(context.Background(), probePrefix); len(keys) != 0 {
+		t.Fatalf("the probe left %v", keys)
+	}
+	err := VerifyConditionalWrites(context.Background(), ignoresConditions{fs})
+	if !errors.Is(err, ErrNoConditionalWrites) {
+		t.Fatalf("a store ignoring conditions passed the probe: %v", err)
+	}
+}
+
+// One replica on such a store is still safe: refs edits are serialised in
+// the process.
+func TestOneReplicaIsSafeWithoutConditionalWrites(t *testing.T) {
+	fs, _ := OpenFS(t.TempDir())
+	s, err := OpenStore(context.Background(), ignoresConditions{fs}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 30; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if err := s.Put(Bundle{Format: 1, Repo: "example.org/app", SHA: fmt.Sprintf("c%d", i), Ref: fmt.Sprintf("b%d", i)}); err != nil {
+				t.Error(err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	if n := len(s.refsOf("example.org/app").Refs); n != 30 {
+		t.Fatalf("%d of 30 branches survived concurrent uploads", n)
+	}
+	_ = s.Refresh(context.Background())
+	if n := len(s.refsOf("example.org/app").Refs); n != 30 {
+		t.Fatalf("stored refs: %d of 30 branches", n)
+	}
+}

@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -232,3 +234,35 @@ func lockFile(ctx context.Context, path string) (func(), error) {
 // probePrefix is listed at open to check the storage is reachable; nothing
 // is stored under it.
 const probePrefix = ".prism-link-probe/"
+
+// ErrNoConditionalWrites is a store that ignores If-Match / If-None-Match.
+var ErrNoConditionalWrites = errors.New("the store ignores conditional writes (If-Match / If-None-Match: *), " +
+	"so replicas sharing it would lose each other's branch updates")
+
+// VerifyConditionalWrites probes a store: a create-only write over an
+// existing object and a write with a stale ETag must both be refused. Some
+// S3 implementations accept the headers and ignore them (LocalStack 3.8,
+// 2026-11-27); on such a store several replicas would overwrite each
+// other's refs without an error.
+func VerifyConditionalWrites(ctx context.Context, b Blob) error {
+	key := probePrefix + "cas-" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	defer b.Delete(ctx, key)
+	tag, err := b.PutIf(ctx, key, []byte("1"), "")
+	if err != nil {
+		return fmt.Errorf("conditional-write probe: %w", err)
+	}
+	if _, err := b.PutIf(ctx, key, []byte("2"), ""); !errors.Is(err, ErrConflict) {
+		return fmt.Errorf("%w (a create-only write over an existing object was accepted: %v)", ErrNoConditionalWrites, err)
+	}
+	stale := `"0000000000000000"`
+	if stale == tag {
+		stale = `"1111111111111111"`
+	}
+	if _, err := b.PutIf(ctx, key, []byte("3"), stale); !errors.Is(err, ErrConflict) {
+		return fmt.Errorf("%w (a write with a stale ETag was accepted: %v)", ErrNoConditionalWrites, err)
+	}
+	if _, err := b.PutIf(ctx, key, []byte("4"), tag); err != nil {
+		return fmt.Errorf("conditional-write probe: a write with the current ETag failed: %w", err)
+	}
+	return nil
+}

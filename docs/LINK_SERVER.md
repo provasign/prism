@@ -235,6 +235,7 @@ Storage is one of `--dir`, `--s3`, `--azure` or `--gcs`; see [Storage and replic
 | `--keep N` | 20 | Commits kept per repository; 0 keeps all |
 | `--refresh D` | 10s | How often to re-read the store for other replicas' uploads |
 | `--trust-proxy` | off | Take the client address from `X-Forwarded-For` (only behind your proxy) |
+| `--single-replica` | off | Run on a shared store that ignores conditional writes (refused otherwise); never with a second replica |
 
 Server events go to stderr as JSON lines. The audit log is separate (see [Audit log](#audit-log)).
 SIGINT or SIGTERM shuts down gracefully, letting requests in flight finish (up to 30 s).
@@ -269,7 +270,21 @@ Which to use:
 
 Every shared backend must support conditional writes (compare-and-swap on an object's ETag or
 generation), because that is how replicas update a repository's branches without losing each
-other's uploads. Azure Blob Storage and Google Cloud Storage always do. For an S3 API, check the
+other's uploads. Azure Blob Storage and Google Cloud Storage always do.
+
+**The server checks this at start.** On `--s3`, `--azure` and `--gcs` it writes a probe object
+and confirms that a create-only write over it, and a write with a stale ETag, are both refused.
+A store that accepts and ignores the conditions is refused:
+
+```
+link-server: s3://prism-links/link at …: the store ignores conditional writes (If-Match / If-None-Match: *),
+so replicas sharing it would lose each other's branch updates (a write with a stale ETag was accepted)
+  Use a store that supports conditional writes, or run exactly one replica with --single-replica.
+```
+
+`--single-replica` starts on such a store with a warning. One process serialises its own branch
+updates, so it is safe, as long as no second replica ever shares the store. LocalStack 3.8 (the
+last community image) is such a store; the test suite found it. For an S3 API, check the
 product's documentation for `If-Match` and `If-None-Match: *` on PUT. Or test it: the backend
 contract test (`PRISM_TEST_S3=s3://bucket PRISM_TEST_S3_ENDPOINT=https://… go test -run
 S3BlobAgainstARealServer ./internal/linkserver/`) checks conditional writes and two replicas with
@@ -776,6 +791,7 @@ but get no `unreadable` count and no pins for Java and Python.
 | `server … NOT REACHED (… x509: certificate signed by unknown authority)` | Set `PRISM_LINK_CA` to your CA's PEM |
 | `server … NOT REACHED (… tls: certificate required)` | The server requires mTLS: set `PRISM_LINK_CLIENT_CERT` and `PRISM_LINK_CLIENT_KEY` |
 | `S3 bucket …: S3 403 …: AccessDenied` at start | Credentials or bucket policy (see the permissions above) |
+| `the store ignores conditional writes …` at start | The object store does not honour `If-Match`. Use one that does, or run one replica with `--single-replica` |
 | Uploads through one replica missing from another | Within `--refresh`, expected. Longer: check that both use the same `--s3` URL and the logs for `catalog refresh failed` |
 | `check` reports `branch main points at missing commit` | A bundle was deleted outside Prism; re-run the consumer's CI or delete the branch's commit with `delete --sha` |
 | A consumer appears twice | Uploaded under two `--repo` names; delete one with `delete --repo` |
@@ -808,8 +824,24 @@ On 2026-11-27, on macOS:
 - **The earlier v1.3.5 checks:** branch selection, local links not repeated, `verify`, `test-plan`
   and `lookup`, the `NOT REACHED` cases, `--addr` limiting to loopback.
 - **Load:** the table above, on the filesystem and on two replicas sharing an S3 bucket.
-- **Deployment:** see `deploy/compose/README.md` for the compose stack's end-to-end check (two
-  replicas on S3 behind a TLS proxy) and the Helm chart's lint and render checks.
+- **Every backend through the container image** (`deploy/compose/run-backends.sh`, 51 checks,
+  all passing). Each backend ran as two replicas on one store: VersityGW and SeaweedFS (S3),
+  Azurite (Azure Blob Storage) and fake-gcs-server (Google Cloud Storage). The checks covered:
+  - uploads with a scoped CI token, 403 for another repository, and `NOT READABLE` for a token
+    without read rights;
+  - one replica answering the other's upload, and revocation on both replicas within seconds;
+  - retention at `--keep 2`, followed by `check`;
+  - the audit log (no secrets), metrics, and backup and restore into a directory.
+
+  LocalStack 3.8 ignores conditional writes. The server refused to start on it, and started with
+  a warning under `--single-replica`.
+- **The compose stack** (`deploy/compose/run-e2e.sh`, 44 checks, all passing): two replicas on S3
+  behind a TLS proxy, adding TLS, mTLS, rate limits and the forwarded client address.
+- **The Helm chart:** linted and rendered for the filesystem, S3, Azure and GCS, including the
+  refusals for invalid settings.
+- **Single-repository answers are unchanged from v1.3.5:** all 57 Prism commands recorded in the
+  10-task benchmark's transcripts gave identical output from both versions, with identical
+  steering files.
 
 Not tested: the real cloud services (AWS S3, Azure Storage, Google Cloud Storage) and their real
 token services; each protocol was tested against emulators or other implementations and local

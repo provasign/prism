@@ -26,6 +26,18 @@ type Store struct {
 	mu      sync.RWMutex
 	repos   map[string]*repoEntry // slug -> refs
 	bundles map[string]*indexed   // object key -> parsed bundle
+
+	// refsMu serialises refs edits inside this process, so one replica is
+	// safe even on a store without conditional writes; across replicas,
+	// compare-and-swap on the store does it.
+	refsMu sync.Map // slug -> *sync.Mutex
+}
+
+func (s *Store) lockRefs(repo string) func() {
+	m, _ := s.refsMu.LoadOrStore(slug(repo), &sync.Mutex{})
+	mu := m.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }
 
 type repoEntry struct {
@@ -280,6 +292,12 @@ func (s *Store) PutContext(ctx context.Context, b Bundle) error {
 	}
 	var refs refsFile
 	var etag string
+	unlock, locked := s.lockRefs(b.Repo), true
+	defer func() {
+		if locked {
+			unlock()
+		}
+	}()
 	for attempt := 0; ; attempt++ {
 		cur, tag, err := s.blob.Get(ctx, refsKey(b.Repo), "")
 		refs = refsFile{}
@@ -320,6 +338,8 @@ func (s *Store) PutContext(ctx context.Context, b Bundle) error {
 	delete(s.bundles, key)
 	s.dropUnreferencedLocked()
 	s.mu.Unlock()
+	unlock() // retention edits refs under the same lock
+	locked = false
 	if s.keep > 0 {
 		if _, err := s.Prune(ctx, b.Repo, s.keep); err != nil {
 			return fmt.Errorf("stored, but retention failed: %w", err)
@@ -422,6 +442,7 @@ func countPinned(p map[string]bool) int {
 
 // editRefs applies fn to a repository's refs with compare-and-swap.
 func (s *Store) editRefs(ctx context.Context, repo string, fn func(*refsFile)) error {
+	defer s.lockRefs(repo)()
 	for attempt := 0; ; attempt++ {
 		cur, tag, err := s.blob.Get(ctx, refsKey(repo), "")
 		if err != nil {

@@ -56,6 +56,8 @@ serve options:
   --keep N               commits kept per repository (default 20; 0 = keep all)
   --refresh D            re-read other replicas' uploads every D (default 10s)
   --trust-proxy          take client addresses from X-Forwarded-For
+  --single-replica       run on a shared store that ignores conditional writes (start-up checks
+                         them and refuses such a store otherwise); never run a second replica on it
 Guide: docs/LINK_SERVER.md`
 
 func linkServerUsageErr(msg string) int {
@@ -146,7 +148,7 @@ func cmdLinkServer(args []string) int {
 	addr, port := "", 8890
 	var lc linkserver.ListenConfig
 	tokens, auditPath := "", "-"
-	noAuth, trustProxy := false, false
+	noAuth, trustProxy, singleReplica := false, false, false
 	rate, keep, maxMB := 50.0, linkserver.DefaultKeep, 512
 	refresh := 10 * time.Second
 	it := newArgIter("link-server", args)
@@ -220,6 +222,8 @@ func cmdLinkServer(args []string) int {
 			noAuth = true
 		case "--trust-proxy":
 			trustProxy = true
+		case "--single-replica":
+			singleReplica = true
 		default:
 			return it.unknown()
 		}
@@ -237,6 +241,9 @@ func cmdLinkServer(args []string) int {
 	blob, err := sf.open(ctx)
 	if err != nil {
 		return linkServerUsageErr(err.Error())
+	}
+	if sf.dir == "" && !sharedStoreUsable(ctx, blob, singleReplica, logger) {
+		return 1
 	}
 	store, err := linkserver.OpenStore(ctx, blob, linkserver.Options{Keep: keep})
 	if err != nil {
@@ -581,4 +588,20 @@ func linkServerAudit(auditPath string, logger *slog.Logger) (io.Writer, int) {
 	}
 
 	return audit, -1
+}
+
+// sharedStoreUsable checks a shared store honours compare-and-swap, or
+// replicas lose each other's branch updates without an error. A store that
+// ignores it is accepted only with --single-replica.
+func sharedStoreUsable(ctx context.Context, blob linkserver.Blob, singleReplica bool, logger *slog.Logger) bool {
+	err := linkserver.VerifyConditionalWrites(ctx, blob)
+	if err == nil {
+		return true
+	}
+	if singleReplica && errors.Is(err, linkserver.ErrNoConditionalWrites) {
+		logger.Warn("store without conditional writes: safe only as the single replica (--single-replica)", "store", blob.Describe())
+		return true
+	}
+	fmt.Fprintf(os.Stderr, "link-server: %s: %v\n  Use a store that supports conditional writes, or run exactly one replica with --single-replica.\n", blob.Describe(), err)
+	return false
 }
