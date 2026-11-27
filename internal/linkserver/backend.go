@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -197,7 +198,18 @@ func writeFileAtomic(path string, data []byte) error {
 		os.Remove(tmp)
 		return err
 	}
-	return os.Rename(tmp, path)
+	// On Windows a rename over a file another process has open fails with
+	// "Access is denied" until it is closed: retry briefly.
+	for attempt := 0; ; attempt++ {
+		err := os.Rename(tmp, path)
+		if err == nil || runtime.GOOS != "windows" || !errors.Is(err, fs.ErrPermission) || attempt >= 50 {
+			if err != nil {
+				os.Remove(tmp)
+			}
+			return err
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 // lockFile takes an exclusive lock by creating path; a lock older than 30 s
@@ -213,7 +225,9 @@ func lockFile(ctx context.Context, path string) (func(), error) {
 			f.Close()
 			return func() { os.Remove(path) }, nil
 		}
-		if !errors.Is(err, fs.ErrExist) {
+		// Windows reports a lock file another writer is deleting at this
+		// moment as "Access is denied", not "exists": contention, so wait.
+		if !errors.Is(err, fs.ErrExist) && !(runtime.GOOS == "windows" && errors.Is(err, fs.ErrPermission)) {
 			return nil, err
 		}
 		if fi, serr := os.Stat(path); serr == nil && time.Since(fi.ModTime()) > 30*time.Second {
