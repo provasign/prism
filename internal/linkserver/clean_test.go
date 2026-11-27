@@ -9,9 +9,9 @@ import (
 )
 
 func TestCleanLineRemovesControlsAndBidi(t *testing.T) {
-	in := "\x1b]0;PWNED\x07\x1b[2Jreturn lib.Normalize(k)‮ // ⁦evil⁩\tok\x00"
+	in := "\x1b]0;PWNED\x07\x1b[2Jreturn lib.Normalize(k)\u202e // \u2066evil\u2069\tok\x00"
 	got := CleanLine(in, "Normalize")
-	if strings.ContainsAny(got, "\x1b\x07\x00‮⁦⁩\t") {
+	if strings.ContainsAny(got, "\x1b\x07\x00\u202e\u2066\u2069\t") {
 		t.Fatalf("control or bidi characters left: %q", got)
 	}
 	if !strings.Contains(got, "return lib.Normalize(k)") || !strings.Contains(got, " ok") {
