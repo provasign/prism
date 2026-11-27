@@ -64,6 +64,14 @@ func TestNoticeOnceAndTempRootsNotRecorded(t *testing.T) {
 	if first, second := NoticeOnce(tmp), NoticeOnce(tmp); first == "" || second != "" {
 		t.Fatalf("temp root notice: first %q, second %q", first, second)
 	}
+	// A new process (empty in-process map) does not repeat it either: each
+	// CLI call is its own process.
+	mu.Lock()
+	delete(shownTemp, key(tmp))
+	mu.Unlock()
+	if n := NoticeOnce(tmp); n != "" {
+		t.Fatalf("temp root notice repeated in a new process: %q", n)
+	}
 	for _, r := range Roots() {
 		if strings.HasPrefix(r[0], filepath.Clean(os.TempDir())) {
 			t.Fatalf("temp root recorded: %v", r)

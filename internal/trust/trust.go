@@ -9,6 +9,8 @@
 package trust
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -164,10 +166,13 @@ func NoticeOnce(root string) string {
 		return ""
 	}
 	// Scratch checkouts under the temp directory (benchmark cells, CI) are
-	// not recorded, so they cannot grow the file; they get the note once per
-	// process (a long prism watch or MCP session reindexes many times).
+	// not recorded, so they cannot grow the file. They get the note once:
+	// a marker in the temp directory carries it across processes, since
+	// every CLI call is a new process. Without it each search and lookup of
+	// an agent session repeated the ~300-byte note (2026-11-27 replay).
 	if underTemp(k) {
-		if shownTemp[k] {
+		if shownTemp[k] || !claimTempNotice(k) {
+			shownTemp[k] = true
 			return ""
 		}
 		shownTemp[k] = true
@@ -177,6 +182,23 @@ func NoticeOnce(root string) string {
 	}
 	return "prism: indexing " + k + " runs this repository's own build tools (its Maven or Gradle build, its typescript, rust-analyzer build scripts and proc macros, a pinned go toolchain).\n" +
 		"       For a repository you do not trust, run `prism untrust " + k + "` (or set PRISM_UNTRUSTED=1); `prism trust` silences this note."
+}
+
+// claimTempNotice creates the marker for a temp root's notice; false when
+// another process already created it. A marker that cannot be written
+// (read-only temp) leaves the note to the per-process map.
+func claimTempNotice(root string) bool {
+	dir := filepath.Join(os.TempDir(), "prism-trust-notices")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return true
+	}
+	sum := sha256.Sum256([]byte(root))
+	f, err := os.OpenFile(filepath.Join(dir, hex.EncodeToString(sum[:12])), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return !os.IsExist(err)
+	}
+	_ = f.Close()
+	return true
 }
 
 func underTemp(root string) bool {
