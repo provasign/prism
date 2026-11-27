@@ -183,6 +183,29 @@ uncommitted changes is refused. Answers from the server are marked with the repo
 and upload date. A repository linked locally is not listed again. A server that cannot be reached,
 or rejects the token, is reported as not covered.
 
+The full guide covers who runs it, what is uploaded, hosting, CI setup, the HTTP API, the security
+model and troubleshooting: [docs/LINK_SERVER.md](LINK_SERVER.md).
+
+## Cache clones in detail
+
+`prism workspace add <git-url>[@ref]` clones into `$PRISM_CACHE_DIR`, else the user cache directory
+(`~/Library/Caches/prism/repos` on macOS, `~/.cache/prism/repos` on Linux). It checks out the commit
+`ref` names (a tag, branch or commit; the default branch when omitted), indexes it once per commit,
+and links it read-only. Any URL git accepts works, including `file://` and SSH. Git runs with your
+own credentials and never prompts, so a missing credential fails the command instead of hanging an
+agent.
+
+- `prism workspace fetch` re-resolves a branch to its newest commit. A tag or commit stays put.
+- `prism workspace remove <id>` unlinks; the clone stays until `prism workspace prune`.
+- A clone's answers are compiler-resolved only if its build can run there. A Go consumer whose
+  modules can be downloaded (from the module proxy, or a private one through `GOPROXY` and your
+  credentials) is resolved by the compiler. One that depends on a library through a local
+  `replace => ../lib` cannot build in the cache, so its sites are name-matched, and the answer says
+  "NAME-MATCHED ONLY". No `npm install` or Maven build is run in a clone, so TypeScript and Java
+  consumers there are name-matched.
+- Answers print a clone's files with absolute paths under a line saying they are read-only
+  reference source. `prism read --repo <id> <file>` reads them.
+
 ## Limits
 
 - Repositories that are neither linked nor uploaded are not covered, and the answer says so.

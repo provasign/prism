@@ -277,7 +277,7 @@ prism lookup app.Handler --repo app    # answer from one linked repository
 prism workspace discover               # related checkouts found in go.mod, package.json, pom.xml, ...
 ```
 
-Each repository keeps its own index; links are followed when a question is asked. `lookup`, `read`, `search`, `change-impact`, `verify` and `test-plan` cover linked repositories, and every answer says which repositories it covered and how (compiler-resolved, or name-matched only). A link written in a cloned `prism.yaml` takes effect only after you confirm it on your machine, and an untrusted repository links nothing. Consumers that are not checked out can be covered through a link server their CI uploads to. The guide: [docs/MULTI_REPO.md](docs/MULTI_REPO.md).
+Each repository keeps its own index; links are followed when a question is asked. `lookup`, `read`, `search`, `change-impact`, `verify` and `test-plan` cover linked repositories, and every answer says which repositories it covered and how (compiler-resolved, or name-matched only). A link written in a cloned `prism.yaml` takes effect only after you confirm it on your machine, and an untrusted repository links nothing. Consumers that are not checked out can be covered through a link server their CI uploads to. Guides: [docs/MULTI_REPO.md](docs/MULTI_REPO.md) for linking, and [docs/LINK_SERVER.md](docs/LINK_SERVER.md) for running a link server.
 
 ## Graph explorer
 
