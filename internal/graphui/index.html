@@ -1174,12 +1174,15 @@ function renderImpactPanel(sel) {
     isGroup ? chip(plural(n.symbols || 0, "declaration")) : chip(n.kind || "symbol", colorOf(n)), n.test ? chip("test") : null], acts);
 
   const sites = d.sites || [];
+  const linked = d.linkedRepos || [];
   const tabs = [["impact", nodeSel ? "Details" : "Summary"], ["sites", "Edit sites", sites.length]];
+  if (linked.length) tabs.push(["linked", "Other repos", d.linkedSites || 0]);
   if (n.id.startsWith("s:")) tabs.push(["source", "Source"]);
   setTabs(tabs);
 
   if (S.tab === "source") { const h = el("div"); body.append(h); sourceInto(h, n.id); return; }
   if (S.tab === "sites") { body.append(siteGroups(sites)); return; }
+  if (S.tab === "linked") { body.append(linkedScope(d), ...linked.map(r => linkedRepoGroup(r, 0))); return; }
 
   if (nodeSel) {
     const mine = sites.filter(s => s.nodeId === nodeSel.id);
@@ -1190,9 +1193,12 @@ function renderImpactPanel(sel) {
   }
 
   const ok = d.safeToClaimComplete;
+  const others = linked.filter(r => (r.sites || []).length).length;
+  const okText = others ? `Complete: this repository and ${otherRepos(others)}` : "Complete for this repository";
   body.append(el("div", { class: "verdict " + (ok ? "ok" : "warn") }, icon(ok ? "check" : "alert"), el("div", null,
-    el("b", null, ok ? "Complete for this repository" : "Partial — review before relying on it"),
+    el("b", null, ok ? okText : "Partial — review before relying on it"),
     el("span", null, [d.completeness, d.completenessScope].filter(Boolean).join(" · ")),
+    d.workspaceScope ? el("span", { style: "display:block;margin-top:2px" }, "Other repositories: " + d.workspaceScope) : null,
     d.scopeBoundary || d.coverageNote ? el("details", null, el("summary", null, "Scope and limits"), d.scopeBoundary ? el("div", { style: "margin-top:4px" }, d.scopeBoundary) : null, d.coverageNote ? el("div", { style: "margin-top:4px" }, d.coverageNote) : null) : null)));
   const c = d.counts || {};
   const tiles = [tile(d.totalSites || sites.length, "edit sites", S.css["r-site"]), tile(d.files, "files to touch")];
@@ -1202,6 +1208,7 @@ function renderImpactPanel(sel) {
   if (d.depth > 1) tiles.push(tile(c.transitive || 0, `reached in ${d.depth - 1} more hop${d.depth > 2 ? "s" : ""}`, S.css["r-trans"]));
   const testSites = sites.filter(s => s.test).length;
   if (testSites) tiles.push(tile(testSites, "sites in tests"));
+  if (d.linkedSites) tiles.push(tile(d.linkedSites, `sites in ${otherRepos(others)} · not drawn`, S.css["r-site"]));
   body.append(el("div", { class: "tiles" }, tiles));
   if (t.signature) body.append(sec("Signature", null, el("div", { class: "sig" }, t.signature)));
   if (d.groupedByFile) body.append(el("div", { class: "doc", style: "margin-bottom:12px" }, "Large change: the graph draws one node per file. Select a file to see its sites."));
@@ -1215,14 +1222,45 @@ function renderImpactPanel(sel) {
     body.append(sec("Where the edits land", dirs.length, ul, dirs.length > 8 ? el("div", { class: "more" }, `${dirs.length - 8} more packages`) : null));
   }
   body.append(sec("Edit sites", sites.length, siteGroups(sites.slice(0, 10)), sites.length > 10 ? el("button", { class: "btn", style: "margin-top:4px", onclick: () => { S.tab = "sites"; renderPanel(); } }, `View all ${fmt(sites.length)} sites`) : null));
+  if (linked.length) {
+    body.append(sec("In other repositories · listed, not drawn", d.linkedSites || 0, ...linked.map(r => linkedRepoGroup(r, 5)),
+      (d.linkedSites || 0) > 5 || linked.length > 1 ? el("button", { class: "btn", style: "margin-top:4px", onclick: () => { S.tab = "linked"; renderPanel(); } }, "View all other repositories") : null));
+  } else if (d.workspaceScope) {
+    body.append(sec("Other repositories", null, el("div", { class: "doc" }, d.workspaceScope)));
+  }
   if (d.related && d.related.length) {
     const items = d.related.map(h => ({ node: { ...h, type: "symbol", kind: "function" }, sub: `${h.kind} · ${h.path}:${h.line}` }));
     body.append(sec("Related, not affected", items.length, ...listOf(items, () => "", it => { if (it.node.id) go(it.node.id); }, 10)));
   }
 }
 function siteList(d) {
-  if (d.relaySites && d.relaySites.length) return d.relaySites.join("\n");
-  return (d.sites || []).map(s => `${s.path}:${s.line}:${s.symbol || ""} [${s.access || s.role}]`).join("\n");
+  const own = d.relaySites && d.relaySites.length ? d.relaySites : (d.sites || []).map(s => `${s.path}:${s.line}:${s.symbol || ""} [${s.access || s.role}]`);
+  const other = [];
+  for (const r of d.linkedRepos || []) for (const s of r.sites || []) other.push(`${r.id}:${s.file}:${s.line}:${s.from || ""} [${s.evidence}${s.test ? ", test" : ""}]`);
+  return own.concat(other).join("\n");
+}
+const otherRepos = n => n === 1 ? "1 other repository" : `${fmt(n)} other repositories`;
+function linkedScope(d) {
+  return d.workspaceScope ? el("div", { class: "doc", style: "margin-bottom:12px" }, d.workspaceScope) : el("div");
+}
+/* One other repository's sites, grouped by file. limit > 0 shows the first
+   sites only (the Summary tab); 0 shows them all. */
+function linkedRepoGroup(r, limit) {
+  const src = r.source === "server" ? "link server" : r.source === "clone" ? "cache clone, read-only" : "linked checkout";
+  const at = [r.commit ? r.commit.slice(0, 8) + (r.ref ? ` (${r.ref})` : "") : null, r.pin ? "requires " + r.pin : null].filter(Boolean).join(" · ");
+  const wrap = el("div", { class: "filegroup", style: "margin-bottom:10px" },
+    el("header", null, icon("file"), el("span", null, r.id), el("span", { class: "tag" }, src), r.state !== "resolved" ? el("span", { class: "tag" }, r.state) : null, el("em", null, (r.sites || []).length)));
+  if (at || r.note) wrap.append(el("div", { class: "doc", style: "padding:4px 10px" }, [at, r.note].filter(Boolean).join(" · ")));
+  const list = limit ? (r.sites || []).slice(0, limit) : (r.sites || []);
+  for (const s of list) {
+    const ev = s.evidence === "resolved" ? null : s.evidence === "implements" ? "implements " + (s.detail || "") : s.evidence;
+    wrap.append(el("div", { class: "site", title: "In " + r.id + " (not in this graph)" },
+      el("span", { class: "ln" }, s.line),
+      el("div", { class: "who" }, el("i", { style: `background:${S.css["r-site"]}` }), el("span", null, s.from || "—"), ev ? el("span", { class: "tag" }, ev) : null, s.test ? el("span", { class: "tag" }, "test") : null),
+      el("code", null, `${s.file} · ${(s.text || "").trim()}`)));
+  }
+  if (limit && (r.sites || []).length > limit) wrap.append(el("div", { class: "more", style: "padding:6px 10px" }, `${(r.sites || []).length - limit} more in ${r.id}`));
+  return wrap;
 }
 function siteGroups(sites) {
   const wrap = el("div"), byFile = new Map();

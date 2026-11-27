@@ -138,7 +138,7 @@ var changeImpactTextFields = map[string]bool{
 	"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true, "callPositionsNote": true,
 	"reExports": true, "related": true, "degradedAnalysis": true,
 	"resolvedAmbiguity": true, "unindexedNote": true, "editSites": true, "editSiteCount": true, "otherMentions": true,
-	"workspaceConsumers": true, "workspaceScope": true, "linkedSites": true,
+	"workspaceConsumers": true, "workspaceScope": true, "linkedSites": true, "linkedRepos": true,
 	"resolvedNote": true, "partialTypeCheck": true,
 }
 
@@ -630,7 +630,7 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 		"contentAdvisories": true,
 		"newDependencies":   true, "archStatus": true, "archIntroduced": true,
 		"notes": true, "testCoverage": true,
-		"workspaceConsumers": true, "workspaceScope": true, "linkedVerdict": true,
+		"workspaceConsumers": true, "workspaceScope": true, "linkedVerdict": true, "linkedRepos": true,
 	}
 	for k := range out {
 		if !known[k] {

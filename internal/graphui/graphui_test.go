@@ -572,3 +572,27 @@ func TestImpactEndpoint(t *testing.T) {
 		t.Errorf("non-symbol id: %d", code)
 	}
 }
+
+// Other repositories' sites come through the explorer's impact model as
+// listed data: the graph holds one repository, the answer more.
+func TestLinkedFromReadsOtherRepositories(t *testing.T) {
+	raw := map[string]any{"linkedRepos": []any{
+		map[string]any{"id": "prism", "path": "../prism", "source": "checkout", "state": "resolved", "pin": "github.com/provasign/grove v0.64.6",
+			"sites": []any{
+				map[string]any{"file": "internal/grove/client.go", "line": float64(988), "text": "return groveeng.ScanManifests(root).Requires", "from": "ManifestRequires", "evidence": "resolved"},
+				map[string]any{"file": "x_test.go", "line": float64(3), "evidence": "resolved", "test": true},
+			}},
+		map[string]any{"id": "github.com/acme/app", "source": "server", "commit": "abc123", "ref": "main", "state": "resolved", "sites": []any{}},
+	}}
+	repos, total := linkedFrom(raw)
+	if len(repos) != 2 || total != 2 {
+		t.Fatalf("repos %d, sites %d", len(repos), total)
+	}
+	p := repos[0]
+	if p.ID != "prism" || p.Pin == "" || p.Sites[0].Line != 988 || p.Sites[0].From != "ManifestRequires" || !p.Sites[1].Test {
+		t.Fatalf("prism: %+v", p)
+	}
+	if repos[1].Source != "server" || repos[1].Commit != "abc123" {
+		t.Fatalf("server repo: %+v", repos[1])
+	}
+}

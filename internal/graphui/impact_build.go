@@ -62,6 +62,8 @@ func (m *Model) impactNewBuild(id string, raw map[string]any, depth int, include
 		Counts:            map[string]int{},
 	}
 	out.SafeToClaimComplete, _ = raw["safeToClaimComplete"].(bool)
+	out.LinkedRepos, out.LinkedSites = linkedFrom(raw)
+	out.WorkspaceScope = str(raw["workspaceScope"])
 	for _, v := range asList(raw["relaySites"]) {
 		if s := str(v); s != "" {
 			out.RelaySites = append(out.RelaySites, s)

@@ -68,11 +68,68 @@ type Impact struct {
 	Related             []Hit    `json:"related,omitempty"`
 	Notes               []string `json:"notes,omitempty"`
 
+	// Other repositories: linked checkouts, cache clones and the link
+	// server. Their sites are listed, not drawn: the graph holds one
+	// repository. WorkspaceScope says what was and was not covered.
+	LinkedRepos    []LinkedRepo `json:"linkedRepos,omitempty"`
+	LinkedSites    int          `json:"linkedSites"`
+	WorkspaceScope string       `json:"workspaceScope,omitempty"`
+
 	Counts map[string]int `json:"counts"` // nodes per role, before caps
 	// GroupedByFile: edit sites and reached nodes are drawn one per file
 	// (Node.Symbols counts the declarations each stands for).
 	GroupedByFile bool `json:"groupedByFile,omitempty"`
 	Files         int  `json:"files"` // distinct files holding an edit site
+}
+
+// LinkedRepo is one other repository's part of a change-impact answer.
+type LinkedRepo struct {
+	ID     string       `json:"id"`
+	Path   string       `json:"path,omitempty"`
+	Source string       `json:"source"` // checkout | clone | server
+	Commit string       `json:"commit,omitempty"`
+	Ref    string       `json:"ref,omitempty"`
+	Pin    string       `json:"pin,omitempty"`
+	State  string       `json:"state"`
+	Note   string       `json:"note,omitempty"`
+	Sites  []LinkedSite `json:"sites"`
+}
+
+// LinkedSite is one site in another repository.
+type LinkedSite struct {
+	File     string `json:"file"`
+	Line     int    `json:"line"`
+	Text     string `json:"text,omitempty"`
+	From     string `json:"from,omitempty"`
+	Evidence string `json:"evidence"`
+	Detail   string `json:"detail,omitempty"`
+	Test     bool   `json:"test,omitempty"`
+}
+
+// linkedFrom reads the answer's linkedRepos (plain JSON values).
+func linkedFrom(raw map[string]any) ([]LinkedRepo, int) {
+	var repos []LinkedRepo
+	total := 0
+	for _, r := range asList(raw["linkedRepos"]) {
+		m, _ := r.(map[string]any)
+		if m == nil {
+			continue
+		}
+		lr := LinkedRepo{ID: str(m["id"]), Path: str(m["path"]), Source: str(m["source"]), Commit: str(m["commit"]),
+			Ref: str(m["ref"]), Pin: str(m["pin"]), State: str(m["state"]), Note: str(m["note"]), Sites: []LinkedSite{}}
+		for _, x := range asList(m["sites"]) {
+			sm, _ := x.(map[string]any)
+			if sm == nil {
+				continue
+			}
+			t, _ := sm["test"].(bool)
+			lr.Sites = append(lr.Sites, LinkedSite{File: str(sm["file"]), Line: num(sm["line"]), Text: str(sm["text"]),
+				From: str(sm["from"]), Evidence: str(sm["evidence"]), Detail: str(sm["detail"]), Test: t})
+		}
+		total += len(lr.Sites)
+		repos = append(repos, lr)
+	}
+	return repos, total
 }
 
 // ImpactQuery returns the change-impact query for a symbol: its qualified

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -187,7 +188,34 @@ func (h *Handler) addWorkspaceConsumers(ctx context.Context, out map[string]any,
 }
 
 // linkedAnswer is what the other repositories say about a change set.
+// LinkedSite is one site in another repository, as structured data for
+// the graph explorer and JSON clients (the text lines say the same).
+type LinkedSite struct {
+	File     string `json:"file"`
+	Line     int    `json:"line"`
+	Col      int    `json:"col,omitempty"`
+	Text     string `json:"text,omitempty"`
+	From     string `json:"from,omitempty"`   // enclosing symbol
+	Evidence string `json:"evidence"`         // resolved | implements | import-scoped | name-match
+	Detail   string `json:"detail,omitempty"` // the interface, for implements
+	Test     bool   `json:"test,omitempty"`
+}
+
+// LinkedRepo is one linked repository's (or uploaded repository's) answer.
+type LinkedRepo struct {
+	ID     string       `json:"id"`
+	Path   string       `json:"path,omitempty"`   // display path of a checkout or clone
+	Source string       `json:"source"`           // checkout | clone | server
+	Commit string       `json:"commit,omitempty"` // server: the uploaded commit
+	Ref    string       `json:"ref,omitempty"`
+	Pin    string       `json:"pin,omitempty"`
+	State  string       `json:"state"` // resolved | name-matched | unread
+	Note   string       `json:"note,omitempty"`
+	Sites  []LinkedSite `json:"sites"`
+}
+
 type linkedAnswer struct {
+	repos      []LinkedRepo
 	lines      []string
 	scope      string
 	sites      int  // resolved sites
@@ -200,12 +228,21 @@ func (a linkedAnswer) attach(out map[string]any) {
 	if len(a.lines) > 0 {
 		out["workspaceConsumers"] = a.lines
 	}
+	if len(a.repos) > 0 {
+		// Plain JSON values, so every consumer of the answer (the MCP
+		// server, the graph explorer) reads the same shape.
+		var plain []any
+		if data, err := json.Marshal(a.repos); err == nil && json.Unmarshal(data, &plain) == nil {
+			out["linkedRepos"] = plain
+		}
+	}
 	if a.scope != "" {
 		out["workspaceScope"] = a.scope
 	}
 }
 
 type rootAnswer struct {
+	repo       *LinkedRepo
 	lines      []string
 	sites      int
 	production int
@@ -272,6 +309,20 @@ func (h *Handler) linkedAnswer(ctx context.Context, targets []linkTarget) linked
 		} else {
 			ans.lines = append(ans.lines, res.lines...)
 		}
+		switch {
+		case res.repo != nil:
+			ans.repos = append(ans.repos, *res.repo)
+		case res.state == "unread":
+			src := "checkout"
+			if root.Cache {
+				src = "clone"
+			}
+			note := ""
+			if len(res.lines) > 0 {
+				note = strings.TrimSpace(res.lines[0])
+			}
+			ans.repos = append(ans.repos, LinkedRepo{ID: root.ID, Path: h.Workspace.DisplayPath(root), Source: src, State: "unread", Note: note, Sites: []LinkedSite{}})
+		}
 		ans.sites += res.sites
 		ans.production += res.production
 		ans.matches += res.matches
@@ -322,8 +373,9 @@ func (h *Handler) linkedAnswer(ctx context.Context, targets []linkTarget) linked
 		server = h.Cfg.WorkspaceServer
 	}
 	if server != "" && len(keys) > 0 {
-		lines, scope, n, prod, ok := h.serverConsumers(ctx, server, keys, linked)
+		lines, repos, scope, n, prod, ok := h.serverConsumers(ctx, server, keys, linked)
 		ans.lines = append(ans.lines, lines...)
+		ans.repos = append(ans.repos, repos...)
 		ans.sites += n
 		ans.production += prod
 		parts = append(parts, scope)
@@ -421,6 +473,7 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 	}
 	shown := map[string]bool{} // file:line already printed as resolved
 	var rows []string
+	var sites []LinkedSite
 	dropped := 0
 	if len(resolvable) > 0 {
 		refs, err := grove.ReadExternalRefs(ctx, root.Path, resolvable)
@@ -452,6 +505,11 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 				res.production++
 			}
 			rows = append(rows, fmt.Sprintf("  %s: %s  [in %s]%s", at, text, ref.From, tag))
+			ev := "resolved"
+			if strings.HasPrefix(ref.Key, "py:") {
+				ev = "import-scoped"
+			}
+			sites = append(sites, LinkedSite{File: ref.File, Line: ref.Line, Col: ref.Col, Text: text, From: ref.From, Evidence: ev, Test: isTestFilePath(ref.File)})
 			shown[fmt.Sprintf("%s:%d", ref.File, ref.Line)] = true
 			res.sites++
 		}
@@ -495,6 +553,7 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 			}
 			short := im.Interface[strings.LastIndexByte(im.Interface, '/')+1:]
 			rows = append(rows, fmt.Sprintf("  %s/%s:%d: %s  [implements %s]%s", rel, im.File, im.Line, text, short, tag))
+			sites = append(sites, LinkedSite{File: im.File, Line: im.Line, Text: text, Evidence: "implements", Detail: short, Test: isTestFilePath(im.File)})
 			res.sites++
 		}
 	}
@@ -513,43 +572,79 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 				tag += "  [test]"
 			}
 			matchRows = append(matchRows, fmt.Sprintf("  %s/%s:%d: %s%s", rel, hit.File, hit.Line, strings.TrimSpace(hit.Text), tag))
+			sites = append(sites, LinkedSite{File: hit.File, Line: hit.Line, Text: strings.TrimSpace(hit.Text), Evidence: "name-match", Test: isTestFilePath(hit.File)})
 		}
 		if total > len(hits) {
 			more += total - len(hits)
 		}
 	}
 	res.matches = len(matchRows)
+	return finishRootAnswer(res, rootParts{root: root, rel: rel, prefix: prefix, stale: stale, pin: pin, why: why,
+		fallback: len(fallback), resolvable: len(resolvable), dropped: dropped, more: more,
+		rows: rows, matchRows: matchRows, sites: sites})
+}
 
-	header := prefix
-	if stale != "" {
-		header += "  " + stale
+// rootParts is what rootConsumers found in one linked repository.
+type rootParts struct {
+	root                                workspace.Root
+	rel, prefix, stale, pin, why        string
+	fallback, resolvable, dropped, more int
+	rows, matchRows                     []string
+	sites                               []LinkedSite
+}
+
+// finishRootAnswer writes one linked repository's header, text lines and
+// structured entry.
+func finishRootAnswer(res rootAnswer, p rootParts) rootAnswer {
+	header := p.prefix
+	if p.stale != "" {
+		header += "  " + p.stale
 	}
-	if pin != "" {
-		header += "  " + pin
+	if p.pin != "" {
+		header += "  " + p.pin
 	}
 	switch {
-	case len(fallback) > 0 && len(resolvable) == 0:
-		res.state, res.why = "name-matched", why
-		header += fmt.Sprintf("  NAME-MATCHED ONLY (%s): whole-word text matches, not resolved by a compiler", why)
-		if len(matchRows) == 0 {
+	case p.fallback > 0 && p.resolvable == 0:
+		res.state, res.why = "name-matched", p.why
+		header += fmt.Sprintf("  NAME-MATCHED ONLY (%s): whole-word text matches, not resolved by a compiler", p.why)
+		if len(p.matchRows) == 0 {
 			header += "; none found"
 		}
-	case len(fallback) > 0:
-		header += fmt.Sprintf("  (some symbols name-matched only: %s)", why)
-	case len(rows) == 0:
-		if pin == "" && stale == "" && dropped == 0 {
+	case p.fallback > 0:
+		header += fmt.Sprintf("  (some symbols name-matched only: %s)", p.why)
+	case len(p.rows) == 0:
+		if p.pin == "" && p.stale == "" && p.dropped == 0 {
 			return res // searched, nothing to say: it does not require the package
 		}
 		header += ": no references recorded"
 	}
-	if dropped > 0 {
-		header += fmt.Sprintf("  (%d indexed row(s) dropped: the line on disk no longer names it)", dropped)
+	if p.dropped > 0 {
+		header += fmt.Sprintf("  (%d indexed row(s) dropped: the line on disk no longer names it)", p.dropped)
 	}
+	src := "checkout"
+	if p.root.Cache {
+		src = "clone"
+	}
+	state := res.state
+	if state == "" {
+		state = "resolved"
+	}
+	// The note is what the header says beyond the pin (stale, name-matched
+	// only, no references recorded); the pin is its own field.
+	note := strings.TrimSpace(strings.TrimPrefix(header, p.prefix))
+	if p.pin != "" {
+		note = strings.TrimSpace(strings.Replace(note, p.pin, "", 1))
+	}
+	sites := p.sites
+	if sites == nil {
+		sites = []LinkedSite{}
+	}
+	res.repo = &LinkedRepo{ID: p.root.ID, Path: p.rel, Source: src, Pin: strings.TrimPrefix(p.pin, "requires "), State: state, Note: note, Sites: sites}
 	res.lines = append(res.lines, header)
-	res.lines = append(res.lines, rows...)
-	res.lines = append(res.lines, matchRows...)
-	if more > 0 {
-		res.lines = append(res.lines, fmt.Sprintf("  … %d more name match(es) not shown", more))
+	res.lines = append(res.lines, p.rows...)
+	res.lines = append(res.lines, p.matchRows...)
+	if p.more > 0 {
+		res.lines = append(res.lines, fmt.Sprintf("  … %d more name match(es) not shown", p.more))
 	}
 	return res
 }
@@ -716,7 +811,7 @@ func goModPaths(gomod string) []string {
 // repositories that are not on this machine. Each answer describes a
 // repository at the commit it uploaded, which the lines say; a server that
 // cannot be reached is reported as not covered, never as no consumers.
-func (h *Handler) serverConsumers(ctx context.Context, server string, keys []string, linked []workspace.Root) (lines []string, scope string, sites, production int, ok bool) {
+func (h *Handler) serverConsumers(ctx context.Context, server string, keys []string, linked []workspace.Root) (lines []string, repos []LinkedRepo, scope string, sites, production int, ok bool) {
 	req := linkserver.ConsumersRequest{Keys: keys}
 	for _, pkg := range grove.ManifestPackages(h.Root) {
 		req.Packages = append(req.Packages, pkg.Ecosystem+":"+pkg.Name)
@@ -730,7 +825,7 @@ func (h *Handler) serverConsumers(ctx context.Context, server string, keys []str
 	defer cancel()
 	resp, err := linkserver.AskConsumers(rctx, server, req)
 	if err != nil {
-		return nil, fmt.Sprintf("server %s NOT REACHED (%v): repositories only it knows are not covered", server, err), 0, 0, false
+		return nil, nil, fmt.Sprintf("server %s NOT REACHED (%v): repositories only it knows are not covered", server, err), 0, 0, false
 	}
 	for _, repo := range resp.Repos {
 		sha := repo.SHA
@@ -749,7 +844,16 @@ func (h *Handler) serverConsumers(ctx context.Context, server string, keys []str
 			header += "  uploaded " + day
 		}
 		lines = append(lines, header)
+		lr := LinkedRepo{ID: repo.Repo, Source: "server", Commit: repo.SHA, Ref: repo.Ref, Pin: repo.Requires, State: "resolved", Sites: []LinkedSite{}}
+		if day, _, ok := strings.Cut(repo.Created, "T"); ok {
+			lr.Note = "uploaded " + day
+		}
 		for _, site := range repo.Sites {
+			ev := "resolved"
+			if strings.HasPrefix(site.Key, "py:") {
+				ev = "import-scoped"
+			}
+			lr.Sites = append(lr.Sites, LinkedSite{File: site.File, Line: site.Line, Col: site.Col, Text: site.Text, From: site.From, Evidence: ev, Test: site.Test})
 			at := fmt.Sprintf("%s:%s:%d", repo.Repo, site.File, site.Line)
 			if site.Col > 0 {
 				at += fmt.Sprintf(":%d", site.Col)
@@ -768,6 +872,7 @@ func (h *Handler) serverConsumers(ctx context.Context, server string, keys []str
 			lines = append(lines, fmt.Sprintf("  %s: %s  [in %s]%s", at, site.Text, site.From, tag))
 			sites++
 		}
+		repos = append(repos, lr)
 	}
 	scope = fmt.Sprintf("server %s: %d site(s) in %d of %d uploaded repositories, each at its uploaded commit; "+
 		"repositories neither linked nor uploaded are not covered", server, sites, len(resp.Repos), resp.Searched)
@@ -775,9 +880,9 @@ func (h *Handler) serverConsumers(ctx context.Context, server string, keys []str
 		// The token may not read every uploaded repository: those were
 		// not searched, so the answer cannot claim completeness.
 		scope += fmt.Sprintf("; %d uploaded repositories NOT READABLE with this token, not searched", resp.Unreadable)
-		return lines, scope, sites, production, false
+		return lines, repos, scope, sites, production, false
 	}
-	return lines, scope, sites, production, true
+	return lines, repos, scope, sites, production, true
 }
 
 func rootPaths(roots []workspace.Root) []string {

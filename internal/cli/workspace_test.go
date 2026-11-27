@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/linkserver"
 	"github.com/provasign/prism/internal/workspace"
 )
@@ -360,6 +361,30 @@ func TestWorkspaceChangeImpactListsConsumersInLinkedRepository(t *testing.T) {
 	}
 	if !strings.Contains(out, "edit site(s) in this repository + 1 in linked repositories") {
 		t.Fatalf("the first line does not count the linked site:\n%s", out)
+	}
+
+	// The same answer as structured data (JSON clients, the graph
+	// explorer): one entry per repository with its sites and evidence.
+	js := captureStdout(func() { cmdChangeImpact([]string{"Helper", "--format", "json"}) })
+	var ans struct {
+		LinkedRepos []core.LinkedRepo `json:"linkedRepos"`
+	}
+	if err := json.Unmarshal([]byte(js), &ans); err != nil {
+		t.Fatalf("json: %v\n%s", err, js)
+	}
+	byID := map[string]core.LinkedRepo{}
+	for _, r := range ans.LinkedRepos {
+		byID[r.ID] = r
+	}
+	if a := byID["app"]; a.State != "resolved" || a.Source != "checkout" || len(a.Sites) != 1 || a.Sites[0].File != "main.go" ||
+		a.Sites[0].Line != 6 || a.Sites[0].Evidence != "resolved" || a.Sites[0].From != "main" || !strings.Contains(a.Pin, "v0.3.0") {
+		t.Fatalf("linkedRepos app: %+v", a)
+	}
+	if r := byID["raw"]; r.State != "name-matched" || len(r.Sites) != 1 || r.Sites[0].Evidence != "name-match" {
+		t.Fatalf("linkedRepos raw: %+v", r)
+	}
+	if _, ok := byID["idle"]; ok {
+		t.Fatal("a skipped repository is listed with sites")
 	}
 }
 
