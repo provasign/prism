@@ -255,9 +255,11 @@ var commandTable = []*command{
                                   discover [--link]         Related checkouts found in manifests
                                   Guide: docs/MULTI_REPO.md
 `},
-	{name: "link-server", flags: "--dir= --port=", run: cmdLinkServer, help: `  prism link-server --dir <store> [--port N]
+	{name: "link-server", flags: "--dir= --addr= --port=", run: cmdLinkServer, help: `  prism link-server --dir <store> [--addr <host>] [--port N]
                                   Serve uploaded link bundles: who references a symbol across
-                                  repositories that are not checked out (PRISM_LINK_TOKEN required token)
+                                  repositories that are not checked out (PRISM_LINK_TOKEN required token).
+                                  --addr 127.0.0.1 listens only locally (behind a proxy);
+                                  default: every interface, port 8890. Guide: docs/LINK_SERVER.md
 `},
 	{name: "change-impact", flags: "--diff --base= --dir= --repo= --file= --path= --format= --json", run: cmdChangeImpact, help: `  prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
                                   declaration(s), override/implementation family (subtype

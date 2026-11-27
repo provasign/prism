@@ -28,9 +28,37 @@ type Bundle struct {
 	Dirty    bool                       `json:"dirty,omitempty"`
 	Created  string                     `json:"created"`
 	Packages []groveeng.ManifestPackage `json:"packages"`
-	Requires []groveeng.ManifestRequire `json:"requires"`
+	Requires []Require                  `json:"requires"`
 	Refs     []Site                     `json:"refs"`
 	Defs     []Def                      `json:"defs"`
+}
+
+// Require is one dependency a repository declares, as uploaded. It is the
+// manifest requirement without its machine-local parts: Grove's LocalPath is
+// an absolute path on the machine that exported the bundle (a CI runner's
+// workspace) and its Evidence line can quote one (a go.work use), so neither
+// leaves the machine. Local says only that the dependency was built from a
+// local directory, so the version is not what it was built against.
+type Require struct {
+	Manifest  string `json:"manifest"`
+	Ecosystem string `json:"ecosystem"`
+	Name      string `json:"name"`
+	Version   string `json:"version,omitempty"`
+	Local     bool   `json:"local,omitempty"`
+}
+
+// uploadRequires drops the machine-local parts of manifest requirements, and
+// go.work co-members the repository does not itself require.
+func uploadRequires(reqs []groveeng.ManifestRequire) []Require {
+	out := []Require{}
+	for _, r := range reqs {
+		if r.CoMember {
+			continue
+		}
+		out = append(out, Require{Manifest: r.Manifest, Ecosystem: r.Ecosystem, Name: r.Name,
+			Version: r.Version, Local: r.LocalPath != ""})
+	}
+	return out
 }
 
 // Site is one place a repository references another's symbol.
@@ -66,7 +94,7 @@ func Build(ctx context.Context, root, repo, ref string) (Bundle, error) {
 	manifests := groveeng.ScanManifests(root)
 	b := Bundle{
 		Repo: repo, Ref: ref, Created: time.Now().UTC().Format(time.RFC3339),
-		Packages: manifests.Packages, Requires: manifests.Requires,
+		Packages: manifests.Packages, Requires: uploadRequires(manifests.Requires),
 	}
 	b.SHA = gitOut(root, "rev-parse", "HEAD")
 	if b.Ref == "" {

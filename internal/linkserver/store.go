@@ -70,11 +70,23 @@ func (s *Store) Put(b Bundle) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
+	path := filepath.Join(dir, slug(b.SHA)+".json")
+	if b.Ref == "" {
+		// A detached-HEAD upload (most CI checkouts) of a commit already
+		// stored from a branch keeps that branch: the commit is the same,
+		// and answers name the branch they come from.
+		var prev struct {
+			Ref string `json:"ref"`
+		}
+		if data, err := os.ReadFile(path); err == nil && json.Unmarshal(data, &prev) == nil {
+			b.Ref = prev.Ref
+		}
+	}
 	data, err := json.Marshal(b)
 	if err != nil {
 		return err
 	}
-	if err := writeAtomic(filepath.Join(dir, slug(b.SHA)+".json"), data); err != nil {
+	if err := writeAtomic(path, data); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -213,7 +225,7 @@ func (s *Store) Consumers(req ConsumersRequest) ConsumersResponse {
 	for _, p := range req.ExcludePackages {
 		exclude[p] = true
 	}
-	var resp ConsumersResponse
+	resp := ConsumersResponse{Repos: []RepoSites{}}
 bundles:
 	for _, ix := range s.current(req.Refs) {
 		for _, p := range ix.bundle.Packages {
@@ -249,7 +261,11 @@ func pinFor(b Bundle, keys []string) string {
 			eco, rest, _ := strings.Cut(k, ":")
 			pkg, _, _ := strings.Cut(rest, "#")
 			if eco == req.Ecosystem && (pkg == req.Name || (eco == "go" && strings.HasPrefix(pkg, req.Name+"/"))) {
-				return strings.TrimSpace(req.Name + " " + req.Version)
+				pin := strings.TrimSpace(req.Name + " " + req.Version)
+				if req.Local {
+					pin += ", built against a local checkout when uploaded"
+				}
+				return pin
 			}
 		}
 	}
@@ -266,7 +282,7 @@ type RepoDefs struct {
 
 // Define returns the declarations of key across repositories.
 func (s *Store) Define(key string) []RepoDefs {
-	var out []RepoDefs
+	out := []RepoDefs{}
 	for _, ix := range s.current(nil) {
 		if defs := ix.defs[key]; len(defs) > 0 {
 			out = append(out, RepoDefs{Repo: ix.bundle.Repo, SHA: ix.bundle.SHA, Ref: ix.bundle.Ref, Defs: defs})
@@ -278,7 +294,7 @@ func (s *Store) Define(key string) []RepoDefs {
 // DefineName returns the declarations whose qualified name, or last name
 // segment, is name: for a caller that has a name but no package for it.
 func (s *Store) DefineName(name string) []RepoDefs {
-	var out []RepoDefs
+	out := []RepoDefs{}
 	for _, ix := range s.current(nil) {
 		if defs := ix.byName[name]; len(defs) > 0 {
 			out = append(out, RepoDefs{Repo: ix.bundle.Repo, SHA: ix.bundle.SHA, Ref: ix.bundle.Ref, Defs: defs})

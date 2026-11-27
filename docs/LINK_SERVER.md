@@ -87,6 +87,10 @@ consumers in other repositories:
 workspaceScope: server http://127.0.0.1:8890: 2 site(s) in 2 of 2 uploaded repositories, each at its uploaded commit; repositories neither linked nor uploaded are not covered
 ```
 
+These consumers build the library through `replace github.com/acme/lib => ../lib`, so from v1.3.6
+their lines read `requires github.com/acme/lib v0.1.0, built against a local checkout when
+uploaded`. A consumer that uses the published version shows the version only.
+
 ## Who runs it
 
 You do. Provasign does not host a link server. It is self-hosted inside your organization, like an
@@ -119,11 +123,7 @@ A bundle, abridged from the quick start:
   "ref": "main",
   "created": "2026-11-27T17:15:46Z",
   "packages": [{ "ecosystem": "go", "name": "github.com/acme/app", "manifest": "go.mod", "dir": "" }],
-  "requires": [{
-    "ecosystem": "go", "name": "github.com/acme/lib", "version": "v0.1.0", "manifest": "go.mod",
-    "localPath": "/home/runner/work/lib",
-    "evidence": "go.mod:7 replace github.com/acme/lib => ../lib (required v0.1.0)"
-  }],
+  "requires": [{ "ecosystem": "go", "name": "github.com/acme/lib", "version": "v0.1.0", "manifest": "go.mod", "local": true }],
   "refs": [{
     "key": "go:github.com/acme/lib#Normalize",
     "file": "main.go", "from": "main", "line": 5, "col": 27,
@@ -140,17 +140,20 @@ A bundle, abridged from the quick start:
 |---|---|
 | `repo` | Stable name: `host/org/repo` from the `origin` remote, else the directory name. `--repo` overrides it |
 | `sha`, `ref` | The commit, and the branch it was exported from (`--ref` overrides it) |
-| `packages`, `requires` | What the repository's build manifests declare and require: ecosystem, name, pinned version, the manifest file. A requirement satisfied by a local path (a Go `replace`, an npm `file:` dependency) also carries `localPath`, the absolute path on the uploading machine, and `evidence`, the manifest line |
+| `packages`, `requires` | What the repository's build manifests declare and require: ecosystem, name, pinned version and manifest file. `local: true` means the dependency was built from a local directory (a Go `replace`, `go.work`, an npm `file:` dependency), so the pinned version is not what it was built against. The directory itself is not uploaded |
 | `refs` | Each use of another repository's symbol: key, file, enclosing symbol, line, column, **the one source line**, and whether it is in a test file |
 | `defs` | Each symbol the repository declares, with its signature, file and line |
 
 **Not uploaded:** function bodies, whole files, or history. The only source text is the one line
 per reference and each declaration's signature.
 
-The one source line per reference is still source code. So are manifest lines, and a `localPath`
-reveals the uploading machine's directory layout (in CI, the runner's workspace path). Treat the
-server's directory with the same care as the repositories it describes, and run
-`prism workspace export -o bundle.json` once to review what a repository will send.
+The one source line per reference is still source code. Treat the server's directory with the
+same care as the repositories it describes, and run `prism workspace export -o bundle.json` once
+to review what a repository will send.
+
+Since v1.3.6, no path from the uploading machine is sent. v1.3.5 sent a local dependency's
+absolute path and manifest line; a v1.3.6 server drops both from uploads by older clients
+before storing them.
 
 ## Running the server
 
@@ -161,12 +164,13 @@ PRISM_LINK_TOKEN=<secret> prism link-server --dir <store> [--port N]
 | Setting | Meaning |
 |---|---|
 | `--dir` | Where bundles are stored. Required. Created if missing |
+| `--addr` | Host or IP address to listen on, such as `127.0.0.1` behind a proxy. Default: every interface (v1.3.6 and later) |
 | `--port` | TCP port. Default 8890 |
 | `PRISM_LINK_TOKEN` | The bearer token every upload and query must send. Without it the server starts, prints `WARNING no PRISM_LINK_TOKEN set; anyone who can reach this port can read and upload bundles`, and accepts everyone |
 
-**Network.** The server speaks plain HTTP and listens on all interfaces (`*:<port>`). It has no TLS
-and no flag to pick an address. Put it on a private network, or behind a proxy that terminates
-HTTPS (see [Hosting it for a team](#hosting-it-for-a-team)).
+**Network.** The server speaks plain HTTP. It has no TLS. By default it listens on every interface
+(`*:<port>`); `--addr 127.0.0.1` makes it reachable only from the same host, for use behind a proxy
+that terminates HTTPS (see [Hosting it for a team](#hosting-it-for-a-team)).
 
 **Storage.** Files only, no database:
 
@@ -216,7 +220,7 @@ After=network-online.target
 [Service]
 User=prism-link
 EnvironmentFile=/etc/prism-link.env          # PRISM_LINK_TOKEN=...
-ExecStart=/usr/local/bin/prism link-server --dir /var/lib/prism-links --port 8890
+ExecStart=/usr/local/bin/prism link-server --dir /var/lib/prism-links --addr 127.0.0.1 --port 8890
 Restart=on-failure
 
 [Install]
@@ -231,12 +235,13 @@ links.example.internal {
 }
 ```
 
-The server listens on all interfaces, so also block the port from outside with a firewall or
-security group. That way the proxy is the only way in.
+With `--addr 127.0.0.1` the proxy is the only way in. On v1.3.5, which has no `--addr`, block the
+port from outside with a firewall or security group instead.
 
 **Container:** there is no published image. A two-line image built on the release binary is
 enough: copy `prism` in, mount a volume at the store path, pass `PRISM_LINK_TOKEN` as a secret, and
-run `prism link-server --dir /data --port 8890`.
+run `prism link-server --dir /data --port 8890` (in a container, keep the default address so the
+port mapping reaches it).
 
 ## Uploading from CI
 
@@ -249,9 +254,10 @@ Run the upload on merges to the default branch. Each consumer needs three things
 2. **A committed tree.** Push refuses a tree with uncommitted changes to tracked files, because its
    commit would not describe what was uploaded. Untracked files don't block it.
 3. **A branch name.** Push records the branch from `git symbolic-ref`. A detached HEAD, which many
-   CI checkouts use, records no branch. The upload then counts only as the latest upload, and a
-   server that already has `main` for that repository keeps answering from `main`. Pass
-   `--ref main` when your CI checks out a detached commit.
+   CI checkouts use, records no branch: push warns `HEAD is detached, so no branch is recorded`,
+   and the upload counts only as the latest one. A server that already has `main` for that
+   repository keeps answering from `main`, and a commit already stored from `main` keeps its
+   branch (v1.3.6 and later). Pass `--ref main` when your CI checks out a detached commit.
 
 GitHub Actions example (needs a repository secret `PRISM_LINK_TOKEN` and a variable
 `PRISM_LINK_SERVER`):
@@ -351,6 +357,10 @@ everything.
 With `--format json`, the server's sites are in `workspaceConsumers` and the coverage line is in
 `workspaceScope`.
 
+A repository line ending `requires github.com/acme/lib v0.1.0, built against a local checkout when
+uploaded` means that consumer built the library from a local directory, not from the pinned
+version.
+
 ## HTTP API
 
 Every endpoint except `/health` needs `Authorization: Bearer <PRISM_LINK_TOKEN>` when the server
@@ -361,7 +371,9 @@ has a token. A missing or wrong token gets `401`. Requests and responses are JSO
 | `GET /health` | none | `{"service":"prism-link","status":"ok"}` |
 | `POST /link/bundle` | A bundle (up to 512 MB) | `{"stored":"<repo>@<sha>","refs":N,"defs":N}`; `400` for a bundle with no repo or sha, or one marked dirty |
 | `POST /link/consumers` | `{"keys":[...], "excludePackages":["go:github.com/acme/app"], "refs":{"<repo>":"<branch>"}}` (up to 8 MB) | `{"repos":[{"repo","sha","ref","created","requires","sites":[...]}], "searched":N}` |
-| `POST /link/define` | `{"key":"go:github.com/acme/lib#Normalize"}` or `{"name":"Normalize"}` | The repositories that declare it, with each declaration |
+| `POST /link/define` | `{"key":"go:github.com/acme/lib#Normalize"}` or `{"name":"Normalize"}` | `{"repos":[{"repo","sha","ref","defs":[...]}]}`: the repositories that declare it |
+
+An answer with no matches has `"repos": []` (v1.3.5 returned `null`).
 
 `searched` in a consumers answer is the number of repositories examined, so "no uses" (`searched`
 above 0, no repos) can be told apart from "nothing uploaded" (`searched` 0).
@@ -373,9 +385,10 @@ above 0, no repos) can be told apart from "nothing uploaded" (`searched` 0).
   lines of every uploaded repository and upload under any repository name.
 - **No per-repository permissions.** If teams may not see each other's code, run one server per
   access group.
-- **No TLS in the server.** Use HTTPS through a proxy, or keep it on a private network.
-- **No bodies stored**, but each reference keeps its one source line, each declaration its
-  signature, and a requirement met by a local path keeps that absolute path.
+- **No TLS in the server.** Use HTTPS through a proxy (with `--addr 127.0.0.1`), or keep it on a
+  private network.
+- **No bodies stored**, but each reference keeps its one source line, and each declaration its
+  signature. No path from the uploading machine is stored.
 - **The client never takes a token from a repository.** Only `PRISM_LINK_TOKEN` in the environment
   is used.
 - **A dirty tree is refused** on both client and server, so a stored commit always describes what
@@ -392,8 +405,8 @@ above 0, no repos) can be told apart from "nothing uploaded" (`searched` 0).
 - Only the default branch is answered by Prism's commands.
 - One process, no clustering. Parsed bundles are cached in memory and re-read when a file
   changes; run one instance per store directory.
-- Re-uploading the same commit replaces its bundle (the commit's content is the same; only the
-  recorded branch can change).
+- Re-uploading the same commit replaces its bundle. The content is the same; an upload with no
+  branch keeps the branch already recorded for that commit.
 
 ## Troubleshooting
 
@@ -402,7 +415,7 @@ above 0, no repos) can be told apart from "nothing uploaded" (`searched` 0).
 | `workspace push: 401 Unauthorized: missing or wrong bearer token` | `PRISM_LINK_TOKEN` is not set or differs from the server's |
 | `workspace push: the tree has uncommitted changes, so its commit does not describe it; commit first` | A tracked file is modified. Commit, or push from a clean CI checkout |
 | `workspace push: no server; pass --server <url> or set workspace_server in prism.yaml` | Give the server URL (exit 2) |
-| `pushed …@<sha> ()` (empty branch) | Detached HEAD. Add `--ref main` |
+| `HEAD is detached, so no branch is recorded` (and `pushed …@<sha> (no branch)`) | Add `--ref main` to the push in CI |
 | `server … NOT REACHED (401 …)` in an answer | Set `PRISM_LINK_TOKEN` where Prism runs (shell, agent, MCP server) |
 | `server … NOT REACHED (… connection refused)` | Server down, wrong port, or a firewall |
 | A consumer is missing from the answer | It was never uploaded, it uploaded only from a branch other than `main`, or its index had no compiler-resolved references (check `prism index` exit code in its CI) |
@@ -435,6 +448,15 @@ as separate git repositories:
 - **Other commands:** `verify` after a signature change listed the uploaded sites as not checked;
   `test-plan` reported them as a gap; `lookup` from a repository that does not define the symbol
   returned the server's declaration and signature.
+
+The v1.3.6 fixes were then checked the same way:
+
+- An exported bundle has `local: true` and no path or manifest line.
+- `--addr 127.0.0.1` listens only on loopback: the health check answers on `127.0.0.1` and is
+  refused on the machine's LAN address. Without `--addr` the server still listens on every
+  interface.
+- A detached re-upload of a commit stored from `main` warns and is still answered as `main`.
+- Empty answers return `"repos": []`.
 
 Not tested here: languages other than Go through the server (Java, TypeScript and Python record
 cross-repository references the same way), a multi-machine network, HTTPS through a proxy, and

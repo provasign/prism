@@ -674,6 +674,18 @@ func TestWorkspaceServerAnswersForRepositoriesNotCheckedOut(t *testing.T) {
 	if rc := workspaceExport(true, []string{"--server", srv.URL, "--repo", "example.org/team/app"}); rc == 0 {
 		t.Fatal("a dirty tree was pushed")
 	}
+	// A detached HEAD (most CI checkouts) records no branch: push says so,
+	// and the commit already stored from main keeps answering as main.
+	gitIn(t, app, "checkout", "-q", "--", "main.go")
+	gitIn(t, app, "checkout", "-q", "--detach")
+	var rc int
+	stderr := captureStderr(func() {
+		rc = workspaceExport(true, []string{"--server", srv.URL, "--repo", "example.org/team/app"})
+	})
+	if rc != 0 || !strings.Contains(stderr, "HEAD is detached") || !strings.Contains(stderr, "--ref") {
+		t.Fatalf("detached push rc=%d, stderr:\n%s", rc, stderr)
+	}
+	gitIn(t, app, "checkout", "-q", "main")
 
 	// The library author, with the consumer nowhere on disk as far as the
 	// workspace knows.
@@ -1302,5 +1314,16 @@ func TestChangeImpactFallsThroughToLinkedRepository(t *testing.T) {
 	})
 	if !strings.Contains(out, "// repository lib") || !strings.Contains(out, "OnlyInLib") {
 		t.Fatalf("expected the linked repository's answer:\n%s", out)
+	}
+}
+
+func TestLinkServerAddrNeedsAHost(t *testing.T) {
+	dir := t.TempDir()
+	for _, bad := range []string{"", "http://127.0.0.1", "a b"} {
+		var rc int
+		out := captureStderr(func() { rc = cmdLinkServer([]string{"--dir", dir, "--addr", bad}) })
+		if rc != 2 || !strings.Contains(out, "--addr needs a host") {
+			t.Fatalf("--addr %q: rc=%d %s", bad, rc, out)
+		}
 	}
 }
