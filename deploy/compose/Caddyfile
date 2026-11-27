@@ -1,0 +1,16 @@
+{
+	admin off
+	auto_https disable_redirects
+}
+
+# TLS terminates here with the certificate run-e2e.sh generates (its CA is
+# what clients pass as PRISM_LINK_CA). Requests go round-robin to the two
+# replicas; X-Forwarded-For is set, and the replicas run with --trust-proxy.
+https://localhost:443, https://127.0.0.1:443 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy lsa:8890 lsb:8890 {
+		lb_policy round_robin
+		health_uri /health
+		health_interval 5s
+	}
+}

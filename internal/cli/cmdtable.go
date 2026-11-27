@@ -255,12 +255,13 @@ var commandTable = []*command{
                                   discover [--link]         Related checkouts found in manifests
                                   Guide: docs/MULTI_REPO.md
 `},
-	{name: "link-server", flags: "--dir= --s3= --s3-endpoint= --s3-region= --s3-path-style --addr= --port= --tokens= --no-auth --tls-cert= --tls-key= --client-ca= --ops-addr= --audit-log= --rate= --max-conns= --max-bundle-mb= --keep= --refresh= --trust-proxy --name= --upload= --read= --admin --expires= --repo= --sha= --to= --from= --json", run: cmdLinkServer, help: `  prism link-server --dir <store> | --s3 s3://bucket[/prefix] [options]
+	{name: "link-server", flags: "--dir= --s3= --s3-endpoint= --s3-region= --s3-path-style --azure= --azure-path-style --gcs= --gcs-endpoint= --addr= --port= --tokens= --no-auth --tls-cert= --tls-key= --client-ca= --ops-addr= --audit-log= --rate= --max-conns= --max-bundle-mb= --keep= --refresh= --trust-proxy --name= --upload= --read= --admin --expires= --repo= --sha= --to= --from= --json", run: cmdLinkServer, help: `  prism link-server --dir <store> | --s3 s3://… | --azure https://… | --gcs gs://… [options]
                                   Serve uploaded link bundles: who references a symbol across
                                   repositories that are not checked out. Per-token credentials
                                   (--tokens), TLS/mTLS, audit log, rate limits, retention, metrics.
-                                  Storage: --dir, or --s3 with --s3-endpoint, --s3-region,
-                                  --s3-path-style. Credentials: --tokens <file>, else PRISM_LINK_TOKEN;
+                                  Storage: --dir; --s3 (S3 or compatible) with --s3-endpoint,
+                                  --s3-region, --s3-path-style; --azure (Blob Storage) with
+                                  --azure-path-style; --gcs with --gcs-endpoint. Credentials: --tokens <file>, else PRISM_LINK_TOKEN;
                                   --no-auth to serve open. --addr, --port (8890), --tls-cert,
                                   --tls-key, --client-ca (mTLS), --ops-addr (/health, /metrics),
                                   --audit-log (default stdout), --rate, --max-conns, --max-bundle-mb,

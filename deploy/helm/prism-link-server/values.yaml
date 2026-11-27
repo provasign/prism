@@ -1,0 +1,198 @@
+# Prism link server. Guide: docs/LINK_SERVER.md in the Prism repository.
+
+image:
+  repository: ghcr.io/provasign/prism
+  # Empty: the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# More than one replica needs shared storage (storage.mode s3, azure or gcs):
+# the filesystem store is for one host only, and the chart refuses to render
+# otherwise.
+replicaCount: 1
+
+storage:
+  # dir:   a PersistentVolumeClaim mounted at /data (one replica).
+  # s3:    AWS S3 or an S3-compatible store: MinIO, Ceph RGW, NetApp
+  #        StorageGRID, Dell ECS, ... (any number of replicas).
+  # azure: Azure Blob Storage or Azure Stack Hub (any number of replicas).
+  # gcs:   Google Cloud Storage (any number of replicas).
+  mode: dir
+  dir:
+    # Use an existing claim instead of creating one.
+    existingClaim: ""
+    size: 10Gi
+    storageClass: ""
+    accessModes: [ReadWriteOnce]
+  s3:
+    bucket: ""
+    prefix: link
+    # Empty for AWS S3. Set for MinIO, Ceph, versitygw and others, for
+    # example http://minio.storage:9000.
+    endpoint: ""
+    # Empty: AWS_REGION from the environment, else us-east-1.
+    region: ""
+    # Path-style URLs (endpoint/bucket/key); most non-AWS stores need it.
+    pathStyle: false
+    # Static keys from a Secret. Leave empty to use IRSA / web identity: set
+    # serviceAccount.annotations."eks.amazonaws.com/role-arn" and EKS injects
+    # AWS_ROLE_ARN and AWS_WEB_IDENTITY_TOKEN_FILE.
+    existingSecret: ""
+    accessKeyIdKey: AWS_ACCESS_KEY_ID
+    secretAccessKeyKey: AWS_SECRET_ACCESS_KEY
+    # Optional key in the same Secret holding AWS_SESSION_TOKEN.
+    sessionTokenKey: ""
+  azure:
+    # The container URL, with an optional prefix:
+    # https://<account>.blob.core.windows.net/<container>/<prefix>
+    url: ""
+    # The account as the first path segment (Azurite, some private endpoints).
+    pathStyle: false
+    # Credentials, one of:
+    # - a Secret with the account key or a SAS token (keys below);
+    # - AKS workload identity: leave existingSecret empty, set
+    #   serviceAccount.annotations."azure.workload.identity/client-id" and
+    #   podLabels."azure.workload.identity/use": "true" (the webhook injects
+    #   AZURE_FEDERATED_TOKEN_FILE, AZURE_CLIENT_ID, AZURE_TENANT_ID);
+    # - managedIdentity: true for a VM / node managed identity (IMDS).
+    existingSecret: ""
+    accountKeyKey: AZURE_STORAGE_KEY
+    # Set instead of accountKeyKey to use a SAS token from the Secret.
+    sasTokenKey: ""
+    managedIdentity: false
+  gcs:
+    bucket: ""
+    prefix: link
+    # Empty for Google Cloud Storage; set for an emulator or a private endpoint.
+    endpoint: ""
+    # Credentials, one of:
+    # - GKE workload identity: leave existingSecret empty and set
+    #   serviceAccount.annotations."iam.gke.io/gcp-service-account";
+    # - a Secret holding a service-account key file (mounted, and
+    #   GOOGLE_APPLICATION_CREDENTIALS points at it).
+    existingSecret: ""
+    keyFileKey: key.json
+
+auth:
+  tokens:
+    # A Secret holding the token file (create it with
+    # `prism link-server token create --tokens tokens.json ...`, then
+    # `kubectl create secret generic prism-link-tokens --from-file=tokens.json`).
+    # The whole Secret is mounted as a directory, so edits to the Secret reach
+    # running pods without a restart (kubelet sync, then the server re-reads
+    # the file within a second).
+    existingSecret: ""
+    key: tokens.json
+    # Alternatively, the token file's content (helm install --set-file
+    # auth.tokens.file=tokens.json); the chart then creates the Secret. It
+    # holds only hashes, but prefer existingSecret for GitOps.
+    file: ""
+  # Serve with no credentials at all. Only for a closed network.
+  noAuth: false
+
+tls:
+  # HTTPS on the API port. With an Ingress or a mesh doing TLS, leave it off.
+  enabled: false
+  # A kubernetes.io/tls Secret (tls.crt, tls.key). Rotations are picked up
+  # without a restart.
+  existingSecret: ""
+  clientCA:
+    # A Secret holding a CA bundle: requires client certificates (mTLS).
+    existingSecret: ""
+    key: ca.crt
+
+server:
+  port: 8890
+  # Plain-HTTP /health and /metrics, used by the probes and the ServiceMonitor.
+  opsPort: 9890
+  # Commits kept per repository (0 = all); a branch head is never pruned.
+  keep: 20
+  # How often a replica re-reads other replicas' uploads.
+  refresh: 10s
+  # Requests/s per token, burst 2x (0 = off).
+  rate: 50
+  maxConns: 512
+  maxBundleMB: 512
+  # Take client addresses from X-Forwarded-For (set behind an Ingress).
+  trustProxy: false
+  # "-" is stdout (one JSON line per request), "off" disables it.
+  auditLog: "-"
+  extraArgs: []
+
+extraEnv: []
+
+serviceAccount:
+  create: true
+  # Empty: the release's full name.
+  name: ""
+  # For IRSA: eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/prism-link
+  annotations: {}
+  automountServiceAccountToken: false
+
+service:
+  type: ClusterIP
+  port: 8890
+  opsPort: 9890
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: prism-link.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: prism-link-tls
+  #    hosts: [prism-link.example.com]
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+# Rendered only when replicaCount > 1.
+podDisruptionBudget:
+  minAvailable: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# Memory: plan about 5x the size of the repositories' current bundles
+# (prism_link_cached_bytes); docs/LINK_SERVER.md, "Sizing and performance".
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+# GOMEMLIMIT for the Go runtime. "auto": 80% of resources.limits.memory (Mi or
+# Gi), so the heap is collected before the container is killed. "" leaves it
+# unset; any other value is passed as is (for example 3GiB).
+goMemLimit: auto
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []

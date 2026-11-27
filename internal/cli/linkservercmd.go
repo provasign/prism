@@ -20,7 +20,7 @@ import (
 )
 
 const linkServerUsage = `usage:
-  prism link-server --dir <store> | --s3 s3://bucket[/prefix]  [serve options]
+  prism link-server <storage> [serve options]
   prism link-server token create --tokens <file> --name <name> [--upload <repo-glob>]... [--read <repo-glob>]... [--admin] [--expires 90d]
   prism link-server token list   --tokens <file>
   prism link-server token revoke --tokens <file> <id>
@@ -30,8 +30,18 @@ const linkServerUsage = `usage:
   prism link-server backup  <storage> --to <dir>
   prism link-server restore <storage> --from <dir>
 
-storage: --dir <store>, or --s3 s3://bucket[/prefix] [--s3-endpoint URL] [--s3-region R] [--s3-path-style]
-  (S3 credentials: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)
+storage, one of:
+  --dir <store>                                   a local directory (one host)
+  --s3 s3://bucket[/prefix] [--s3-endpoint URL] [--s3-region R] [--s3-path-style]
+      AWS S3 or any S3-compatible store (MinIO, Ceph RGW, StorageGRID, ECS, ...)
+      credentials: AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY[/AWS_SESSION_TOKEN], or AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE
+  --azure https://<account>.blob.core.windows.net/<container>[/prefix] [--azure-path-style]
+      Azure Blob Storage, Azure Stack Hub, Azurite
+      credentials: AZURE_STORAGE_KEY, AZURE_STORAGE_SAS_TOKEN, AZURE_FEDERATED_TOKEN_FILE or AZURE_CLIENT_SECRET
+      (+ AZURE_CLIENT_ID, AZURE_TENANT_ID), or AZURE_USE_MANAGED_IDENTITY=1
+  --gcs gs://bucket[/prefix] [--gcs-endpoint URL]
+      Google Cloud Storage; credentials: GOOGLE_APPLICATION_CREDENTIALS, else the metadata server
+      (GKE workload identity, GCE, Cloud Run); STORAGE_EMULATOR_HOST for an emulator
 
 serve options:
   --tokens <file>        per-token credentials (see token create); else PRISM_LINK_TOKEN, one shared token
@@ -59,13 +69,14 @@ func linkServerUsageErr(msg string) int {
 // storageFlags select the backend.
 type storageFlags struct {
 	dir, s3, s3Endpoint, s3Region string
-	s3PathStyle                   bool
+	azure, gcs, gcsEndpoint       string
+	s3PathStyle, azurePathStyle   bool
 }
 
 // take consumes a storage flag; ok is false when the flag is not one.
 func (sf *storageFlags) take(it *argIter) (handled bool, rc int) {
 	switch it.Flag {
-	case "--dir", "--s3", "--s3-endpoint", "--s3-region":
+	case "--dir", "--s3", "--s3-endpoint", "--s3-region", "--azure", "--gcs", "--gcs-endpoint":
 		v, err := it.value()
 		if err != nil {
 			return true, usageError(err)
@@ -79,25 +90,44 @@ func (sf *storageFlags) take(it *argIter) (handled bool, rc int) {
 			sf.s3Endpoint = v
 		case "--s3-region":
 			sf.s3Region = v
+		case "--azure":
+			sf.azure = v
+		case "--gcs":
+			sf.gcs = v
+		case "--gcs-endpoint":
+			sf.gcsEndpoint = v
 		}
 		return true, -1
 	case "--s3-path-style":
 		sf.s3PathStyle = true
+		return true, -1
+	case "--azure-path-style":
+		sf.azurePathStyle = true
 		return true, -1
 	}
 	return false, -1
 }
 
 func (sf *storageFlags) open(ctx context.Context) (linkserver.Blob, error) {
+	n := 0
+	for _, v := range []string{sf.dir, sf.s3, sf.azure, sf.gcs} {
+		if v != "" {
+			n++
+		}
+	}
 	switch {
-	case sf.dir != "" && sf.s3 != "":
-		return nil, errors.New("pass --dir or --s3, not both")
+	case n > 1:
+		return nil, errors.New("pass one of --dir, --s3, --azure or --gcs")
 	case sf.dir != "":
 		return linkserver.OpenFS(sf.dir)
 	case sf.s3 != "":
 		return linkserver.OpenS3(ctx, linkserver.S3Config{URL: sf.s3, Endpoint: sf.s3Endpoint, Region: sf.s3Region, PathStyle: sf.s3PathStyle})
+	case sf.azure != "":
+		return linkserver.OpenAzure(ctx, linkserver.AzureConfig{URL: sf.azure, PathStyle: sf.azurePathStyle})
+	case sf.gcs != "":
+		return linkserver.OpenGCS(ctx, linkserver.GCSConfig{URL: sf.gcs, Endpoint: sf.gcsEndpoint})
 	}
-	return nil, errors.New("no storage: pass --dir <store> or --s3 s3://bucket[/prefix]")
+	return nil, errors.New("no storage: pass --dir <store>, --s3 s3://bucket[/prefix], --azure https://<account>.blob.core.windows.net/<container>[/prefix] or --gcs gs://bucket[/prefix]")
 }
 
 func cmdLinkServer(args []string) int {

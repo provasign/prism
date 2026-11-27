@@ -1,0 +1,9 @@
+replicaCount: 2
+storage:
+  mode: gcs
+  gcs:
+    bucket: acme-prism-links
+    existingSecret: prism-link-gcs-key
+auth:
+  tokens:
+    existingSecret: prism-link-tokens

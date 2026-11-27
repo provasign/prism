@@ -1,0 +1,16 @@
+replicaCount: 3
+storage:
+  mode: azure
+  azure:
+    url: https://acme.blob.core.windows.net/prism-links/prod
+serviceAccount:
+  annotations:
+    azure.workload.identity/client-id: 00000000-0000-0000-0000-000000000000
+podLabels:
+  azure.workload.identity/use: "true"
+auth:
+  tokens:
+    existingSecret: prism-link-tokens
+resources:
+  limits:
+    memory: 4Gi

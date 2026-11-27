@@ -172,19 +172,22 @@ linked checkout, as `go build` does, not against the version its `go.mod` pins.
 For consumers that are not on the machine at all.
 
 ```
-PRISM_LINK_TOKEN=... prism link-server --dir /var/lib/prism-links --port 8890   # on a shared host
-prism index . && PRISM_LINK_TOKEN=... prism workspace push --server https://links.example  # in each repository's CI
+prism link-server token create --tokens tokens.json --name ci-app --upload github.com/acme/app   # once per pipeline
+prism link-server --dir /var/lib/prism-links --tokens tokens.json --port 8890                    # on a shared host (or --s3, replicas)
+prism index . && PRISM_LINK_TOKEN=... prism workspace push --server https://links.example --ref main  # in each repository's CI
 workspace_server: https://links.example        # in prism.yaml of a repository that should ask it
 ```
 
 A push uploads where the repository references other repositories' symbols, one source line per
-reference, and its declarations' signatures, at its commit. No source bodies. A tree with
-uncommitted changes is refused. Answers from the server are marked with the repository's commit
-and upload date. A repository linked locally is not listed again. A server that cannot be reached,
-or rejects the token, is reported as not covered.
+reference, and its declarations' signatures, at its commit. No source bodies, no machine paths.
+A tree with uncommitted changes is refused. Answers from the server are marked with the
+repository's commit and upload date. A repository linked locally is not listed again. Answers say
+how many uploaded repositories the token may not read. A server that cannot be reached, or
+rejects the token, is reported as not covered.
 
-The full guide covers who runs it, what is uploaded, hosting, CI setup, the HTTP API, the security
-model and troubleshooting: [docs/LINK_SERVER.md](LINK_SERVER.md).
+The full guide covers who runs it, per-token credentials, S3 storage and replicas, TLS and mTLS,
+the audit log, metrics, retention and backup, deployment (container image, Helm chart, compose),
+CI setup, the HTTP API, sizing and troubleshooting: [docs/LINK_SERVER.md](LINK_SERVER.md).
 
 ## Cache clones in detail
 
@@ -210,8 +213,8 @@ agent.
 
 - Repositories that are neither linked nor uploaded are not covered, and the answer says so.
 - Calls between services (HTTP, gRPC, queues), reflection and dependency injection are not found.
-- The link server has one bearer token for reading and writing, answers from each repository's
-  `main` (or `master`, or latest upload), and has no per-repository permissions.
+- The link server answers from each repository's `main` (or `master`, or latest upload), and has
+  no single sign-on yet: operators issue its tokens.
 - Cache clones have no size cap; prune them by hand. A clone has no dependencies installed, so
   TypeScript and Java consumers in a clone are name-matched.
 - The graph explorer shows one repository.

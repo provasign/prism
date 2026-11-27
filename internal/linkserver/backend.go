@@ -228,3 +228,7 @@ func lockFile(ctx context.Context, path string) (func(), error) {
 		}
 	}
 }
+
+// probePrefix is listed at open to check the storage is reachable; nothing
+// is stored under it.
+const probePrefix = ".prism-link-probe/"

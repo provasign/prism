@@ -1,0 +1,20 @@
+{{- if and (eq .Values.storage.mode "dir") (not .Values.storage.dir.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "prism-link-server.pvcName" . }}
+  labels:
+    {{- include "prism-link-server.labels" . | nindent 4 }}
+  annotations:
+    # The store outlives `helm uninstall`; delete the claim by hand.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    {{- toYaml .Values.storage.dir.accessModes | nindent 4 }}
+  {{- with .Values.storage.dir.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.dir.size }}
+{{- end }}

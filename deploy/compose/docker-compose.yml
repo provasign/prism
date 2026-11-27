@@ -1,0 +1,88 @@
+# Prism link server: two replicas on one S3 bucket behind a TLS proxy.
+#
+# This is the laptop end-to-end stack (see README.md and run-e2e.sh). It is
+# also a starting point for a single-host deployment: swap versitygw for your
+# S3 service and the self-signed certificate for a real one.
+#
+#   s3      versitygw, an S3-compatible gateway over a local directory
+#   lsa,lsb prism link-server replicas, same bucket, --refresh 2s
+#   proxy   Caddy: TLS termination, round-robin over lsa and lsb
+#
+# run-e2e.sh writes ${E2E_DIR}/tokens/tokens.json and ${E2E_DIR}/certs before
+# `docker compose up`. Every container and the network are named prism-e2e-*.
+name: prism-e2e
+
+x-link-server: &link-server
+  image: ${PRISM_IMAGE:-prism-e2e-image:dev}
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+    args:
+      VERSION: ${PRISM_VERSION:-dev}
+  depends_on:
+    - s3
+  environment:
+    AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-prism-e2e-key}
+    AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-prism-e2e-secret-0123456789}
+    AWS_REGION: us-east-1
+  # The token file is mounted as a directory, not a single file: `token
+  # create` and `token revoke` replace the file atomically (rename), and a
+  # single-file bind mount would keep showing the old inode.
+  volumes:
+    - ${E2E_DIR:-./.e2e}/tokens:/etc/prism:ro
+  read_only: true
+  user: "65532:65532"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  command:
+    - link-server
+    - --s3
+    - s3://${S3_BUCKET:-prism-e2e}/link
+    - --s3-endpoint
+    - http://s3:7070
+    - --s3-path-style
+    - --tokens
+    - /etc/prism/tokens.json
+    - --ops-addr
+    - :9890
+    - --refresh
+    - 2s
+    - --keep
+    - "${KEEP:-2}"
+    - --trust-proxy
+
+services:
+  s3:
+    image: versity/versitygw:latest
+    container_name: prism-e2e-s3
+    environment:
+      ROOT_ACCESS_KEY: ${S3_ACCESS_KEY:-prism-e2e-key}
+      ROOT_SECRET_KEY: ${S3_SECRET_KEY:-prism-e2e-secret-0123456789}
+    command: ["--port", ":7070", "posix", "/tmp"]
+    ports:
+      - "127.0.0.1:${S3_PORT:-17070}:7070"
+
+  lsa:
+    <<: *link-server
+    container_name: prism-e2e-lsa
+    ports:
+      - "127.0.0.1:${LSA_PORT:-18891}:8890"
+      - "127.0.0.1:${LSA_OPS_PORT:-19891}:9890"
+
+  lsb:
+    <<: *link-server
+    container_name: prism-e2e-lsb
+    ports:
+      - "127.0.0.1:${LSB_PORT:-18892}:8890"
+      - "127.0.0.1:${LSB_OPS_PORT:-19892}:9890"
+
+  proxy:
+    image: caddy:2
+    container_name: prism-e2e-proxy
+    depends_on: [lsa, lsb]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${E2E_DIR:-./.e2e}/certs:/certs:ro
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-18443}:443"

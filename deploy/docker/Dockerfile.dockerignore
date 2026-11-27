@@ -1,0 +1,12 @@
+# Used by BuildKit for deploy/docker/Dockerfile (context: repository root).
+.git
+.github
+.claude
+.prism
+.grove
+**/.prism
+**/.grove
+deploy/compose/.e2e
+dist
+*.test
+/prism

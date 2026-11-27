@@ -1,0 +1,5 @@
+# Must fail to render: three replicas on the filesystem store.
+replicaCount: 3
+auth:
+  tokens:
+    existingSecret: prism-link-tokens

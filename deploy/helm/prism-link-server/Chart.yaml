@@ -1,0 +1,14 @@
+apiVersion: v2
+name: prism-link-server
+description: >-
+  Prism link server: answers "who uses this symbol?" across repositories that
+  are not checked out, from bundles each repository's CI uploads.
+type: application
+version: 0.1.0
+# The image tag used when image.tag is empty. Release images are tagged with
+# the git tag (vX.Y.Z) by .github/workflows/release.yml.
+appVersion: "v1.4.0"
+home: https://github.com/provasign/prism
+sources:
+  - https://github.com/provasign/prism
+keywords: [prism, code-intelligence, link-server]

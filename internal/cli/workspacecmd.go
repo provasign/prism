@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -567,6 +568,14 @@ func workspaceExport(push bool, args []string) int {
 		return rejectUnknownFlag("workspace export", it.Pos[0]) // it takes no positionals
 	}
 	root, _ := cliRoot("")
+	// A bundle names one commit, so it must describe exactly the git
+	// repository that commit belongs to. cliRoot prefers an enclosing
+	// prism.yaml, which for a repository nested in another checkout is the
+	// outer one: push uploaded the outer repository's sites and source lines
+	// under the inner one's name (2026-11-27).
+	if top := gitToplevel("."); top != "" {
+		root = top
+	}
 	// The bundle must describe the tree on disk: bring the index up to date.
 	if err := grove.RefreshIndex(context.Background(), root); err != nil {
 		fmt.Fprintln(os.Stderr, "workspace: index:", err)
@@ -640,4 +649,17 @@ func printUnlinked(root string, missing []workspace.Unlinked) {
 	if len(missing) > show {
 		fmt.Printf("// … and %d more\n", len(missing)-show)
 	}
+}
+
+// gitToplevel is the root of the git work tree containing dir, or "".
+func gitToplevel(dir string) string {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return ""
+	}
+	top := strings.TrimSpace(string(out))
+	if real, err := filepath.EvalSymlinks(top); err == nil {
+		top = real
+	}
+	return top
 }

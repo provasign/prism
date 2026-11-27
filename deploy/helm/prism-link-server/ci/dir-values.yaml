@@ -1,0 +1,4 @@
+# One replica on a PersistentVolumeClaim.
+auth:
+  tokens:
+    existingSecret: prism-link-tokens

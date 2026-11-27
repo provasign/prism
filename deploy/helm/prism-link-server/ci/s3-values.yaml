@@ -1,0 +1,45 @@
+# Three replicas on AWS S3 with IRSA, TLS + mTLS, an Ingress and a ServiceMonitor.
+replicaCount: 3
+storage:
+  mode: s3
+  s3:
+    bucket: acme-prism-link
+    prefix: prod
+    region: eu-west-1
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/prism-link
+auth:
+  tokens:
+    existingSecret: prism-link-tokens
+tls:
+  enabled: true
+  existingSecret: prism-link-tls
+  clientCA:
+    existingSecret: prism-link-client-ca
+server:
+  keep: 50
+  refresh: 5s
+  rate: 20
+  trustProxy: true
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+  hosts:
+    - host: prism-link.acme.internal
+      paths: [{path: /, pathType: Prefix}]
+  tls:
+    - secretName: prism-link-ingress-tls
+      hosts: [prism-link.acme.internal]
+metrics:
+  serviceMonitor:
+    enabled: true
+    labels: {release: kube-prometheus-stack}
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels: {app.kubernetes.io/name: prism-link-server}

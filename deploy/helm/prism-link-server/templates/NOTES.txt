@@ -1,0 +1,31 @@
+Prism link server {{ .Values.image.tag | default .Chart.AppVersion }}: {{ .Values.replicaCount }} replica(s), storage {{ .Values.storage.mode }}
+{{- if eq .Values.storage.mode "s3" }} (s3://{{ .Values.storage.s3.bucket }}/{{ .Values.storage.s3.prefix }}){{ end }}.
+
+API:     {{ if .Values.tls.enabled }}https{{ else }}http{{ end }}://{{ include "prism-link-server.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+Ingress: http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- end }}
+Ops:     http://{{ include "prism-link-server.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.opsPort }}/health and /metrics (keep it cluster-internal)
+
+Check it:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "prism-link-server.fullname" . }} {{ .Values.service.opsPort }}
+  curl -s http://127.0.0.1:{{ .Values.service.opsPort }}/health
+{{- if not .Values.auth.noAuth }}
+
+Tokens live in Secret {{ include "prism-link-server.tokensSecret" . }} (key {{ .Values.auth.tokens.key }}). To add or revoke one,
+edit the file locally and update the Secret; pods pick it up after the kubelet sync, with no restart:
+  prism link-server token create --tokens tokens.json --name ci-app --upload github.com/acme/app
+  kubectl -n {{ .Release.Namespace }} create secret generic {{ include "prism-link-server.tokensSecret" . }} \
+    --from-file={{ .Values.auth.tokens.key }}=tokens.json --dry-run=client -o yaml | kubectl apply -f -
+{{- else }}
+
+WARNING: auth.noAuth=true. Anyone who can reach the service can read and upload bundles.
+{{- end }}
+
+In CI (per consuming repository):
+  prism index . && PRISM_LINK_TOKEN=<its token> prism workspace push --server <URL above>
+In a library: add `workspace_server: <URL>` to prism.yaml and set PRISM_LINK_TOKEN
+{{- if .Values.tls.enabled }} (and PRISM_LINK_CA for a private CA{{ if .Values.tls.clientCA.existingSecret }}, PRISM_LINK_CLIENT_CERT/KEY for mTLS{{ end }})
+{{- end }}.

@@ -1,0 +1,213 @@
+{{- include "prism-link-server.validate" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prism-link-server.fullname" . }}
+  labels:
+    {{- include "prism-link-server.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  {{- if eq .Values.storage.mode "dir" }}
+  # One pod owns the ReadWriteOnce volume: stop the old pod before the new one.
+  strategy:
+    type: Recreate
+  {{- else }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "prism-link-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "prism-link-server.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "prism-link-server.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      # SIGTERM lets requests in flight finish (the server waits up to 30 s).
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: link-server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- include "prism-link-server.args" . | nindent 12 }}
+          env:
+            {{- with include "prism-link-server.goMemLimit" . }}
+            - name: GOMEMLIMIT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if and (eq .Values.storage.mode "s3") .Values.storage.s3.existingSecret }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storage.s3.existingSecret }}
+                  key: {{ .Values.storage.s3.accessKeyIdKey }}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storage.s3.existingSecret }}
+                  key: {{ .Values.storage.s3.secretAccessKeyKey }}
+            {{- with .Values.storage.s3.sessionTokenKey }}
+            - name: AWS_SESSION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.storage.s3.existingSecret }}
+                  key: {{ . }}
+            {{- end }}
+            {{- end }}
+            {{- if eq .Values.storage.mode "azure" }}
+            {{- with .Values.storage.azure }}
+            {{- if .existingSecret }}
+            {{- if .sasTokenKey }}
+            - name: AZURE_STORAGE_SAS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .existingSecret }}
+                  key: {{ .sasTokenKey }}
+            {{- else }}
+            - name: AZURE_STORAGE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .existingSecret }}
+                  key: {{ .accountKeyKey }}
+            {{- end }}
+            {{- else if .managedIdentity }}
+            - name: AZURE_USE_MANAGED_IDENTITY
+              value: "1"
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if and (eq .Values.storage.mode "gcs") .Values.storage.gcs.existingSecret }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/run/gcs/{{ .Values.storage.gcs.keyFileKey }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.port }}
+              protocol: TCP
+            - name: ops
+              containerPort: {{ .Values.server.opsPort }}
+              protocol: TCP
+          # The ops listener is plain HTTP, so probes work under TLS and mTLS.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: ops
+            periodSeconds: 2
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: ops
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: ops
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if eq .Values.storage.mode "dir" }}
+            - name: data
+              mountPath: /data
+            {{- end }}
+            {{- if not .Values.auth.noAuth }}
+            # A directory mount, not subPath: Secret updates reach the pod.
+            - name: tokens
+              mountPath: /etc/prism/tokens
+              readOnly: true
+            {{- end }}
+            {{- if and (eq .Values.storage.mode "gcs") .Values.storage.gcs.existingSecret }}
+            - name: gcs-key
+              mountPath: /var/run/gcs
+              readOnly: true
+            {{- end }}
+            {{- if .Values.tls.enabled }}
+            - name: tls
+              mountPath: /etc/prism/tls
+              readOnly: true
+            {{- if .Values.tls.clientCA.existingSecret }}
+            - name: client-ca
+              mountPath: /etc/prism/client-ca
+              readOnly: true
+            {{- end }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        {{- if eq .Values.storage.mode "dir" }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "prism-link-server.pvcName" . }}
+        {{- end }}
+        {{- if not .Values.auth.noAuth }}
+        - name: tokens
+          secret:
+            secretName: {{ include "prism-link-server.tokensSecret" . }}
+            items:
+              - key: {{ .Values.auth.tokens.key }}
+                path: {{ .Values.auth.tokens.key }}
+        {{- end }}
+        {{- if and (eq .Values.storage.mode "gcs") .Values.storage.gcs.existingSecret }}
+        - name: gcs-key
+          secret:
+            secretName: {{ .Values.storage.gcs.existingSecret }}
+        {{- end }}
+        {{- if .Values.tls.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ .Values.tls.existingSecret }}
+        {{- if .Values.tls.clientCA.existingSecret }}
+        - name: client-ca
+          secret:
+            secretName: {{ .Values.tls.clientCA.existingSecret }}
+        {{- end }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

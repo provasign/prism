@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"github.com/provasign/prism/internal/testtool"
 	"net/http/httptest"
 	"os"
@@ -1376,5 +1377,42 @@ func TestLinkServerOperatorCommands(t *testing.T) {
 	}
 	if rc := Run([]string{"link-server", "--dir", store}); rc != 2 {
 		t.Fatalf("serving with no credentials: rc=%d, want 2 (usage)", rc)
+	}
+}
+
+// A repository nested inside another checkout that has a prism.yaml: push
+// describes the nested repository, never the outer one.
+func TestWorkspaceExportOfANestedRepository(t *testing.T) {
+	testtool.Require(t, "git")
+	testtool.Require(t, "go")
+	base, _ := filepath.EvalSymlinks(t.TempDir())
+	outer, inner := filepath.Join(base, "outer"), filepath.Join(base, "outer", "nested", "app")
+	writeCLIFile(t, base, "outer/prism.yaml", "version: 2\n")
+	writeCLIFile(t, base, "outer/go.mod", "module example.com/outer\n\ngo 1.22\n")
+	writeCLIFile(t, base, "outer/outer.go", "package outer\n\nimport \"example.com/dep\"\n\nfunc O() { dep.F() }\n")
+	writeCLIFile(t, base, "outer/nested/app/go.mod", "module example.com/app\n\ngo 1.22\n")
+	writeCLIFile(t, base, "outer/nested/app/main.go", "package main\n\nfunc main() {}\n")
+	for _, d := range []string{outer, inner} {
+		gitIn(t, d, "init", "-q", "-b", "main")
+		gitIn(t, d, "add", "-A")
+		gitIn(t, d, "commit", "-q", "-m", "init")
+	}
+	sha, err := exec.Command("git", "-C", inner, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	innerSHA := strings.TrimSpace(string(sha))
+	t.Chdir(inner)
+	out := filepath.Join(base, "bundle.json")
+	if rc := workspaceExport(false, []string{"-o", out, "--repo", "example.org/app"}); rc != 0 {
+		t.Fatalf("export rc=%d", rc)
+	}
+	data, _ := os.ReadFile(out)
+	var b linkserver.Bundle
+	if err := json.Unmarshal(data, &b); err != nil {
+		t.Fatal(err)
+	}
+	if b.SHA != innerSHA || strings.Contains(string(data), "outer.go") || strings.Contains(string(data), "example.com/outer") {
+		t.Fatalf("the nested repository's bundle describes the outer one: sha %s (want %s)\n%s", b.SHA, innerSHA, data)
 	}
 }

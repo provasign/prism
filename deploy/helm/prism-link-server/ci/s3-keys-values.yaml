@@ -1,0 +1,12 @@
+# Two replicas on an S3-compatible store (MinIO, Ceph, ...) with static keys from a Secret.
+replicaCount: 2
+storage:
+  mode: s3
+  s3:
+    bucket: prism-link
+    endpoint: http://minio.storage.svc:9000
+    pathStyle: true
+    existingSecret: prism-link-s3
+auth:
+  tokens:
+    existingSecret: prism-link-tokens

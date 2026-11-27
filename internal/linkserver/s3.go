@@ -75,7 +75,7 @@ func OpenS3(ctx context.Context, c S3Config) (*S3Blob, error) {
 	}
 	b := &S3Blob{bucket: u.Host, prefix: prefix, region: region, base: base, pathStyle: c.PathStyle, creds: creds,
 		client: &http.Client{Timeout: 2 * time.Minute}}
-	if _, err := b.List(ctx, "\x00probe"); err != nil {
+	if _, err := b.List(ctx, probePrefix); err != nil {
 		return nil, fmt.Errorf("S3 bucket %s: %w", u.Host, err)
 	}
 	return b, nil
