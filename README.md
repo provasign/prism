@@ -2,7 +2,35 @@
 
 **Semantic change intelligence for coding agents.** Prism turns indexed repository structure into task-shaped answers: potential change-impact sites, source context, and a review of an agent-authored diff.
 
-Prism embeds the [Grove](https://github.com/provasign/grove) code graph. It runs locally as one binary, exposes CLI and MCP interfaces, and requires no hosted service or API token.
+Prism embeds the [Grove](https://github.com/provasign/grove) code graph. It runs locally as one binary, exposes CLI and MCP interfaces, and requires no hosted service or API token. For organizations, the optional **link server**, which you host, extends every answer across all your repositories.
+
+## New in v1.4: the link server — change impact across your whole organization
+
+A change to a shared library reaches services you don't have checked out. The link server closes that gap:
+
+1. **Each consumer's CI uploads a link bundle** on merge: where the repository uses other repositories' symbols (compiler-resolved, one line each) and its own signatures. No function bodies, no machine paths.
+2. **The server keeps them**, on one host or as replicas on shared storage.
+3. **Developers and coding agents ask it** from the library: `change-impact`, `verify`, `test-plan` and `lookup` list every readable consumer site next to the local callers. Each site is pinned to the consumer's commit, and the answer says what it could not cover.
+
+![Prism link server architecture: consumer repositories' CI uploads link bundles with per-repository tokens; the self-hosted link server runs as replicas behind HTTPS on AWS S3, Azure Blob Storage, Google Cloud Storage, a private data centre's S3-compatible store or a local disk; developers and agents ask it from the library and get every readable consumer site with coverage](docs/images/link-server-architecture.svg)
+
+| | |
+|---|---|
+| **Access control** | Per-token rights: CI tokens upload one repository, read tokens see only their teams' repositories, admin tokens manage the store. Expiry and instant revocation |
+| **Storage** | AWS S3 · Azure Blob Storage · Google Cloud Storage · S3-compatible stores in your data centre (MinIO, Ceph, …) · a local disk |
+| **Scale** | Any number of replicas on shared storage; p99 under 25 ms at 1,000 repositories and about a million references |
+| **Security** | TLS and mTLS, an audit log of every request, rate limits, no secrets or source bodies stored |
+| **Operations** | Container image and Helm chart, Prometheus metrics, retention, integrity check, backup and restore |
+| **Languages** | Go, Java, TypeScript / JavaScript, Python |
+
+```sh
+prism link-server token create --tokens tokens.json --name ci-payments --upload github.com/acme/payments-api
+prism link-server --s3 s3://acme-prism-links/prod --tokens tokens.json --tls-cert tls.pem --tls-key tls-key.pem
+prism workspace push --server https://links.acme.internal --ref main      # in each consumer's CI
+echo 'workspace_server: https://links.acme.internal' >> prism.yaml       # in the library; then change-impact as usual
+```
+
+Guide: [docs/LINK_SERVER.md](docs/LINK_SERVER.md), which covers deployment on AWS, Azure, Google Cloud and in private data centres, credentials, CI setup, the HTTP API, sizing and what was tested.
 
 ## Why Prism
 
@@ -277,7 +305,7 @@ prism lookup app.Handler --repo app    # answer from one linked repository
 prism workspace discover               # related checkouts found in go.mod, package.json, pom.xml, ...
 ```
 
-Each repository keeps its own index; links are followed when a question is asked. `lookup`, `read`, `search`, `change-impact`, `verify` and `test-plan` cover linked repositories, and every answer says which repositories it covered and how (compiler-resolved, or name-matched only). A link written in a cloned `prism.yaml` takes effect only after you confirm it on your machine, and an untrusted repository links nothing. Consumers that are not checked out can be covered through a link server their CI uploads to. Guides: [docs/MULTI_REPO.md](docs/MULTI_REPO.md) for linking, and [docs/LINK_SERVER.md](docs/LINK_SERVER.md) for running a link server.
+Each repository keeps its own index; links are followed when a question is asked. `lookup`, `read`, `search`, `change-impact`, `verify` and `test-plan` cover linked repositories, and every answer says which repositories it covered and how (compiler-resolved, or name-matched only). A link written in a cloned `prism.yaml` takes effect only after you confirm it on your machine, and an untrusted repository links nothing. Consumers that are not checked out are covered by the [link server](#new-in-v14-the-link-server--change-impact-across-your-whole-organization), which their CI uploads to. Guides: [docs/MULTI_REPO.md](docs/MULTI_REPO.md) for linking, and [docs/LINK_SERVER.md](docs/LINK_SERVER.md) for running a link server.
 
 ## Graph explorer
 
