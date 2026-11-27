@@ -450,13 +450,6 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 		}
 	}
 
-	leafOfKey := func(key string) string {
-		name := key[strings.IndexByte(key, '#')+1:]
-		if i := strings.LastIndexByte(name, '.'); i >= 0 {
-			name = name[i+1:]
-		}
-		return name
-	}
 	files := map[string][]string{}
 	lineOf := func(file string, n int) (string, bool) {
 		src, ok := files[file]
@@ -485,10 +478,11 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 			// A row is a site only while the line on disk still names the
 			// symbol: after an edit the index's coordinates point at
 			// whatever now lives there.
-			if !ok || !strings.Contains(text, leafOfKey(ref.Key)) {
+			if !ok || !strings.Contains(text, linkserver.KeyLeaf(ref.Key)) {
 				dropped++
 				continue
 			}
+			text = linkserver.CleanLine(text, linkserver.KeyLeaf(ref.Key))
 			at := fmt.Sprintf("%s/%s:%d", rel, ref.File, ref.Line)
 			if ref.Col > 0 {
 				at += fmt.Sprintf(":%d", ref.Col)
@@ -545,6 +539,7 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 			}
 			shown[id] = true
 			text, _ := lineOf(im.File, im.Line)
+			text = linkserver.CleanLine(text, "")
 			tag := ""
 			if isTestFilePath(im.File) {
 				tag = "  [test]"
@@ -571,8 +566,9 @@ func (h *Handler) rootConsumers(ctx context.Context, root workspace.Root, target
 			if isTestFilePath(hit.File) {
 				tag += "  [test]"
 			}
-			matchRows = append(matchRows, fmt.Sprintf("  %s/%s:%d: %s%s", rel, hit.File, hit.Line, strings.TrimSpace(hit.Text), tag))
-			sites = append(sites, LinkedSite{File: hit.File, Line: hit.Line, Text: strings.TrimSpace(hit.Text), Evidence: "name-match", Test: isTestFilePath(hit.File)})
+			hitText := linkserver.CleanLine(strings.TrimSpace(hit.Text), "")
+			matchRows = append(matchRows, fmt.Sprintf("  %s/%s:%d: %s%s", rel, hit.File, hit.Line, hitText, tag))
+			sites = append(sites, LinkedSite{File: hit.File, Line: hit.Line, Text: hitText, Evidence: "name-match", Test: isTestFilePath(hit.File)})
 		}
 		if total > len(hits) {
 			more += total - len(hits)
@@ -828,6 +824,16 @@ func (h *Handler) serverConsumers(ctx context.Context, server string, keys []str
 		return nil, nil, fmt.Sprintf("server %s NOT REACHED (%v): repositories only it knows are not covered", server, err), 0, 0, false
 	}
 	for _, repo := range resp.Repos {
+		// Everything here was uploaded by another repository's CI: clean
+		// it before it is printed (the server cleans too; an older or
+		// foreign server may not).
+		repo.Repo, repo.SHA, repo.Ref = linkserver.CleanName(repo.Repo, 256), linkserver.CleanName(repo.SHA, 128), linkserver.CleanName(repo.Ref, 256)
+		repo.Requires, repo.Created = linkserver.CleanName(repo.Requires, 256), linkserver.CleanName(repo.Created, 64)
+		for i := range repo.Sites {
+			st := &repo.Sites[i]
+			st.Text = linkserver.CleanLine(st.Text, linkserver.KeyLeaf(st.Key))
+			st.File, st.From = linkserver.CleanName(st.File, 1024), linkserver.CleanName(st.From, 512)
+		}
 		sha := repo.SHA
 		if len(sha) > 8 {
 			sha = sha[:8]

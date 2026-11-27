@@ -27,7 +27,7 @@ type ServerOptions struct {
 	Log *slog.Logger
 	// Rate is requests per second per credential (burst 2x); 0 disables.
 	Rate float64
-	// MaxBundleBytes caps an upload; 0 means 512 MiB.
+	// MaxBundleBytes caps an upload; 0 means 64 MiB.
 	MaxBundleBytes int64
 	// TrustProxy takes the client address from X-Forwarded-For.
 	TrustProxy bool
@@ -48,7 +48,7 @@ func NewServer(s *Store, o ServerOptions) *Server {
 		o.Auth = OpenAuth{}
 	}
 	if o.MaxBundleBytes <= 0 {
-		o.MaxBundleBytes = 512 << 20
+		o.MaxBundleBytes = 64 << 20
 	}
 	if o.Log == nil {
 		o.Log = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -291,7 +291,7 @@ func (srv *Server) handleUpload(w http.ResponseWriter, r *http.Request, c *call)
 // isClientError tells a bad bundle (400) from a storage failure (500).
 func isClientError(err error) bool {
 	msg := err.Error()
-	for _, s := range []string{"bundle needs", "uncommitted changes", "newer than this server", "stored under the same key"} {
+	for _, s := range []string{"bundle needs", "uncommitted changes", "newer than this server", "stored under the same key", "bundle field"} {
 		if strings.Contains(msg, s) {
 			return true
 		}

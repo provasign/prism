@@ -28,7 +28,7 @@ var overLimit = map[string]int{
 	"internal/core.Handler.impactOtherMentions":           165,
 	"internal/core.Handler.partitionLocalFamiliesCapped":  189,
 	"internal/core.Handler.readRanges":                    174,
-	"internal/core.Handler.rootConsumers":                 185,
+	"internal/core.Handler.rootConsumers":                 181,
 	"internal/core.Handler.toolQueryScoped":               205,
 	"internal/core.Handler.toolTestPlan":                  186,
 	"internal/core.fitTextPresentation":                   203,

@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"github.com/provasign/prism/internal/testtool"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/provasign/prism/internal/core"
 	"github.com/provasign/prism/internal/linkserver"
+	"github.com/provasign/prism/internal/trust"
 	"github.com/provasign/prism/internal/workspace"
 )
 
@@ -621,6 +623,17 @@ func TestWorkspaceCacheClone(t *testing.T) {
 	t.Chdir(app)
 	if rc := workspaceAdd([]string{"file://" + upstream + "@main"}); rc != 0 {
 		t.Fatalf("workspace add <url> rc=%d", rc)
+	}
+	// Fetched from a URL: indexed without its build tools unless --trusted,
+	// and the decision is recorded for the clone's directory.
+	if links := workspace.CacheLinks(app); len(links) == 0 {
+		t.Fatal("no cache link recorded")
+	} else {
+		for _, l := range links {
+			if d := trust.For(l.Path); !d.Untrusted || l.Trusted {
+				t.Fatalf("cache clone %s is trusted by default: %v %+v", l.Path, d, l)
+			}
+		}
 	}
 	yaml, _ := os.ReadFile(filepath.Join(app, "prism.yaml"))
 	if strings.Contains(string(yaml), "workspace_repo") {
@@ -1512,5 +1525,48 @@ func TestMapShowsEdgesToLinkedRepositories(t *testing.T) {
 	t.Chdir(solo)
 	if out := captureStdout(func() { cmdMap(nil) }); strings.Contains(out, "other repositories") {
 		t.Fatalf("a repository with no workspace lists other repositories:\n%s", out)
+	}
+}
+
+// A link server that does not clean what it returns (an older or foreign
+// one): the client removes control characters and caps lines before an
+// agent or a terminal sees them.
+func TestServerAnswersAreCleanedBeforePrinting(t *testing.T) {
+	testtool.Require(t, "go")
+	long := strings.Repeat("x", 200000)
+	hostile := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/link/consumers" {
+			_, _ = w.Write([]byte(`{"repos":[]}`))
+			return
+		}
+		resp := map[string]any{"searched": 1, "repos": []any{map[string]any{
+			"repo": "example.org/\x1b[2Jevil", "sha": "e1", "ref": "main", "created": "2026-11-27T00:00:00Z",
+			"sites": []any{
+				map[string]any{"key": "go:example.com/lib#Helper", "file": "a.go", "line": 1, "from": "F", "text": "\x1b]0;PWNED\x07lib.Helper()"},
+				map[string]any{"key": "go:example.com/lib#Helper", "file": "b.go", "line": 2, "from": "G", "text": long + "lib.Helper()"},
+			}}}}
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer hostile.Close()
+	base, _ := filepath.EvalSymlinks(t.TempDir())
+	lib := filepath.Join(base, "lib")
+	writeCLIFile(t, base, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, base, "lib/lib.go", "package lib\n\nfunc Helper() int { return 1 }\n")
+	writeCLIFile(t, base, "lib/prism.yaml", "version: 2\nworkspace_server: "+hostile.URL+"\n")
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index rc=%d", rc)
+	}
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdChangeImpact([]string{"Helper", "--format", "text"}) })
+	if strings.Contains(out, "\x1b") || strings.Contains(out, "\x07") {
+		t.Fatalf("control characters reached the output: %q", out)
+	}
+	if len(out) > 20000 {
+		t.Fatalf("a 200,000-character uploaded line was printed: %d bytes", len(out))
+	}
+	for _, want := range []string{"a.go:1", "b.go:2", "lib.Helper()", "2 site(s) in 1 of 1 uploaded repositories"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
 	}
 }

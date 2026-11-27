@@ -269,6 +269,9 @@ func (s *Store) PutContext(ctx context.Context, b Bundle) error {
 	if b.Format > FormatVersion {
 		return fmt.Errorf("bundle format %d is newer than this server accepts (up to %d); upgrade the link server", b.Format, FormatVersion)
 	}
+	if err := b.validate(); err != nil {
+		return err
+	}
 	key := bundleKey(b.Repo, b.SHA)
 	if b.Ref == "" {
 		// A detached-HEAD upload (most CI checkouts) of a commit already

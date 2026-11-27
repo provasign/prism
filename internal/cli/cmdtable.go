@@ -244,12 +244,13 @@ var commandTable = []*command{
                                   --format text|json  Output format (default: text)
                                   Construct runner commands; judge broader validation from gaps
 `},
-	{name: "workspace", flags: "--id= --no-index -o= --output= --server= --repo= --ref= --link", run: cmdWorkspace, help: `  prism workspace                Linked repositories: path, branch, commit, index, how linked
+	{name: "workspace", flags: "--id= --no-index --trusted -o= --output= --server= --repo= --ref= --link", run: cmdWorkspace, help: `  prism workspace                Linked repositories: path, branch, commit, index, how linked
                                   add <path>... [--id <name>] [--no-index]
                                                             Link local checkouts: written to prism.yaml, made
                                                             visible from both, and indexed if never indexed
                                   add <git-url>[@ref]       Fetch a repository that is not checked out into a
-                                                            read-only cache at that commit, index it, link it
+                                                            read-only cache at that commit, index it, link it;
+                                                            its build tools do not run unless --trusted
                                   fetch                     Re-resolve cache clones' branches
                                   prune                     Delete cache clones nothing links to
                                   export [-o|--output <file>]  Write this repository's link bundle (no source bodies)

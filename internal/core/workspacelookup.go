@@ -222,9 +222,9 @@ func (h *Handler) serverDeclarations(ctx context.Context, q lookupQuery) string 
 				parts = append(parts, "…")
 				break
 			}
-			at := fmt.Sprintf("%s@%s %s:%d", r.Repo, sha, d.File, d.Line)
+			at := fmt.Sprintf("%s@%s %s:%d", linkserver.CleanName(r.Repo, 256), linkserver.CleanName(sha, 128), linkserver.CleanName(d.File, 1024), d.Line)
 			if d.Signature != "" {
-				at += " `" + d.Signature + "`"
+				at += " `" + linkserver.CleanLine(d.Signature, "") + "`"
 			}
 			parts = append(parts, at)
 		}

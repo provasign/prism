@@ -37,6 +37,9 @@ type CacheLink struct {
 	// Kind is "" for a cache clone and "reverse" for the other end of a
 	// link a `prism workspace` command made from Path's prism.yaml.
 	Kind string `json:"kind,omitempty"`
+	// Trusted: the clone was added with --trusted, so its build tools run
+	// while it is indexed (workspace fetch keeps the choice).
+	Trusted bool `json:"trusted,omitempty"`
 }
 
 const kindReverse = "reverse"

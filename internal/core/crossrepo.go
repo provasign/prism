@@ -287,6 +287,7 @@ func (h *Handler) crossFromServer(ctx context.Context, server string, self links
 			unreadable = resp.Unreadable
 		}
 		for _, r := range resp.Repos {
+			r.Repo, r.SHA, r.Ref = linkserver.CleanName(r.Repo, 256), linkserver.CleanName(r.SHA, 128), linkserver.CleanName(r.Ref, 256)
 			id := r.Repo + "@" + shortCommit(r.SHA)
 			if !seen[id] {
 				seen[id] = true
@@ -298,8 +299,9 @@ func (h *Handler) crossFromServer(ctx context.Context, server string, self links
 					continue
 				}
 				sites++
-				acc.add(CrossEnd{Repo: id, Component: view.ComponentOf(s.File, depth)}, CrossEnd{Component: view.ComponentOf(d.File, depth)},
-					"used by", s.Key, CrossSite{File: s.File, Line: s.Line, Text: s.Text, Symbol: keySymbol(s.Key)})
+				file := linkserver.CleanName(s.File, 1024)
+				acc.add(CrossEnd{Repo: id, Component: view.ComponentOf(file, depth)}, CrossEnd{Component: view.ComponentOf(d.File, depth)},
+					"used by", s.Key, CrossSite{File: file, Line: s.Line, Text: linkserver.CleanLine(s.Text, linkserver.KeyLeaf(s.Key)), Symbol: keySymbol(s.Key)})
 			}
 		}
 	}

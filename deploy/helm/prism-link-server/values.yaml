@@ -115,7 +115,7 @@ server:
   # Requests/s per token, burst 2x (0 = off).
   rate: 50
   maxConns: 512
-  maxBundleMB: 512
+  maxBundleMB: 64
   # Take client addresses from X-Forwarded-For (set behind an Ingress).
   trustProxy: false
   # "-" is stdout (one JSON line per request), "off" disables it.

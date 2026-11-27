@@ -204,15 +204,24 @@ CI setup, the HTTP API, sizing and troubleshooting: [docs/LINK_SERVER.md](LINK_S
 `prism workspace add <git-url>[@ref]` clones into `$PRISM_CACHE_DIR`, else the user cache directory
 (`~/Library/Caches/prism/repos` on macOS, `~/.cache/prism/repos` on Linux). It checks out the commit
 `ref` names (a tag, branch or commit; the default branch when omitted), indexes it once per commit,
-and links it read-only. Any URL git accepts works, including `file://` and SSH. Git runs with your
+and links it read-only.
+
+A fetched repository is code from elsewhere, so it is indexed **untrusted** by default. Its build
+tools do not run: no Maven or Gradle build, no TypeScript or rust-analyzer build scripts, no pinned
+Go toolchain, and no Go module downloads (`GOPROXY=off`). The cost is precision: a Go consumer in a
+clone is compiler-resolved only if its modules are already in your module cache; otherwise its
+sites are name-matched and labelled so. `prism workspace add <url> --trusted` lets the build
+tools run for a repository you trust. The choice is recorded for the clone, and `workspace fetch`
+keeps it. Any URL git accepts works, including `file://` and SSH. Git runs with your
 own credentials and never prompts, so a missing credential fails the command instead of hanging an
 agent.
 
 - `prism workspace fetch` re-resolves a branch to its newest commit. A tag or commit stays put.
 - `prism workspace remove <id>` unlinks; the clone stays until `prism workspace prune`.
-- A clone's answers are compiler-resolved only if its build can run there. A Go consumer whose
-  modules can be downloaded (from the module proxy, or a private one through `GOPROXY` and your
-  credentials) is resolved by the compiler. One that depends on a library through a local
+- A clone's answers are compiler-resolved only if its build can run there. Added with `--trusted`,
+  a Go consumer whose modules can be downloaded (from the module proxy, or a private one through
+  `GOPROXY` and your credentials) is resolved by the compiler; untrusted (the default), only if its
+  modules are already in your module cache. One that depends on a library through a local
   `replace => ../lib` cannot build in the cache, so its sites are name-matched, and the answer says
   "NAME-MATCHED ONLY". No `npm install` or Maven build is run in a clone, so TypeScript and Java
   consumers there are name-matched.

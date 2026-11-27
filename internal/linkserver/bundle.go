@@ -124,7 +124,7 @@ func Build(ctx context.Context, root, repo, ref string) (Bundle, error) {
 		}
 		s := Site{Key: ref.Key, File: ref.File, From: ref.From, Line: ref.Line, Col: ref.Col, Test: isTestPath(ref.File)}
 		if ref.Line >= 1 && ref.Line <= len(src) {
-			s.Text = strings.TrimSpace(strings.TrimRight(src[ref.Line-1], "\r"))
+			s.Text = CleanLine(strings.TrimSpace(strings.TrimRight(src[ref.Line-1], "\r")), keyLeaf(ref.Key))
 		}
 		b.Refs = append(b.Refs, s)
 	}
@@ -135,7 +135,7 @@ func Build(ctx context.Context, root, repo, ref string) (Bundle, error) {
 	for _, s := range syms {
 		if key, ok := groveeng.SymbolKey(root, s); ok {
 			b.Defs = append(b.Defs, Def{Key: key, Kind: string(s.Kind), Name: s.QualifiedName,
-				Signature: s.Signature, File: s.FilePath, Line: s.Span.Start})
+				Signature: CleanLine(s.Signature, ""), File: s.FilePath, Line: s.Span.Start})
 		}
 	}
 	sort.SliceStable(b.Defs, func(i, j int) bool { return b.Defs[i].Key < b.Defs[j].Key })

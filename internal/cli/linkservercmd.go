@@ -52,7 +52,7 @@ serve options:
   --audit-log <file|->   one JSON line per request (default: stdout)
   --rate N               requests/s per token, burst 2N (default 50; 0 = off)
   --max-conns N          concurrent connections (default 512)
-  --max-bundle-mb N      upload size limit (default 512)
+  --max-bundle-mb N      upload size limit (default 64)
   --keep N               commits kept per repository (default 20; 0 = keep all)
   --refresh D            re-read other replicas' uploads every D (default 10s)
   --trust-proxy          take client addresses from X-Forwarded-For
@@ -149,7 +149,7 @@ func cmdLinkServer(args []string) int {
 	var lc linkserver.ListenConfig
 	tokens, auditPath := "", "-"
 	noAuth, trustProxy, singleReplica := false, false, false
-	rate, keep, maxMB := 50.0, linkserver.DefaultKeep, 512
+	rate, keep, maxMB := 50.0, linkserver.DefaultKeep, 64
 	refresh := 10 * time.Second
 	it := newArgIter("link-server", args)
 	for it.next() {

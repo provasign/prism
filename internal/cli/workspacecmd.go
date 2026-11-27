@@ -14,6 +14,7 @@ import (
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/linkserver"
+	"github.com/provasign/prism/internal/trust"
 	"github.com/provasign/prism/internal/workspace"
 )
 
@@ -99,12 +100,14 @@ func refHead(s workspace.Status) string {
 
 func workspaceAdd(args []string) int {
 	var id string
-	index := true
+	index, trusted := true, false
 	it := newArgIter("workspace add", args)
 	for it.next() {
 		switch {
 		case it.Flag == "--no-index":
 			index = false
+		case it.Flag == "--trusted":
+			trusted = true
 		case it.Flag == "--id":
 			v, ok := it.rawValue()
 			if !ok {
@@ -119,12 +122,12 @@ func workspaceAdd(args []string) int {
 	}
 	targets := it.Pos
 	if len(targets) == 0 || (id != "" && len(targets) > 1) {
-		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path|git-url[@ref]>... [--id <name>] [--no-index]   (--id names a single repository)")
+		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path|git-url[@ref]>... [--id <name>] [--no-index] [--trusted]   (--id names a single repository; --trusted lets a fetched repository's build tools run while indexing it)")
 		return 2
 	}
 	rc := 0
 	for _, target := range targets {
-		if r := workspaceAddOne(target, id, index); r != 0 {
+		if r := workspaceAddOne(target, id, index, trusted); r != 0 {
 			rc = r
 		}
 	}
@@ -145,14 +148,14 @@ func ensureLinkedIndex(dir string) {
 	}
 }
 
-func workspaceAddOne(target, id string, index bool) int {
+func workspaceAddOne(target, id string, index, trusted bool) int {
 	if target == "" {
 		fmt.Fprintln(os.Stderr, "usage: prism workspace add <path> [--id <name>]")
 		return 2
 	}
 	root, _ := cliRoot("")
 	if workspace.IsGitURL(target) {
-		return workspaceAddClone(root, target, id)
+		return workspaceAddClone(root, target, id, trusted)
 	}
 	abs := mustAbs(target)
 	if fi, err := os.Stat(abs); err != nil || !fi.IsDir() {
@@ -467,12 +470,12 @@ func refreshSteering(root string) {
 
 // workspaceAddClone fetches a remote repository at a ref into the cache,
 // indexes it, and links it to this repository on this machine only.
-func workspaceAddClone(root, target, id string) int {
+func workspaceAddClone(root, target, id string, trusted bool) int {
 	repo, ref := workspace.SplitURLRef(target)
 	if id == "" {
 		id = strings.TrimSuffix(filepath.Base(strings.TrimRight(repo, "/")), ".git")
 	}
-	link, err := fetchAndIndexClone(repo, ref)
+	link, err := fetchAndIndexClone(repo, ref, trusted)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "workspace add:", err)
 		return 1
@@ -483,13 +486,28 @@ func workspaceAddClone(root, target, id string) int {
 		return 1
 	}
 	fmt.Printf("linked %s -> %s (cache clone at %s, read-only reference)\n", id, link.Path, shortSHA(link.SHA))
+	if !trusted {
+		fmt.Println("  indexed without running its build tools (a repository fetched from a URL is untrusted); answers about it may be name-matched. --trusted allows them.")
+	}
 	return 0
 }
 
-func fetchAndIndexClone(repo, ref string) (workspace.CacheLink, error) {
+// A fetched repository is indexed without running its build tools (Maven,
+// Gradle, TypeScript, rust-analyzer build scripts, a pinned Go toolchain,
+// module downloads) unless trusted: it is code from elsewhere, and an
+// agent can be talked into adding a URL. The decision is recorded for the
+// clone's directory, so every later refresh of it follows it too.
+func fetchAndIndexClone(repo, ref string, trusted bool) (workspace.CacheLink, error) {
 	dir, sha, err := workspace.FetchClone(repo, ref)
 	if err != nil {
 		return workspace.CacheLink{}, err
+	}
+	state := trust.Untrusted
+	if trusted {
+		state = trust.Trusted
+	}
+	if err := trust.Set(dir, state); err != nil {
+		return workspace.CacheLink{}, fmt.Errorf("record trust for %s: %w", dir, err)
 	}
 	if _, statErr := os.Stat(filepath.Join(dir, ".grove", "grove.db")); statErr != nil {
 		fmt.Fprintf(os.Stderr, "indexing %s at %s (once per commit)\n", repo, shortSHA(sha))
@@ -497,7 +515,7 @@ func fetchAndIndexClone(repo, ref string) (workspace.CacheLink, error) {
 			return workspace.CacheLink{}, fmt.Errorf("index %s: %w", dir, err)
 		}
 	}
-	return workspace.CacheLink{URL: repo, Ref: ref, SHA: sha, Path: dir}, nil
+	return workspace.CacheLink{URL: repo, Ref: ref, SHA: sha, Path: dir, Trusted: trusted}, nil
 }
 
 // workspaceFetch re-resolves every cache clone's ref. A branch that moved
@@ -509,7 +527,7 @@ func workspaceFetch(args []string) int {
 	root, _ := cliRoot("")
 	rc := 0
 	for _, l := range workspace.CacheLinks(root) {
-		next, err := fetchAndIndexClone(l.URL, l.Ref)
+		next, err := fetchAndIndexClone(l.URL, l.Ref, l.Trusted)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "workspace fetch: %s: %v\n", l.ID, err)
 			rc = 1
