@@ -171,12 +171,10 @@ func TestLinkServerJavaConsumer(t *testing.T) {
 	if rc := cmdIndex([]string{app}); rc != 0 {
 		t.Fatalf("index app rc=%d: the consumer's classpath did not resolve", rc)
 	}
-	// --allow-heuristic: the library has no dependencies, so Maven writes an
-	// empty classpath, which the javac pass reports as "Maven classpath not
-	// resolvable" (a readiness problem, exit 3). The library's own index is
-	// not what this test is about.
-	if rc := cmdIndex([]string{lib, "--allow-heuristic"}); rc != 0 {
-		t.Fatalf("index lib rc=%d", rc)
+	// The library has no dependencies: Maven writes an empty classpath, which
+	// is resolved, not degraded (Grove v0.64.6; before, this exited 3).
+	if rc := cmdIndex([]string{lib}); rc != 0 {
+		t.Fatalf("index lib rc=%d: a dependency-free Maven library read as degraded", rc)
 	}
 	b := pushConsumer(t, app, server, "example.org/team/app")
 	if !bundleHasKey(b, "jvm:com.acme.lib#Box.open") {
