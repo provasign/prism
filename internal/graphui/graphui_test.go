@@ -596,3 +596,58 @@ func TestLinkedFromReadsOtherRepositories(t *testing.T) {
 		t.Fatalf("server repo: %+v", repos[1])
 	}
 }
+
+// Other repositories on the root view: one node each, joined to the drawn
+// directory a cross edge lands in (its nearest drawn ancestor in the tree
+// view), both directions, with the coverage kept.
+func TestAddCrossRepoDrawsRepositoryNodes(t *testing.T) {
+	g := &Graph{Nodes: []Node{{ID: "d:internal", Path: "internal", Type: "dir"}, {ID: "d:pkg/kit", Path: "pkg/kit", Type: "dir"}}}
+	cr := map[string]any{
+		"coverage": "grove, mason read",
+		"repos": []any{
+			map[string]any{"id": "grove", "source": "checkout", "commit": "d65e1a1b0000", "ref": "main", "state": "read"},
+			map[string]any{"id": "mason", "source": "checkout", "state": "read"},
+			map[string]any{"id": "gone", "source": "checkout", "state": "unread", "note": "not checked out"},
+		},
+		"edges": []any{
+			map[string]any{"from": map[string]any{"component": "internal/grove"}, "to": map[string]any{"repo": "grove", "component": "pkg/grove"},
+				"direction": "uses", "weight": float64(152), "evidence": "resolved",
+				"sites": []any{map[string]any{"file": "internal/grove/client.go", "line": float64(77), "symbol": "Engine"}}},
+			map[string]any{"from": map[string]any{"component": "internal/core"}, "to": map[string]any{"repo": "grove", "component": "pkg/grove"},
+				"direction": "uses", "weight": float64(32), "evidence": "resolved"},
+			map[string]any{"from": map[string]any{"repo": "mason", "component": "cmd/mason"}, "to": map[string]any{"component": "pkg/kit"},
+				"direction": "used by", "weight": float64(32), "evidence": "resolved"},
+			map[string]any{"from": map[string]any{"component": "(root)"}, "to": map[string]any{"repo": "grove", "component": "pkg/grove"},
+				"direction": "uses", "weight": float64(3), "evidence": "resolved"},
+		},
+	}
+	addCrossRepo(g, cr)
+	byID := map[string]Node{}
+	for _, n := range g.Nodes {
+		byID[n.ID] = n
+	}
+	if n := byID["r:grove"]; n.Type != "repo" || n.Kind != "checkout" || n.Detail != "d65e1a1b (main)" || n.In != 184 {
+		t.Fatalf("grove node: %+v", n)
+	}
+	if n := byID["r:gone"]; n.Type != "repo" || n.Detail != "UNREAD · not checked out" {
+		t.Fatalf("an unread repository is drawn and labelled: %+v", n)
+	}
+	var toGrove, fromMason *Link
+	for i := range g.Links {
+		switch {
+		case g.Links[i].From == "d:internal" && g.Links[i].To == "r:grove":
+			toGrove = &g.Links[i]
+		case g.Links[i].From == "r:mason" && g.Links[i].To == "d:pkg/kit":
+			fromMason = &g.Links[i]
+		}
+	}
+	if toGrove == nil || toGrove.Weight != 184 || toGrove.Kinds["uses"] != 184 || len(toGrove.Sites) != 1 {
+		t.Fatalf("internal -> grove (both edges folded into the drawn ancestor): %+v", toGrove)
+	}
+	if fromMason == nil || fromMason.Weight != 32 {
+		t.Fatalf("mason -> pkg/kit: %+v", fromMason)
+	}
+	if g.CrossRepoCoverage != "grove, mason read" || g.CrossRepoUnplaced != 3 {
+		t.Fatalf("coverage %q, unplaced %d", g.CrossRepoCoverage, g.CrossRepoUnplaced)
+	}
+}

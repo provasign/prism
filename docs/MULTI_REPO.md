@@ -102,6 +102,16 @@ Gradle files are read by pattern: computed dependencies are not seen. `.csproj` 
 - `query` — answers for this repository and says so in one line when repositories are linked.
   `query --terms Name --repo <id>` selects a linked repository's graph instead. It does not
   merge unrelated graphs; use `change-impact` for consumers of the selected contract.
+- `map` — after this repository's components and edges, lists the edges crossing the repository
+  boundary: `uses` (this repository's component → a linked repository's), `used by` (a linked or
+  uploaded repository's component → this one's), each with its weight and evidence, and a coverage
+  line (what was read, what was not and why, references into repositories that are not linked).
+  `--expand 'app:handler->store'` lists one cross edge's sites; `--component` filters; `--no-repos`
+  leaves them out; JSON adds `crossRepo`.
+- `graph` — the root view draws each linked or uploaded repository as one node, joined to the
+  packages that use it or that it uses (switch **Other repos**). Selecting it lists the edges with
+  their sites, commit and source. Change impact on a symbol lists every other repository's sites
+  in its panel ("listed, not drawn") and counts them in its verdict.
 
 Paths into a linked checkout are relative to this repository's root (`../app/main.go`), so they
 can be passed straight to an editor. Explicit `query --repo`, `change-impact --repo`, and
@@ -217,4 +227,5 @@ agent.
   no single sign-on yet: operators issue its tokens.
 - Cache clones have no size cap; prune them by hand. A clone has no dependencies installed, so
   TypeScript and Java consumers in a clone are name-matched.
-- The graph explorer shows one repository.
+- The graph explorer explores one repository's index: other repositories are single nodes (and
+  listed sites in change impact), not drillable; run `prism graph` in a repository to explore it.

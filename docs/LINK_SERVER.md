@@ -653,6 +653,8 @@ when your server needs them.
 | `verify` (after a signature change or removal) | The uploaded sites the change reaches. The verdict says they were **not checked** |
 | `test-plan` | A gap line: sites in other repositories whose tests are not traced from here |
 | `lookup` | For a name this repository does not define: where the server knows it is declared, with its signature. Bodies need a checkout or a cache clone |
+| `map` | `used by` edges from each readable uploaded repository's components into this repository's, at the uploaded commit |
+| `graph` | Each uploaded repository that uses this one as a node on the root view, and its sites in the change-impact panel |
 
 `search`, `read` and `query` don't ask the server; they work on source, which the server doesn't
 hold. A repository you also link locally is answered from the checkout, not repeated from the

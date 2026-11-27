@@ -56,8 +56,11 @@ type Node struct {
 	Member bool `json:"member,omitempty"`
 	// Role is the node's place in a change-impact view (impact.go).
 	Role string `json:"role,omitempty"`
-	In   int    `json:"in"`
-	Out  int    `json:"out"`
+	// Detail describes another repository's node (type repo): its commit,
+	// and whether it was read.
+	Detail string `json:"detail,omitempty"`
+	In     int    `json:"in"`
+	Out    int    `json:"out"`
 }
 
 // Site is one primitive edge behind a drawn link.
@@ -103,6 +106,12 @@ type Graph struct {
 	// TestFilesExcluded counts test files inside the scope that were left
 	// out because tests are off.
 	TestFilesExcluded int `json:"testFilesExcluded"`
+	// CrossRepoCoverage says which other repositories the root view's
+	// repository nodes come from, and what was not covered.
+	CrossRepoCoverage string `json:"crossRepoCoverage,omitempty"`
+	// CrossRepoUnplaced counts cross references whose directory is not
+	// drawn (top-level files).
+	CrossRepoUnplaced int `json:"crossRepoUnplaced,omitempty"`
 }
 
 // Options selects how a view is built.

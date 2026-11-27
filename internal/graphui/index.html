@@ -267,6 +267,7 @@ pre.code .tx { white-space: pre; padding-right: 12px; }
       <button data-d="3" title="Two hops upstream of the edit sites">+2 hops</button>
     </div>
     <button class="switch" id="flat" role="switch" aria-checked="false" title="At the repository root: every package, not just top-level folders"><span class="track"></span>Packages</button>
+    <button class="switch" id="repos" role="switch" aria-checked="true" title="At the repository root: linked and uploaded repositories, and the edges to them"><span class="track"></span>Other repos</button>
     <button class="switch" id="tests" role="switch" aria-checked="false" title="Include test files"><span class="track"></span>Tests</button>
   </div>
 </div>
@@ -317,6 +318,7 @@ const KIND = {
   trait:       { c: "#ec4899", g: "T" }, type:      { c: "#eab308", g: "T" }, enum:        { c: "#eab308", g: "E" },
   const:       { c: "#64748b", g: "K" }, variable:  { c: "#84cc16", g: "v" }, field:       { c: "#94a3b8", g: "f" },
   module:      { c: "#14b8a6", g: "M" }, namespace: { c: "#14b8a6", g: "N" },
+  repo:        { c: "#0f766e", g: "⇄" },
 };
 const kindOf = n => n.type === "symbol" ? (n.kind || "symbol") : n.type;
 const colorOf = n => (KIND[kindOf(n)] || { c: "#94a3b8" }).c;
@@ -324,6 +326,7 @@ const LANG = { go: "go", typescript: "ts", tsx: "tsx", javascript: "js", python:
 function glyphOf(n) {
   if (n.type === "file") return LANG[n.kind] || (n.path || "").split(".").pop().slice(0, 3);
   if (n.type === "dir") return "";
+  if (n.type === "repo") return "⇄";
   return (KIND[n.kind] || { g: "•" }).g;
 }
 const ROLES = [
@@ -379,6 +382,7 @@ function readHash() {
   S.scope = p.get("s") || "";
   S.tests = p.get("t") === "1";
   S.flat = p.has("m") ? p.get("m") === "flat" : null;
+  S.repos = p.get("r") !== "0";
   S.mode = p.get("v") === "impact" && S.scope.startsWith("s:") ? "impact" : "deps";
   S.depth = Math.min(3, Math.max(1, +p.get("d") || 1));
 }
@@ -388,6 +392,7 @@ function writeHash(push) {
   if (S.mode === "impact") { p.set("v", "impact"); if (S.depth > 1) p.set("d", S.depth); }
   if (S.tests) p.set("t", "1");
   if (S.flat !== null) p.set("m", S.flat ? "flat" : "tree");
+  if (S.repos === false) p.set("r", "0");
   const h = "#" + p.toString();
   if (h === (location.hash || "#")) return false;
   if (push) location.hash = h; else history.replaceState(null, "", h);
@@ -440,6 +445,7 @@ async function load() {
       const p = new URLSearchParams({ scope: S.scope });
       if (S.tests) p.set("tests", "1");
       if (isFlat()) p.set("flat", "1");
+      if (S.repos === false) p.set("norepos", "1");
       d = await api("/api/graph?" + p);
     }
   } catch (e) {
@@ -458,6 +464,9 @@ async function load() {
   S.data = d; S.sel = null; S.hover = null; hideTip();
   build(d);
   renderCrumbs(); renderLegend(); renderStatus(); renderPanel(); syncTools();
+  // n= in the address selects a node once (a shared link to a selection).
+  const want = new URLSearchParams(location.hash.slice(1)).get("n");
+  if (want && S.byId.has(want)) select(S.byId.get(want), true);
   document.title = `${d.scope.label}${S.mode === "impact" ? " · change impact" : ""} — Prism`;
 }
 
@@ -481,6 +490,7 @@ function radius(n) {
     return n.role === "transitive" ? 9 : Math.max(11, Math.min(18, 10 + 1.3 * Math.sqrt(n.in + n.out)));
   }
   if (n.type === "symbol") return Math.max(n.focus ? 18 : 9, Math.min(26, 8 + 1.8 * Math.sqrt(n.in + n.out)));
+  if (n.type === "repo") return Math.max(14, Math.min(30, 12 + 1.4 * Math.sqrt(n.in + n.out)));
   return Math.max(11, Math.min(n.outside ? 22 : 38, 10 + 1.6 * Math.sqrt(n.symbols || 0)));
 }
 function build(g) {
@@ -693,6 +703,7 @@ function nodePath(n, grow) {
   const r = n.r + (grow || 0);
   ctx.beginPath();
   if (n.type === "dir") roundRect(ctx, n.x - r, n.y - r, r * 2, r * 2, Math.min(9, r * 0.32));
+  else if (n.type === "repo") roundRect(ctx, n.x - r * 1.25, n.y - r * 0.8, r * 2.5, r * 1.6, r * 0.5);
   else if (n.type === "file") roundRect(ctx, n.x - r, n.y - r, r * 2, r * 2, r * 0.62);
   else ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
 }
@@ -901,6 +912,7 @@ canvas.addEventListener("pointerleave", () => { if (S.hover) { S.hover = null; k
 canvas.addEventListener("dblclick", e => {
   const [wx, wy] = toWorld(e.offsetX, e.offsetY), n = nodeAt(wx, wy);
   if (!n || n.focus) return;
+  if (n.type === "repo") { toast("Another repository: run prism graph in it to explore it"); return; }
   if (S.mode === "impact") { if (n.id.startsWith("s:")) impactOf(n.id); }
   else go(n.id);
 });
@@ -963,6 +975,8 @@ function syncTools() {
   const atRoot = !S.scope, isSym = S.scope.startsWith("s:");
   $("flat").disabled = !atRoot || S.mode === "impact";
   $("flat").setAttribute("aria-checked", String(atRoot && isFlat()));
+  $("repos").disabled = !atRoot || S.mode === "impact";
+  $("repos").setAttribute("aria-checked", String(atRoot && S.repos !== false));
   $("tests").setAttribute("aria-checked", String(S.data ? !!S.data.includeTests : S.tests));
   $("mode-deps").setAttribute("aria-pressed", String(S.mode === "deps"));
   $("mode-impact").setAttribute("aria-pressed", String(S.mode === "impact"));
@@ -975,6 +989,7 @@ $("mode-deps").onclick = () => { if (S.mode !== "deps") go(S.scope, "deps"); };
 $("mode-impact").onclick = () => { if (S.mode !== "impact") impactOf(S.scope); };
 for (const b of $("depth").children) b.onclick = () => { S.depth = +b.dataset.d; writeHash(false); load(); };
 $("flat").onclick = () => { S.flat = !isFlat(); writeHash(false); load(); };
+$("repos").onclick = () => { S.repos = S.repos === false; writeHash(false); load(); };
 $("tests").onclick = () => { S.tests = !(S.data ? S.data.includeTests : S.tests); writeHash(false); load(); };
 $("fit").onclick = () => fit(true);
 $("zin").onclick = () => zoomBy(1.35);
@@ -1002,7 +1017,7 @@ function renderLegend() {
   const entries = impact
     ? ROLES.filter(r => counts.has(r[0])).map(([k, label]) => [k, label, roleColor(k), k === "transitive"])
     : [...counts.keys()].sort((a, b) => (["dir", "file"].indexOf(a) + 9) % 9 - (["dir", "file"].indexOf(b) + 9) % 9 || counts.get(b) - counts.get(a))
-        .map(k => [k, k === "dir" ? "package" : k, (KIND[k] || { c: "#94a3b8" }).c, false]);
+        .map(k => [k, k === "dir" ? "package" : k === "repo" ? "other repository" : k, (KIND[k] || { c: "#94a3b8" }).c, false]);
   for (const [k, label, color, dashed] of entries) {
     const sw = el("span", { class: "sw" + (k === "dir" || k === "file" ? " sq" : "") + (dashed ? " ring" : ""), style: dashed ? `border-color:${color}` : `background:${color}` });
     box.append(el("button", { class: S.hidden.has(k) ? "off" : "", title: "Show or hide", onclick: () => { S.hidden.has(k) ? S.hidden.delete(k) : S.hidden.add(k); if (S.sel && !S.sel.a && !visible(S.sel)) S.sel = null; renderLegend(); renderPanel(); kick(0); } },
@@ -1082,6 +1097,8 @@ function renderScopePanel() {
   const top = inside.slice().sort((a, b) => (b.in + b.out) - (a.in + a.out) || (b.symbols || 0) - (a.symbols || 0)).slice(0, 12).map(node => ({ node }));
   if (top.length) body.append(sec("Most connected", null, ...listOf(top, it => `${fmt(it.node.in)} in · ${fmt(it.node.out)} out`, it => select(it.node, true))));
   if (!S.nodes.length) body.append(el("p", { class: "empty" }, d.testFilesExcluded ? "Only test files here. Turn on Tests to see them." : "Nothing indexed here."));
+  if (d.crossRepoCoverage) body.append(sec("Other repositories", S.nodes.filter(x => x.type === "repo").length, el("div", { class: "doc" }, d.crossRepoCoverage,
+    d.crossRepoUnplaced ? ` · ${fmt(d.crossRepoUnplaced)} reference(s) in top-level files not drawn` : "")));
   body.append(el("div", { class: "hint" }, "Click a node or link to inspect it · double-click to drill in · drag to move · scroll to zoom", el("br"),
     el("kbd", null, "⌘K"), " search  ", el("kbd", null, "u"), " up  ", el("kbd", null, "f"), " fit  ", el("kbd", null, "i"), " change impact  ", el("kbd", null, "esc"), " clear"));
 }
@@ -1102,7 +1119,32 @@ function sourceInto(holder, id) {
   }).catch(e => { if (seq === srcSeq) holder.replaceChildren(el("p", { class: "empty" }, e.message)); });
 }
 
+function renderRepoPanel(n) {
+  const body = $("insp-body");
+  const src = { server: "link server", clone: "cache clone, read-only", checkout: "linked checkout", more: "not drawn" }[n.kind] || n.kind;
+  headFor(n, n.detail || "", [chip("other repository", colorOf(n)), chip(src)], [], { color: colorOf(n), text: "⇄" });
+  setTabs([]);
+  if (n.kind === "more") { body.append(el("div", { class: "doc" }, "Only the 20 most connected repositories are drawn. The others: " + n.detail)); return; }
+  const mine = S.links.filter(l => l.a === n || l.b === n);
+  const uses = mine.filter(l => l.b === n), usedBy = mine.filter(l => l.a === n);
+  body.append(el("div", { class: "tiles" }, tile(usedBy.reduce((t, l) => t + l.weight, 0), "uses of this repository", S.css["r-site"]), tile(uses.reduce((t, l) => t + l.weight, 0), "uses of " + n.label)));
+  const row = l => {
+    const other = l.a === n ? l.b : l.a;
+    const g = el("div", { class: "filegroup", style: "margin-bottom:10px" },
+      el("header", null, icon("file"), el("span", null, l.a === n ? `${n.label} → ${other.label}` : `${other.label} → ${n.label}`), el("em", null, fmt(l.weight))));
+    for (const s of l.sites || []) g.append(el("div", { class: "site", title: "Show the package", onclick: () => select(other, true) },
+      el("span", { class: "ln" }, s.fromLine), el("div", { class: "who" }, el("span", null, s.toSymbol), s.tier !== "resolved" ? el("span", { class: "tag" }, s.tier) : null),
+      el("code", null, `${s.fromFile} → ${s.toFile}`)));
+    if ((l.sites || []).length < l.weight) g.append(el("div", { class: "more", style: "padding:6px 10px" }, `${fmt(l.weight - l.sites.length)} more: prism map lists each cross edge, and --expand shows all its sites`));
+    return g;
+  };
+  if (usedBy.length) body.append(sec(`${n.label} uses this repository`, usedBy.length, ...usedBy.map(row)));
+  if (uses.length) body.append(sec(`This repository uses ${n.label}`, uses.length, ...uses.map(row)));
+  if (!mine.length) body.append(el("p", { class: "empty" }, n.detail && /NOT|UNREAD|STALE/.test(n.detail) ? "Not read: " + n.detail : "No edges between this repository and " + n.label + "."));
+  body.append(el("div", { class: "hint" }, "The graph holds this repository's index only: run prism graph in " + n.label + " to explore it."));
+}
 function renderNodePanel(n) {
+  if (n.type === "repo") return renderRepoPanel(n);
   const body = $("insp-body"), isSym = n.type === "symbol", canImpact = isSym && n.id.startsWith("s:") && S.meta?.canImpact;
   const where = isSym ? `${n.path}:${n.line}` : n.path || "";
   const chips = [chip(isSym ? n.kind || "symbol" : n.type === "dir" ? "package" : "file", colorOf(n))];

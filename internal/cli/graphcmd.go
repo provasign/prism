@@ -105,6 +105,20 @@ func cmdGraph(args []string) int {
 		fmt.Fprintln(os.Stderr, "graph:", err)
 		return 1
 	}
+	// Other repositories on the root view: the same cross-repository edges
+	// prism map lists, at directory granularity.
+	srv.SetCrossRepo(func(ctx context.Context, tests bool) (map[string]any, error) {
+		cr, err := handler.CrossRepoMap(ctx, 0, 8, tests)
+		if err != nil || cr == nil {
+			return nil, err
+		}
+		b, err := json.Marshal(cr)
+		if err != nil {
+			return nil, err
+		}
+		var m map[string]any
+		return m, json.Unmarshal(b, &m)
+	})
 	meta := srv.Model().Meta()
 	if meta.Symbols == 0 {
 		fmt.Fprintln(os.Stderr, "graph: the index holds no code symbols for", root, "— run `prism index` and check `prism doctor`")

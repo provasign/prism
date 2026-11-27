@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/provasign/prism/internal/lru"
 	"net/http"
 	"strconv"
@@ -44,6 +45,11 @@ type Server struct {
 	// token, when set, is required on /api/* (X-Prism-Token): another local
 	// user could otherwise read source through the loopback port (SEC-09).
 	token string
+
+	// cross, when set, draws other repositories on the root view.
+	cross      CrossRepoFunc
+	crossMu    sync.Mutex
+	crossCache map[string]crossCached
 }
 
 // SetToken requires tok on every /api/* request.
@@ -132,15 +138,52 @@ func boolParam(r *http.Request, name string) bool {
 }
 
 func (s *Server) graph(w http.ResponseWriter, r *http.Request) {
-	g, err := s.Model().Graph(r.URL.Query().Get("scope"), Options{
-		IncludeTests: boolParam(r, "tests"),
+	scope := r.URL.Query().Get("scope")
+	tests := boolParam(r, "tests")
+	g, err := s.Model().Graph(scope, Options{
+		IncludeTests: tests,
 		Flat:         boolParam(r, "flat"),
 	})
 	if err != nil {
 		writeErr(w, http.StatusNotFound, err)
 		return
 	}
+	if s.cross != nil && (scope == "" || scope == "d:") && !boolParam(r, "norepos") {
+		cr, err := s.crossRepo(r.Context(), tests)
+		if err != nil {
+			g.CrossRepoCoverage = "other repositories NOT READ: " + err.Error()
+		} else {
+			addCrossRepo(g, cr)
+		}
+	}
 	writeJSON(w, http.StatusOK, g)
+}
+
+// SetCrossRepo enables other repositories' nodes on the root view.
+func (s *Server) SetCrossRepo(f CrossRepoFunc) { s.cross = f }
+
+// crossRepo caches the answer per loaded index and tests setting.
+func (s *Server) crossRepo(ctx context.Context, tests bool) (map[string]any, error) {
+	key := fmt.Sprintf("%d/%v", s.loadedAt.Load(), tests)
+	s.crossMu.Lock()
+	defer s.crossMu.Unlock()
+	if v, ok := s.crossCache[key]; ok && time.Since(v.at) < 30*time.Second {
+		return v.val, nil
+	}
+	val, err := s.cross(ctx, tests)
+	if err != nil {
+		return nil, err
+	}
+	if s.crossCache == nil {
+		s.crossCache = map[string]crossCached{}
+	}
+	s.crossCache[key] = crossCached{val: val, at: time.Now()}
+	return val, nil
+}
+
+type crossCached struct {
+	val map[string]any
+	at  time.Time
 }
 
 func (s *Server) search(w http.ResponseWriter, r *http.Request) {
