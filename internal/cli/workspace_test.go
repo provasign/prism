@@ -732,6 +732,14 @@ func TestWorkspaceServerAnswersForRepositoriesNotCheckedOut(t *testing.T) {
 		}
 	}
 
+	// map: the uploaded consumer's edge into this repository, at its commit.
+	mp := captureStdout(func() { cmdMap([]string{"--format", "text"}) })
+	for _, want := range []string{"used by  example.org/team/app@", ":(root) -> (root)", "link server: 1 site(s) from 1 of 1 uploaded repositories"} {
+		if !strings.Contains(mp, want) {
+			t.Fatalf("map missing %q:\n%s", want, mp)
+		}
+	}
+
 	// A name declared only in an uploaded repository: lookup points at it.
 	if look := captureStdout(func() { cmdLookup([]string{"main"}) }); !strings.Contains(look, "example.org/team/app@") ||
 		!strings.Contains(look, "main.go:5") || !strings.Contains(look, "signature only") {
@@ -1439,5 +1447,70 @@ func TestWorkspaceExportOfANestedRepository(t *testing.T) {
 	}
 	if b.SHA != innerSHA || strings.Contains(string(data), "outer.go") || strings.Contains(string(data), "example.com/outer") {
 		t.Fatalf("the nested repository's bundle describes the outer one: sha %s (want %s)\n%s", b.SHA, innerSHA, data)
+	}
+}
+
+// prism map in a workspace: the edges crossing into linked repositories,
+// in both directions, expandable, and none without a workspace.
+func TestMapShowsEdgesToLinkedRepositories(t *testing.T) {
+	testtool.Require(t, "go")
+	parent, _ := filepath.EvalSymlinks(t.TempDir())
+	lib, app := filepath.Join(parent, "lib"), filepath.Join(parent, "app")
+	writeCLIFile(t, parent, "lib/go.mod", "module example.com/lib\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "lib/store/store.go", "package store\n\nfunc Put(k string) {}\n\nfunc Get(k string) string { return k }\n")
+	writeCLIFile(t, parent, "lib/prism.yaml", "version: 2\nworkspace_repo: app=../app\n")
+	writeCLIFile(t, parent, "app/go.mod", "module example.com/app\n\ngo 1.22\n\nrequire example.com/lib v0.1.0\n\nreplace example.com/lib => ../lib\n")
+	writeCLIFile(t, parent, "app/handler/h.go", "package handler\n\nimport \"example.com/lib/store\"\n\nfunc H() string { store.Put(\"x\"); return store.Get(\"y\") }\n")
+	writeCLIFile(t, parent, "app/main.go", "package main\n\nimport \"example.com/app/handler\"\n\nfunc main() { println(handler.H()) }\n")
+	for _, d := range []string{lib, app} {
+		if rc := cmdIndex([]string{d}); rc != 0 {
+			t.Fatalf("index %s rc=%d", d, rc)
+		}
+	}
+	t.Chdir(lib)
+	out := captureStdout(func() { cmdMap([]string{"--format", "text"}) })
+	for _, want := range []string{
+		"other repositories (1; edges crossing the repository boundary",
+		"used by  app:handler -> store",
+		"cross-repository coverage: app read",
+		"other repositories: see the cross-repository section",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("map in lib missing %q:\n%s", want, out)
+		}
+	}
+	exp := captureStdout(func() { cmdMap([]string{"--expand", "app:handler->store"}) })
+	for _, want := range []string{"app:handler -> store  2 reference(s), used by  [resolved]", "app:handler/h.go:5  Put", "app:handler/h.go:5  Get"} {
+		if !strings.Contains(exp, want) {
+			t.Fatalf("expansion missing %q:\n%s", want, exp)
+		}
+	}
+	if none := captureStdout(func() { cmdMap([]string{"--no-repos"}) }); strings.Contains(none, "other repositories") {
+		t.Fatalf("--no-repos still lists other repositories:\n%s", none)
+	}
+
+	// From the consumer's side: it uses the library.
+	writeCLIFile(t, parent, "app/prism.yaml", "version: 2\nworkspace_repo: lib=../lib\n")
+	t.Chdir(app)
+	// A link written into prism.yaml is unconfirmed until this machine
+	// reviews it: map names it as not read, with the reason.
+	if out := captureStdout(func() { cmdMap(nil) }); !strings.Contains(out, "NOT READ: lib (link not confirmed") {
+		t.Fatalf("an unconfirmed link is not reported:\n%s", out)
+	}
+	if rc := cmdIndex([]string{app}); rc != 0 { // confirms the link
+		t.Fatalf("index app rc=%d", rc)
+	}
+	out = captureStdout(func() { cmdMap([]string{"--format", "text"}) })
+	if !strings.Contains(out, "uses     handler -> lib:store") {
+		t.Fatalf("map in app does not show its use of lib:\n%s", out)
+	}
+
+	// No workspace: the map is unchanged.
+	solo := filepath.Join(parent, "solo")
+	writeCLIFile(t, parent, "solo/go.mod", "module example.com/solo\n\ngo 1.22\n")
+	writeCLIFile(t, parent, "solo/a.go", "package solo\n\nfunc A() {}\n")
+	t.Chdir(solo)
+	if out := captureStdout(func() { cmdMap(nil) }); strings.Contains(out, "other repositories") {
+		t.Fatalf("a repository with no workspace lists other repositories:\n%s", out)
 	}
 }

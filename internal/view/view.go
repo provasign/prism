@@ -200,6 +200,10 @@ func IsTestPath(filePath string) bool {
 }
 
 // componentOf returns the component key for a repo-relative file path.
+// ComponentOf is the map component a file belongs to at depth (0: its
+// directory), as the map names it; "(root)" for top-level files.
+func ComponentOf(filePath string, depth int) string { return componentOf(filePath, depth) }
+
 func componentOf(filePath string, depth int) string {
 	dir := path.Dir(filepath.ToSlash(filePath))
 	if dir == "." || dir == "/" || dir == "" {

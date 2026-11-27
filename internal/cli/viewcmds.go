@@ -53,6 +53,8 @@ func cmdMap(args []string) int {
 			mapReq.IncludeTests = true
 		case "--all-components":
 			mapReq.IncludeAuxiliary = true
+		case "--no-repos":
+			mapReq.NoRepos = true
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -329,6 +331,9 @@ func renderMapText(m map[string]any) {
 		fmt.Println("map: empty result")
 		return
 	}
+	if renderCrossEdgeText(m) {
+		return
+	}
 	// Expansion result: one edge, full sites.
 	if edge, ok := m["edge"].(map[string]any); ok {
 		fmt.Printf("%s -> %s  weight %v  [%s]\n", edge["from"], edge["to"],
@@ -389,6 +394,8 @@ func renderMapText(m map[string]any) {
 		fmt.Printf("  %v -> %v  %v (%s)  [%s]\n", em["from"], em["to"],
 			em["weight"], kindLine(em["kinds"]), tierLine(em["tiers"]))
 	}
+
+	renderCrossRepoText(m)
 
 	cycles := asSliceAny(m["cycles"])
 	if len(cycles) == 0 {
@@ -500,4 +507,73 @@ func countLine(v any, sep string) string {
 		parts = append(parts, fmt.Sprintf("%s%s%d", it.k, sep, int(it.n)))
 	}
 	return strings.Join(parts, ", ")
+}
+
+// crossLabel is "repo:component", or the component for this repository.
+func crossLabel(v any) string {
+	e, _ := v.(map[string]any)
+	if r, _ := e["repo"].(string); r != "" {
+		return fmt.Sprintf("%s:%v", r, e["component"])
+	}
+	return fmt.Sprint(e["component"])
+}
+
+// renderCrossRepoText prints the edges that cross into other repositories.
+func renderCrossRepoText(m map[string]any) {
+	if msg, _ := m["crossRepoError"].(string); msg != "" {
+		fmt.Printf("\nother repositories: NOT READ (%s)\n", msg)
+		return
+	}
+	cr, _ := m["crossRepo"].(map[string]any)
+	if cr == nil {
+		return
+	}
+	edges := asSliceAny(cr["edges"])
+	repos := asSliceAny(cr["repos"])
+	fmt.Printf("\nother repositories (%d; edges crossing the repository boundary; expand with --expand 'from->to'):\n", len(repos))
+	if len(edges) == 0 {
+		fmt.Println("  no edges between this repository and the others")
+	}
+	w := 0
+	for _, e := range edges {
+		em, _ := e.(map[string]any)
+		if n := len(crossLabel(em["from"])) + len(crossLabel(em["to"])) + 4; n > w {
+			w = n
+		}
+	}
+	for _, e := range edges {
+		em, _ := e.(map[string]any)
+		if em == nil {
+			continue
+		}
+		pair := crossLabel(em["from"]) + " -> " + crossLabel(em["to"])
+		fmt.Printf("  %-8v %-*s  %4v  [%v]\n", em["direction"], w, pair, em["weight"], em["evidence"])
+	}
+	fmt.Printf("cross-repository coverage: %v\n", cr["coverage"])
+}
+
+// renderCrossEdgeText prints one expanded cross-repository edge.
+func renderCrossEdgeText(m map[string]any) bool {
+	e, _ := m["crossEdge"].(map[string]any)
+	if e == nil {
+		return false
+	}
+	fmt.Printf("%s -> %s  %v reference(s), %v  [%v]\n", crossLabel(e["from"]), crossLabel(e["to"]), e["weight"], e["direction"], e["evidence"])
+	repo := ""
+	if from, _ := e["from"].(map[string]any); from != nil {
+		repo, _ = from["repo"].(string)
+	}
+	for _, s := range asSliceAny(e["sites"]) {
+		sm, _ := s.(map[string]any)
+		if sm == nil {
+			continue
+		}
+		at := fmt.Sprintf("%v:%v", sm["file"], sm["line"])
+		if repo != "" {
+			at = repo + ":" + at
+		}
+		fmt.Printf("  %s  %v  %v\n", at, sm["symbol"], sm["text"])
+	}
+	fmt.Printf("cross-repository coverage: %v\n", m["coverage"])
+	return true
 }

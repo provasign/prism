@@ -32,6 +32,12 @@ func (h *Handler) toolMap(ctx context.Context, args map[string]any) (any, error)
 	if (expandFrom == "") != (expandTo == "") {
 		return nil, fmt.Errorf("expansion needs both from and to")
 	}
+	if expandFrom != "" && (strings.Contains(expandFrom, ":") || strings.Contains(expandTo, ":")) {
+		// A repository-qualified end: one cross-repository edge.
+		if e, err := h.crossEdge(ctx, depth, includeTests, expandFrom, expandTo); err != nil || e != nil {
+			return e, err
+		}
+	}
 	if expandFrom != "" {
 		// Expansion: the full constituent evidence for one induced edge.
 		v, err := h.buildView(ctx, depth, 1<<30, includeTests)
@@ -86,7 +92,7 @@ func (h *Handler) toolMap(ctx context.Context, args map[string]any) (any, error)
 		cycleSummary = append(cycleSummary, c.Components)
 	}
 	h.Ledger.RecordCall("prism_map")
-	return map[string]any{
+	res := map[string]any{
 		"root":              h.Root,
 		"depth":             v.Depth,
 		"scope":             scopeLine(v),
@@ -98,7 +104,43 @@ func (h *Handler) toolMap(ctx context.Context, args map[string]any) (any, error)
 		"tierSummary":       v.TierSummary,
 		"minTier":           view.MinTier(v.TierSummary),
 		"completeness":      completenessAtTier(v.TierSummary),
-	}, nil
+	}
+	if !boolArg(args, "no_repos") {
+		cr, err := h.CrossRepoMap(ctx, depth, maxSites, includeTests)
+		switch {
+		case err != nil:
+			res["crossRepoError"] = err.Error()
+		case cr != nil:
+			if component != "" {
+				kept := cr.Edges[:0:0]
+				for _, e := range cr.Edges {
+					if (e.From.Repo == "" && e.From.Component == component) || (e.To.Repo == "" && e.To.Component == component) {
+						kept = append(kept, e)
+					}
+				}
+				cr.Edges = kept
+			}
+			res["crossRepo"] = cr
+			res["completeness"] = completenessAtTier(v.TierSummary) + "; other repositories: see the cross-repository section"
+		}
+	}
+	return res, nil
+}
+
+// crossEdge expands one cross-repository edge with every site; nil when
+// no such edge exists (the caller then tries an in-repository edge).
+func (h *Handler) crossEdge(ctx context.Context, depth int, includeTests bool, from, to string) (any, error) {
+	cr, err := h.CrossRepoMap(ctx, depth, 0, includeTests)
+	if err != nil || cr == nil {
+		return nil, err
+	}
+	for _, e := range cr.Edges {
+		if e.From.Label() == from && e.To.Label() == to {
+			h.Ledger.RecordCall("prism_map")
+			return map[string]any{"crossEdge": e, "coverage": cr.Coverage}, nil
+		}
+	}
+	return nil, fmt.Errorf("no cross-repository edge %s -> %s at depth %d", from, to, depth)
 }
 
 // toolCycles reports the strongly connected components of the induced graph

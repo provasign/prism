@@ -357,6 +357,8 @@ type MapRequest struct {
 	ExpandTo         string
 	IncludeTests     bool
 	IncludeAuxiliary bool
+	// NoRepos leaves out the edges to and from other repositories.
+	NoRepos bool
 }
 
 func (MapRequest) Tool() string { return "prism_map" }
@@ -369,6 +371,7 @@ func (r MapRequest) Args() map[string]any {
 	set(m, "to", r.ExpandTo)
 	set(m, "include_tests", r.IncludeTests)
 	set(m, "include_auxiliary", r.IncludeAuxiliary)
+	set(m, "no_repos", r.NoRepos)
 	return m
 }
 

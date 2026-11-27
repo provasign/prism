@@ -118,7 +118,7 @@ var commandTable = []*command{
                                   for corruption and engine-version drift)
                                   ([--format text|json] [--json]; the per-language manifest is JSON only)
 `},
-	{name: "map", flags: "--depth= --component= --tests --expand= --json --format= --max-sites= --all-components", run: cmdMap, help: `  prism map [dir]                 Component-level architecture map: directories,
+	{name: "map", flags: "--depth= --component= --tests --expand= --json --format= --max-sites= --all-components --no-repos", run: cmdMap, help: `  prism map [dir]                 Component-level architecture map: directories,
                                   induced dependency edges (weights + evidence
                                   tiers), cycles. Production shape by default
                                   ([--depth N] [--component X] [--tests]
@@ -126,6 +126,10 @@ var commandTable = []*command{
                                   [--max-sites N]  cited sites per edge (default 5)
                                   [--all-components]  include docs/examples and isolated
                                   other-language script folders (hidden by default)
+                                  With linked repositories or a link server: the edges
+                                  crossing into other repositories ('uses', 'used by'),
+                                  expand one with --expand 'repo:component->component';
+                                  [--no-repos] leaves them out
 `},
 	{name: "graph", flags: "--port= --no-open --tests", run: cmdGraph, help: `  prism graph [dir]               Open the interactive graph explorer in a browser:
                                   directories -> files -> symbols -> one symbol's

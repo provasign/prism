@@ -441,11 +441,15 @@ func schemaMap() map[string]any {
 				"type":        "boolean",
 				"description": "Include auxiliary components (docs/examples directories, and isolated code in a language the rest does not use); excluded by default and named in the result.",
 			},
+			"no_repos": map[string]any{
+				"type":        "boolean",
+				"description": "Leave out crossRepo: the edges between this repository's components and those of linked repositories and of repositories uploaded to the link server (included by default when a workspace or server is configured).",
+			},
 			"model":        modelProp,
 			"context_used": contextUsedProp,
 			"from": map[string]any{
 				"type":        "string",
-				"description": "With to: expand one induced edge into its reported indexed constituent sites.",
+				"description": "With to: expand one induced edge into its reported indexed constituent sites. A repository-qualified end (repo:component) expands a cross-repository edge.",
 			},
 			"to": map[string]any{
 				"type":        "string",
