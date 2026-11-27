@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -141,7 +142,8 @@ func TestRevokedAndExpiredTokensAreRefused(t *testing.T) {
 	if data, _ := os.ReadFile(tf); bytes.Contains(data, []byte(other)) || bytes.Contains(data, []byte(secret)) {
 		t.Fatal("the token file holds a secret")
 	}
-	if fi, _ := os.Stat(tf); fi.Mode().Perm() != 0o600 {
+	// Windows has no Unix permission bits; the 0600 check is Unix-only.
+	if fi, _ := os.Stat(tf); runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600 {
 		t.Fatalf("token file mode %v", fi.Mode().Perm())
 	}
 }
