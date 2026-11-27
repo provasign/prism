@@ -666,11 +666,13 @@ func mayReference(root string, keys []string) bool {
 			if !read("go.mod", &gomod) {
 				return true
 			}
-			// Any prefix of the import path that is at least host/org/repo
-			// (or the whole path, when shorter) may be the module.
-			segs := strings.Split(pkg, "/")
-			for n := len(segs); n >= 1 && n >= minInt(3, len(segs)); n-- {
-				if strings.Contains(gomod, strings.Join(segs[:n], "/")) {
+			// The package is a module go.mod names (require or replace), or
+			// a package inside one. Module paths have any number of segments:
+			// a prefix of at least three missed go.uber.org/zap/zapcore,
+			// k8s.io/client-go/kubernetes and example.com/lib/store, so their
+			// consumers were skipped as not requiring the package.
+			for _, mod := range goModPaths(gomod) {
+				if pkg == mod || strings.HasPrefix(pkg, mod+"/") {
 					return true
 				}
 			}
@@ -686,6 +688,28 @@ func mayReference(root string, keys []string) bool {
 		}
 	}
 	return false
+}
+
+// goModPaths lists the module paths a go.mod names: its module, requires
+// and both sides of replaces (local directories excluded).
+func goModPaths(gomod string) []string {
+	var out []string
+	for _, line := range strings.Split(gomod, "\n") {
+		if i := strings.Index(line, "//"); i >= 0 {
+			line = line[:i]
+		}
+		for _, f := range strings.Fields(line) {
+			f = strings.Trim(f, "()")
+			switch {
+			case f == "" || f == "=>" || f == "module" || f == "require" || f == "replace" || f == "exclude" || f == "retract":
+			case strings.HasPrefix(f, ".") || strings.HasPrefix(f, "/"):
+			case strings.HasPrefix(f, "v") && len(f) > 1 && f[1] >= '0' && f[1] <= '9':
+			case strings.Contains(f, ".") || strings.Contains(f, "/"):
+				out = append(out, f)
+			}
+		}
+	}
+	return out
 }
 
 // serverConsumers asks the shared link server for references in
