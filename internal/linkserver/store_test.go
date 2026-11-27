@@ -2,12 +2,11 @@ package linkserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -47,7 +46,7 @@ func TestServerDropsLocalPathsFromOlderClients(t *testing.T) {
 	if code, body := postJSON(t, srv.URL+"/link/bundle", "tok", old); code != http.StatusOK {
 		t.Fatalf("upload: %d %s", code, body)
 	}
-	data, err := os.ReadFile(filepath.Join(s.dir, slug("example.org/app"), "abc123.json"))
+	data, _, err := s.blob.Get(context.Background(), bundleKey("example.org/app", "abc123"), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +72,7 @@ func TestDetachedReuploadKeepsTheCommitsBranch(t *testing.T) {
 	if len(resp.Repos) != 1 || resp.Repos[0].Ref != "main" {
 		t.Fatalf("after a detached re-upload: %+v; want the commit still answered as main", resp.Repos)
 	}
-	refs := s.readRefs(filepath.Join(s.dir, slug(b.Repo)))
+	refs := s.refsOf(b.Repo)
 	if refs.Refs["main"] != "abc123" || refs.Latest != "abc123" {
 		t.Fatalf("refs.json = %+v", refs)
 	}
@@ -101,11 +100,11 @@ func TestEmptyAnswersAreEmptyLists(t *testing.T) {
 // local checkout, so its version is not what it was built with.
 func TestPinNamesALocalBuild(t *testing.T) {
 	b := Bundle{Requires: []Require{{Ecosystem: "go", Name: "example.com/lib", Version: "v0.1.0", Local: true}}}
-	if got := pinFor(b, []string{"go:example.com/lib#F"}); got != "example.com/lib v0.1.0, built against a local checkout when uploaded" {
+	if got := pinFor(b, []string{"go:example.com/lib#F"}, nil); got != "example.com/lib v0.1.0, built against a local checkout when uploaded" {
 		t.Fatalf("pin = %q", got)
 	}
 	b.Requires[0].Local = false
-	if got := pinFor(b, []string{"go:example.com/lib/sub#F"}); got != "example.com/lib v0.1.0" {
+	if got := pinFor(b, []string{"go:example.com/lib/sub#F"}, nil); got != "example.com/lib v0.1.0" {
 		t.Fatalf("pin = %q", got)
 	}
 }
@@ -149,4 +148,16 @@ func postJSON(t *testing.T, url, token, body string) (int, string) {
 	defer r.Body.Close()
 	out, _ := io.ReadAll(r.Body)
 	return r.StatusCode, string(out)
+}
+
+// A Java key names the Java package, the manifest the Maven artifact: the
+// asker's own artifact names connect them.
+func TestPinMatchesTheAskersOwnArtifact(t *testing.T) {
+	b := Bundle{Requires: []Require{{Ecosystem: "maven", Name: "com.acme:lib", Version: "1.0"}}}
+	if got := pinFor(b, []string{"jvm:com.acme.lib#Box.open"}, nil); got != "" {
+		t.Fatalf("without the asker's packages: %q", got)
+	}
+	if got := pinFor(b, []string{"jvm:com.acme.lib#Box.open"}, []string{"maven:com.acme:lib"}); got != "com.acme:lib 1.0" {
+		t.Fatalf("pin = %q", got)
+	}
 }

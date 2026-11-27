@@ -255,11 +255,19 @@ var commandTable = []*command{
                                   discover [--link]         Related checkouts found in manifests
                                   Guide: docs/MULTI_REPO.md
 `},
-	{name: "link-server", flags: "--dir= --addr= --port=", run: cmdLinkServer, help: `  prism link-server --dir <store> [--addr <host>] [--port N]
+	{name: "link-server", flags: "--dir= --s3= --s3-endpoint= --s3-region= --s3-path-style --addr= --port= --tokens= --no-auth --tls-cert= --tls-key= --client-ca= --ops-addr= --audit-log= --rate= --max-conns= --max-bundle-mb= --keep= --refresh= --trust-proxy", run: cmdLinkServer, help: `  prism link-server --dir <store> | --s3 s3://bucket[/prefix] [options]
                                   Serve uploaded link bundles: who references a symbol across
-                                  repositories that are not checked out (PRISM_LINK_TOKEN required token).
-                                  --addr 127.0.0.1 listens only locally (behind a proxy);
-                                  default: every interface, port 8890. Guide: docs/LINK_SERVER.md
+                                  repositories that are not checked out. Per-token credentials
+                                  (--tokens), TLS/mTLS, audit log, rate limits, retention, metrics.
+                                  Storage: --dir, or --s3 with --s3-endpoint, --s3-region,
+                                  --s3-path-style. Credentials: --tokens <file>, else PRISM_LINK_TOKEN;
+                                  --no-auth to serve open. --addr, --port (8890), --tls-cert,
+                                  --tls-key, --client-ca (mTLS), --ops-addr (/health, /metrics),
+                                  --audit-log (default stdout), --rate, --max-conns, --max-bundle-mb,
+                                  --keep (20), --refresh (10s), --trust-proxy.
+                                  Subcommands: token create|list|revoke, prune, delete, check,
+                                  backup, restore. prism link-server help shows usage.
+                                  Guide: docs/LINK_SERVER.md
 `},
 	{name: "change-impact", flags: "--diff --base= --dir= --repo= --file= --path= --format= --json", run: cmdChangeImpact, help: `  prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
                                   declaration(s), override/implementation family (subtype

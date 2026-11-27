@@ -4,12 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -620,63 +617,6 @@ func workspaceExport(push bool, args []string) int {
 		branch = "no branch"
 	}
 	fmt.Printf("pushed %s@%s (%s) to %s: %d reference(s), %d declaration(s)\n", b.Repo, shortSHA(b.SHA), branch, server, len(b.Refs), len(b.Defs))
-	return 0
-}
-
-// cmdLinkServer runs the shared link server over a directory of bundles.
-func cmdLinkServer(args []string) int {
-	dir, addr, port := "", "", 8890
-	it := newArgIter("link-server", args)
-	for it.next() {
-		switch it.Flag {
-		case "--addr":
-			v, ok := it.rawValue()
-			if !ok || v == "" || strings.ContainsAny(v, "/ ") {
-				fmt.Fprintln(os.Stderr, "link-server: --addr needs a host or IP address to listen on, such as 127.0.0.1")
-				return 2
-			}
-			addr = strings.TrimSuffix(strings.TrimPrefix(v, "["), "]")
-		case "--dir":
-			v, ok := it.rawValue()
-			if !ok {
-				fmt.Fprintln(os.Stderr, "link-server: --dir needs a value")
-				return 2
-			}
-			dir = v
-		case "--port":
-			p, err := it.positiveInt()
-			if err != nil {
-				return usageError(err)
-			}
-			port = p
-		default:
-			return it.unknown()
-		}
-	}
-	if len(it.Pos) > 0 {
-		return rejectUnknownFlag("link-server", it.Pos[0]) // it takes no positionals
-	}
-	if dir == "" {
-		fmt.Fprintln(os.Stderr, "usage: prism link-server --dir <bundle-store> [--addr <host>] [--port N]   (PRISM_LINK_TOKEN sets the required bearer token)")
-		return 2
-	}
-	store, err := linkserver.Open(dir)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "link-server:", err)
-		return 1
-	}
-	token := linkserver.Token()
-	if token == "" {
-		fmt.Fprintln(os.Stderr, "link-server: WARNING no PRISM_LINK_TOKEN set; anyone who can reach this port can read and upload bundles")
-	}
-	// --addr 127.0.0.1 behind a reverse proxy; the default listens on every
-	// interface, as before.
-	listen := net.JoinHostPort(addr, strconv.Itoa(port))
-	fmt.Fprintf(os.Stderr, "prism link server on %s: %s\n", listen, store.Describe())
-	if err := http.ListenAndServe(listen, store.Handler(token)); err != nil {
-		fmt.Fprintln(os.Stderr, "link-server:", err)
-		return 1
-	}
 	return 0
 }
 

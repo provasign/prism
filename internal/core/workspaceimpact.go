@@ -694,6 +694,9 @@ func mayReference(root string, keys []string) bool {
 // cannot be reached is reported as not covered, never as no consumers.
 func (h *Handler) serverConsumers(ctx context.Context, server string, keys []string, linked []workspace.Root) (lines []string, scope string, sites, production int, ok bool) {
 	req := linkserver.ConsumersRequest{Keys: keys}
+	for _, pkg := range grove.ManifestPackages(h.Root) {
+		req.Packages = append(req.Packages, pkg.Ecosystem+":"+pkg.Name)
+	}
 	for _, root := range append([]string{h.Root}, rootPaths(linked)...) {
 		for _, pkg := range grove.ManifestPackages(root) {
 			req.ExcludePackages = append(req.ExcludePackages, pkg.Ecosystem+":"+pkg.Name)
@@ -728,8 +731,13 @@ func (h *Handler) serverConsumers(ctx context.Context, server string, keys []str
 				at += fmt.Sprintf(":%d", site.Col)
 			}
 			tag := ""
+			if strings.HasPrefix(site.Key, "py:") {
+				// As for a linked checkout: no compiler pass, the call
+				// names something the file imported under this module.
+				tag += "  [import-scoped]"
+			}
 			if site.Test {
-				tag = "  [test]"
+				tag += "  [test]"
 			} else {
 				production++
 			}
@@ -739,6 +747,12 @@ func (h *Handler) serverConsumers(ctx context.Context, server string, keys []str
 	}
 	scope = fmt.Sprintf("server %s: %d site(s) in %d of %d uploaded repositories, each at its uploaded commit; "+
 		"repositories neither linked nor uploaded are not covered", server, sites, len(resp.Repos), resp.Searched)
+	if resp.Unreadable > 0 {
+		// The token may not read every uploaded repository: those were
+		// not searched, so the answer cannot claim completeness.
+		scope += fmt.Sprintf("; %d uploaded repositories NOT READABLE with this token, not searched", resp.Unreadable)
+		return lines, scope, sites, production, false
+	}
 	return lines, scope, sites, production, true
 }
 

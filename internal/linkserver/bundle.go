@@ -20,8 +20,13 @@ import (
 	groveeng "github.com/provasign/grove/pkg/grove"
 )
 
+// FormatVersion is the bundle format this build writes and the newest one
+// a server accepts. 0 is the v1.3.x format, which had no format field.
+const FormatVersion = 1
+
 // Bundle is one repository's link data at one commit.
 type Bundle struct {
+	Format   int                        `json:"format"`
 	Repo     string                     `json:"repo"` // stable name: host/org/repo, or the directory name
 	SHA      string                     `json:"sha"`
 	Ref      string                     `json:"ref,omitempty"` // branch it was exported from
@@ -93,7 +98,7 @@ func Build(ctx context.Context, root, repo, ref string) (Bundle, error) {
 	defer r.Close()
 	manifests := groveeng.ScanManifests(root)
 	b := Bundle{
-		Repo: repo, Ref: ref, Created: time.Now().UTC().Format(time.RFC3339),
+		Format: FormatVersion, Repo: repo, Ref: ref, Created: time.Now().UTC().Format(time.RFC3339),
 		Packages: manifests.Packages, Requires: uploadRequires(manifests.Requires),
 	}
 	b.SHA = gitOut(root, "rev-parse", "HEAD")

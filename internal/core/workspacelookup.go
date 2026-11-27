@@ -203,12 +203,16 @@ func (h *Handler) serverDeclarations(ctx context.Context, q lookupQuery) string 
 	}
 	rctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	repos, err := linkserver.AskDefineName(rctx, h.Cfg.WorkspaceServer, name)
+	ans, err := linkserver.AskDefineName(rctx, h.Cfg.WorkspaceServer, name)
 	if err != nil {
 		return fmt.Sprintf("Link server %s not reached (%v): repositories only it knows were not searched.", h.Cfg.WorkspaceServer, err)
 	}
+	hidden := ""
+	if ans.Unreadable > 0 {
+		hidden = fmt.Sprintf(" %d uploaded repositories are not readable with this token and were not searched.", ans.Unreadable)
+	}
 	var parts []string
-	for _, r := range repos {
+	for _, r := range ans.Repos {
 		sha := r.SHA
 		if len(sha) > 8 {
 			sha = sha[:8]
@@ -226,9 +230,9 @@ func (h *Handler) serverDeclarations(ctx context.Context, q lookupQuery) string 
 		}
 	}
 	if len(parts) == 0 {
-		return ""
+		return strings.TrimSpace(hidden)
 	}
-	return "Declared in repositories the link server knows, not checked out here (signature only; the body needs a checkout or a cache clone): " + strings.Join(parts, "; ") + "."
+	return "Declared in repositories the link server knows, not checked out here (signature only; the body needs a checkout or a cache clone): " + strings.Join(parts, "; ") + "." + hidden
 }
 
 // shortReason trims a refusal to its first clause for a one-line list.
