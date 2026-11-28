@@ -104,10 +104,10 @@ to raw records in [provasign/research](https://github.com/provasign/research).
 brew install provasign/tap/prism
 
 # macOS or Linux installer, pinned to a release
-curl -fsSL https://raw.githubusercontent.com/provasign/prism/v1.5.1/install.sh | VERSION=v1.5.1 bash
+curl -fsSL https://raw.githubusercontent.com/provasign/prism/v1.5.2/install.sh | VERSION=v1.5.2 bash
 
 # Windows PowerShell
-$env:VERSION="v1.5.1"; irm https://raw.githubusercontent.com/provasign/prism/v1.5.1/install.ps1 | iex
+$env:VERSION="v1.5.2"; irm https://raw.githubusercontent.com/provasign/prism/v1.5.2/install.ps1 | iex
 ```
 
 The installer verifies the SHA-256 checksum, and the release's signature or
@@ -125,7 +125,7 @@ upgrade: each switches to the new binary on its next request (`--stop-servers` s
 instead). After changing installation methods, run `prism cleanup-global` and `prism init` in
 each project.
 
-The current release is v1.5.1. It embeds Grove v0.64.6 (Astkit v0.16.10).
+The current release is v1.5.2. It embeds Grove v0.64.6 (Astkit v0.16.10).
 Upgrading from v1.2: see [Upgrading to v1.3](#upgrading-to-v13).
 
 Build from source with `make build`; run the full test suite with `make test`.

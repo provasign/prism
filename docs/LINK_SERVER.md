@@ -616,7 +616,7 @@ jobs:
       - uses: actions/setup-go@v5        # or setup-node / setup-java: what the build needs
         with: { go-version-file: go.mod }
       - run: go mod download
-      - run: curl -fsSL https://raw.githubusercontent.com/provasign/prism/v1.5.1/install.sh | VERSION=v1.5.1 bash
+      - run: curl -fsSL https://raw.githubusercontent.com/provasign/prism/v1.5.2/install.sh | VERSION=v1.5.2 bash
       - run: prism index .
       - run: prism workspace push --server "$PRISM_LINK_SERVER" --ref main
         env:
