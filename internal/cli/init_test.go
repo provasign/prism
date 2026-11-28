@@ -734,3 +734,34 @@ func TestWriteSteeringInstructions_SymlinkedClaudeMD(t *testing.T) {
 		t.Fatalf("second init changed the file:\n%s", again)
 	}
 }
+
+// /dev/null is a character device; init used to take it for a terminal,
+// print its first question and fail with "init: EOF".
+func TestIsInteractiveRejectsTheNullDevice(t *testing.T) {
+	null, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer null.Close()
+	old := os.Stdin
+	os.Stdin = null
+	defer func() { os.Stdin = old }()
+	if isInteractive() {
+		t.Fatal("stdin from the null device counts as interactive")
+	}
+}
+
+// The commands that ask questions are never piped through the line-based
+// output rewrite: a prompt has no newline until it is answered, so it was
+// held back and each question appeared only after the user answered it.
+func TestPromptingCommandsAreNotLineBuffered(t *testing.T) {
+	for _, cmd := range []string{"init", "workspace"} {
+		before := os.Stderr
+		restore := cliSpelledOutput(cmd, nil)
+		wrapped := os.Stderr != before
+		restore()
+		if wrapped {
+			t.Fatalf("prism %s's stderr is piped through the line rewrite; its prompts would not show until answered", cmd)
+		}
+	}
+}

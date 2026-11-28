@@ -60,12 +60,16 @@ func interfaceRecommendation(root string) string {
 		return nil
 	})
 	if err != nil && !errors.Is(err, errSourceCountLimit) {
-		return "Recommendation: MCP for repeated Prism calls; CLI for occasional one-off calls. Repository size could not be measured."
+		return "MCP suits agents that call Prism many times a session; CLI suits occasional calls."
 	}
 	if count >= largeRepoSourceFiles {
-		return fmt.Sprintf("Repository size: at least %d source files. Recommendation: MCP for repeated Prism calls; CLI for occasional one-off calls. Size alone does not predict model cost.", largeRepoSourceFiles)
+		return fmt.Sprintf("This repository has at least %d source files. MCP suits agents that call Prism many times a session; CLI suits occasional calls.", largeRepoSourceFiles)
 	}
-	return fmt.Sprintf("Repository size: %d source files. Recommendation: CLI for occasional one-off calls; MCP for repeated discovery. Size alone does not predict model cost.", count)
+	files := "source files"
+	if count == 1 {
+		files = "source file"
+	}
+	return fmt.Sprintf("This repository has %d %s. CLI suits occasional calls; MCP suits agents that call Prism many times a session.", count, files)
 }
 
 // stdinReader is shared by every init prompt: a second bufio.Reader on a

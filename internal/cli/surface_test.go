@@ -19,7 +19,7 @@ func TestInterfaceRecommendationCountsProjectSource(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if got := interfaceRecommendation(dir); !strings.Contains(got, "2 source files") || !strings.Contains(got, "CLI for occasional") {
+	if got := interfaceRecommendation(dir); !strings.Contains(got, "2 source files") || !strings.HasPrefix(strings.SplitN(got, ". ", 2)[1], "CLI suits occasional") {
 		t.Fatalf("small repo recommendation: %s", got)
 	}
 	for i := 0; i < largeRepoSourceFiles; i++ {
@@ -28,7 +28,7 @@ func TestInterfaceRecommendationCountsProjectSource(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if got := interfaceRecommendation(dir); !strings.Contains(got, "at least 500 source files") || !strings.Contains(got, "MCP for repeated") {
+	if got := interfaceRecommendation(dir); !strings.Contains(got, "at least 500 source files") || !strings.HasPrefix(strings.SplitN(got, ". ", 2)[1], "MCP suits agents") {
 		t.Fatalf("large repo recommendation: %s", got)
 	}
 }

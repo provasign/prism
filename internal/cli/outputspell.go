@@ -8,9 +8,13 @@ import (
 	"sync"
 )
 
-// noSpellCommands speak a protocol on stdout or serve a UI; their output is
-// never rewritten.
-var noSpellCommands = map[string]bool{"mcp": true, "serve": true, "link-server": true, "compact": true, "graph": true}
+// noSpellCommands speak a protocol on stdout, serve a UI, or ask the user
+// questions; their output is never rewritten. The rewrite reads whole
+// lines, so a prompt (no newline until the user answers) stayed in the
+// pipe: `prism init` showed its harness list and then waited with no
+// question, and each question appeared only after it was answered.
+var noSpellCommands = map[string]bool{"mcp": true, "serve": true, "link-server": true, "compact": true, "graph": true,
+	"init": true, "workspace": true}
 
 // cliSpelledOutput rewrites MCP spellings ("op=read file=...", "prism_lookup",
 // "include_tests=true") in a text-format command's stdout and stderr into the

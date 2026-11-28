@@ -767,7 +767,15 @@ func removePrismCodexConfig(path string) (bool, error) {
 // must never block on a prompt.
 func isInteractive() bool {
 	fi, err := os.Stdin.Stat()
-	return err == nil && (fi.Mode()&os.ModeCharDevice) != 0
+	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+		return false
+	}
+	// The null device is a character device too: `prism init </dev/null`
+	// (CI, scripts) asked a question and failed with "init: EOF".
+	if null, err := os.Stat(os.DevNull); err == nil && os.SameFile(fi, null) {
+		return false
+	}
+	return true
 }
 
 // prismDenyEntries is the exact trio historic inits wrote; cleanup matches
