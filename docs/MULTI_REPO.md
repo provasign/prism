@@ -236,5 +236,7 @@ agent.
   no single sign-on yet: operators issue its tokens.
 - Cache clones have no size cap; prune them by hand. A clone has no dependencies installed, so
   TypeScript and Java consumers in a clone are name-matched.
-- The graph explorer explores one repository's index: other repositories are single nodes (and
-  listed sites in change impact), not drillable; run `prism graph` in a repository to explore it.
+- The graph explorer shows one repository's index: other repositories are single nodes (and
+  listed sites in change impact). Double-clicking a linked checkout or cache clone, or its
+  "Open its graph" button, starts `prism graph` for it in a new tab; it stops with the first one.
+  Link-server repositories have no local copy and cannot be opened.

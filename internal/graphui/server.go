@@ -50,7 +50,17 @@ type Server struct {
 	cross      CrossRepoFunc
 	crossMu    sync.Mutex
 	crossCache map[string]crossCached
+
+	// openRepo, when set, starts the explorer for another repository.
+	openRepo OpenRepoFunc
 }
+
+// OpenRepoFunc starts (or finds running) the explorer for the other
+// repository id and returns its page address, token included.
+type OpenRepoFunc func(ctx context.Context, id string, tests bool) (string, error)
+
+// SetOpenRepo lets the page open another repository's graph.
+func (s *Server) SetOpenRepo(f OpenRepoFunc) { s.openRepo = f }
 
 // SetToken requires tok on every /api/* request.
 func (s *Server) SetToken(tok string) { s.token = tok }
@@ -99,6 +109,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/source", s.source)
 	mux.HandleFunc("GET /api/impact", s.impactView)
 	mux.HandleFunc("POST /api/reload", s.reload)
+	mux.HandleFunc("POST /api/open-repo", s.openRepoView)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !httpguard.LoopbackHost(r.Host) {
 			http.Error(w, "prism graph answers on localhost only", http.StatusForbidden)
@@ -129,7 +140,8 @@ func (s *Server) meta(w http.ResponseWriter, _ *http.Request) {
 		LoadedAt  int64  `json:"loadedAt"`
 		CanIndex  bool   `json:"canIndex"`
 		CanImpact bool   `json:"canImpact"`
-	}{s.Model().Meta(), s.version, s.loadedAt.Load(), s.reindex != nil, s.impact != nil})
+		CanRepo   bool   `json:"canOpenRepo"`
+	}{s.Model().Meta(), s.version, s.loadedAt.Load(), s.reindex != nil, s.impact != nil, s.openRepo != nil})
 }
 
 func boolParam(r *http.Request, name string) bool {
@@ -228,6 +240,26 @@ func (s *Server) reload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.meta(w, r)
+}
+
+// openRepoView answers POST /api/open-repo?id=<repo> with {"url": ...}, the
+// address of that repository's explorer. It starts a process, so like
+// reload it requires a header a cross-origin request cannot set.
+func (s *Server) openRepoView(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("X-Prism-Graph") == "" {
+		writeErr(w, http.StatusForbidden, errors.New("missing X-Prism-Graph header"))
+		return
+	}
+	if s.openRepo == nil {
+		writeErr(w, http.StatusNotImplemented, errors.New("opening other repositories is not available in this server"))
+		return
+	}
+	u, err := s.openRepo(r.Context(), r.URL.Query().Get("id"), boolParam(r, "tests"))
+	if err != nil {
+		writeErr(w, http.StatusUnprocessableEntity, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"url": u})
 }
 
 // impactView answers /api/impact?id=<symbol>&depth=1..3&tests=0|1 with the

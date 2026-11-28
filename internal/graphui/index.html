@@ -912,7 +912,7 @@ canvas.addEventListener("pointerleave", () => { if (S.hover) { S.hover = null; k
 canvas.addEventListener("dblclick", e => {
   const [wx, wy] = toWorld(e.offsetX, e.offsetY), n = nodeAt(wx, wy);
   if (!n || n.focus) return;
-  if (n.type === "repo") { toast("Another repository: run prism graph in it to explore it"); return; }
+  if (n.type === "repo") { openRepo(n); return; }
   if (S.mode === "impact") { if (n.id.startsWith("s:")) impactOf(n.id); }
   else go(n.id);
 });
@@ -1119,10 +1119,38 @@ function sourceInto(holder, id) {
   }).catch(e => { if (seq === srcSeq) holder.replaceChildren(el("p", { class: "empty" }, e.message)); });
 }
 
+// openRepoHint says why a repository node cannot be opened, or "" when it can.
+function openRepoHint(n) {
+  if (n.kind === "more") return "not drawn";
+  if (!S.meta?.canOpenRepo) return "run prism graph in " + n.label + " to explore it";
+  if (n.kind === "server") return n.label + " is answered by the link server: no local copy to explore";
+  if (n.detail && /UNREAD/.test(n.detail)) return n.label + " is not read: " + n.detail;
+  return "";
+}
+// openRepo starts that repository's explorer and opens it in a new tab. The
+// tab is opened before the request so a popup blocker lets it through.
+async function openRepo(n) {
+  const why = openRepoHint(n);
+  if (why) { toast(why); return; }
+  const w = window.open("about:blank", "_blank");
+  if (w) { try { w.document.title = n.label + " — starting…"; w.document.body.textContent = "Starting prism graph for " + n.label + "…"; } catch (e) {} }
+  toast("Starting the graph for " + n.label + "…");
+  try {
+    const p = new URLSearchParams({ id: n.label });
+    if (S.tests) p.set("tests", "1");
+    const r = await api("/api/open-repo?" + p, { method: "POST", headers: { "X-Prism-Graph": "1" } });
+    if (w && !w.closed) { w.opener = null; w.location.href = r.url; } else window.open(r.url, "_blank", "noopener");
+  } catch (e) {
+    if (w && !w.closed) w.close();
+    toast(n.label + ": " + e.message);
+  }
+}
+
 function renderRepoPanel(n) {
   const body = $("insp-body");
   const src = { server: "link server", clone: "cache clone, read-only", checkout: "linked checkout", more: "not drawn" }[n.kind] || n.kind;
-  headFor(n, n.detail || "", [chip("other repository", colorOf(n)), chip(src)], [], { color: colorOf(n), text: "⇄" });
+  const acts = openRepoHint(n) ? [] : [el("button", { class: "btn primary", onclick: () => openRepo(n) }, "Open its graph")];
+  headFor(n, n.detail || "", [chip("other repository", colorOf(n)), chip(src)], acts, { color: colorOf(n), text: "⇄" });
   setTabs([]);
   if (n.kind === "more") { body.append(el("div", { class: "doc" }, "Only the 20 most connected repositories are drawn. The others: " + n.detail)); return; }
   const mine = S.links.filter(l => l.a === n || l.b === n);
@@ -1141,7 +1169,8 @@ function renderRepoPanel(n) {
   if (usedBy.length) body.append(sec(`${n.label} uses this repository`, usedBy.length, ...usedBy.map(row)));
   if (uses.length) body.append(sec(`This repository uses ${n.label}`, uses.length, ...uses.map(row)));
   if (!mine.length) body.append(el("p", { class: "empty" }, n.detail && /NOT|UNREAD|STALE/.test(n.detail) ? "Not read: " + n.detail : "No edges between this repository and " + n.label + "."));
-  body.append(el("div", { class: "hint" }, "The graph holds this repository's index only: run prism graph in " + n.label + " to explore it."));
+  const why = openRepoHint(n);
+  body.append(el("div", { class: "hint" }, why ? "The graph holds this repository's index only: " + why + "." : "The graph holds this repository's index only: Open its graph (or double-click the node) starts prism graph for " + n.label + " in a new tab."));
 }
 function renderNodePanel(n) {
   if (n.type === "repo") return renderRepoPanel(n);

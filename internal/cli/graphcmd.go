@@ -20,6 +20,7 @@ import (
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/httpguard"
 	"github.com/provasign/prism/internal/version"
+	"github.com/provasign/prism/internal/workspace"
 )
 
 // defaultGraphPort is tried first so the page's address is stable across
@@ -119,6 +120,15 @@ func cmdGraph(args []string) int {
 		var m map[string]any
 		return m, json.Unmarshal(b, &m)
 	})
+	// Double-clicking another repository starts its own explorer.
+	repos := newRepoGraphs(func() []workspace.Root {
+		if handler.Workspace == nil {
+			return nil
+		}
+		return handler.Workspace.Roots
+	})
+	defer repos.Close()
+	srv.SetOpenRepo(repos.Open)
 	meta := srv.Model().Meta()
 	if meta.Symbols == 0 {
 		fmt.Fprintln(os.Stderr, "graph: the index holds no code symbols for", root, "— run `prism index` and check `prism doctor`")
